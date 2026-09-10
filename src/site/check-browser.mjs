@@ -30,7 +30,15 @@ try{
  await stiffness.click();await page.keyboard.press('ControlOrMeta+a');await page.keyboard.press('Backspace');
  await page.keyboard.type('99999');await page.keyboard.press('Tab');
  assert.equal(await stiffness.inputValue(),'30000','an out of range entry is bounded once the box is left');
- await visit('machine/cylinder-lock');await page.getByRole('button',{name:'Pin stack 1',exact:true}).click();assert.ok(await page.locator('.daily-part-buttons button').count()>=2);await page.getByRole('checkbox',{name:'Isolate selected part',exact:true}).check();await page.getByRole('button',{name:'Whole machine',exact:true}).click();
+ // A pin stack sits four levels down, so walk in the way a reader has to.
+ await visit('machine/cylinder-lock');
+ for(const step of ['Door and cylinder lock','Hinged door','Enlarged latch assembly','Five spring-loaded pin stacks','Pin stack 1'])
+  await page.locator('.daily-part-buttons').getByRole('button',{name:step,exact:true}).click();
+ assert.match(await page.locator('.daily-part-detail').textContent(),/Pin stack 1/);
+ assert.equal(await page.locator('.daily-part-path button').count(),6,'breadcrumbs name the whole machine and each step down');
+ await page.getByRole('checkbox',{name:'Isolate selected part',exact:true}).check();
+ await page.getByRole('button',{name:'Whole machine',exact:true}).click();
+ assert.ok(await page.locator('.daily-part-buttons button').count()>=1,'the whole machine is reachable again');
  await visit('machine/washing-machine');await page.getByLabel('Cycle stage',{exact:true}).selectOption('3');await page.getByRole('spinbutton',{name:'Unbalanced load mass value',exact:true}).fill('.2');assert.match(await page.locator('.daily-readings').textContent(),/1.25 mm/);assert.equal(await page.getByRole('spinbutton',{name:'Wash / rinse speed value',exact:true}).isDisabled(),true);await page.screenshot({path:`${output}/washing-desktop.png`});
  await page.setViewportSize({width:390,height:844});
  for(const route of ['place/home','room/kitchen','machine/washing-machine','machine/cylinder-lock']){await visit(route);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Horizontal overflow: ${route}`);assert.equal(await page.locator(".house-breadcrumbs a").first().isVisible(),true);await page.screenshot({path:`${output}/${route.replaceAll('/','-')}-mobile.png`});}

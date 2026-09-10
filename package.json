@@ -15,6 +15,7 @@
     "test": "node --test src/physics.test.ts src/scene/*.test.ts",
     "test:scenes": "node src/scene/verify-batch0.ts && node src/scene/verify-batch1.ts && node src/scene/verify-batch2.ts && node src/scene/verify-batch3.ts && node src/scene/verify-batch4.ts && node src/scene/verify-batch5.ts",
     "test:models": "node src/site/check.cjs && node src/site/check-zoom.cjs && node src/site/check-house.mjs && node src/site/check-lessons.mjs && node src/site/check-sewing.mjs && node src/site/check-horn-model.mjs && node src/site/check-electromagnet-model.mjs && node src/site/check-dc-motor-model.mjs && node src/site/check-commutator-model.mjs",
+    "test:browser": "node src/site/check-browser.mjs",
     "test:deployment": "node scripts/check-deployment.mjs"
   },
   "dependencies": {

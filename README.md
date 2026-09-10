@@ -26,7 +26,7 @@ npm run test:models
 npm run build
 ```
 
-Machine-specific runnable checks live beside their models in `src/site/`. Browser checks require Playwright and a running site. Run `npm run test:deployment -- https://howthingswork.xera.ac/` for the deployment smoke check; use `PLAYWRIGHT_MODULE` for an external installation. Machine browser checks accept `SITE_URL` (default `http://127.0.0.1:5175/`); checks that inject source fixtures require the Vite dev server. Passing checks establishes the named behavior, not complete coverage of every machine or scientific assumption.
+`npm run test:browser` drives the house in a real browser against a running site. Machine-specific runnable checks live beside their models in `src/site/`. Browser checks require Playwright and a running site. Run `npm run test:deployment -- https://howthingswork.xera.ac/` for the deployment smoke check; use `PLAYWRIGHT_MODULE` for an external installation. Machine browser checks accept `SITE_URL` (default `http://127.0.0.1:5175/`); checks that inject source fixtures require the Vite dev server. Passing checks establishes the named behavior, not complete coverage of every machine or scientific assumption.
 
 ## Source layout
 
