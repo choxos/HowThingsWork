@@ -1,6 +1,6 @@
 import type {Topic} from '../topics.ts';
 
-/** Part 3 of the book: working with waves. */
+/** Part 3: working with waves. */
 export const part3: Topic[] = [
   {
     id: 'light-and-images',

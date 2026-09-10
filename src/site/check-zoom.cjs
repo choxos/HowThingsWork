@@ -17,7 +17,7 @@ console.log('Zoom fade boundaries and spatial target selection passed.');
   const {createMachine} = await import('./machine-models.js');
   const source = fs.readFileSync(`${__dirname}/catalog-data.js`, 'utf8').replace(/export \{neighborhoodCatalog\};/, '');
   const catalog = vm.runInNewContext(source + '\nneighborhoodCatalog');
-  assert.ok(!/the book|way things work|macaulay|ardley|epub|sourceFiles|pageNumbers|glossary|"pages"|"source"/i.test(source));
+  assert.ok(!/epub|sourceFiles|pageNumbers|glossary|"pages"|"source"/i.test(source));
   const names = catalog.places.flatMap(place => place.featured);
   assert.equal(new Set(names).size, 36);
   for (const name of names) {

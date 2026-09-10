@@ -1,6 +1,6 @@
 import type {Topic} from '../topics.ts';
 
-/** Part 4 of the book: electricity and automation. */
+/** Part 4: electricity and automation. */
 export const part4: Topic[] = [
   {
     id: 'electricity',

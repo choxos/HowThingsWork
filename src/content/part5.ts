@@ -1,6 +1,6 @@
 import type {Topic} from '../topics.ts';
 
-/** Part 5 of the book: the digital domain. */
+/** Part 5: the digital domain. */
 export const part5: Topic[] = [
   {
     id: 'making-bits',

@@ -1,6 +1,6 @@
 import type {Topic} from '../topics.ts';
 
-/** Part 2 of the book: harnessing the elements. */
+/** Part 2: harnessing the elements. */
 export const part2: Topic[] = [
   {
     id: 'floating',

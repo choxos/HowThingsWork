@@ -57,9 +57,9 @@ export type TopicId =
 
 export type Topic = {
   id: TopicId;
-  /** Chapter number, counted straight through the book. */
+  /** Chapter number, counted straight through the collection. */
   index: number;
-  /** Which part of the book the chapter belongs to. */
+  /** Which part the chapter belongs to. */
   part: PartNumber;
   name: string;
   category: string;
@@ -123,7 +123,7 @@ export const topicById = (id: string) => topics.find(t => t.id === id);
 
 export const topicsInPart = (number: PartNumber) => topics.filter(t => t.part === number);
 
-/** Chapters of the book this study has not reached yet. All five parts are open. */
+/** Chapters this study has not reached yet. All five parts are open. */
 export const upcoming: {name: string; note: string}[] = [];
 
 export const laterParts: string[] = [];

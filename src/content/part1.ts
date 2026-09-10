@@ -1,6 +1,6 @@
 import type {Topic} from '../topics.ts';
 
-/** Part 1 of the book: the mechanics of movement. */
+/** Part 1: the mechanics of movement. */
 export const part1: Topic[] = [
   {
     id: 'inclined-plane',

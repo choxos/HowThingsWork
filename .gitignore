@@ -16,9 +16,6 @@ documentation/
 .omo/
 .codebase-memory/
 
-# Local reference-inventory helper depends on private documentation inputs.
-scripts/audit-book.py
-
 # Private runtime settings and host configuration stay local.
 .env
 .env.*
