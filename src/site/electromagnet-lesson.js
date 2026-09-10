@@ -1,0 +1,40 @@
+export const electromagnetLesson={
+ simple:'Can electricity pick something up? Power a lifting magnet, raise an iron load and switch off to release it.',
+ overview:'Current in a winding makes the iron core magnetic. This lifting magnet has a central pole and an outer steel casing that provides the return path. A nearby iron plate helps complete that magnetic path, and attraction can lift it against gravity. A hoist can then raise the magnet and its load together. Reducing the current weakens the attraction; switching off lets the load fall back into the tray.',
+ steps:[
+  {title:'Trace the supported assembly',body:'The frame and suspension carry the magnet. Look inside to find the winding, central iron pole, outer casing and nonmagnetic plate that protects the winding. The load starts just below the pole faces.'},
+  {title:'Supply the coil',body:'Advance one step or press Play. The regulated supply builds current in the winding. The field indicator shows the pole direction; the force and weight readings let you compare attraction with the downward load.'},
+  {title:'Close the small gap',body:'When attraction exceeds weight, the iron load rises toward the pole faces. The hoist waits for contact before lifting. A weak pull leaves the load in the tray.'},
+  {title:'Hold the useful result',body:'The completed lifting action shows the load held above the tray. Current is still required to maintain this hold; pausing the demonstration does not represent disconnecting the supply.'},
+  {title:'Switch off and release',body:'After a successful lift, choose Switch off and release under Run action, then press Play. Current fades, attraction falls below weight and the plate drops into the tray.'},
+  {title:'Compare direction and material',body:'Try reversed current, a weaker setting and the nonmagnetic load. Reversal swaps the poles but still attracts iron. A powered coil does not make every material lift.'},
+ ],
+ parts:[
+  {name:'Insulated winding',role:'Carries the controlled current that produces the magnetic field.'},
+  {name:'Central iron pole and steel casing',role:'Guide flux through the center and back around the outside.'},
+  {name:'Nonmagnetic coil plate',role:'Protects the winding without joining the two iron pole faces into a direct magnetic shortcut.'},
+  {name:'Load and small pole gaps',role:'Determine whether the magnetic path produces enough attraction to lift the weight.'},
+  {name:'Hoist, suspension and frame',role:'Support the magnet and move it upward after the load is captured.'},
+  {name:'Regulated supply and flexible leads',role:'Maintain the chosen current while the magnet moves.'},
+ ],
+ tryIt:[
+  {title:'Lift, hold and release iron',instruction:'Press Play to lift the iron load. Inspect the held result, then select Switch off and release and press Play again.',observe:'The load first rises to the magnet and then travels upward with the hoist. Switching off removes the holding force and lets it return to the tray.',reset:true,part:'system',view:'front',isolate:false,values:{operation:0,current:2,polarity:1,material:0,mass:.5,height:40}},
+  {title:'Make the current too weak',instruction:'Run the same lifting action at the lower current setting. Compare magnetic force with load weight.',observe:'The pull is insufficient to close the initial gap. The iron stays in the tray and the hoist does not pretend to carry it.',reset:true,part:'system',view:'front',isolate:false,values:{operation:0,current:.5,polarity:1,material:0,mass:.5,height:40}},
+  {title:'Reverse the poles',instruction:'Repeat the normal lift with the current direction reversed.',observe:'The north and south directions exchange, but the iron is still attracted. Reversing the current does not turn this iron pickup into a repeller.',reset:true,part:'system',view:'front',isolate:false,values:{operation:0,current:2,polarity:-1,material:0,mass:.5,height:40}},
+  {title:'Try a nonmagnetic load',instruction:'Run the powered magnet above the nonmagnetic plate.',observe:'The coil is energized, but this load does not supply the iron attraction needed for pickup. It remains in the tray.',reset:true,part:'system',view:'front',isolate:false,values:{operation:0,current:2,polarity:1,material:1,mass:.5,height:40}},
+  {title:'Increase the weight',instruction:'Use the same current with the heavier load. Compare force and weight before pickup.',observe:'At the initial gap, the magnetic pull cannot lift the heavier load. A lifting result depends on both the magnet and what it must support.',reset:true,part:'system',view:'front',isolate:false,values:{operation:0,current:2,polarity:1,material:0,mass:1.5,height:40}},
+ ],
+ deeper:[
+  {title:'The iron completes a path',body:'The casing is part of the magnetic circuit. Flux crosses the gap at one pole, passes through the iron load and returns across the gap at the other pole. Small air gaps can account for much of the path’s reluctance, its opposition to magnetic flux.'},
+  {title:'Pole reversal still attracts iron',body:'Iron responds to the applied field. Reversing the current reverses the induced magnetization as well. In the uniform-gap approximation used here, attraction depends on the square of the flux, so changing its sign alone does not reverse the force. During a live reversal, however, the current passes through zero and the grip can briefly weaken.'},
+  {title:'Pickup and holding are different conditions',body:'Closing a small gap can strengthen attraction. A magnet may hold a load once it is in close contact even when it could not pick that load up from farther away. This demonstration starts from a specified narrow gap, not from an arbitrary distance.'},
+ ],
+ misconception:'An electromagnet does not pick up every metal, and reversing its current does not repel an unmagnetized iron load. Material, gap and weight matter as well as current.',
+ limits:'An illustrative, aligned lifting magnet and load. A uniform-gap magnetic circuit estimates flux and attraction across the two pole faces; real fringing, leakage, material hysteresis, eddy currents and surface roughness require more detailed analysis. A bounded saturation approximation limits the field. The current supply has a prescribed response time, and the hoist follows a prescribed vertical motion. This is not a lifting-capacity rating or a model of electrical heating or efficiency. Nonmagnetic attraction is neglected. Contact and tray impacts are idealized; the field indicators are diagrams, not measured field lines.',
+ sources:[
+  {title:'MIT: magnetic circuits and air-gap electromagnets',url:'https://web.mit.edu/6.013_book/OldFiles/www/chapter9/9.7.html'},
+  {title:'MIT: magnetic force and a high-permeability plate',url:'https://ocw.mit.edu/courses/6-013-electromagnetics-and-applications-spring-2009/08b9c7c25b478f60fdec835d976b95ec_MIT6_013S09_sol_pset04.pdf'},
+  {title:'OpenStax: current and field direction in a coil',url:'https://openstax.org/books/university-physics-volume-2/pages/12-6-solenoids-and-toroids'},
+ ],
+ quiz:{question:'What happens to the iron pickup when the same current is reversed?',options:['The poles reverse, but the iron is still attracted.','The iron is repelled with the same force.','The current disappears because the coil cannot conduct backward.'],answer:0,explanation:'Current reversal swaps the pole directions. The iron’s induced magnetization reverses too, so the force still tends to close the gap.'},
+};

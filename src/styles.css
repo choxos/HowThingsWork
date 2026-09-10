@@ -1,0 +1,2653 @@
+:root {
+  --bg: #050607;
+  --card: linear-gradient(#0e151d, #0a1015);
+  --stage: #0a1118;
+  --ink: #e5e9ed;
+  --ink-soft: #a9b7c2;
+  --ink-dim: #7f919f;
+  --line: #c8dcf01c;
+  --line-strong: #c1d9ea55;
+  --hover: #b9d6ec14;
+  --panel: #0c121bd6;
+  --panel-solid: #101a24;
+  --chip: #14202bdc;
+  --track: #4d5b66;
+  --knob: #91b0c5;
+  --knob-ring: #dceaf4;
+  --accent: #f2905c;
+  --focus: #c0d3e1;
+  --shade: #00000033;
+  --v-steel: #9aa8b4;
+  --v-stone: #717d86;
+  --v-timber: #8a6f52;
+  --v-earth: #39444c;
+  --v-rope: #c7a677;
+  color-scheme: dark;
+}
+
+/* Dark is the house style; a light system setting or an explicit choice flips it. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+  --bg: #eceff2;
+  --card: linear-gradient(#ffffff, #f7f9fb);
+  --stage: #e3e8ed;
+  --ink: #16202a;
+  --ink-soft: #46586a;
+  --ink-dim: #566677;
+  --line: #16202a1f;
+  --line-strong: #16202a45;
+  --hover: #16202a0f;
+  --panel: #ffffffe0;
+  --panel-solid: #ffffff;
+  --chip: #ffffffe8;
+  --track: #b3bfc9;
+  --knob: #5a7086;
+  --knob-ring: #33465a;
+  --accent: #b8471a;
+  --focus: #2c4a63;
+  --shade: #16202a1a;
+  --v-steel: #7d8b98;
+  --v-stone: #98a3ac;
+  --v-timber: #a98a68;
+  --v-earth: #c3cbd2;
+  --v-rope: #b19161;
+  color-scheme: light;
+  }
+}
+
+:root[data-theme='light'] {
+  --bg: #eceff2;
+  --card: linear-gradient(#ffffff, #f7f9fb);
+  --stage: #e3e8ed;
+  --ink: #16202a;
+  --ink-soft: #46586a;
+  --ink-dim: #566677;
+  --line: #16202a1f;
+  --line-strong: #16202a45;
+  --hover: #16202a0f;
+  --panel: #ffffffe0;
+  --panel-solid: #ffffff;
+  --chip: #ffffffe8;
+  --track: #b3bfc9;
+  --knob: #5a7086;
+  --knob-ring: #33465a;
+  --accent: #b8471a;
+  --focus: #2c4a63;
+  --shade: #16202a1a;
+  --v-steel: #7d8b98;
+  --v-stone: #98a3ac;
+  --v-timber: #a98a68;
+  --v-earth: #c3cbd2;
+  --v-rope: #b19161;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+svg {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2.6px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ gallery */
+
+.gallery {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 60px 32px 84px;
+}
+
+.gallery-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.gallery-head h1 {
+  font-size: clamp(38px, 6.4vw, 62px);
+  font-weight: 400;
+  letter-spacing: -1.8px;
+  line-height: 1;
+  margin: 18px 0 0;
+}
+
+.lede {
+  max-width: 54ch;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin: 22px 0 0;
+  text-wrap: pretty;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.6px;
+}
+
+.theme-toggle:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.theme-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 18px;
+  margin: 46px 0 0;
+}
+
+.part + .part {
+  margin-top: 14px;
+}
+
+.part-head {
+  margin: 52px 0 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.part-head h2 {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  margin: 0;
+  color: var(--ink);
+}
+
+.part-head h2 span {
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-right: 10px;
+}
+
+.part-head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.part .topic-grid {
+  margin-top: 18px;
+}
+
+.topic-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.topic-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.topic-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 19px 22px 22px;
+}
+
+.topic-number {
+  font-size: 10px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1.4px;
+}
+
+.topic-card h2 {
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+
+.topic-tagline {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.topic-summary {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+/* -------------------------------------------------------------- vignettes */
+
+.vignette {
+  background: var(--stage);
+  border-bottom: 1px solid var(--line);
+}
+
+.vignette svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.v-rule {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.v-earth {
+  fill: var(--v-earth);
+}
+
+.v-stone {
+  fill: var(--v-stone);
+}
+
+.v-steel {
+  fill: var(--v-steel);
+}
+
+.v-timber {
+  fill: var(--v-timber);
+}
+
+.v-rope {
+  fill: var(--v-rope);
+}
+
+.v-hole {
+  fill: var(--stage);
+}
+
+.v-accent,
+.v-accent-fill {
+  fill: var(--accent);
+}
+
+.v-stone-line {
+  stroke: var(--v-stone);
+  stroke-width: 5;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.v-steel-line {
+  stroke: var(--v-steel);
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.v-steel-line.v-thick {
+  stroke-width: 2.6;
+}
+
+.v-spoke {
+  stroke: var(--v-earth);
+  stroke-width: 1.4;
+  opacity: 0.5;
+  fill: none;
+}
+
+.v-ring {
+  fill: none;
+  stroke: var(--v-steel);
+  stroke-width: 4;
+}
+
+.v-disc {
+  fill: var(--v-steel);
+}
+
+.v-disc.v-accent-disc {
+  fill: var(--accent);
+}
+
+.v-accent .v-arrow {
+  stroke: var(--accent);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.v-rope-line {
+  stroke: var(--v-rope);
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.v-groove-line {
+  stroke: var(--stage);
+  stroke-width: 2;
+  fill: none;
+}
+
+.v-steel-arrow .v-arrow {
+  stroke: var(--v-steel);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.v-steel-arrow path:not(.v-arrow) {
+  fill: var(--v-steel);
+}
+
+.v-dark-fill {
+  fill: var(--v-earth);
+}
+
+.v-coil-line {
+  stroke: var(--v-steel);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.v-sea {
+  fill: var(--v-steel);
+  opacity: 0.42;
+}
+
+.v-fluid {
+  fill: var(--v-steel);
+  opacity: 0.7;
+}
+
+.v-stream {
+  stroke: var(--v-stone);
+  stroke-width: 2;
+  fill: none;
+}
+
+.v-vessel {
+  stroke: var(--v-earth);
+  stroke-width: 4;
+  fill: none;
+}
+
+.v-glass {
+  fill: var(--v-steel);
+  opacity: 0.6;
+}
+
+/* Paper is white in either theme, because paper is white. */
+.v-paper {
+  fill: #f4f3ef;
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.v-string-line {
+  stroke: var(--v-steel);
+  stroke-width: 3;
+  fill: none;
+}
+
+.v-string-line.v-slack {
+  opacity: 0.35;
+}
+
+.v-accent-line {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: none;
+}
+
+.v-envelope {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  fill: none;
+  opacity: 0.7;
+}
+
+.v-mask {
+  fill: var(--stage);
+}
+
+.v-datum {
+  stroke: var(--v-earth);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  fill: none;
+}
+
+/* One loop of each mechanism, paused for anyone who asks for less motion. */
+.v-ramp-load {
+  animation: v-ramp 5s linear infinite;
+}
+
+@keyframes v-ramp {
+  0%,
+  4% {
+    transform: translate(0, 0);
+  }
+  46%,
+  54% {
+    transform: translate(-106.519px, -49.033px);
+  }
+  96%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* The load rolls: it turns by the distance it covers divided by its radius,
+   and only the load turns, not the arrow pushing it. */
+.v-ramp-roll {
+  animation: v-roll 5s linear infinite;
+  transform-origin: 159px 86.95px;
+}
+
+@keyframes v-roll {
+  0%,
+  4% {
+    transform: rotate(0deg);
+  }
+  46%,
+  54% {
+    transform: rotate(-516.818deg);
+  }
+  96%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* The hoisted twin climbs at exactly the same speed, so it arrives early and
+   waits: the ramp is longer, and time is what the longer path costs. */
+.v-ramp-hoist {
+  animation: v-hoist 5s linear infinite;
+}
+
+@keyframes v-hoist {
+  0%,
+  4% {
+    transform: translateY(0);
+  }
+  24.774%,
+  54% {
+    transform: translateY(-58px);
+  }
+  74.774%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.v-lever-arm {
+  animation: v-rock 4.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 130px 66px;
+}
+
+@keyframes v-rock {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-9deg);
+  }
+}
+
+.v-lever-lift {
+  animation: v-mark 4.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-mark {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.v-winch-spin {
+  animation: v-crank 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 176px 48px;
+}
+
+/* Winding and unwinding: the wheel turns back when the rope pays out. */
+@keyframes v-crank {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(300deg);
+  }
+}
+
+.v-winch-load {
+  animation: v-wind 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-wind {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-34px);
+  }
+}
+
+.v-winch-rope {
+  animation: v-rope 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 86px 55px;
+}
+
+@keyframes v-rope {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.26);
+  }
+}
+
+.v-gear-a {
+  animation: v-spin 7s linear infinite;
+  transform-origin: 106px 66px;
+}
+
+/* Twelve teeth driving eight, so the small wheel turns half again as fast. */
+.v-gear-b {
+  animation: v-spinback 7s linear infinite;
+  transform-origin: 166px 66px;
+}
+
+@keyframes v-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes v-spinback {
+  to {
+    transform: rotate(-540deg);
+  }
+}
+
+/* An eccentric disc: the follower rides its surface, so it rises and falls by
+   twice the offset, sampled from the real sine rather than straight lines. */
+.v-cam-disc {
+  animation: v-spin 3.4s linear infinite;
+  transform-origin: 64px 82px;
+}
+
+.v-cam-rod {
+  animation: v-bob 3.4s linear infinite;
+}
+
+@keyframes v-bob {
+  0% { transform: translateY(0.000px); }
+  4.16667% { transform: translateY(2.071px); }
+  8.33333% { transform: translateY(4.000px); }
+  12.5% { transform: translateY(5.657px); }
+  16.6667% { transform: translateY(6.928px); }
+  20.8333% { transform: translateY(7.727px); }
+  25% { transform: translateY(8.000px); }
+  29.1667% { transform: translateY(7.727px); }
+  33.3333% { transform: translateY(6.928px); }
+  37.5% { transform: translateY(5.657px); }
+  41.6667% { transform: translateY(4.000px); }
+  45.8333% { transform: translateY(2.071px); }
+  50% { transform: translateY(0.000px); }
+  54.1667% { transform: translateY(-2.071px); }
+  58.3333% { transform: translateY(-4.000px); }
+  62.5% { transform: translateY(-5.657px); }
+  66.6667% { transform: translateY(-6.928px); }
+  70.8333% { transform: translateY(-7.727px); }
+  75% { transform: translateY(-8.000px); }
+  79.1667% { transform: translateY(-7.727px); }
+  83.3333% { transform: translateY(-6.928px); }
+  87.5% { transform: translateY(-5.657px); }
+  91.6667% { transform: translateY(-4.000px); }
+  95.8333% { transform: translateY(-2.071px); }
+  100% { transform: translateY(-0.000px); }
+}
+
+/* Slider crank sampled from the real linkage: the pin sweeps a circle of
+   radius 14, and the rod leans exactly enough to reach the piston. */
+.v-crank-hub {
+  animation: v-spin 3.4s linear infinite;
+  transform-origin: 192px 82px;
+}
+
+.v-crank-slide {
+  animation: v-slide 3.4s linear infinite;
+}
+
+@keyframes v-slide {
+  0% { transform: translateX(0.000px); }
+  4.16667% { transform: translateX(-0.371px); }
+  8.33333% { transform: translateX(-1.479px); }
+  12.5% { transform: translateX(-3.305px); }
+  16.6667% { transform: translateX(-5.803px); }
+  20.8333% { transform: translateX(-8.884px); }
+  25% { transform: translateX(-12.399px); }
+  29.1667% { transform: translateX(-16.131px); }
+  33.3333% { transform: translateX(-19.803px); }
+  37.5% { transform: translateX(-23.104px); }
+  41.6667% { transform: translateX(-25.728px); }
+  45.8333% { transform: translateX(-27.417px); }
+  50% { transform: translateX(-28.000px); }
+  54.1667% { transform: translateX(-27.417px); }
+  58.3333% { transform: translateX(-25.728px); }
+  62.5% { transform: translateX(-23.104px); }
+  66.6667% { transform: translateX(-19.803px); }
+  70.8333% { transform: translateX(-16.131px); }
+  75% { transform: translateX(-12.399px); }
+  79.1667% { transform: translateX(-8.884px); }
+  83.3333% { transform: translateX(-5.803px); }
+  87.5% { transform: translateX(-3.305px); }
+  91.6667% { transform: translateX(-1.479px); }
+  95.8333% { transform: translateX(-0.371px); }
+  100% { transform: translateX(0.000px); }
+}
+
+.v-crank-arm {
+  animation: v-lean 3.4s linear infinite;
+  transform-origin: 144px 82px;
+}
+
+@keyframes v-lean {
+  0% { transform: rotate(0.000deg); }
+  4.16667% { transform: rotate(3.350deg); }
+  8.33333% { transform: rotate(6.483deg); }
+  12.5% { transform: rotate(9.188deg); }
+  16.6667% { transform: rotate(11.277deg); }
+  20.8333% { transform: rotate(12.598deg); }
+  25% { transform: rotate(13.050deg); }
+  29.1667% { transform: rotate(12.598deg); }
+  33.3333% { transform: rotate(11.277deg); }
+  37.5% { transform: rotate(9.188deg); }
+  41.6667% { transform: rotate(6.483deg); }
+  45.8333% { transform: rotate(3.350deg); }
+  50% { transform: rotate(0.000deg); }
+  54.1667% { transform: rotate(-3.350deg); }
+  58.3333% { transform: rotate(-6.483deg); }
+  62.5% { transform: rotate(-9.188deg); }
+  66.6667% { transform: rotate(-11.277deg); }
+  70.8333% { transform: rotate(-12.598deg); }
+  75% { transform: rotate(-13.050deg); }
+  79.1667% { transform: rotate(-12.598deg); }
+  83.3333% { transform: rotate(-11.277deg); }
+  87.5% { transform: rotate(-9.188deg); }
+  91.6667% { transform: rotate(-6.483deg); }
+  95.8333% { transform: rotate(-3.350deg); }
+  100% { transform: rotate(-0.000deg); }
+}
+
+/* Two strands under the moving block. The load rises half as far as the rope
+   is hauled in, and every piece here is a straight multiple of that one lift,
+   so a single easing curve keeps them exactly in step. */
+.v-pull-block {
+  animation: v-pull-lift 5.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-pull-lift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+.v-pull-strands {
+  animation: v-pull-shorten 5.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 110px 40px;
+}
+
+@keyframes v-pull-shorten {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.714286);
+  }
+}
+
+.v-pull-haul {
+  animation: v-pull-pay 5.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 146px 40px;
+}
+
+@keyframes v-pull-pay {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.842105);
+  }
+}
+
+.v-pull-hand {
+  animation: v-pull-hand 5.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-pull-hand {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(32px);
+  }
+}
+
+/* Two turns of the head drive the nut two pitches down, and the thread pattern
+   travels with it. Everything here is a straight multiple of the turn count,
+   so the same curve drives all three and they cannot drift apart. */
+.v-screw-tilt {
+  transform: scaleY(0.38);
+  transform-origin: 107px 29px;
+}
+
+.v-screw-turn {
+  animation: v-screw-turn 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 107px 29px;
+}
+
+@keyframes v-screw-turn {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(720deg);
+  }
+}
+
+.v-screw-nut,
+.v-screw-thread {
+  animation: v-screw-feed 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-screw-feed {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(16px);
+  }
+}
+
+/* A wheel turning evenly, with the inward pull on the rim weight turning with
+   it, because the direction of that pull is always toward the middle. */
+.v-rw-spin {
+  animation: v-spin 3.8s linear infinite;
+  transform-origin: 130px 65px;
+}
+
+/* Force and deflection stay in proportion, so the coil, the load and the
+   pointer all move by the same fraction of the same travel. */
+.v-spring-coil {
+  animation: v-spring-squeeze 4.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 102px 108px;
+}
+
+@keyframes v-spring-squeeze {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.714286);
+  }
+}
+
+.v-spring-load {
+  animation: v-spring-settle 4.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-spring-settle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(16px);
+  }
+}
+
+/* The plank rises until the block lets go. Both run on a plain linear clock,
+   because the slide is sampled from free acceleration and would not survive
+   being eased. */
+.v-fr-tilt {
+  animation: v-fr-tilt 6s linear infinite;
+  transform-origin: 30px 104px;
+}
+
+@keyframes v-fr-tilt {
+  0% {
+    transform: rotate(0deg);
+  }
+  55%,
+  82% {
+    transform: rotate(-28deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.v-fr-slide {
+  animation: v-fr-slide 6s linear infinite;
+}
+
+/* Free to slide: the distance covered goes with the square of the time, so
+   the block is sampled from that motion rather than eased between ends. */
+@keyframes v-fr-slide {
+  0% { transform: translateX(0px); }
+  55% { transform: translateX(0px); }
+  59.5% { transform: translateX(-2.917px); }
+  64% { transform: translateX(-11.667px); }
+  68.5% { transform: translateX(-26.250px); }
+  73% { transform: translateX(-46.667px); }
+  77.5% { transform: translateX(-72.917px); }
+  82% { transform: translateX(-105.000px); }
+  100% { transform: translateX(0px); }
+}
+
+/* Cargo loads and the hull settles, both in step with the same loading, so one
+   curve drives the fill and the draft together. */
+.v-float-hull {
+  animation: v-float-settle 5.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-float-settle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(14px);
+  }
+}
+
+.v-float-fill {
+  animation: v-float-load 5.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-origin: 130px 86px;
+}
+
+@keyframes v-float-load {
+  0%,
+  100% {
+    transform: scaleY(0.18);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Beads ride the streamlines, so which way the air is going is never in doubt.
+   Each one covers the level stretch and then the sloping one at the same
+   forward speed, which is what the air itself does. */
+.v-air-bead {
+  animation: v-air-flow 4.4s linear infinite;
+}
+
+@keyframes v-air-flow {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(236px, 14px);
+  }
+}
+
+/* The small piston travels four times as far as the large one, because the
+   bores are 20 and 40 and area goes with the square. */
+.v-press-in {
+  animation: v-press-in 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-press-in {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(40px);
+  }
+}
+
+.v-press-out {
+  animation: v-press-out 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-press-out {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Heat crosses in on the wide duct and out on the narrow one while the piston
+   works, all on one clock. */
+.v-heat-in {
+  animation: v-heat-in 4.8s linear infinite;
+}
+
+@keyframes v-heat-in {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(52px);
+  }
+}
+
+.v-heat-out {
+  animation: v-heat-out 4.8s linear infinite;
+}
+
+@keyframes v-heat-out {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(52px);
+  }
+}
+
+.v-heat-piston {
+  animation: v-heat-stroke 4.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-heat-stroke {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-24px);
+  }
+}
+
+/* Rods out and the neutrons multiply; rods in and they die away. */
+.v-rods {
+  animation: v-rods 6.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes v-rods {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-34px);
+  }
+}
+
+.v-neutrons circle {
+  animation: v-neutron 6.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.v-neutrons circle:nth-child(2) {
+  animation-delay: -0.35s;
+}
+
+.v-neutrons circle:nth-child(3) {
+  animation-delay: -0.7s;
+}
+
+.v-neutrons circle:nth-child(4) {
+  animation-delay: -1.05s;
+}
+
+.v-neutrons circle:nth-child(5) {
+  animation-delay: -1.4s;
+}
+
+@keyframes v-neutron {
+  0%,
+  100% {
+    transform: scale(0.2);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+/* Light travels at one speed, so each bead covers its own bent path at a
+   steady rate: the station where it meets the glass is set by how much of the
+   path lies before it. */
+.v-li-ray1 {
+  animation: v-li-ray1 4.6s linear infinite;
+}
+
+.v-li-ray2 {
+  animation: v-li-ray2 4.6s linear infinite;
+}
+
+.v-li-ray3 {
+  animation: v-li-ray3 4.6s linear infinite;
+}
+
+/* The opening runs down the standard series of f numbers and the sharp band
+   lengthens with it, both sampled from those numbers rather than eased. */
+.v-ph-iris {
+  animation: v-ph-iris 5.4s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.v-ph-band {
+  animation: v-ph-band 5.4s linear infinite;
+  transform-origin: 100px 112px;
+}
+
+/* Every dot grows about its own middle, so the lattice does not move: only
+   how much of the paper the ink covers. */
+.v-print-dot circle {
+  animation: v-print-tint 5.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes v-print-tint {
+  0%,
+  100% {
+    transform: scale(0.62);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+/* A string held at both ends swings as a cosine in time, and scaling the arch
+   about the line of the string is exactly that motion. */
+.v-sm-string {
+  animation: v-sm-swing 2.6s linear infinite;
+  transform-origin: 86px 80px;
+}
+
+.v-sm-wave {
+  animation: v-sm-travel 2.6s linear infinite;
+}
+
+/* One wavelength of travel per swing of the string, which is what a wave does,
+   and the path runs a whole wavelength past each edge so the loop has no seam. */
+@keyframes v-sm-travel {
+  to {
+    transform: translateX(-220.73px);
+  }
+}
+
+/* The traces scroll by one whole cycle of the message, which is also exactly
+   eight cycles of the carrier, so nothing jumps at the loop. A real carrier
+   fits millions of cycles into one of speech; eight is what can be drawn. */
+.v-tc-scroll {
+  animation: v-tc-scroll 6s linear infinite;
+}
+
+@keyframes v-tc-scroll {
+  to {
+    transform: translateX(-208px);
+  }
+}
+
+@keyframes v-li-ray1 {
+  0% { transform: translate(0px, 0px); opacity: 1; }
+  36.59% { transform: translate(90.00px, 0.00px); opacity: 1; }
+  71.51% { transform: translate(162.00px, 46.80px); opacity: 1; }
+  88% { transform: translate(196.00px, 68.90px); opacity: 1; }
+  88.4% { transform: translate(196.00px, 68.90px); opacity: 0; }
+  99.9% { transform: translate(0px, 0px); opacity: 0; }
+  100% { transform: translate(0px, 0px); opacity: 1; }
+}
+@keyframes v-li-ray2 {
+  0% { transform: translate(0px, 0px); opacity: 1; }
+  38.09% { transform: translate(90.00px, 26.00px); opacity: 1; }
+  41.04% { transform: translate(90.00px, 26.00px); opacity: 1; }
+  71.51% { transform: translate(162.00px, 46.80px); opacity: 1; }
+  85.9% { transform: translate(196.00px, 56.62px); opacity: 1; }
+  86.3% { transform: translate(196.00px, 56.62px); opacity: 0; }
+  99.9% { transform: translate(0px, 0px); opacity: 0; }
+  100% { transform: translate(0px, 0px); opacity: 1; }
+}
+@keyframes v-li-ray3 {
+  0% { transform: translate(0px, 0px); opacity: 1; }
+  41.25% { transform: translate(90.00px, 46.80px); opacity: 1; }
+  42.24% { transform: translate(90.00px, 46.80px); opacity: 1; }
+  71.51% { transform: translate(162.00px, 46.80px); opacity: 1; }
+  85.34% { transform: translate(196.00px, 46.80px); opacity: 1; }
+  85.74% { transform: translate(196.00px, 46.80px); opacity: 0; }
+  99.9% { transform: translate(0px, 0px); opacity: 0; }
+  100% { transform: translate(0px, 0px); opacity: 1; }
+}
+@keyframes v-ph-iris {
+  0% { transform: scale(1.0000); }
+  8.333% { transform: scale(0.7143); }
+  16.67% { transform: scale(0.5000); }
+  25% { transform: scale(0.3571); }
+  33.33% { transform: scale(0.2500); }
+  41.67% { transform: scale(0.1818); }
+  50% { transform: scale(0.1250); }
+  58.33% { transform: scale(0.1818); }
+  66.67% { transform: scale(0.2500); }
+  75% { transform: scale(0.3571); }
+  83.33% { transform: scale(0.5000); }
+  91.67% { transform: scale(0.7143); }
+  100% { transform: scale(1.0000); }
+}
+@keyframes v-ph-band {
+  0% { transform: translateX(42.28px) scaleX(0.1201); }
+  8.333% { transform: translateX(40.13px) scaleX(0.1685); }
+  16.67% { transform: translateX(37.04px) scaleX(0.2417); }
+  25% { transform: translateX(33.17px) scaleX(0.3413); }
+  33.33% { transform: translateX(27.82px) scaleX(0.4966); }
+  41.67% { transform: translateX(21.80px) scaleX(0.7057); }
+  50% { transform: translateX(13.13px) scaleX(1.1147); }
+  58.33% { transform: translateX(21.80px) scaleX(0.7057); }
+  66.67% { transform: translateX(27.82px) scaleX(0.4966); }
+  75% { transform: translateX(33.17px) scaleX(0.3413); }
+  83.33% { transform: translateX(37.04px) scaleX(0.2417); }
+  91.67% { transform: translateX(40.13px) scaleX(0.1685); }
+  100% { transform: translateX(42.28px) scaleX(0.1201); }
+}
+@keyframes v-sm-swing {
+  0% { transform: scaleY(1.0000); }
+  8.333% { transform: scaleY(0.8660); }
+  16.67% { transform: scaleY(0.5000); }
+  25% { transform: scaleY(0.0000); }
+  33.33% { transform: scaleY(-0.5000); }
+  41.67% { transform: scaleY(-0.8660); }
+  50% { transform: scaleY(-1.0000); }
+  58.33% { transform: scaleY(-0.8660); }
+  66.67% { transform: scaleY(-0.5000); }
+  75% { transform: scaleY(-0.0000); }
+  83.33% { transform: scaleY(0.5000); }
+  91.67% { transform: scaleY(0.8660); }
+  100% { transform: scaleY(1.0000); }
+}
+
+/* --------------------------------------------------- parts four and five */
+
+/* Current, drawn as dashes traveling the loop at one unchanging speed. The
+   offset moves by exactly one dash period each cycle, so nothing jumps. */
+.v-el-loop {
+  fill: none;
+  stroke: var(--v-steel);
+  stroke-width: 3;
+  stroke-dasharray: 10 8;
+  animation: v-current 1.4s linear infinite;
+}
+
+@keyframes v-current {
+  to {
+    stroke-dashoffset: -18px;
+  }
+}
+
+.v-el-lamp {
+  fill: var(--accent);
+  opacity: 0.85;
+}
+
+.v-coil-turn {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.4;
+  stroke-dasharray: 6 5;
+  animation: v-coil-current 1.1s linear infinite;
+}
+
+@keyframes v-coil-current {
+  to {
+    stroke-dashoffset: -11px;
+  }
+}
+
+.v-coil-frame {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+/* The coil turns at one unchanging rate, which is what a running motor does. */
+.v-motor-coil {
+  transform-origin: 130px 66px;
+  animation: v-spin 3.2s linear infinite;
+}
+
+/* Each force arrow is carried round by the coil and turned back by the same
+   amount over the same 3.2s, so it rides its own side of the coil and stays
+   upright. The turning back is about the side it belongs to, not about the
+   shaft, which is what keeps it attached to that side rather than sliding
+   across the frame. */
+.v-motor-force-a {
+  transform-origin: 106px 66px;
+  animation: v-unspin 3.2s linear infinite;
+}
+
+.v-motor-force-b {
+  transform-origin: 154px 66px;
+  animation: v-unspin 3.2s linear infinite;
+}
+
+@keyframes v-unspin {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* The commutator, drawn as the only thing it does. Each side is pushed one way
+   for half a turn and the other way for the next half, because the current
+   through it is reversed as it crosses over. Two steps and no interpolation:
+   the swap is instant, and a fade would draw a moment where the wire is pushed
+   both ways at once. */
+/* The swap comes a quarter turn before the halfway mark, which is where a side
+   passes straight above or below the shaft. There its lever on the shaft is
+   nothing and about to reverse, so that is where the current has to reverse
+   with it; a swap at the halfway mark instead leaves the push fighting the
+   turning for half of every revolution. The negative delay moves each swap from
+   1.6s to 0.8s and 2.4s, which is exactly that quarter turn. */
+.v-motor-first {
+  animation: v-motor-on 3.2s steps(2, jump-none) -0.8s infinite;
+}
+
+.v-motor-second {
+  animation: v-motor-off 3.2s steps(2, jump-none) -0.8s infinite;
+}
+
+@keyframes v-motor-on {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes v-motor-off {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* One turn of the generator's coil for each cycle the trace scrolls. The wave
+   is drawn with an 80 px wavelength at 0.6 scale, so 48 px is exactly one
+   cycle, and the two share a duration: the coil and the wave keep step.
+
+   The coil turns about the upright axis between the poles, and from the front
+   that turn shows as a foreshortening, so what is animated is the width. The
+   width follows the size of the sine and the trace at the right hand edge of
+   the window follows the sine itself, both over the same 2.4s, so the frame is
+   at its widest exactly when the trace peaks and collapses to a line exactly
+   when the trace crosses the datum. A rotation in the plane of the picture
+   would turn the coil about its own normal, where the flux never changes and
+   nothing is generated. */
+.v-gen-coil {
+  transform-origin: 52px 66px;
+  animation: v-gen-turn 2.4s linear infinite;
+}
+
+/* The frame narrows but its wire does not thin: a coil seen edge on is a line
+   of the full thickness, not a faint one. */
+.v-gen-coil rect {
+  vector-effect: non-scaling-stroke;
+}
+
+@keyframes v-gen-turn {
+  0% { transform: scaleX(0.0400); }
+  8.333% { transform: scaleX(0.5000); }
+  16.67% { transform: scaleX(0.8660); }
+  25% { transform: scaleX(1.0000); }
+  33.33% { transform: scaleX(0.8660); }
+  41.67% { transform: scaleX(0.5000); }
+  50% { transform: scaleX(0.0400); }
+  58.33% { transform: scaleX(0.5000); }
+  66.67% { transform: scaleX(0.8660); }
+  75% { transform: scaleX(1.0000); }
+  83.33% { transform: scaleX(0.8660); }
+  91.67% { transform: scaleX(0.5000); }
+  100% { transform: scaleX(0.0400); }
+}
+
+.v-gen-scroll {
+  animation: v-gen-scroll 2.4s linear infinite;
+}
+
+@keyframes v-gen-scroll {
+  to {
+    transform: translateX(-48px);
+  }
+}
+
+/* The dot rides the thermistor curve. Every stop is sampled from that curve at
+   an evenly spaced temperature, so the dot is on the line at all times and its
+   speed along the line is the curve's own steepness, not an easing. */
+.v-sensor-dot {
+  fill: var(--accent);
+  animation: v-sensor-dot 5s linear infinite alternate;
+}
+
+@keyframes v-sensor-dot {
+  0% { transform: translate(0px, -69.41px); }
+  10% { transform: translate(22.40px, -57.13px); }
+  20% { transform: translate(44.80px, -38.85px); }
+  30% { transform: translate(67.20px, -22.41px); }
+  40% { transform: translate(89.60px, -12.04px); }
+  50% { transform: translate(112.00px, -6.49px); }
+  60% { transform: translate(134.40px, -3.63px); }
+  70% { transform: translate(156.80px, -2.13px); }
+  80% { transform: translate(179.20px, -1.31px); }
+  90% { transform: translate(201.60px, -0.84px); }
+  100% { transform: translate(224.00px, -0.56px); }
+}
+
+.v-heat-bar {
+  fill: var(--v-stone);
+  opacity: 0.5;
+}
+
+/* A sampling clock ticks at one unchanging rate, so the scan crosses evenly. */
+.v-scan {
+  animation: v-scan 4s linear infinite;
+}
+
+.v-scan-line {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  opacity: 0.55;
+  fill: none;
+}
+
+@keyframes v-scan {
+  to {
+    transform: translateX(224px);
+  }
+}
+
+.v-platter {
+  transform-origin: 112px 66px;
+  animation: v-spin 4s linear infinite;
+}
+
+.v-track {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.v-sector {
+  stroke: var(--v-earth);
+  stroke-width: 1;
+  opacity: 0.55;
+  fill: none;
+}
+
+.v-bit-on {
+  fill: var(--accent);
+}
+
+.v-bit-off {
+  fill: var(--v-earth);
+  opacity: 0.45;
+}
+
+.v-carry-rail {
+  stroke: var(--v-steel);
+  stroke-width: 2;
+  fill: none;
+}
+
+/* The carry crosses one stage at a time, because that is what a ripple carry
+   does: eight steps for eight columns, and no gliding between them. */
+.v-carry-bead {
+  fill: var(--accent);
+  animation: v-carry 2.4s steps(8, end) infinite;
+}
+
+@keyframes v-carry {
+  to {
+    transform: translateX(-208px);
+  }
+}
+
+.v-noise {
+  stroke: var(--v-stone);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 3;
+  fill: none;
+}
+
+.v-noise-band {
+  fill: var(--v-stone);
+  opacity: 0.2;
+}
+
+.v-packets {
+  animation: v-packets 2.6s linear infinite;
+}
+
+@keyframes v-packets {
+  to {
+    transform: translateX(56px);
+  }
+}
+
+.v-pixel-rule {
+  stroke: var(--v-steel);
+  stroke-width: 0.8;
+  opacity: 0.4;
+  fill: none;
+}
+
+.v-refresh {
+  animation: v-refresh 3s linear infinite;
+}
+
+.v-refresh-bar {
+  fill: var(--accent);
+  opacity: 0.35;
+}
+
+@keyframes v-refresh {
+  to {
+    transform: translateY(82px);
+  }
+}
+
+.v-sub-red {
+  fill: #d0342c;
+}
+
+.v-sub-green {
+  fill: #2f9e44;
+}
+
+.v-sub-blue {
+  fill: #2f6fd0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vignette * {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------- next up */
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 22px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+}
+
+.queue h2 {
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+.queue ul,
+.applications {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.queue li {
+  padding: 6px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+}
+
+.queue li:first-child {
+  border-top: 0;
+}
+
+.queue-foot {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+.gallery-foot p {
+  max-width: 66ch;
+  margin: 48px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+}
+
+/* ------------------------------------------------------------------- studio */
+
+.studio {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.stage,
+.canvas-host {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+
+.canvas-host canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: grab;
+}
+
+.canvas-host canvas:active {
+  cursor: grabbing;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px var(--shade);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px 9px;
+  color: var(--ink-soft);
+}
+
+.panel-head h2,
+.panel-head > span {
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  font-weight: 400;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--ink-dim);
+  border-radius: 3px;
+}
+
+.icon:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.plaque {
+  position: absolute;
+  left: 26px;
+  top: 24px;
+  z-index: 4;
+  max-width: 260px;
+}
+
+.plaque a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.plaque a:hover {
+  color: var(--ink);
+}
+
+.plaque h1 {
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+  margin: 11px 0 0;
+}
+
+.plaque p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.rail-left {
+  position: absolute;
+  z-index: 6;
+  left: 24px;
+  top: 112px;
+  bottom: calc(var(--dock-height, 96px) + 24px);
+  width: 316px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.rail-left > * {
+  pointer-events: auto;
+}
+
+.parts-panel {
+  flex: 0 0 auto;
+  max-height: 46%;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.parts-list {
+  padding: 2px 6px 10px;
+}
+
+.part-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 9px;
+  border-radius: 2px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.part-number {
+  font-size: 9.5px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  width: 16px;
+}
+
+.part-name {
+  flex: 1;
+}
+
+.part-row svg {
+  opacity: 0;
+}
+
+.part-row:hover,
+.part-row.selected {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.part-row.selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.part-row.selected svg {
+  opacity: 0.7;
+}
+
+.tools {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 3px;
+}
+
+.tools button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 42px;
+  color: var(--ink-dim);
+  border-radius: 3px;
+}
+
+.tools button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tools button:hover,
+.tools button.active {
+  color: var(--ink);
+  background: var(--hover);
+}
+
+.tools > span {
+  height: 1px;
+  background: var(--line);
+  margin: 4px;
+}
+
+.detail-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.detail h2:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.swatch {
+  width: 22px;
+  height: 3px;
+  border-radius: 2px;
+  margin-right: -4px;
+}
+
+.swatch.effort {
+  background: var(--accent);
+}
+
+.swatch.delivered {
+  background: var(--v-steel);
+}
+
+.legend em {
+  flex-basis: 100%;
+  font-style: normal;
+  color: var(--ink-dim);
+}
+
+.detail {
+  padding: 0 18px 20px;
+}
+
+.detail h2 {
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+  margin: 10px 0 14px;
+}
+
+.detail h3,
+.about h3 {
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--ink-dim);
+  margin: 20px 0 8px;
+}
+
+.detail-copy {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.isolate {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 20px;
+}
+
+.isolate:hover,
+.isolate.is-active {
+  background: var(--hover);
+  border-color: var(--line-strong);
+}
+
+/* --------------------------------------------------------------------- dock */
+
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(940px, calc(100% - 48px));
+  z-index: 9;
+  display: grid;
+  grid-template-columns: 52px minmax(180px, 0.85fr) minmax(320px, 1.4fr);
+  align-items: center;
+  gap: 12px 22px;
+  padding: 13px 20px;
+}
+
+.variant-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.variant-hint {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 52px;
+  color: var(--ink-dim);
+}
+
+.play svg {
+  width: 18px;
+  height: 18px;
+}
+
+.play span {
+  font-size: 10px;
+}
+
+.play:hover,
+.play.active {
+  color: var(--ink);
+}
+
+.dock-controls {
+  flex: 1 1 220px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.variant {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  align-self: flex-start;
+}
+
+.variant button {
+  padding: 4px 12px;
+  border-radius: 2px;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+.variant button:hover {
+  color: var(--ink);
+}
+
+.variant button.active {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.slider-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.slider-caption output {
+  color: var(--ink);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: none;
+  margin: 0;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--track);
+}
+
+input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--track);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--knob);
+  border: 2px solid var(--knob-ring);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--knob);
+  border: 2px solid var(--knob-ring);
+}
+
+.readings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 22px;
+  margin: 0;
+  flex: 1 1 320px;
+}
+
+.readings div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.readings dt {
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.readings dt em {
+  display: none;
+  font-style: normal;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  max-width: 24ch;
+}
+
+.readings dd {
+  margin: 0;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------- about */
+
+.about-panel {
+  position: absolute;
+  top: 22px;
+  right: 88px;
+  width: 380px;
+  max-height: calc(100dvh - var(--dock-height, 180px) - 54px);
+  overflow: auto;
+  z-index: 12;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.about {
+  padding: 0 18px 20px;
+}
+
+.about p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+}
+
+.facts {
+  margin: 0;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding: 7px 0;
+  font-size: 11px;
+}
+
+.facts dt {
+  color: var(--ink-dim);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+  color: var(--ink-soft);
+}
+
+.applications li {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.applications strong {
+  display: block;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.applications span {
+  color: var(--ink-dim);
+}
+
+.credit {
+  margin-top: 18px;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/* ------------------------------------------------------------ scene overlay */
+
+.scene-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 4px;
+  background: var(--chip);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  z-index: 3;
+}
+
+.scene-label > span {
+  font-size: 10px;
+  padding: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-label strong {
+  font-size: 11px;
+  font-weight: 400;
+  padding-right: 7px;
+  white-space: nowrap;
+}
+
+.scene-label.chosen {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.scene-label[hidden] {
+  display: none !important;
+}
+
+.scene-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 290px;
+  padding: 22px;
+  text-align: center;
+  background: var(--panel-solid);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  z-index: 15;
+}
+
+.scene-error h3 {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.scene-error p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.scene-error button {
+  font-size: 12px;
+  padding: 8px;
+  color: var(--ink-soft);
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-height: 820px) {
+  .rail-left {
+    top: 104px;
+  }
+
+  .plaque h1 {
+    font-size: 19px;
+    margin-top: 8px;
+  }
+
+  .dock {
+    bottom: 16px;
+    padding: 10px 18px;
+    gap: 18px;
+  }
+
+  .readings dt em {
+    font-size: 10px;
+  }
+
+  .detail {
+    padding: 0 16px 16px;
+  }
+
+  .detail h2 {
+    font-size: 19px;
+    margin: 8px 0 12px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .rail-left {
+    left: 16px;
+    width: 274px;
+  }
+
+  .tools {
+    right: 14px;
+  }
+
+  .about-panel {
+    right: 72px;
+    width: 300px;
+  }
+}
+
+@media (max-width: 760px), (max-height: 520px) {
+  .studio {
+    --edge-bottom: max(12px, env(safe-area-inset-bottom));
+    --edge-top: max(12px, env(safe-area-inset-top));
+    --edge-left: max(12px, env(safe-area-inset-left));
+    --edge-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .stage {
+    top: calc(var(--edge-top) + 62px);
+    bottom: calc(var(--edge-bottom) + var(--dock-height, 150px) + 14px);
+  }
+
+  .plaque {
+    top: calc(var(--edge-top) + 2px);
+    left: calc(var(--edge-left) + 4px);
+    max-width: calc(100% - 160px);
+  }
+
+  .plaque h1 {
+    font-size: 17px;
+    margin-top: 6px;
+  }
+
+  .plaque p {
+    display: none;
+  }
+
+  .tools {
+    top: var(--edge-top);
+    right: var(--edge-right);
+    transform: none;
+    display: grid;
+    grid-template-columns: repeat(3, 44px);
+    padding: 3px;
+    gap: 0;
+  }
+
+  .tools button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tools > span {
+    display: none;
+  }
+
+  .rail-left {
+    position: absolute;
+    top: auto;
+    bottom: calc(var(--edge-bottom) + var(--dock-height, 150px) + 14px);
+    left: var(--edge-left);
+    right: var(--edge-right);
+    width: auto;
+    max-height: min(50dvh, calc(100dvh - var(--edge-top) - var(--edge-bottom) - var(--dock-height, 150px) - 96px));
+    gap: 8px;
+  }
+
+  .parts-panel,
+  .detail-panel,
+  .about-panel {
+    overflow: auto;
+    overscroll-behavior: contain;
+    z-index: 10;
+    background: var(--panel-solid);
+  }
+
+  .about-panel {
+    position: absolute;
+    top: auto;
+    bottom: calc(var(--edge-bottom) + var(--dock-height, 150px) + 14px);
+    left: var(--edge-left);
+    right: var(--edge-right);
+    width: auto;
+    max-height: 50dvh;
+  }
+
+  .panel-head {
+    position: sticky;
+    top: 0;
+    background: var(--panel-solid);
+    z-index: 2;
+    padding: 8px 12px;
+  }
+
+  .panel-head h2,
+  .panel-head > span {
+    font-size: 12px;
+  }
+
+  .icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .part-row {
+    min-height: 46px;
+    font-size: 14px;
+    padding: 9px 12px;
+  }
+
+  .detail h2 {
+    font-size: 19px;
+  }
+
+  .detail-copy,
+  .about p {
+    font-size: 14px;
+  }
+
+  .isolate {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .dock {
+    bottom: var(--edge-bottom);
+    left: var(--edge-left);
+    right: var(--edge-right);
+    width: auto;
+    transform: none;
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 8px 12px;
+    padding: 9px 12px;
+  }
+
+  .play {
+    grid-row: 2;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .dock-controls {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .readings {
+    grid-row: 3;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, 1fr);
+    font-size: 12px;
+  }
+
+  .readings div {
+    font-size: 12px;
+  }
+
+  .readings dt em {
+    display: none;
+  }
+
+  .readings div {
+    padding: 3px 0;
+  }
+
+  input[type='range'] {
+    height: 32px;
+  }
+
+  input[type='range']::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -8.5px;
+  }
+
+  input[type='range']::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  .variant button {
+    min-height: 44px;
+    flex: 1 1 auto;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .gallery {
+    padding: 48px 20px 64px;
+  }
+
+  .queue li {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.scene-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.credit-note {
+  color: var(--ink-dim);
+  font-size: 11.5px;
+}
+
+@media (max-width: 700px) {
+  .gallery-head {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 20px;
+  }
+}
+
+
+/* A small experiment is visible before any technical explanation. */
+.study-prompt {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.study-prompt p {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.study-prompt strong {
+  color: var(--accent);
+  margin-right: 6px;
+}
+.study-prompt button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.study-prompt button:hover {
+  background: var(--hover);
+}
+.about .big-idea {
+  font-size: 18px;
+  color: var(--ink);
+}
+.learn-more {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.learn-more summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.word-help {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.word-help dt { color: var(--ink); margin-top: 14px; }
+.word-help dd { color: var(--ink-soft); margin: 4px 0 0; }
+.panel-head h2:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+@media (max-width: 760px), (max-height: 520px) {
+  .study-prompt { grid-row: 1; gap: 8px; padding-bottom: 6px; }
+  .study-prompt p { font-size: 12px; }
+  .study-prompt button { font-size: 12px; padding: 6px 8px; }
+  .variant { flex-wrap: wrap; align-self: stretch; }
+  .dock-controls { min-width: 0; }
+  .readings div { gap: 6px; }
+}
+
+.explore-hint {
+  position: absolute;
+  top: 28px;
+  left: 360px;
+  right: 96px;
+  margin: 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+.tools .tool-name { font-size: 10px; line-height: 1; }
+@media (max-width: 760px), (max-height: 520px) {
+  .explore-hint {
+    top: calc(var(--edge-top) + 62px);
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + 148px);
+    text-align: left;
+    font-size: 12px;
+  }
+  .variant { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .variant-hint { display: none; }
+  .variant button { padding: 4px; overflow-wrap: anywhere; }
+  .readings div { display: block; }
+  .readings dd { margin-top: 2px; }
+}
+@media (max-height: 520px) and (min-width: 600px) {
+  .dock {
+    top: 12px;
+    bottom: 12px;
+    left: auto;
+    right: 12px;
+    width: 300px;
+    overflow: auto;
+    align-content: start;
+  }
+  .stage { top: 64px; right: 324px; bottom: 112px; }
+  .plaque { max-width: calc(100% - 350px); }
+  .explore-hint { top: 64px; right: 336px; }
+  .tools { top: auto; bottom: 12px; left: 12px; right: auto; grid-template-columns: repeat(5, 44px); }
+  .rail-left, .about-panel {
+    left: 12px;
+    right: 324px;
+    bottom: 112px;
+    max-height: calc(100dvh - 186px);
+  }
+}
+
+@media (max-width: 760px), (max-height: 520px) {
+  .rail-left { overflow: hidden; z-index: 9; }
+  .parts-panel { flex: 1 1 auto; min-height: 0; max-height: none; }
+}

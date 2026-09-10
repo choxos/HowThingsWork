@@ -1,0 +1,16 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const model = {};
+vm.runInNewContext(fs.readFileSync(`${__dirname}/app.js`, 'utf8').replace(/^import .*;$/gm, ''), model);
+assert.equal(model.leverModel(50), 100);
+assert.ok(Math.abs(model.leverModel(75) - 100 / 3) < 1e-10);
+assert.equal(model.circuitModel(6, true).current, 1);
+assert.equal(model.circuitModel(6, true).power, 6);
+assert.equal(model.circuitModel(12, false).current, 0);
+assert.equal(model.circuitModel(0, true).power, 0);
+assert.equal(model.boatModel(5).floating, true);
+assert.equal(model.boatModel(6).floating, false);
+assert.equal(model.boatModel(0).mass, 60);
+assert.ok(model.boatModel(5).depth > model.boatModel(0).depth);
+console.log('Experiment checks passed: lever balance, circuit, buoyancy.');

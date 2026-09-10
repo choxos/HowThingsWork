@@ -1,0 +1,5 @@
+# How Things Work · https://howthingswork.xera.ac/
+User-agent: *
+Allow: /
+
+Sitemap: https://howthingswork.xera.ac/sitemap.xml

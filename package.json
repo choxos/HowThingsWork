@@ -1,0 +1,37 @@
+{
+  "name": "how-things-work",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "sitemap": "node scripts/sitemap.ts",
+    "prebuild": "npm run sitemap",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "node --test src/physics.test.ts src/scene/*.test.ts",
+    "test:scenes": "node src/scene/verify-batch0.ts && node src/scene/verify-batch1.ts && node src/scene/verify-batch2.ts && node src/scene/verify-batch3.ts && node src/scene/verify-batch4.ts && node src/scene/verify-batch5.ts",
+    "test:models": "node src/site/check.cjs && node src/site/check-zoom.cjs && node src/site/check-house.mjs && node src/site/check-sewing.mjs && node src/site/check-horn-model.mjs && node src/site/check-electromagnet-model.mjs && node src/site/check-dc-motor-model.mjs && node src/site/check-commutator-model.mjs",
+    "test:deployment": "node scripts/check-deployment.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

@@ -1,0 +1,91 @@
+import * as THREE from 'three';
+import {houseModel,reading as r} from './house-model-kit.js';
+
+export function createDCMotorModel(){
+ const m=houseModel('Direct-current motor'),{part,box,cylinder,disk,ring,rod,tube,control,finish}=m;
+ const tau=2*Math.PI,area=.08*.10,resistance=2,inertia=.00008,viscous=.00004,dryFriction=.0003,fanCoefficient=.000001;
+ const gapHalf=4*Math.PI/180,brushHalf=.5*Math.PI/180,openHalf=gapHalf-brushHalf,step=.00005,clockScale=.25,demoTime=2;
+ const system=part('system','Direct-current motor and fan','A single current loop turns in a permanent magnetic field and drives a shaft-mounted fan.');
+ const base=part('base','Rigid supporting base','Carries the stationary magnet, bearing pedestals, battery and brush holders.',[0,0,0],system);box([3.8,.16,4.5],[0,.08,.2],'wood',base);
+ const assembly=part('assembly','Motor axis and magnetic gap','The shaft runs along the length of the machine. The permanent field points from the left north pole toward the right south pole.',[0,1.08,0],system);
+ const magnets=part('magnets','Permanent north and south poles','The facing pole pieces establish an idealized uniform field across the coil.',[0,0,0],assembly);
+ for(const side of [-1,1]){box([.5,1.5,1.6],[side*1.1,0,0],side<0?'clay':'blue',magnets);box([.25,.27,1.6],[side*1.1,-.88,0],'ink',magnets);}
+ const field=part('field','Magnetic field from N to S','These parallel arrows indicate field direction, not a computed spatial map.',[0,0,0],assembly);
+ for(const z of [-.55,0,.55])field.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(-.78,-.86,z),1.56,0x83b4c1,.1,.05));
+ const poleMarkers=part('pole-markers','North at left; south at right','Warm-colored left pole is north. Blue right pole is south.',[0,0,0],magnets);
+ // Raised line letters remain legible without a canvas texture or font dependency.
+ for(const [a,b] of [[[-1.28,.4,1],[-1.28,.66,1]],[[-1.28,.66,1],[-1.04,.4,1]],[[-1.04,.4,1],[-1.04,.66,1]]])rod(a,b,.018,'cream',poleMarkers);
+ tube([[1.28,.64,1],[1.05,.66,1],[1.03,.54,1],[1.27,.52,1],[1.28,.4,1],[1.04,.4,1]],.018,'cream',poleMarkers);
+ const bearings=part('bearings','Two fixed bearing pedestals','The shaft passes through two aligned bearing bores. The pedestals carry it back to the base.',[0,0,0],assembly);
+ for(const z of [-1.46,1.12]){box([.16,.77,.22],[0,-.535,z],'cream',bearings);ring(.115,.035,[0,0,z],'metal',bearings);ring(.0725,.0075,[0,0,z],'gold',bearings);}
+ const rotor=part('rotor','Rigid rotor, winding and fan','The winding, split ring, shaft and fan share one mechanically connected rotating assembly.',[0,0,0],assembly);
+ const shaft=part('shaft','Continuous rotating shaft','A steel shaft passes through the insulated winding carrier and the two bearings.',[0,0,0],rotor);rod([0,0,-1.7],[0,0,1.8],.065,'metal',shaft);
+ const carrier=part('carrier','Insulated winding carrier','Insulating arms connect the loop to the shaft. The rear end turn bends around the shaft instead of passing through it.',[0,0,0],rotor);
+ for(const z of [-.55,.55]){cylinder(.115,.13,[0,0,z],'cream',carrier).rotation.x=Math.PI/2;for(const y of [-.32,.32])box([.07,.64,.09],[0,y,z],'cream',carrier);}
+ const coil=part('coil','One insulated rectangular winding','The two 100 mm active sides are 80 mm apart. A continuous winding runs from segment A, along the positive-y side in +z, around the far end and back to segment B.',[0,0,0],rotor);
+ const coilPoints=[[0,.2,-1.08],[0,.2,-.8],[0,.64,-.8],[0,.64,.8],[0,.14,.8]];
+ for(let i=1;i<=16;i++){const a=i*Math.PI/16;coilPoints.push([.14*Math.sin(a),.14*Math.cos(a),.8]);}
+ coilPoints.push([0,-.64,.8],[0,-.64,-.8],[0,-.2,-.8],[0,-.2,-1.08]);
+ // Straight portions and the sampled end bend preserve the declared active-side geometry.
+ const coilCurve=new THREE.CurvePath();for(let i=1;i<coilPoints.length;i++)coilCurve.add(new THREE.LineCurve3(new THREE.Vector3(...coilPoints[i-1]),new THREE.Vector3(...coilPoints[i])));
+ const winding=new THREE.Mesh(new THREE.TubeGeometry(coilCurve,256,.016,8,false),new THREE.MeshToonMaterial({color:0xce825f}));coil.add(winding);
+ const commutator=part('commutator','Insulated split-ring commutator','Copper A occupies the upper half at zero angle; copper B the lower half. The two 8° insulating gaps rotate past fixed narrow brushes.',[0,0,-1.08],rotor);
+ cylinder(.17,.2,[0,0,0],'cream',commutator).rotation.x=Math.PI/2;
+ function sector(start){const shape=new THREE.Shape();shape.moveTo(.23*Math.cos(start),.23*Math.sin(start));shape.absarc(0,0,.23,start,start+Math.PI-2*gapHalf,false);shape.lineTo(.17*Math.cos(start+Math.PI-2*gapHalf),.17*Math.sin(start+Math.PI-2*gapHalf));shape.absarc(0,0,.17,start+Math.PI-2*gapHalf,start,true);shape.closePath();return new THREE.ExtrudeGeometry(shape,{depth:.18,bevelEnabled:false,curveSegments:40});}
+ for(const [id,start,color] of [['segment-a',gapHalf,'clay'],['segment-b',Math.PI+gapHalf,'gold']]){const segment=part(id,id==='segment-a'?'Copper segment A':'Copper segment B','Insulated from the shaft and the other copper segment. Its own winding end is permanently attached.',[0,0,-.09],commutator);const mesh=new THREE.Mesh(sector(start),new THREE.MeshToonMaterial({color:color==='clay'?0xce825f:0xe3b45e}));segment.add(mesh);}
+ const brushes=part('brushes','Two fixed carbon brushes','Narrow 1° contact faces touch the rotating ring. Each is narrower than an insulating gap, so it cannot bridge the two copper halves.',[0,0,-1.08],assembly);
+ for(const side of [-1,1]){const brush=part(side>0?'positive-brush':'negative-brush',side>0?'Normal-positive brush (+x)':'Normal-negative brush (−x)','The fixed holder supports a carbon contact against the moving copper ring.',[0,0,0],brushes);
+  const contactShape=new THREE.Shape(),a=side>0?-brushHalf:Math.PI-brushHalf;contactShape.moveTo(.23*Math.cos(a),.23*Math.sin(a));contactShape.absarc(0,0,.23,a,a+2*brushHalf,false);contactShape.lineTo(side*.39,side*.03);contactShape.lineTo(side*.39,-side*.03);contactShape.closePath();const face=new THREE.Mesh(new THREE.ExtrudeGeometry(contactShape,{depth:.12,bevelEnabled:false,curveSegments:8}),new THREE.MeshToonMaterial({color:0x374736}));face.position.z=-.06;brush.add(face);
+  box([.27,.13,.2],[side*.525,0,0],'cream',brush);rod([side*.55,-.07,0],[side*.55,-.86,0],.038,'metal',brush);box([.22,.14,.32],[side*.55,-.86,0],'ink',brush);rod([side*.39,0,0],[side*.67,0,0],.015,'gold',brush);
+ }
+ const battery=part('battery','Reversible DC supply','An ideal rechargeable DC source supplies or absorbs current. Its voltage polarity sets the preferred motor direction.',[-1.16,.41,1.55],system);box([.85,.5,.75],[0,0,0],'cream',battery);for(const side of [-1,1])cylinder(.052,.07,[side*.24,.285,0],side>0?'clay':'ink',battery);
+ const switchPart=part('switch','Supply disconnect','Power closes both leads. Disconnect leaves an open circuit, so rotation coasts with zero winding current.',[0,.25,.405],battery);const switchLever=box([.18,.06,.09],[0,0,0],'clay',switchPart);
+ const leads=part('leads','Complete fixed supply leads','The two wires connect the DC source to opposite fixed brushes. No supply wire rotates with the shaft.',[0,0,0],system);
+ for(const side of [-1,1])tube([[-1.16+side*.24,.73,1.55],[-1.16+side*.24,.84,1.7],[side*.67,.3,1.9],[side*.67,.3,-1.08],[side*.67,1.08,-1.08]],.016,side>0?'clay':'ink',leads);
+ const fan=part('fan','Shaft-mounted fan: added useful load','This illustrative fan turns with the shaft. Its air resistance grows with speed and the fan-load setting.',[0,0,1.58],rotor);cylinder(.15,.24,[0,0,0],'gold',fan).rotation.x=Math.PI/2;
+ for(let i=0;i<4;i++){const blade=part('fan-blade-'+i,'Pitched fan blade','A pitched blade is rooted in the central hub.',[0,0,0],fan);blade.rotation.z=i*Math.PI/2;const paddle=box([.24,.62,.055],[0,.38,0],'leaf',blade);paddle.rotation.y=.35;}
+ const airflow=part('airflow','Illustrative airflow ribbons','Motion indicates fan activity only. This is not a flow-rate calculation; reversing rotation reverses the indicated direction.',[0,0,0],assembly);
+ const ribbons=[];for(const x of [-.35,0,.35]){const arrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(x,.25,1.8),.5,0x83b4c1,.12,.04);airflow.add(arrow);ribbons.push(arrow);}
+ const ribbonStand=part('ribbon-stand','Supported airflow indicator','A stand fixed to the base holds a flexible strip behind the fan.',[0,0,0],system);box([.32,.1,.3],[.7,.21,2.18],'ink',ribbonStand);rod([.7,.26,2.18],[.7,1.58,2.18],.025,'metal',ribbonStand);rod([.7,1.58,2.18],[0,1.58,2.18],.025,'metal',ribbonStand);box([.12,.06,.06],[0,1.58,2.18],'gold',ribbonStand);
+ const ribbon=part('ribbon','Flexible airflow ribbon','The top is clamped to the stand. The fixed-length strip bends with signed fan speed as a qualitative airflow indicator.',[0,1.55,2.18],system);
+ const ribbonGeometry=new THREE.BufferGeometry(),ribbonPositions=new Float32Array(65*2*3),ribbonIndices=[];for(let i=0;i<64;i++){const a=i*2;ribbonIndices.push(a,a+1,a+2,a+1,a+3,a+2);}ribbonGeometry.setAttribute('position',new THREE.BufferAttribute(ribbonPositions,3));ribbonGeometry.setIndex(ribbonIndices);ribbon.add(new THREE.Mesh(ribbonGeometry,new THREE.MeshToonMaterial({color:0xe3b45e,side:THREE.DoubleSide})));
+ function bendRibbon(){const bend=1.4*Math.tanh(omega/30)*(1+.04*Math.sin(elapsed*11));for(let i=0;i<=64;i++){const s=i/64,y=Math.abs(bend)<1e-9?-.5*s:-.5*Math.sin(bend*s)/bend,z=Math.abs(bend)<1e-9?0:.5*(1-Math.cos(bend*s))/bend;for(let edge=0;edge<2;edge++)ribbonGeometry.attributes.position.setXYZ(i*2+edge,(edge-.5)*.07,y,z);}ribbonGeometry.attributes.position.needsUpdate=true;ribbonGeometry.computeVertexNormals();if(ribbonGeometry.boundingBox)ribbonGeometry.computeBoundingBox();if(ribbonGeometry.boundingSphere)ribbonGeometry.computeBoundingSphere();return bend;}
+ const forcePart=part('forces','Forces on the two active coil sides','Current in +z crosses field in +x to give a +y force. The opposite wire has the opposite force.',[0,0,0],assembly);
+ const forceArrows=[1,-1].map(()=>new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.3,0xe3b45e,.08,.035));forcePart.add(...forceArrows);
+ const currentPart=part('current','Conventional current in the rotating coil','These arrows reverse as the brushes exchange copper segments. They disappear while the contacts are open.',[0,0,0],rotor);
+ const currentArrows=[1,-1].map(side=>new THREE.ArrowHelper(new THREE.Vector3(0,0,side),new THREE.Vector3(.03,side*.64,-side*.3),.5,0xf0dfaf,.09,.04));currentPart.add(...currentArrows);
+ control('operation','Run action',0,1,1,0,'','Powered runs capture a running state after 2 simulated seconds. Disconnect coasts until the rotor rests.',[{value:0,label:'Power the fan'},{value:1,label:'Disconnect and coast'}]);
+ control('voltage','Supply voltage',0,6,.5,3,'V','Ideal source voltage; resistance and back EMF determine current.');
+ control('polarity','Supply polarity',-1,1,2,1,'','Reverse the source to reverse the preferred direction. A moving rotor first slows.',[{value:1,label:'Normal polarity'},{value:-1,label:'Reversed polarity'}]);
+ control('field','Magnetic field',0,1,.1,.6,'T','Changes the assumed uniform field in the 100 mm active gap; zero removes electromagnetic torque.');
+ control('load','Fan load',0,2,.25,1,'','Multiplier on assumed aerodynamic drag. Zero neglects air resistance but retains bearing friction.');
+ control('startAngle','Starting angle',0,90,1,45,'°','Applied while ready or by Restart rotor. Changing this during motion does not move the rotor. Zero is a dead center.');
+ let theta=Math.PI/4,omega=0,elapsed=0,actionTime=0,accumulator=0,lastClock=0,stage='ready',complete=false,blocked=false,turnsTravelled=0;
+ function electrical(v){const sin=Math.sin(theta),contact=Math.abs(Math.asin(sin))>openHalf,coefficient=contact?v.field*area*Math.abs(sin):0,powered=stage!=='ready'&&v.operation===0,voltage=powered?v.voltage*v.polarity:0,current=powered&&contact?(voltage-coefficient*omega)/resistance:0,coilCurrent=-Math.sign(sin)*current,torque=coefficient*current;return {contact,coefficient,powered,voltage,current,coilCurrent,torque,backEmf:coefficient*omega};}
+ function drag(v){return viscous*omega+fanCoefficient*v.load*omega*Math.abs(omega);}
+ const result=finish(v=>{
+  const e=electrical(v),airTorque=fanCoefficient*v.load*omega*Math.abs(omega),friction=viscous*omega+(omega===0?0:Math.sign(omega)*dryFriction),rpm=omega*60/tau;
+  const ribbonBend=bendRibbon();rotor.rotation.z=theta;field.visible=v.field>0;switchLever.rotation.z=e.powered?0:.5;
+  for(let i=0;i<2;i++){const side=i===0?1:-1,force=side*e.coilCurrent*.1*v.field;forceArrows[i].position.set(-side*.64*Math.sin(theta),side*.64*Math.cos(theta),0);forceArrows[i].visible=Math.abs(force)>1e-8;forceArrows[i].setDirection(new THREE.Vector3(0,Math.sign(force)||1,0));forceArrows[i].setLength(.12+Math.min(.4,Math.abs(force)*2),.08,.035);currentArrows[i].visible=Math.abs(e.coilCurrent)>1e-8;currentArrows[i].setDirection(new THREE.Vector3(0,0,side*Math.sign(e.coilCurrent)||1));}
+  airflow.visible=Math.abs(omega)>.05;for(let i=0;i<ribbons.length;i++){const direction=Math.sign(omega)||1;ribbons[i].setDirection(new THREE.Vector3(0,0,direction));ribbons[i].position.z=direction>0?1.8:2.5;ribbons[i].setLength(.3+.15*Math.sin(elapsed*8+i),.09,.035);}
+  const status=stage==='ready'?'Ready · rotor at starting angle':blocked?(v.operation===0&&v.voltage>0&&v.field>0&&!e.contact?'No start · brushes are in the insulating gaps':'No start · drive cannot overcome friction'):complete&&v.operation===1?'Stopped · fan has coasted to rest':complete?'Running snapshot · fan turns on its shaft':v.operation===1?'Coasting · stored motion drives the fan':'Powered · rotor accelerates and commutates';
+  return {state:{theta,omega,rpm,ribbonBend,elapsed,actionTime,stage,complete,blocked,turnsTravelled,...e,airTorque,frictionTorque:friction,inputPower:e.voltage*e.current,copperLoss:e.current**2*resistance,convertedPower:e.torque*omega,fanPower:airTorque*omega,kineticEnergy:.5*inertia*omega**2,area,resistance,inertia,gapHalf,brushHalf,openHalf},readings:[r('Your result',status),r('Shaft speed',`${rpm.toFixed(1)} rpm`,'Signed: positive is counterclockwise viewed from the +z shaft end.'),r('Source connection',v.polarity>0?'+x brush positive · −x brush negative':'+x brush negative · −x brush positive'),r('Coil current',`${e.coilCurrent.toFixed(3)} A`,'Positive runs in +z on the marked positive-y coil side.'),r('Brush pair',e.contact?(Math.sin(theta)>0?'+x: B · −x: A':'+x: A · −x: B'):'Both on insulation','Fixed brush positions; independent of supply polarity.'),r('Brush contact',e.contact?'Copper contact · circuit available':'Insulating gap · current is zero'),r('Driving torque',`${(e.torque*1000).toFixed(3)} mN·m`),r('Back EMF',`${e.backEmf.toFixed(3)} V`),r('Fan power',`${(airTorque*omega*1000).toFixed(2)} mW`,'Assumed drag law, not a fan rating.'),r('Rotor travel',`${turnsTravelled.toFixed(2)} turns`),r('Simulated time',`${elapsed.toFixed(2)} s`,'Shown four times slower.'),r('Model limit','Single loop · uniform field · negligible inductance','Assumed 2 Ω resistance and rotor inertia; idealized contacts, friction and fan drag. Airflow is qualitative.')]};
+ });
+ const render=result.update;
+ result.update=next=>{const before=result.getState().values;render(next);const after=result.getState().values;if(Object.keys(after).some(key=>before[key]!==after[key])){complete=blocked=false;actionTime=0;if(stage==='ready')theta=after.startAngle*Math.PI/180;}return render();};
+ function advance(seconds){if(!Number.isFinite(seconds)||seconds<=0||complete||blocked)return render();if(stage==='ready')stage='running';const v=result.getState().values;accumulator+=seconds*clockScale;
+  while(accumulator>=step-1e-13&&!complete&&!blocked){accumulator-=step;elapsed+=step;actionTime+=step;const e=electrical(v),net=e.torque-drag(v),friction=omega===0?Math.max(-dryFriction,Math.min(dryFriction,net)):Math.sign(omega)*dryFriction,oldOmega=omega;omega+=(net-friction)/inertia*step;
+   if(oldOmega*omega<0&&Math.abs(net)<=dryFriction)omega=0;
+   theta+=omega*step;turnsTravelled+=Math.abs(omega)*step/tau;
+   if(v.operation===1&&omega===0)complete=true;
+   else if(v.operation===0&&actionTime>=demoTime){complete=Math.abs(omega)>.0001;blocked=!complete;}
+   else if(v.operation===0&&omega===0&&actionTime>.15)blocked=true;
+   if(complete||blocked){stage=complete?'finished':'blocked';accumulator=0;}
+  }return render();
+ }
+ function restart(defaults=false){if(defaults)render(result.defaults);theta=result.getState().values.startAngle*Math.PI/180;omega=elapsed=actionTime=accumulator=lastClock=turnsTravelled=0;stage='ready';complete=blocked=false;return render();}
+ result.advance=advance;result.animate=clock=>{if(!Number.isFinite(clock))return render();const delta=Math.max(0,clock-lastClock);lastClock=clock;return advance(delta);};result.reset=()=>restart(true);
+ result.actions=[{label:'Restart rotor at selected angle',part:'system',view:'reset',run:()=>restart()},{label:'Give the rotor a small push',part:'commutator',view:'back',run:()=>{omega+=2*result.getState().values.polarity;complete=blocked=false;actionTime=0;stage='running';return render();}}];
+ result.playback={label:'Run selected action',stepLabel:'Advance one step',description:'Power captures the running fan after 2 simulated seconds. Disconnect opens the circuit and runs until the rotor rests. Motion is slowed four times.',advance,step:()=>advance(.05),complete:()=>complete,blocked:()=>blocked};
+ result.followParts=['rotor','shaft','carrier','coil','commutator','segment-a','segment-b','fan','current','forces'];result.framingBounds=new THREE.Box3().setFromObject(result.root);result.resultPart={id:'system',context:'system',focusOnComplete:false,label:'Inspect the motor and fan',available:()=>true};return result;
+}

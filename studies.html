@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>How Things Work · An Interactive Study of Machines</title>
+    <!--
+      The description, title and canonical URL here are the copy a crawler sees.
+      src/seo.ts rewrites them per study once the page is running, and holds the
+      same default strings; change one and change the other.
+    -->
+    <meta
+      name="description"
+      content="Thirty interactive 3D studies of the machines and principles everything else is built from: levers and gears, floating and flying, light and sound, electricity, and the digital domain. Move one slider and watch the numbers follow."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="theme-color" content="#050607" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eceff2" media="(prefers-color-scheme: light)" />
+    <link rel="canonical" href="https://howthingswork.xera.ac/" />
+
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="How Things Work" />
+    <meta property="og:title" content="How Things Work · An Interactive Study of Machines" />
+    <meta
+      property="og:description"
+      content="Thirty interactive 3D studies of the machines and principles everything else is built from: levers and gears, floating and flying, light and sound, electricity, and the digital domain. Move one slider and watch the numbers follow."
+    />
+    <meta property="og:url" content="https://howthingswork.xera.ac/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://howthingswork.xera.ac/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="How things work, over a dark ground: a ramp drawn in pale steel with an orange ball resting on it."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="How Things Work · An Interactive Study of Machines" />
+    <meta
+      name="twitter:description"
+      content="Thirty interactive 3D studies of the machines and principles everything else is built from: levers and gears, floating and flying, light and sound, electricity, and the digital domain. Move one slider and watch the numbers follow."
+    />
+    <meta name="twitter:image" content="https://howthingswork.xera.ac/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="How things work, over a dark ground: a ramp drawn in pale steel with an orange ball resting on it."
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://howthingswork.xera.ac/#website",
+            "url": "https://howthingswork.xera.ac/",
+            "name": "How Things Work",
+            "alternateName": "How Things Work · An Interactive Study of Machines",
+            "description": "Thirty interactive 3D studies of the machines and principles everything else is built from: levers and gears, floating and flying, light and sound, electricity, and the digital domain.",
+            "inLanguage": "en",
+            "publisher": {"@id": "https://howthingswork.xera.ac/#publisher"}
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://howthingswork.xera.ac/#publisher",
+            "name": "How Things Work",
+            "url": "https://howthingswork.xera.ac/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://howthingswork.xera.ac/apple-touch-icon.png",
+              "width": 180,
+              "height": 180
+            }
+          },
+          {
+            "@type": "CollectionPage",
+            "@id": "https://howthingswork.xera.ac/#gallery",
+            "url": "https://howthingswork.xera.ac/",
+            "name": "How Things Work · An Interactive Study of Machines",
+            "isPartOf": {"@id": "https://howthingswork.xera.ac/#website"},
+            "about": "Simple machines, the elements, waves, electricity and digital logic, each shown as a working model you can drive.",
+            "inLanguage": "en",
+            "primaryImageOfPage": {
+              "@type": "ImageObject",
+              "url": "https://howthingswork.xera.ac/og.png",
+              "width": 1200,
+              "height": 630
+            }
+          }
+        ]
+      }
+    </script>
+
+    <script type="module" src="/src/analytics.ts"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

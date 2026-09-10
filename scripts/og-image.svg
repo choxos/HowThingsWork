@@ -1,0 +1,61 @@
+<!--
+  Source for public/og.png, the 1200x630 social preview card. Regenerate with:
+
+    rsvg-convert -w 1200 -h 630 scripts/og-image.svg -o public/og.png
+
+  Colors are the site's own dark palette, taken from the custom properties in
+  src/styles.css: bg #050607, stage #0a1118, ink #e5e9ed, ink soft #a9b7c2,
+  accent #f2905c, focus #c0d3e1. The motif is the favicon's ramp and ball drawn
+  large: the inclined plane is the first study, and the site's own emblem.
+
+  The drawing keeps the site's own rules. Orange is the effort you supply, so
+  the arrow runs up the slope, parallel to the sloping face. The ball is
+  tangent to that face rather than floating beside it: the ramp carries it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1118"/>
+      <stop offset="1" stop-color="#050607"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.68" r="0.5">
+      <stop offset="0" stop-color="#f2905c" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#f2905c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#ground)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="0" y="0" width="1200" height="4" fill="#f2905c"/>
+
+  <!-- The ramp. Right angle at the foot of the vertical leg, load on the face. -->
+  <g>
+    <path d="M760 540 H1170" fill="none" stroke="#39444c" stroke-width="4" stroke-linecap="round"/>
+    <path d="M760 330 V540 H1150 Z" fill="none" stroke="#c0d3e1" stroke-width="7"
+          stroke-linejoin="round"/>
+    <path d="M760 518 H782 V540" fill="none" stroke="#9aa8b4" stroke-width="4" opacity="0.55"/>
+    <circle cx="955.4" cy="387.5" r="42" fill="#f2905c"/>
+    <path d="M1060.7 444.2 L1000.8 412" fill="none" stroke="#f2905c" stroke-width="8"
+          stroke-linecap="round"/>
+    <path d="M1011.9 428.6 L1000.8 412 L1020.8 412.1" fill="none" stroke="#f2905c"
+          stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+    <text x="88" y="180" fill="#a9b7c2" font-size="26" letter-spacing="5.5">
+      THIRTY INTERACTIVE STUDIES
+    </text>
+    <text x="84" y="286" fill="#e5e9ed" font-size="88" font-weight="700" letter-spacing="-1.5">
+      How things work
+    </text>
+    <text x="88" y="356" fill="#a9b7c2" font-size="31">
+      The machines and principles everything
+    </text>
+    <text x="88" y="398" fill="#a9b7c2" font-size="31">
+      else is built from.
+    </text>
+    <text x="88" y="506" fill="#c0d3e1" font-size="25" letter-spacing="1.5">
+      howthingswork.xera.ac
+    </text>
+  </g>
+</svg>

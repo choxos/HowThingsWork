@@ -1,0 +1,29 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.gstack/
+
+
+# Working material: reference sources, review notes and captures kept off the
+# public repository.
+documentation/
+
+# Scratch notes from review runs.
+.debug-journal.md
+
+# Local implementation evidence and graph cache.
+.omo/
+.codebase-memory/
+
+# Local reference-inventory helper depends on private documentation inputs.
+scripts/audit-book.py
+
+# Private runtime settings and host configuration stay local.
+.env
+.env.*
+!.env.example
+deploy/
+plans/
+*.pem
+*.key
