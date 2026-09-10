@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {createPrinterModel,planPrinterJob,printerConstants as C} from './printer-model.js';
+import {layerFabricationLesson as lesson} from './layer-fabrication-lesson.js';
+import {houseComponents} from './house-components.js';
+import {neighborhoodCatalog as catalog} from './catalog-data.js';
+const map=houseComponents['Layer-by-layer fabrication'];assert.equal(map.machine,'3D printer');assert.equal(map.part,'bed');assert.equal(map.isolate,false);assert.equal(map.lesson,lesson);assert.equal(catalog.entries.filter(e=>e.name==='Layer-by-layer fabrication').length,1);
+const m=createPrinterModel(),part=id=>m.parts.find(p=>p.id===id).object,close=(a,b,e=1e-7)=>assert.ok(Math.abs(a-b)<e,`${a} != ${b}`);
+const prepare=i=>{const p=lesson.tryIt[i];m.reset(p.initialState);m.update(p.values);assert.ok(m.parts.some(x=>x.id===p.part));return m.getState();};
+const finish=()=>{m.advance(150);return m.getState();};
+try{
+ prepare(0);assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().completedLayers,0);m.advance(1);assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().completedLayers,0);const fine=finish();assert.ok(fine.complete);assert.equal(fine.completedLayers,12);close(fine.printedHeight,2.4);assert.equal(part('print').parent,part('bed'));
+ const base=prepare(1),job=planPrinterJob(.2),firstUpper=job.segments.findIndex(s=>s.layer>job.baseLayers),prefix=job.segments.slice(0,firstUpper).filter(s=>s.deposit),mesh=part('print').children[0],matrix=new THREE.Matrix4();assert.equal(base.segmentIndex,firstUpper);assert.equal(base.segmentDistance,0);assert.equal(base.layer,3);assert.equal(base.completedLayers,2);close(base.printedHeight,.4);close(base.position.z,.4);close(base.extrudedVolume,60.048);assert.equal(mesh.count,prefix.length);
+ for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,matrix);const position=new THREE.Vector3(),rotation=new THREE.Quaternion(),scale=new THREE.Vector3();matrix.decompose(position,rotation,scale);assert.ok(position.y+scale.y/2<=.4*C.scale+1e-8);close(scale.x/C.scale,prefix[i].length,1e-6);close(scale.y/C.scale,.2);close(scale.z/C.scale,.6);}
+ const history=Array.from(mesh.instanceMatrix.array.slice(0,mesh.count*16));m.playback.step();const lifted=m.getState();close(lifted.position.z,.6);assert.notDeepEqual(lifted.position,base.position);assert.equal(lifted.extrudedVolume,base.extrudedVolume);assert.equal(lifted.completedLayers,2);close(lifted.printedHeight,.4);assert.deepEqual(Array.from(mesh.instanceMatrix.array.slice(0,history.length)),history);assert.ok(lifted.elapsed-base.elapsed<.401,'prepared setup discards unspent advance time');
+ m.playback.step();const wall=m.getState();assert.ok(wall.extrudedVolume>base.extrudedVolume);close(wall.printedHeight,.6);assert.equal(wall.completedLayers,2);assert.deepEqual(Array.from(mesh.instanceMatrix.array.slice(0,history.length)),history);const continued=finish();assert.ok(continued.complete);close(continued.extrudedVolume,fine.extrudedVolume);assert.equal(continued.completedLayers,12);assert.deepEqual(Array.from(mesh.instanceMatrix.array.slice(0,history.length)),history);
+ prepare(2);const coarse=finish();assert.ok(coarse.complete);assert.equal(coarse.completedLayers,6);close(coarse.printedHeight,2.4);close(coarse.extrudedVolume,fine.extrudedVolume);
+ const partial=prepare(3),saved=Array.from(part('print').children[0].instanceMatrix.array);assert.ok(partial.progress>0&&partial.progress<base.progress);assert.ok(finish().blocked);assert.equal(m.getState().extrudedVolume,partial.extrudedVolume);assert.deepEqual(Array.from(part('print').children[0].instanceMatrix.array),saved);m.update({loaded:1});assert.ok(finish().complete);close(m.getState().extrudedVolume,fine.extrudedVolume);
+ prepare(1);m.update({speed:10,temperature:210});close(m.getState().printedHeight,.4);close(m.getState().extrudedVolume,60.048);m.update({layerHeight:.4});assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().completedLayers,0);assert.equal(part('print').children[0].count,0);assert.equal(m.getState().layerCount,6);
+ m.reset();assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().completedLayers,0);
+ console.log('PASS four fabrication presets, exact completed-base geometry/prefix, nondepositing lift with unchanged material, first wall growth without premature completed layer, preserved material history, fine/coarse final equivalence, interrupted recovery and reslicing reset.');
+}finally{m.dispose();}

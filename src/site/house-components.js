@@ -1,3 +1,7 @@
+import {layerFabricationLesson} from './layer-fabrication-lesson.js';
+import {printerReelLesson} from './printer-reel-lesson.js';
+import {heatedNozzleLesson} from './heated-nozzle-lesson.js';
+import {motorRotorLesson} from './motor-rotor-lesson.js';
 import {commutatorLesson} from './commutator-lesson.js';
 import {bellComponentLessons} from './bell-component-lessons.js';
 import {hornComponentLessons} from './horn-component-lessons.js';
@@ -7,6 +11,10 @@ import {utilityComponentLessons} from './utility-lessons.js';
 import {cylinderComponentLessons} from './cylinder-component-lessons.js';
 import {leverComponentLessons} from './lever-component-lessons.js';
 export const houseComponents={
+ 'Layer-by-layer fabrication':{machine:'3D printer',part:'bed',isolate:false,lesson:layerFabricationLesson,intro:layerFabricationLesson.simple},
+ 'Printer filament reel':{machine:'3D printer',part:'filament',isolate:false,lesson:printerReelLesson,intro:printerReelLesson.simple},
+ 'Heated extrusion nozzle':{machine:'3D printer',part:'extruder',view:'front',isolate:false,lesson:heatedNozzleLesson,intro:heatedNozzleLesson.simple},
+ 'Motor rotor':{machine:'Universal motor',part:'rotor',isolate:false,lesson:motorRotorLesson,intro:motorRotorLesson.simple},
  'Commutator':{machine:'Direct-current motor',part:'commutator',view:'back',isolate:false,lesson:commutatorLesson,intro:commutatorLesson.simple},
  'Horn make-and-break contacts':{machine:'Electric horn',part:'contacts',view:'front',isolate:false,lesson:hornComponentLessons['Horn make-and-break contacts'],intro:hornComponentLessons['Horn make-and-break contacts'].simple},
  'Electric-horn moving iron bar':{machine:'Electric horn',part:'moving-bar',view:'front',isolate:false,lesson:hornComponentLessons['Electric-horn moving iron bar'],intro:hornComponentLessons['Electric-horn moving iron bar'].simple},

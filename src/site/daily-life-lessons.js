@@ -1,7 +1,61 @@
+import {sparkGapLesson} from './spark-gap-lesson.js';
+import {solenoidLesson} from './solenoid-lesson.js';
+import {sparkPlugLesson} from './spark-plug-lesson.js';
+import {ignitionCoilWindingsLesson} from './ignition-coil-windings-lesson.js';
+import {inductionCoilLesson} from './induction-coil-lesson.js';
+import {distributorLesson} from './distributor-lesson.js';
+import {contactBreakerIgnitionLesson} from './contact-breaker-ignition-lesson.js';
+import {carIgnitionLesson} from './car-ignition-lesson.js';
+import {powerPylonLesson} from './power-pylon-lesson.js';
+import {powerLineInsulatorLesson} from './power-line-insulator-lesson.js';
+import {homeSupplyTransformerLesson} from './home-supply-transformer-lesson.js';
+import {distributionTransformerLesson} from './distribution-transformer-lesson.js';
+import {transmissionTransformerLesson} from './transmission-transformer-lesson.js';
+import {electricityTransmissionLesson} from './electricity-transmission-lesson.js';
+import {transformerTurnsRatioLesson} from './transformer-turns-ratio-lesson.js';
+import {transformerLesson} from './transformer-lesson.js';
+import {generatorSlipRingsLesson} from './generator-slip-rings-lesson.js';
+import {dcGeneratorLesson} from './dc-generator-lesson.js';
+import {acGeneratorLesson} from './ac-generator-lesson.js';
+import {electricGeneratorLesson} from './electric-generator-lesson.js';
+import {printerLesson} from './printer-lesson.js';
+import {cadDesignLesson} from './cad-design-lesson.js';
+import {laserScanningLesson} from './laser-scanning-lesson.js';
+import {threeAxisLesson} from './three-axis-lesson.js';
+import {stepperMotorLesson} from './stepper-motor-lesson.js';
+import {electricMotorLesson} from './electric-motor-lesson.js';
+import {universalMotorLesson} from "./universal-motor-lesson.js";
 import {dcMotorLesson} from './dc-motor-lesson.js';
 import {electromagnetLesson} from './electromagnet-lesson.js';
 import {hornLesson} from './horn-lesson.js';
 export const dailyLifeLessons = {
+  'Spark gap':sparkGapLesson,
+  'Solenoid':solenoidLesson,
+  'Spark plug':sparkPlugLesson,
+  'Ignition-coil primary and secondary windings':ignitionCoilWindingsLesson,
+  'Induction coil':inductionCoilLesson,
+  'Distributor':distributorLesson,
+  'Contact-breaker ignition':contactBreakerIgnitionLesson,
+  'Car ignition system':carIgnitionLesson,
+  'Power pylon':powerPylonLesson,
+  'Power-line insulator':powerLineInsulatorLesson,
+  'Home-supply transformer':homeSupplyTransformerLesson,
+  'Distribution transformer':distributionTransformerLesson,
+  'Transmission transformer':transmissionTransformerLesson,
+  'Electricity transmission':electricityTransmissionLesson,
+  'Transformer turns ratio':transformerTurnsRatioLesson,
+  'Transformer':transformerLesson,
+  'Generator slip rings':generatorSlipRingsLesson,
+  'DC generator':dcGeneratorLesson,
+  'AC generator':acGeneratorLesson,
+  'Electric generator':electricGeneratorLesson,
+  'Laser scanning of 3D objects':laserScanningLesson,
+  'Computer-aided design':cadDesignLesson,
+  'Three-axis positioning':threeAxisLesson,
+  '3D printer':printerLesson,
+  'Stepper motor':stepperMotorLesson,
+  'Electric motor':electricMotorLesson,
+  "Universal motor":universalMotorLesson,
   'Direct-current motor':dcMotorLesson,
   'Electromagnet':electromagnetLesson,
   'Electric horn':hornLesson,

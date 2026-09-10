@@ -37,6 +37,10 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   if(orbit){orbit.enableDamping=false;orbit.enablePan=true;orbit.screenSpacePanning=true;orbit.enableZoom=false;orbit.minZoom=1.15;orbit.maxZoom=3;orbit.minPolarAngle=.05;orbit.maxPolarAngle=Math.PI-.05;}
   if(orbit)bindObjectDragging(canvas,camera,model.root,orbit);
   let resultWasComplete=false,selected=null,cutaway=model.covers.length>0,isolated=false,labels=false,playing=false,speed=.25,phase=0,frame=0,lastTime=0,lastReading=0,disposed=false,active=true;
+  // Playback can rewrite the displayed controls; replay has to hand back the
+  // numbers the learner actually dialed in, so they are kept alongside.
+  const configuredValues={...values};
+  let initialStateForReplay,pendingReplay,setupActions=[];
   let overviewZoom=1.15,followPosition=null,tallestReadings=0,lastReadingsWidth=0;
   const overrides=new Map();
   const highlight=new THREE.Box3Helper(new THREE.Box3(),0xb55830);scene.add(highlight);
@@ -89,8 +93,8 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   function syncControls(){for(const control of model.controls){const input=host.querySelector(`[data-control="${control.key}"]`),number=host.querySelector(`[data-number="${control.key}"]`);input.value=values[control.key];input.disabled=control.enabledWhen?!control.enabledWhen(values):false;if(number){if(document.activeElement!==number)number.value=values[control.key];number.disabled=input.disabled;}input.setAttribute('aria-valuetext',`${values[control.key]}${control.unit?' '+control.unit:''}`);}}
   function syncPlaybackButton(){const button=host.querySelector('[data-play]');if(!button)return;button.innerHTML=playbackIcon(playing?'pause':'play');button.setAttribute('aria-label',playing?'Pause':model.playback?.label||'Play slowly');button.title=playing?'Pause':model.playback?.complete()?'Play again: reset and restart the experiment':model.playback?'Play: '+model.playback.label:'Play slowly';button.setAttribute('aria-pressed',String(playing));}
   function releaseReadingsHeight(){tallestReadings=0;host.querySelector('.daily-readings').style.minHeight='';}
-  function stop(){playing=false;model.playback?.setPlaying?.(false);cancelAnimationFrame(frame);syncPlaybackButton();releaseReadingsHeight();}
-  function apply(next){const resume=playing;stop();for(const [key,value] of Object.entries(next)){const control=controlsByKey.get(key);if(!control||!Number.isFinite(Number(value)))continue;const bounded=within(Number(value),control.min,control.max);if(control.options&&!control.options.some(option=>Number(option.value)===bounded))continue;values[key]=control.step?Number(within(control.min+Math.round((bounded-control.min)/control.step)*control.step,control.min,control.max).toPrecision(12)):bounded;}syncControls();update();if(resume)start();}
+  function stop(){const wasPlaying=playing;playing=false;model.playback?.setPlaying?.(false);cancelAnimationFrame(frame);if(wasPlaying&&!disposed)readings(model.getState?.().readings);else syncPlaybackButton();releaseReadingsHeight();}
+  function apply(next){const resume=playing;stop();for(const [key,value] of Object.entries(next)){const control=controlsByKey.get(key);if(!control||!Number.isFinite(Number(value)))continue;const bounded=within(Number(value),control.min,control.max);if(control.options&&!control.options.some(option=>Number(option.value)===bounded))continue;values[key]=control.step?Number(within(control.min+Math.round((bounded-control.min)/control.step)*control.step,control.min,control.max).toPrecision(12)):bounded;configuredValues[key]=values[key];}syncControls();update();if(resume)start();}
   function selectPart(id,focus=true){
     if(focus)host.scrollTop=0;
     followPosition=null;selected=id;const part=model.parts.find(part=>part.id===id);
@@ -125,10 +129,22 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   // A half typed number is below its minimum, so the field keeps what is being
   // typed and only shows the bounded value once the box is left.
   controlsHost.addEventListener('change',()=>syncControls());
-  function reset(initialState){stop();releaseReadingsHeight();phase=0;model.reset?.(initialState);model.animate?.(0);apply(Object.fromEntries(model.controls.map(control=>[control.key,control.initial])));if(selected===model.resultPart?.id){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}}
-  host.querySelector('[data-reset-controls]').addEventListener('click',()=>reset());
+  function reset(initialState){stop();releaseReadingsHeight();phase=0;setupActions=[];initialStateForReplay=structuredClone(initialState);model.reset?.(initialState);model.animate?.(0);apply(Object.fromEntries(model.controls.map(control=>[control.key,control.initial])));if(selected===model.resultPart?.id){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}}
+  host.querySelector('[data-reset-controls]').addEventListener('click',()=>reset(pendingReplay?.initialState));
+  function replay(){
+    const experiment={values:{...configuredValues},initialState:initialStateForReplay,actions:[...setupActions]};
+    pendingReplay=experiment;
+    try{host.querySelector('[data-reset-controls]').click();}finally{pendingReplay=undefined;}
+    apply(experiment.values);
+    if(experiment.actions.length){
+      for(const index of experiment.actions)host.querySelector(`[data-action="${index}"]`).click();
+      apply(experiment.values);
+    }
+  }
   controlsHost.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>{
-    stop();const action=model.actions[Number(button.dataset.action)];action.run();Object.assign(values,model.getState?.().values);
+    stop();const index=Number(button.dataset.action),action=model.actions[index],before={...model.getState?.().values};
+    action.run();Object.assign(values,model.getState?.().values);if(action.replay!==false)setupActions.push(index);
+    for(const control of model.controls)if(before[control.key]!==values[control.key])configuredValues[control.key]=values[control.key];
     if(action.part){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(action.part);}else update();
     if(action.view)host.querySelector(`[data-view="${action.view}"]`)?.click();
   }));
@@ -140,7 +156,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   host.querySelector('[data-step]')?.addEventListener('click',()=>{stop();restoreVisibility();model.playback.step();filterVisibility();readings(model.getState().readings);draw();});
   if(model.playback){host.querySelector('[data-speed]').closest('label').hidden=true;const playback=host.querySelector('.daily-playback');if(model.playback.description)playback.querySelector('p').textContent=model.playback.description;playback.prepend(host.querySelector('[data-play]'),host.querySelector('[data-step]'),...controlsHost.querySelectorAll('[data-action]'));controlsHost.querySelector('.daily-controls-heading').after(playback);}
   syncPlaybackButton();
-  host.querySelector('[data-play]')?.addEventListener('click',()=>{if(playing)stop();else{if(model.playback?.complete())host.querySelector('[data-reset-controls]').click();start();}});
+  host.querySelector('[data-play]')?.addEventListener('click',()=>{if(playing)stop();else{if(model.playback?.complete())replay();start();}});
   host.querySelector('[data-speed]')?.addEventListener('change',event=>speed=Number(event.target.value));
   if(canvas){
     orbit.addEventListener('change',draw);

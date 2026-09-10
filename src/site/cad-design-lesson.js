@@ -1,0 +1,37 @@
+export const cadDesignLesson={
+ simple:'How do a few dimensions define a useful three-dimensional shape? Design a digital tray, then trade wall and base thickness against the space inside it.',
+ overview:'Computer-aided design describes the geometry of an object. This small example starts with a rectangular sketch, extends it upward into a solid block, then removes a rectangular pocket. The five dimensions determine both the outer shape and the cavity. Run the construction, inspect its section, and change a dimension to rebuild the design. These are explanatory views of digital operations, not a machine cutting or printing material.',
+ steps:[
+  {title:'Draw the footprint',body:'Width and depth define a rectangle on the workplane. It has area, but no thickness or solid volume yet.'},
+  {title:'Extrude the rectangle',body:'Extending that area through the chosen height defines an outer solid block. The growing preview illustrates the operation; a CAD program need not perform it at this speed.'},
+  {title:'Subtract a pocket',body:'A smaller rectangle defines the inside. The pocket stops above the bottom, preserving the base. Wall thickness reduces the cavity from both sides of each horizontal dimension.'},
+  {title:'Inspect the complete digital solid',body:'The result is an open tray with a real cavity floor and walls. Look inside shows a virtual section by hiding its front half. That viewing choice does not remove material from the full design or change its reported capacity.'},
+  {title:'Change one dimension',body:'Compare the normal design with a wider, deeper or taller one. Then change only wall thickness or base thickness. Every edit starts the construction again with its new dimensions.'},
+  {title:'Separate design from manufacture',body:'This result describes a shape. A slicer would still need to choose layers, perimeters, infill and travel to manufacture it. This lesson does not send the edited tray to the separate printer demonstration.'},
+ ],
+ parts:[
+  {name:'Rectangular sketch',role:'Defines the outer footprint on the digital workplane.'},
+  {name:'Extruded solid',role:'Adds the selected outer height to that footprint.'},
+  {name:'Pocket and remaining walls',role:'Define the useful cavity while retaining the chosen wall and base thickness.'},
+  {name:'Virtual section',role:'Exposes the inside for inspection without modifying the full design.'},
+ ],
+ tryIt:[
+  {title:'Build the reference tray',instruction:'Construct a 20 × 16 × 10-mm digital tray with 2-mm walls and base.',observe:'The complete cavity measures 16 × 12 × 8 mm, giving 1.536 mL of geometric space. The retained design volume is 1664 mm³.',reset:true,part:'system',isolate:false,values:{width:20,depth:16,height:10,wall:2,base:2}},
+  {title:'Make it wider',instruction:'Increase only the outer width to 24 mm and rebuild.',observe:'The cavity widens to 20 mm. Its capacity becomes 1.920 mL while depth and height remain unchanged.',reset:true,part:'system',isolate:false,values:{width:24,depth:16,height:10,wall:2,base:2}},
+  {title:'Make it deeper',instruction:'Return to the reference width and height, then increase outer depth to 24 mm.',observe:'The cavity extends to 20 mm in depth. Capacity rises to 2.560 mL; the width remains 16 mm inside.',reset:true,part:'system',isolate:false,values:{width:20,depth:24,height:10,wall:2,base:2}},
+  {title:'Make it taller',instruction:'Keep the reference footprint, walls and base, but raise outer height to 16 mm.',observe:'The cavity grows to 14 mm high and holds 2.688 mL of geometric space. The base stays 2 mm thick.',reset:true,part:'system',isolate:false,values:{width:20,depth:16,height:16,wall:2,base:2}},
+  {title:'Thin the walls',instruction:'Keep the reference outer dimensions and base, but use 1-mm walls.',observe:'The cavity expands to 18 × 14 × 8 mm and 2.016 mL. Less solid remains: 1184 mm³. This comparison does not establish whether thinner manufactured walls would be strong enough.',reset:true,part:'system',isolate:false,values:{width:20,depth:16,height:10,wall:1,base:2}},
+  {title:'Thicken the base',instruction:'Keep the reference outer dimensions and walls, but use a 3-mm base.',observe:'The cavity floor rises by 1 mm. Inside height falls to 7 mm and capacity to 1.344 mL, while retained volume rises to 1856 mm³.',reset:true,part:'system',isolate:false,values:{width:20,depth:16,height:10,wall:2,base:3}},
+  {title:'Design a compact tray',instruction:'Build a 12 × 12 × 6-mm tray with 2-mm walls and base.',observe:'The cavity measures 8 × 8 × 4 mm and provides 0.256 mL of geometric space. The whole shape is visibly smaller; it is not the reference tray with a changed label.',reset:true,part:'system',isolate:false,values:{width:12,depth:12,height:6,wall:2,base:2}},
+ ],
+ deeper:[
+  {title:'Thickness acts on both sides',body:'Inner width is outer width minus twice the wall thickness, and the same applies to depth. Inner height subtracts only the base thickness because this tray has no lid.'},
+  {title:'Capacity and retained volume answer different questions',body:'Cavity capacity measures empty space. Retained volume measures the surrounding digital solid. Their volumes add to the outer rectangular block volume. Neither quantity alone specifies printer filament use.'},
+  {title:'A section is a viewing tool',body:'A virtual section lets you see walls and a base that an exterior view might hide. The removed view portion is still part of the design. Turn Look inside off to see the complete exterior again.'},
+  {title:'This is one CAD workflow',body:'Sketching, extrusion and a pocket provide a compact example of constructing a solid. Other CAD tools and shapes use different operations. A finished digital shape still needs manufacturing choices before it becomes a physical object.'},
+ ],
+ misconception:'A digital design is not already a printer toolpath. Geometry describes the intended shape; manufacturing instructions specify how a particular machine should make it.',
+ limits:'This bounded parametric editor represents one sharp-edged rectangular open tray. The animated construction explains digital operations, not cutting forces, printing or material deposition. Capacity is ideal cavity volume, not a guarantee of watertightness, usable liquid capacity or strength. Separate nonoverlapping rectangular pieces depict the solid; this is not a validated single export mesh. There is no arbitrary CAD editing, file import/export, slicing, G-code generation or connection to the prepared printer job. The virtual front-half section changes visibility only.',
+ sources:[{title:'Prusa: model view, slicing, layer preview and G-code export',url:'https://help.prusa3d.com/article/first-print-with-prusaslicer-2-9_1753'},{title:'Prusa: geometry and slicer project information',url:'https://help.prusa3d.com/article/saving-projects-as-3mf_1773'}],
+ quiz:{question:'The outer tray stays the same size, but its walls become thinner. What changes in this digital design?',options:['The cavity grows and less solid material remains.','The cavity shrinks and more solid material remains.','The printer automatically receives a new toolpath.'],answer:0,explanation:'Moving the inside wall faces outward increases empty space within the same outer envelope. Slicing and machine instructions remain separate work.'},
+};
