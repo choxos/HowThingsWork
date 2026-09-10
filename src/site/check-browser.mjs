@@ -18,6 +18,18 @@ try{
  const names=[...new Set(groups.flatMap(g=>g.items))];
  for(const name of names){await visit(`machine/${slug(name)}`);assert.equal(await page.locator('h1').textContent(),name);assert.equal(await page.locator('.daily-canvas-wrap canvas').count(),1,name);assert.ok(await page.locator('.daily-readings dd').count()>0,name);}
  await visit('machine/calculator');await page.getByRole('spinbutton',{name:'First number value',exact:true}).fill('15');await page.getByRole('spinbutton',{name:'Second number value',exact:true}).fill('15');await page.getByLabel('Operation',{exact:true}).selectOption('1');assert.match(await page.locator('.daily-readings').textContent(),/225/);
+ // Typed entry, one key at a time: a value below the minimum must survive being
+ // half typed. fill() sets the whole value at once and cannot catch this.
+ await visit('machine/bathroom-scale');
+ const stiffness=page.getByRole('spinbutton',{name:'Effective spring stiffness value',exact:true});
+ await stiffness.click();await page.keyboard.press('ControlOrMeta+a');await page.keyboard.press('Backspace');
+ await page.keyboard.type('20000');
+ assert.equal(await stiffness.inputValue(),'20000','typing a value with a multi-digit minimum');
+ await page.keyboard.press('Tab');
+ assert.equal(await page.locator('input[data-control="stiffness"]').inputValue(),'20000','slider follows the typed value');
+ await stiffness.click();await page.keyboard.press('ControlOrMeta+a');await page.keyboard.press('Backspace');
+ await page.keyboard.type('99999');await page.keyboard.press('Tab');
+ assert.equal(await stiffness.inputValue(),'30000','an out of range entry is bounded once the box is left');
  await visit('machine/cylinder-lock');await page.getByRole('button',{name:'Pin stack 1',exact:true}).click();assert.ok(await page.locator('.daily-part-buttons button').count()>=2);await page.getByRole('checkbox',{name:'Isolate selected part',exact:true}).check();await page.getByRole('button',{name:'Whole machine',exact:true}).click();
  await visit('machine/washing-machine');await page.getByLabel('Cycle stage',{exact:true}).selectOption('3');await page.getByRole('spinbutton',{name:'Unbalanced load mass value',exact:true}).fill('.2');assert.match(await page.locator('.daily-readings').textContent(),/1.25 mm/);assert.equal(await page.getByRole('spinbutton',{name:'Wash / rinse speed value',exact:true}).isDisabled(),true);await page.screenshot({path:`${output}/washing-desktop.png`});
  await page.setViewportSize({width:390,height:844});
