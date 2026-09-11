@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import {createSewingModel} from './sewing-model.js';
 import {houseModel,reading as r} from './house-model-kit.js';
+import {createFaucetModel} from './faucet-model.js';
 const TAU=Math.PI*2;
 export function createUtilityModel(name){
  if(name==='Sewing machine')return createSewingModel();
+ if(name==='Faucet')return createFaucetModel();
  if(!['Faucet','Toilet tank','Water meter','Sewing machine','Door closer','Washing machine'].includes(name))return null;
  const m=houseModel(name),{root,part,box,cylinder,disk,sphere,ring,rod,tube,gear,control,finish,covers}=m;
  if(name==='Door closer'){
@@ -31,15 +33,6 @@ export function createUtilityModel(name){
   const result=finish((v,t)=>{const spin=v.stage===3,rpm=v.stage===2?0:spin?v.spinRpm:v.washRpm,omega=rpm*TAU/60,R=.25,clock=t/(spin?20:3),phase=omega*clock,acceleration=omega**2*R,unbalance=spin?v.imbalance:0,force=unbalance*acceleration,amplitude=force/Math.hypot(18000-40*omega**2,1200*omega),lag=Math.atan2(1200*omega,18000-40*omega**2);tub.position.x=amplitude*40*Math.cos(phase-lag);drum.rotation.z=drive.rotation.z=phase;pool.visible=v.stage<2;impeller.rotation.z=v.stage>=2?t*TAU:0;
    let flight=0,release=0,impactAngle=0,carry=0;if(omega>0&&acceleration<9.81){release=Math.acos(-acceleration/9.81);flight=4*omega*R*Math.sin(release)/9.81;const impactX=R*Math.sin(release)+omega*R*Math.cos(release)*flight,impactY=-R*Math.cos(release)+omega*R*Math.sin(release)*flight-4.905*flight**2;impactAngle=Math.atan2(impactX,-impactY);carry=(release-impactAngle)/omega;}
    clothes.forEach((cloth,i)=>{let x,y;if(omega===0){x=(i-3)*.035;y=-Math.sqrt(Math.max(0,R*R-x*x));}else if(acceleration>=9.81){const a=phase+i*TAU/clothes.length;x=R*Math.sin(a);y=-R*Math.cos(a);}else{const u=(clock+i*(carry+flight)/clothes.length)%(carry+flight);if(u<carry){const a=impactAngle+omega*u;x=R*Math.sin(a);y=-R*Math.cos(a);}else{const dt=u-carry;x=R*Math.sin(release)+omega*R*Math.cos(release)*dt;y=-R*Math.cos(release)+omega*R*Math.sin(release)*dt-4.905*dt*dt;}}cloth.position.set(x*2.35,y*2.35,0);cloth.rotation.z=phase+i;});springs.forEach(({anchor,coil,x})=>{anchor.position.x=x+tub.position.x;anchor.rotation.z=Math.atan2(tub.position.x,.43);coil.scale.y=Math.hypot(.43,tub.position.x)/.43;});drops.forEach((drop,i)=>{const u=(t*.8+i/10)%1;drop.visible=spin;drop.position.set(tub.position.x+(i%2?1:-1)*(.55+u*.3),1.2-u*.6,.5);});return{state:{rpm,acceleration,force,amplitude,release,flight},readings:[r('Drum speed',`${rpm} rpm`),r('Acceleration at 25 cm radius',`${acceleration.toFixed(1)} m/s²`),r('Steady vibration amplitude',`${(amplitude*1000).toFixed(2)} mm`),r('Water handling',v.stage<2?'Retained for wash / rinse':'Drain pump active'),r('Motion scale',spin?'Drum slowed ×20; vibration enlarged ×40':'Clothing-marker motion slowed ×3')]};},{animated:true});result.controls.find(c=>c.key==='washRpm').enabledWhen=v=>v.stage<2;for(const key of ['spinRpm','imbalance'])result.controls.find(c=>c.key===key).enabledWhen=v=>v.stage===3;return result;
- }
- if(name==='Faucet'){
-  const body=part('body','Faucet body and inlet','Contains the pressurized inlet and the outlet passage.');tube([[0,.1,0],[0,.8,0],[.65,.8,0],[.8,.55,0]],.17,'metal',body);const cover=box([.42,.58,.15],[0,.7,.18],'metal',body);covers.push(cover);
-  const seat=part('seat','Valve seat','A circular opening is sealed by the washer.');ring(.14,.025,[0,.75,.02],'gold',seat).rotation.x=Math.PI/2;
-  const spindle=part('spindle','Threaded spindle and handle','Turning the handle moves the spindle axially through its thread.');rod([0,.77,0],[0,1.65,0],.055,'gold',spindle);rod([-.45,1.65,0],[.45,1.65,0],.065,'clay',spindle);for(let i=0;i<8;i++){const thread=ring(.072,.012,[0,1.04+i*.05,0],'metal',spindle);thread.rotation.x=Math.PI/2;}
-  const washer=part('washer','Flexible washer','Presses against the seat to stop flow.',[0,.79,0],spindle);cylinder(.15,.055,[0,0,0],'ink',washer);
-  const stream=part('stream','Outlet stream','Water moves because pressure is higher at the inlet than at the outlet.');const jet=cylinder(.055,.48,[.8,.27,0],'blue',stream);
-  control('turns','Open the handle',0,4,.25,0,'turns','A 1 mm thread pitch lifts the washer 1 mm per turn.');control('pressure','Inlet gauge pressure',0,4,.1,2,'bar','Ideal orifice estimate with 3 mm seat radius and discharge coefficient 0.62.');
-  return finish(v=>{const gap=v.turns*.001,area=Math.min(Math.PI*.003**2,TAU*.003*gap),flow=.62*area*Math.sqrt(2*v.pressure*1e5/1000)*60000;spindle.position.y=v.turns*.09;spindle.rotation.y=v.turns*TAU;stream.visible=flow>0;jet.scale.x=jet.scale.z=Math.max(.1,Math.sqrt(flow/30));return {state:{gap,flow},readings:[r('Washer lift',`${(gap*1000).toFixed(2)} mm`),r('Idealized flow',`${flow.toFixed(2)} L/min`),r('Valve state',gap===0?'Sealed at the seat':v.pressure===0?'Open, no pressure difference':'Open'),r('Flow model','Orifice estimate; plumbing resistance and turbulence details omitted')]};});
  }
  if(name==='Toilet tank'){
   const tank=part('tank','Cistern','Stores a charge of water above the toilet bowl.');box([2.6,.1,1.1],[0,.12,0],'cream',tank);box([2.6,1.8,.08],[0,1,-.55],'cream',tank);for(const x of [-1.3,1.3])box([.08,1.8,1.1],[x,1,0],'cream',tank);const front=box([2.6,1.8,.06],[0,1,.55],'cream',tank);covers.push(front);

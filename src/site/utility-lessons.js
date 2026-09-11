@@ -3,15 +3,45 @@ const exp=(title,instruction,observe,values)=>({title,instruction,observe,values
 const quiz=(question,options,answer,explanation)=>({question,options,answer,explanation});
 export const utilityLessons={
  'Faucet':{
- simple:'Turning a screw lifts a washer from its seat and opens a path for water.',
- overview:'A traditional compression faucet has a threaded spindle ending in a flexible washer. Closing the handle presses the washer against a fixed valve seat. Opening it lifts the washer, leaving a gap through which pressurized water can reach the spout. Other faucets use ceramic cartridges or different valve designs.',
- steps:steps([['Turn the spindle','The screw thread converts handle rotation into axial movement.'],['Unseat the washer','Lifting the washer opens an annular gap around the seat.'],['Allow flow','The inlet-to-outlet pressure difference drives water through the opening and spout.'],['Close the seal','Returning the washer to the seat blocks the flow path.']]),
- parts:parts([['Threaded spindle','Moves axially as it turns.'],['Washer','Provides a compliant seal.'],['Valve seat','The fixed surface against which the washer closes.'],['Body and spout','Connect the inlet to the outlet around the valve.']]),
- tryIt:[exp('Close the valve','Use zero turns with 2 bar inlet pressure.','The gap and modeled flow are zero.',{turns:0,pressure:2}),exp('Open the seat','Turn the handle one revolution.','The washer lifts 1 mm and water can flow.',{turns:1,pressure:2}),exp('Remove the driving pressure','Leave the valve open and set gauge pressure to zero.','The open gap alone does not produce flow.',{turns:1,pressure:0})],
- deeper:[{title:'Why flow does not increase forever with opening',body:'At small lifts, the narrow gap around the seat limits flow. Once that gap is larger than the inlet port, opening farther has little effect in the model. Real pipes, bends, and other restrictions can dominate before this ideal limit.'},{title:'Faucet washer',body:'A soft washer can conform to small irregularities at the seat. Wear or trapped debris may leave a leakage path. This simulation uses a perfect seal at zero lift and does not model damage.'}],
- misconception:'The handle does not pump water. It changes a restriction in a system already supplied with pressure.',
- limits:'A compression valve, 1 mm thread pitch, 3 mm seat radius, and fixed discharge coefficient 0.62 are assumed. Flow is an ideal orifice estimate, not a plumbing design calculation.',
- sources:[{title:'OpenStax: Bernoulli flow applications',url:'https://openstax.org/books/college-physics-2e/pages/12-3-the-most-general-applications-of-bernoullis-equation'}],quiz:quiz('An open faucet has no pressure difference across it. In this model…',['There is no flow.','It produces water anyway.','The handle becomes a pump.'],0,'A flow path and a driving pressure difference are both needed.')},
+ simple:'Turning a screw lifts a washer off its seat, and the pressure already in the pipe does the rest.',
+ overview:'A compression tap is four pieces of physics in one small object. A thread turns rotation into a lift of exactly 1.5 mm per turn. The lift opens a curtain between washer and seat, which is what the water actually squeezes through, and which stops mattering once it is wider than the 12 mm bore behind it. The tap and the whole run of pipe behind it then resist together, both as the square of the flow, so the flow comes out as the square root of the pressure. And when the handle is shut, the moving column of water in the pipe has to be brought to rest: do that too quickly and the pressure it takes is many times the supply.',
+ steps:steps([
+  ['Turn the handle','A 1.5 mm pitch thread raises the washer 1.5 mm for every full turn. How hard the handle is gripped changes nothing; only the turns count.'],
+  ['Open a curtain, not a hole','What the water passes through is the cylindrical gap between the washer rim and the seat: 12 mm around, and as tall as the lift. A quarter turn opens 14 mm² of it.'],
+  ['Meet the bore','By about two thirds of a turn that curtain is wider than the 113 mm² seat bore, and from there the bore is the limit. Opening further adds almost nothing, which is why a tap feels like it does all its work in the first turn.'],
+  ['Share the pressure with the pipe','The seat and the pipework behind it both resist as the square of the flow. Wide open, most of the supply pressure is being spent in the pipe rather than in the tap.'],
+  ['Stop the water','Shutting the handle has to stop everything moving behind it. The faster it is shut, the higher the pressure that takes, and the bang in the wall is that pressure arriving.'],
+ ]),
+ parts:parts([
+  ['Threaded spindle','Turns rotation into a lift of 1.5 mm a turn, and holds it there.'],
+  ['Washer','A rubber disc that seals against the seat, and wears.'],
+  ['Valve seat','A flat ring of 12 mm bore; the fixed half of the seal and the upper limit on the opening.'],
+  ['Tap body and waterway','Carries the supply up the middle, round the seat and out along the spout.'],
+  ['Aerator','Mixes air into the stream so the same flow feels fuller, at the cost of a little more resistance.'],
+  ['The pipe behind it','Twenty metres of run, bends and a stop valve, which is where most of the pressure goes once the tap is open.'],
+ ]),
+ tryIt:[
+  exp('Open it a quarter turn','Leave the pressure at 2 bar and set a quarter turn, then press Fill the bucket.','Only 0.38 mm of lift and 14 mm² of opening, and already more than half the flow the tap will ever give.',{turns:.25,pressure:2,washer:0,aerator:1,closing:1}),
+  exp('Open it all the way','Set four turns and fill the bucket again.','Sixteen times the lift and the flow barely moves: the seat bore took over long ago, and the pipe is taking most of the pressure.',{turns:4,pressure:2,washer:0,aerator:1,closing:1}),
+  exp('Turn the supply up','Keep it wide open and raise the pressure from 2 bar to 6.','Three times the pressure gives about 1.73 times the flow, which is the square root of three. Flow follows the root of pressure, not the pressure.',{turns:4,pressure:6,washer:0,aerator:1,closing:1}),
+  exp('Shut it fast','Put the pressure back to 2 bar and set the closing time to 0.05 s.','Fifteen bar of surge, against a supply of two. Stopping moving water quickly costs far more pressure than moving it did.',{turns:4,pressure:2,washer:0,aerator:1,closing:.05}),
+  exp('Let the washer perish','Set the washer to perished and leave the handle shut.','The handle is hard closed and the tap is still passing about five millilitres a minute, which is a drip every half second and a ten litre bucket every thirty two hours.',{turns:0,pressure:2,washer:2,aerator:1,closing:1}),
+ ],
+ deeper:[
+  {title:'Why the first turn does nearly everything',body:'The opening is a curtain of circumference 38 mm and height equal to the lift, so it grows in proportion to the turns. The bore behind it does not grow at all. They are equal when the lift is a quarter of the bore diameter, that is 3 mm, or two turns. After that, turning the handle changes the drawing and not the flow. A tap that has to be opened four turns to run properly has something wrong downstream of the seat, not at it.'},
+  {title:'Why doubling the pressure does not double the flow',body:'Every resistance here is turbulent: the pressure it costs goes as the square of the flow through it. Add them up and the supply pressure equals a constant times the flow squared, so the flow is the square root of the pressure over that constant. Four times the pressure for twice the flow is the standing bargain of plumbing, and it is why a mains booster buys less than people expect.'},
+  {title:'Where the pressure actually goes',body:'With the tap shut, the full supply pressure stands at the seat. Open it wide and the seat is no longer the narrowest thing in the system: at 2 bar most of the drop has moved into the pipe run. This is why one tap runs slower when another is opened, and why the tap itself is rarely the thing worth replacing.'},
+  {title:'The bang in the wall',body:'Joukowsky put it simply: the pressure needed to stop flowing water is its density times the speed of sound in the pipe times the speed lost. Water moving two metres a second in copper needs about 24 bar to be stopped instantly. What saves the pipework is time: the wave runs to the far end and back in about 33 ms here, and a closure slower than that is relieved in proportion. A lever tap that shuts in a tenth of a turn is the one that knocks.'},
+ ],
+ misconception:'The handle does not push the water; it only changes a restriction in a system that is already under pressure. It is also not a proportional control: over most of its travel it is doing nothing at all, because the seat bore, and then the pipe, took over as the limit.',
+ limits:'A compression tap with a 1.5 mm thread pitch, a 12 mm seat bore and a discharge coefficient of 0.62. Everything behind the tap is one fixed loss coefficient of 200 on 15 mm pipe, standing for about 20 m of run with its bends and stop valve. Flow is steady and incompressible; the surge uses the Joukowsky bound relieved by the pipe period. Temperature, dissolved air, cavitation at the seat, pipe flexing and any surge arrestor are all left out.',
+ sources:[
+  {title:'OpenStax: Bernoulli flow applications',url:'https://openstax.org/books/college-physics-2e/pages/12-3-the-most-general-applications-of-bernoullis-equation'},
+  {title:'Water hammer and the Joukowsky equation',url:'https://www.engineeringtoolbox.com/water-hammer-d_1091.html'},
+ ],
+ quiz:quiz('A tap is open one full turn and runs at 12.5 litres a minute. You open it three turns further. What happens?',['Almost nothing: the seat bore, and then the pipe, are already the limit.','The flow roughly quadruples, because the lift has quadrupled.','The flow doubles, because the opening area doubles.'],0,'The curtain under the washer passed the seat bore at about two thirds of a turn. Beyond that the opening is fixed at 113 mm², and the extra turns change the picture without changing the flow.'),
+ },
+
  'Toilet tank':{
  simple:'A short handle movement starts a siphon that empties the stored water, then a float valve refills the tank.',
  overview:'This is a siphon-operated cistern. The handle lifts a disk that pushes water over a siphon crest. Once a continuous path is established, water flows down to the lower outlet until air enters and breaks the siphon. A float-operated inlet valve restores the stored water level. Many other toilets use a flapper or drop valve instead.',
