@@ -27,7 +27,13 @@ const calc=create('Calculator');for(let a=0;a<=15;a++)for(let b=0;b<=15;b++)for(
 const toy=create('Friction-drive toy');toy.update({speed:.3,inertia:.00004});const energy=toy.getState().energy;toy.update({speed:.6});near(toy.getState().energy,energy*4);toy.dispose();
 const vr=create('Virtual reality headset');vr.update({rate:20,seconds:1,latency:100});near(vr.getState().error,2);vr.dispose();
 const joy=create('Games controller');joy.update({x:.1,y:0,deadzone:.15});near(joy.getState().magnitude,0);joy.update({x:1,y:1});near(joy.getState().magnitude,1);joy.dispose();
-const toilet=create('Toilet tank');toilet.update({flush:1,seconds:2});const s1=toilet.getState();toilet.update({seconds:3});near(toilet.getState().liters-s1.liters,s1.inflow-s1.outflow);toilet.dispose();
+// The cistern empties by Torricelli and stops at the lip, so the bore changes how
+// fast the charge goes and the float setting changes how much of it there is.
+const toilet=create('Toilet tank');const emptied=(values)=>{toilet.update(values);for(let i=0;i<200000&&!toilet.playback.complete();i++)toilet.advance(.005);return toilet.getState();};
+const narrowFlush=emptied({level:.12,bore:.025,pressure:2,stroke:.025,perDay:5}),wideFlush=emptied({level:.12,bore:.045,pressure:2,stroke:.025,perDay:5});
+near(narrowFlush.discharged,wideFlush.discharged,.03);assert.ok(wideFlush.flushEnded<narrowFlush.flushEnded*.6,'a wider siphon empties the same charge sooner');
+const tallFlush=emptied({level:.24,bore:.032,pressure:2,stroke:.025,perDay:5});assert.ok(tallFlush.discharged>narrowFlush.discharged*1.9,'and a higher float is more water every flush');
+toilet.dispose();
 console.log(`PASS: ${Object.keys(lessons).length} house models, ${routes} house routes, control endpoints, finite transforms, and numerical regressions.`);
 
 const closer=create("Door closer");closer.update({seconds:0});const initial=closer.getState().energy;closer.update({seconds:5});near(closer.getState().energy+closer.getState().dissipated,initial);assert.ok(closer.getState().angle>0&&closer.getState().rate<0);closer.dispose();

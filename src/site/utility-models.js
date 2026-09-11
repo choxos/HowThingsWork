@@ -3,11 +3,13 @@ import {createSewingModel} from './sewing-model.js';
 import {houseModel,reading as r} from './house-model-kit.js';
 import {createFaucetModel} from './faucet-model.js';
 import {createWaterMeterModel} from './water-meter-model.js';
+import {createToiletTankModel} from './toilet-tank-model.js';
 const TAU=Math.PI*2;
 export function createUtilityModel(name){
  if(name==='Sewing machine')return createSewingModel();
  if(name==='Faucet')return createFaucetModel();
  if(name==='Water meter')return createWaterMeterModel();
+ if(name==='Toilet tank')return createToiletTankModel();
  if(!['Faucet','Toilet tank','Water meter','Sewing machine','Door closer','Washing machine'].includes(name))return null;
  const m=houseModel(name),{root,part,box,cylinder,disk,sphere,ring,rod,tube,gear,control,finish,covers}=m;
  if(name==='Door closer'){
@@ -35,18 +37,6 @@ export function createUtilityModel(name){
   const result=finish((v,t)=>{const spin=v.stage===3,rpm=v.stage===2?0:spin?v.spinRpm:v.washRpm,omega=rpm*TAU/60,R=.25,clock=t/(spin?20:3),phase=omega*clock,acceleration=omega**2*R,unbalance=spin?v.imbalance:0,force=unbalance*acceleration,amplitude=force/Math.hypot(18000-40*omega**2,1200*omega),lag=Math.atan2(1200*omega,18000-40*omega**2);tub.position.x=amplitude*40*Math.cos(phase-lag);drum.rotation.z=drive.rotation.z=phase;pool.visible=v.stage<2;impeller.rotation.z=v.stage>=2?t*TAU:0;
    let flight=0,release=0,impactAngle=0,carry=0;if(omega>0&&acceleration<9.81){release=Math.acos(-acceleration/9.81);flight=4*omega*R*Math.sin(release)/9.81;const impactX=R*Math.sin(release)+omega*R*Math.cos(release)*flight,impactY=-R*Math.cos(release)+omega*R*Math.sin(release)*flight-4.905*flight**2;impactAngle=Math.atan2(impactX,-impactY);carry=(release-impactAngle)/omega;}
    clothes.forEach((cloth,i)=>{let x,y;if(omega===0){x=(i-3)*.035;y=-Math.sqrt(Math.max(0,R*R-x*x));}else if(acceleration>=9.81){const a=phase+i*TAU/clothes.length;x=R*Math.sin(a);y=-R*Math.cos(a);}else{const u=(clock+i*(carry+flight)/clothes.length)%(carry+flight);if(u<carry){const a=impactAngle+omega*u;x=R*Math.sin(a);y=-R*Math.cos(a);}else{const dt=u-carry;x=R*Math.sin(release)+omega*R*Math.cos(release)*dt;y=-R*Math.cos(release)+omega*R*Math.sin(release)*dt-4.905*dt*dt;}}cloth.position.set(x*2.35,y*2.35,0);cloth.rotation.z=phase+i;});springs.forEach(({anchor,coil,x})=>{anchor.position.x=x+tub.position.x;anchor.rotation.z=Math.atan2(tub.position.x,.43);coil.scale.y=Math.hypot(.43,tub.position.x)/.43;});drops.forEach((drop,i)=>{const u=(t*.8+i/10)%1;drop.visible=spin;drop.position.set(tub.position.x+(i%2?1:-1)*(.55+u*.3),1.2-u*.6,.5);});return{state:{rpm,acceleration,force,amplitude,release,flight},readings:[r('Drum speed',`${rpm} rpm`),r('Acceleration at 25 cm radius',`${acceleration.toFixed(1)} m/s²`),r('Steady vibration amplitude',`${(amplitude*1000).toFixed(2)} mm`),r('Water handling',v.stage<2?'Retained for wash / rinse':'Drain pump active'),r('Motion scale',spin?'Drum slowed ×20; vibration enlarged ×40':'Clothing-marker motion slowed ×3')]};},{animated:true});result.controls.find(c=>c.key==='washRpm').enabledWhen=v=>v.stage<2;for(const key of ['spinRpm','imbalance'])result.controls.find(c=>c.key===key).enabledWhen=v=>v.stage===3;return result;
- }
- if(name==='Toilet tank'){
-  const tank=part('tank','Cistern','Stores a charge of water above the toilet bowl.');box([2.6,.1,1.1],[0,.12,0],'cream',tank);box([2.6,1.8,.08],[0,1,-.55],'cream',tank);for(const x of [-1.3,1.3])box([.08,1.8,1.1],[x,1,0],'cream',tank);const front=box([2.6,1.8,.06],[0,1,.55],'cream',tank);covers.push(front);
-  const water=part('water','Stored water','Its level falls during siphoning, then rises during refill.');const level=box([2.43,1,.95],[0,.72,0],'blue',water);
-  const siphon=part('siphon','Bell siphon assembly','Once primed, a continuous water path carries water over the crest and down to the bowl.',[.4,0,0]);const bell=part('bell','Siphon bell','Encloses the rising flow path around the outlet standpipe.',[0,0,0],siphon);for(const x of [-.3,.3])box([.055,1.15,.55],[x,.8,0],'gold',bell);box([.6,.07,.55],[0,1.38,0],'gold',bell);
-  const outlet=part('outlet','Outlet standpipe','The descending water leg leads to a lower outlet.',[0,0,0],siphon);tube([[0,1.2,0],[0,.1,0],[.4,-.35,0]],.12,'metal',outlet);
-  const lift=part('lifting-disk','Flush lifting disk','A short upward stroke pushes water over the crest and primes the siphon.',[0,.45,0],siphon);cylinder(.25,.06,[0,0,0],'clay',lift);
-  const handle=part('handle','Flush handle and linkage','Transfers hand movement to the priming disk.',[.95,1.7,.6]);rod([0,0,0],[-.4,0,0],.045,'gold',handle);rod([-.4,0,-.6],[-.55,-.9,-.6],.02,'metal',handle);
-  const inlet=part('inlet','Float-operated fill valve','A low float opens the valve; the rising float closes it at the full level.',[-.85,0,0]);rod([0,.1,0],[0,1.65,0],.065,'metal',inlet);const float=part('float','Float','Buoyancy lets the float track the water level.',[0,1.2,.15],inlet);sphere(.2,[0,0,0],'clay',float);rod([0,0,0],[.25,.25,0],.025,'metal',float);
-  const flow=part('flow','Primed water path','Water rises inside the bell, crosses the crest, and descends through the outlet.');tube([[.14,.43,.33],[.14,1.22,.33],[.4,1.28,.33],[.4,.13,.33],[.8,-.3,.33]],.025,'blue',flow);
-  control('flush','Flush initiation',0,1,1,0,'','Select flush, then advance elapsed time.',[{value:0,label:'Resting cistern'},{value:1,label:'Start a flush'}]);control('seconds','Seconds after initiation',0,35,.5,0,'s','Prescribed sequence: prime, siphon, admit air, refill.');
-  return finish(v=>{const t=v.seconds;let liters=6,stage='Full; inlet closed';if(v.flush){if(t<1){stage='Lifting disk primes the siphon';}else if(t<6){liters=6-(t-1);stage='Siphon running';}else{liters=Math.min(6,1+(t-6)*.2);stage=liters<6?'Air breaks siphon; inlet refills tank':'Full; inlet closed';}}const height=liters/6*1.25;level.scale.y=Math.max(.02,height);level.position.y=.2+height/2;float.position.y=.2+height;lift.position.y=.45+(v.flush&&t<1?t*.5:0);handle.rotation.z=v.flush&&t<1?-.4*t:0;flow.visible=Boolean(v.flush&&t>=1&&t<6);return {state:{liters,stage,siphoning:flow.visible,inflow:liters<6?.2:0,outflow:flow.visible?1.2:0},readings:[r('Stage',stage),r('Stored water',`${liters.toFixed(1)} L`),r('Fill valve',liters<6?'Open: 0.2 L/s':'Closed'),r('Siphon discharge',flow.visible?'1.2 L/s; net tank loss 1.0 L/s':'0 L/s'),r('Model','Siphon cistern with a prescribed cycle, not a flapper-valve tank')]};});
  }
  return null;
 }
