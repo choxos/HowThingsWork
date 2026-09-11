@@ -8,7 +8,7 @@ try{
  await page.getByRole('button',{name:'Plug cam and roller',exact:true}).waitFor();
  assert.equal(await page.getByRole('spinbutton',{name:'Key insertion value',exact:true}).inputValue(),'1');
  await page.getByRole('spinbutton',{name:'Attempt to turn value',exact:true}).fill('30');await page.getByRole('spinbutton',{name:'Open the door value',exact:true}).fill('65');
- assert.match(await page.locator('.daily-readings').textContent(),/Door held closed/);assert.equal(await page.getByRole('spinbutton',{name:'Open the door value',exact:true}).inputValue(),'0');
+ assert.match(await page.locator('.daily-readings').textContent(),/Door held closed/);await page.getByRole('spinbutton',{name:'Open the door value',exact:true}).blur();assert.equal(await page.getByRole('spinbutton',{name:'Open the door value',exact:true}).inputValue(),'0');
  await page.screenshot({path:'/tmp/howthingswork-cam-partial-retraction.png',fullPage:true});
  await page.getByRole('spinbutton',{name:'Attempt to turn value',exact:true}).fill('60');assert.match(await page.locator('.daily-readings').textContent(),/Latch clear/);
  await page.getByRole('button',{name:'Run selected action',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-number="door"]').value==='65');

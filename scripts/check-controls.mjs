@@ -111,7 +111,9 @@ for (const [index, entry] of entries.slice(0, limit).entries()) {
     for (const setting of settings) {
       const before = await readings();
       try {
-        await locator.fill(String(setting));
+        // A dropdown is chosen, a slider is filled; fill throws on a select.
+        if (control.options) await locator.selectOption(String(setting));
+        else await locator.fill(String(setting));
       } catch (error) {
         problems.push(`${control.key}: could not be set to ${setting} (${error.message.split('\n')[0]})`);
         continue;
@@ -128,16 +130,52 @@ for (const [index, entry] of entries.slice(0, limit).entries()) {
     }
   }
 
-  // Buttons: pressing one must not throw. Play is left running for a moment and
-  // stopped again so a broken animation frame surfaces as a page error.
-  for (const selector of ['[data-view]', '[data-action]', '[data-result]', '[data-step]']) {
-    const buttons = await page.locator(selector).all();
-    for (const button of buttons) {
+  // Every button the lesson page offers; pressing one must not throw.
+  // `[data-experiment]` is the only path that reaches reset with a lesson's own
+  // initial state, so a lesson carrying something that cannot be cloned throws
+  // there and nowhere else. The part buttons rebuild themselves on every click,
+  // so each one is found again by position rather than held onto.
+  for (const selector of [
+    '[data-view]',
+    '[data-action]',
+    '[data-result]',
+    '[data-step]',
+    '[data-experiment]',
+    '[data-answer]',
+    '.daily-part-buttons button',
+  ]) {
+    const count = await page.locator(selector).count();
+    for (let position = 0; position < count; position += 1) {
+      const button = page.locator(selector).nth(position);
+      // Drilling into a part replaces the list below it, which is the control
+      // working rather than failing.
+      if ((await page.locator(selector).count()) <= position) break;
       if (!(await button.isVisible()) || (await button.isDisabled())) continue;
       try {
         await button.click({timeout: 10000});
       } catch (error) {
-        problems.push(`${selector}: click failed (${error.message.split('\n')[0]})`);
+        problems.push(`${selector}: click ${position + 1} failed (${error.message.split('\n')[0]})`);
+      }
+    }
+  }
+  for (const selector of ['[data-cutaway]', '[data-labels]', '[data-isolate]']) {
+    const box = page.locator(selector);
+    if (!(await box.count()) || !(await box.isVisible()) || (await box.isDisabled())) continue;
+    try {
+      const was = await box.isChecked();
+      await box.setChecked(!was, {timeout: 10000});
+      await box.setChecked(was, {timeout: 10000});
+    } catch (error) {
+      problems.push(`${selector}: ${error.message.split('\n')[0]}`);
+    }
+  }
+  const speed = page.locator('[data-speed]');
+  if ((await speed.count()) && (await speed.isVisible())) {
+    for (const option of await speed.locator('option').evaluateAll(nodes => nodes.map(n => n.value))) {
+      try {
+        await speed.selectOption(option, {timeout: 10000});
+      } catch (error) {
+        problems.push(`playback speed ${option}: ${error.message.split('\n')[0]}`);
       }
     }
   }

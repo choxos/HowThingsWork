@@ -30,25 +30,27 @@ async function serverIsUp() {
 }
 
 let server;
-if (await serverIsUp()) {
-  console.log(`Reusing the server already on ${base}`);
-} else {
+async function ensureServer() {
+  if (await serverIsUp()) return true;
+  server?.kill();
   server = spawn('npx', ['vite', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
     cwd: root,
     stdio: 'ignore',
   });
-  let ready = false;
-  for (let attempt = 0; attempt < 60 && !ready; attempt += 1) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
     await wait(500);
-    ready = await serverIsUp();
+    if (await serverIsUp()) return true;
   }
-  if (!ready) {
-    server.kill();
-    console.error(`The dev server never answered on ${base}`);
-    process.exit(1);
-  }
-  console.log(`Started the dev server on ${base}`);
+  server.kill();
+  server = undefined;
+  return false;
 }
+
+if (!(await ensureServer())) {
+  console.error(`The dev server never answered on ${base}`);
+  process.exit(1);
+}
+console.log(server ? `Started the dev server on ${base}` : `Reusing the server already on ${base}`);
 
 const names = (await readdir(siteDir))
   .filter(name => name.startsWith('check-') && name.endsWith('.mjs'))
@@ -78,6 +80,12 @@ const run = name =>
 const failures = [];
 const flaky = [];
 for (const [index, name] of names.entries()) {
+  // A server that has gone away turns every remaining check into a connection
+  // refused, which reads as a wall of failures that say nothing about the site.
+  if (!(await ensureServer())) {
+    console.error(`The dev server stopped answering before ${name}`);
+    process.exit(1);
+  }
   const started = Date.now();
   let {code, output} = await run(name);
   const seconds = ((Date.now() - started) / 1000).toFixed(0);

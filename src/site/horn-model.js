@@ -84,7 +84,7 @@ export function createHornModel(){
  control('voltage','Supply voltage',6,15,3,12,'V','Compare weak pull with repeated contact-breaking vibration. Constants are illustrative.');
  control('holdTime','Button hold time',.04,.12,.02,.04,'s','Actual modeled time; playback slows the mechanism one hundred times.');
  control('contact','Interrupter condition',0,2,1,0,'','Compare feedback with an open circuit and a continuous-current bypass.',[{value:0,label:'Normal make-break'},{value:1,label:'Held open'},{value:2,label:'Bypass jumper'}]);
- control('sound','Horn sound',0,1,1,0,'','Optional synthesized tone follows measured repeated vibration, not loudness or full trumpet acoustics.',[{value:0,label:'Muted'},{value:1,label:'Sound on'}]);
+ control('sound','Horn sound',0,1,1,0,'','Optional synthesized tone follows measured repeated vibration, not loudness or full trumpet acoustics.',[{value:0,label:'Muted'},{value:1,label:'Sound on'}],{replay:false});
  let x=0,velocity=0,current=0,elapsed=0,accumulator=0,lastClock=0,stage='ready',complete=false,cycles=0,breaks=0,lastCrossing=null,periods=[],peak=0,trough=0,lastX=0,previousClosed=true;
  let context,oscillator,gain,audioError=false,playing=false;
  const frequency=()=>periods.length?1/(periods.reduce((a,b)=>a+b,0)/periods.length):0;
