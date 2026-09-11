@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import {createSewingModel} from './sewing-model.js';
 import {houseModel,reading as r} from './house-model-kit.js';
 import {createFaucetModel} from './faucet-model.js';
+import {createWaterMeterModel} from './water-meter-model.js';
 const TAU=Math.PI*2;
 export function createUtilityModel(name){
  if(name==='Sewing machine')return createSewingModel();
  if(name==='Faucet')return createFaucetModel();
+ if(name==='Water meter')return createWaterMeterModel();
  if(!['Faucet','Toilet tank','Water meter','Sewing machine','Door closer','Washing machine'].includes(name))return null;
  const m=houseModel(name),{root,part,box,cylinder,disk,sphere,ring,rod,tube,gear,control,finish,covers}=m;
  if(name==='Door closer'){
@@ -45,14 +47,6 @@ export function createUtilityModel(name){
   const flow=part('flow','Primed water path','Water rises inside the bell, crosses the crest, and descends through the outlet.');tube([[.14,.43,.33],[.14,1.22,.33],[.4,1.28,.33],[.4,.13,.33],[.8,-.3,.33]],.025,'blue',flow);
   control('flush','Flush initiation',0,1,1,0,'','Select flush, then advance elapsed time.',[{value:0,label:'Resting cistern'},{value:1,label:'Start a flush'}]);control('seconds','Seconds after initiation',0,35,.5,0,'s','Prescribed sequence: prime, siphon, admit air, refill.');
   return finish(v=>{const t=v.seconds;let liters=6,stage='Full; inlet closed';if(v.flush){if(t<1){stage='Lifting disk primes the siphon';}else if(t<6){liters=6-(t-1);stage='Siphon running';}else{liters=Math.min(6,1+(t-6)*.2);stage=liters<6?'Air breaks siphon; inlet refills tank':'Full; inlet closed';}}const height=liters/6*1.25;level.scale.y=Math.max(.02,height);level.position.y=.2+height/2;float.position.y=.2+height;lift.position.y=.45+(v.flush&&t<1?t*.5:0);handle.rotation.z=v.flush&&t<1?-.4*t:0;flow.visible=Boolean(v.flush&&t>=1&&t<6);return {state:{liters,stage,siphoning:flow.visible,inflow:liters<6?.2:0,outflow:flow.visible?1.2:0},readings:[r('Stage',stage),r('Stored water',`${liters.toFixed(1)} L`),r('Fill valve',liters<6?'Open: 0.2 L/s':'Closed'),r('Siphon discharge',flow.visible?'1.2 L/s; net tank loss 1.0 L/s':'0 L/s'),r('Model','Siphon cistern with a prescribed cycle, not a flapper-valve tank')]};});
- }
- if(name==='Water meter'){
-  const housing=part('housing','Meter body','Guides water through the measuring chamber.');tube([[-1.4,.7,0],[-.6,.7,0],[.6,.7,0],[1.4,.7,0]],.13,'metal',housing);const cover=cylinder(.55,.6,[0,.75,0],'leaf',housing);covers.push(cover);
-  const impeller=part('impeller','Impeller','Water flow turns the rotor. Calibration relates revolutions to passing volume.',[0,.75,0]);cylinder(.11,.3,[0,0,0],'gold',impeller);for(let i=0;i<8;i++){const a=i*TAU/8;const blade=box([.34,.25,.035],[.24*Math.cos(a),0,.24*Math.sin(a)],'clay',impeller);blade.rotation.y=-a;}
-  const train=part('train','Reduction train','Reduces rapid rotor motion to slower counter movement.');const wheel=gear(.28,20,[0,1.4,.1],'gold',train);gear(.14,10,[.4,1.4,.1],'clay',train);
-  const counter=part('counter','Cumulative register','Accumulates volume. A utility bill uses the difference between readings.');box([1.1,.25,.3],[0,1.9,0],'cream',counter);for(let i=0;i<5;i++)disk(.065,.06,[-.36+i*.18,1.9,.18],'ink',counter);
-  control('flow','Flow rate',0,20,.5,6,'L/min');control('minutes','Elapsed time at this flow',0,60,1,5,'min','Volume = constant flow × elapsed time.');
-  return finish((v,t)=>{const volume=v.flow*v.minutes,turns=volume*2;impeller.rotation.y=(turns+t*v.flow/30)*TAU;wheel.rotation.z=-turns*TAU/100;return {state:{volume,turns},readings:[r('Volume passed',`${volume.toFixed(1)} L`),r('Illustrative impeller turns',turns.toFixed(1),'Calibration chosen as 2 revolutions per liter.'),r('Flow and volume','Flow is a rate; the register accumulates volume'),r('Playback','A short motion sample; does not add to the selected elapsed-time reading')]};},{animated:true});
  }
  return null;
 }
