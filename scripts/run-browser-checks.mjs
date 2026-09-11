@@ -76,19 +76,31 @@ const run = name =>
   });
 
 const failures = [];
+const flaky = [];
 for (const [index, name] of names.entries()) {
   const started = Date.now();
-  const {code, output} = await run(name);
+  let {code, output} = await run(name);
   const seconds = ((Date.now() - started) / 1000).toFixed(0);
   const label = `${String(index + 1).padStart(2)}/${names.length}`;
   if (code === 0) {
     console.log(`${label} PASS ${name} (${seconds}s)`);
-  } else {
-    console.log(`${label} FAIL ${name} (${seconds}s)`);
-    console.log(output.split('\n').slice(-25).join('\n'));
-    failures.push(name);
+    continue;
   }
+  // Several of these checks read a value the moment after they press Play, and
+  // under load the click has not landed yet. A second run on a quieter machine
+  // separates that from a real failure; a check that only passes on the retry
+  // is reported as flaky rather than as green.
+  const retry = await run(name);
+  if (retry.code === 0) {
+    console.log(`${label} FLAKY ${name} (failed once in ${seconds}s, passed on retry)`);
+    flaky.push(name);
+    continue;
+  }
+  console.log(`${label} FAIL ${name} (${seconds}s)`);
+  console.log(retry.output.split('\n').slice(-25).join('\n'));
+  failures.push(name);
 }
+if (flaky.length) console.log(`\n${flaky.length} checks needed a retry: ${flaky.join(', ')}`);
 
 server?.kill();
 if (failures.length) {

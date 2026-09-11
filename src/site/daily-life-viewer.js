@@ -126,9 +126,16 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   });
   options.addEventListener('change',event=>{if(event.target.matches('[data-cutaway]'))cutaway=event.target.checked;if(event.target.matches('[data-labels]'))labels=event.target.checked;if(event.target.matches('[data-isolate]'))isolated=event.target.checked;update();});
   controlsHost.addEventListener('input',event=>{const key=event.target.dataset.control||event.target.dataset.number;if(!key||event.target.value==='')return;apply({[key]:Number(event.target.value)});});
-  // A half typed number is below its minimum, so the field keeps what is being
-  // typed and only shows the bounded value once the box is left.
-  controlsHost.addEventListener('change',()=>syncControls());
+  // A half typed number is below its minimum, so while the box is being typed
+  // into it keeps what is there. Committing the number is the other case: the
+  // machine may have refused it outright, and a box still showing a setting the
+  // machine never took is a box telling the reader something untrue, so the
+  // committed value is written back whether the box still has focus or not.
+  controlsHost.addEventListener('change',event=>{
+    const key=event.target.dataset.number;
+    if(key&&Object.hasOwn(values,key))event.target.value=values[key];
+    syncControls();
+  });
   function reset(initialState){stop();releaseReadingsHeight();phase=0;setupActions=[];initialStateForReplay=structuredClone(initialState);model.reset?.(initialState);model.animate?.(0);apply(Object.fromEntries(model.controls.map(control=>[control.key,control.initial])));if(selected===model.resultPart?.id){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}}
   host.querySelector('[data-reset-controls]').addEventListener('click',()=>reset(pendingReplay?.initialState));
   function replay(){
