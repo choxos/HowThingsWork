@@ -84,7 +84,7 @@ export function createBellModel(){
  control('voltage','Battery voltage',1.5,4.5,.5,3,'V','Illustrative circuit values: compare enough pull to strike with a weak supply.');
  control('holdTime','Button hold time',.2,.8,.05,.35,'s','The experiment is slowed so you can inspect the contact cycle. Play presses, holds and releases the button.');
  control('contact','Interrupter condition',0,2,1,0,'','Compare the working feedback loop with a retracted contact or a wire bypass.',[{value:0,label:'Normal contact'},{value:1,label:'Held open'},{value:2,label:'Bypassed by jumper'}]);
- control('sound','Bell sound',0,1,1,0,'','Enable sound to hear a short synthesized bell tone at each hammer impact.',[{value:0,label:'Muted'},{value:1,label:'Sound on'}]);
+ control('sound','Bell sound',0,1,1,0,'','Enable sound to hear a short synthesized bell tone at each hammer impact.',[{value:0,label:'Muted'},{value:1,label:'Sound on'}],{replay:false});
  let angle=0,velocity=0,current=0,elapsed=0,stage='ready',complete=false,strikes=0,lastImpact=-Infinity,armed=true,accumulator=0,lastClock=0;
  let audioContext,master,audioError=false;const voices=new Set();
  function setSound(enabled){if(!enabled){if(master)master.gain.setValueAtTime(0,audioContext.currentTime);return;}audioError=false;const Audio=globalThis.AudioContext;if(!Audio){audioError=true;return;}try{if(!audioContext){audioContext=new Audio();master=audioContext.createGain();master.connect(audioContext.destination);}master.gain.setValueAtTime(1,audioContext.currentTime);audioContext.resume().catch(()=>{audioError=true;});}catch{audioError=true;}}

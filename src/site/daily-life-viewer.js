@@ -94,7 +94,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   function syncPlaybackButton(){const button=host.querySelector('[data-play]');if(!button)return;button.innerHTML=playbackIcon(playing?'pause':'play');button.setAttribute('aria-label',playing?'Pause':model.playback?.label||'Play slowly');button.title=playing?'Pause':model.playback?.complete()?'Play again: reset and restart the experiment':model.playback?'Play: '+model.playback.label:'Play slowly';button.setAttribute('aria-pressed',String(playing));}
   function releaseReadingsHeight(){tallestReadings=0;host.querySelector('.daily-readings').style.minHeight='';}
   function stop(){const wasPlaying=playing;playing=false;model.playback?.setPlaying?.(false);cancelAnimationFrame(frame);if(wasPlaying&&!disposed)readings(model.getState?.().readings);else syncPlaybackButton();releaseReadingsHeight();}
-  function apply(next){const resume=playing;stop();for(const [key,value] of Object.entries(next)){const control=controlsByKey.get(key);if(!control||!Number.isFinite(Number(value)))continue;const bounded=within(Number(value),control.min,control.max);if(control.options&&!control.options.some(option=>Number(option.value)===bounded))continue;values[key]=control.step?Number(within(control.min+Math.round((bounded-control.min)/control.step)*control.step,control.min,control.max).toPrecision(12)):bounded;configuredValues[key]=values[key];}syncControls();update();if(resume)start();}
+  function apply(next){const resume=playing;stop();for(const [key,value] of Object.entries(next)){const control=controlsByKey.get(key);if(!control||!Number.isFinite(Number(value)))continue;const bounded=within(Number(value),control.min,control.max);if(control.options&&!control.options.some(option=>Number(option.value)===bounded))continue;values[key]=control.step?Number(within(control.min+Math.round((bounded-control.min)/control.step)*control.step,control.min,control.max).toPrecision(12)):bounded;if(control.replay!==false)configuredValues[key]=values[key];}syncControls();update();if(resume)start();}
   function selectPart(id,focus=true){
     if(focus)host.scrollTop=0;
     followPosition=null;selected=id;const part=model.parts.find(part=>part.id===id);
@@ -144,7 +144,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit}={}) {
   controlsHost.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>{
     stop();const index=Number(button.dataset.action),action=model.actions[index],before={...model.getState?.().values};
     action.run();Object.assign(values,model.getState?.().values);if(action.replay!==false)setupActions.push(index);
-    for(const control of model.controls)if(before[control.key]!==values[control.key])configuredValues[control.key]=values[control.key];
+    for(const control of model.controls)if(control.replay!==false&&before[control.key]!==values[control.key])configuredValues[control.key]=values[control.key];
     if(action.part){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(action.part);}else update();
     if(action.view)host.querySelector(`[data-view="${action.view}"]`)?.click();
   }));

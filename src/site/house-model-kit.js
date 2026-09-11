@@ -22,7 +22,10 @@ export function houseModel(name){
   coil.userData.setLength=height=>{if(height===h)return;h=height;coil.geometry.dispose();coil.geometry=geometry(height);};
   return coil;
  }
- function control(key,label,min,max,step,initial,unit='',help='',options){controls.push({key,label,min,max,step,initial,unit,help,...(options?{options}: {})});values[key]=initial;}
+ // `extra` carries per-control flags; `replay:false` keeps a setting out of the
+ // replayed experiment, so a control the learner opts into (sound, say) starts
+ // from its initial value again rather than repeating itself unasked.
+ function control(key,label,min,max,step,initial,unit='',help='',options,extra){controls.push({key,label,min,max,step,initial,unit,help,...(options?{options}: {}),...(extra||{})});values[key]=initial;}
  function finish(run,{animated=false}={}){let phase=0,readings=[],state={};const defaults={...values};function render(){const result=run(values,phase);readings=result.readings;state=result.state||{};return readings;}function update(next={}){for(const control of controls){const value=next[control.key];if(!Number.isFinite(value))continue;const bounded=Math.max(control.min,Math.min(control.max,value));if(control.options&&!control.options.some(option=>option.value===bounded))continue;values[control.key]=Number(Math.max(control.min,Math.min(control.max,control.min+Math.round((bounded-control.min)/control.step)*control.step)).toPrecision(12));}return render();}function animate(next){phase=Number.isFinite(next)?Math.max(0,next):0;return render();}update();root.name=name;root.userData.machine=name;return {root,parts,covers,controls,defaults,update,...(animated?{animate}:{}),getState:()=>({...state,values:{...values},readings}),dispose(){const geometries=new Set();root.traverse(object=>{if(object.geometry)geometries.add(object.geometry);if(object.material){for(const mat of (Array.isArray(object.material)?object.material:[object.material]))if(![...materials.values()].includes(mat))mat.dispose();}});geometries.forEach(geometry=>geometry.dispose());materials.forEach(mat=>mat.dispose());gradient.dispose();}};}
  return {root,parts,covers,control,part,box,cylinder,disk,sphere,ring,rod,tube,gear,spring,finish};
 }
