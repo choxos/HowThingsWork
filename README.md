@@ -23,10 +23,17 @@ npm run dev
 npm test
 npm run test:scenes
 npm run test:models
+npm run test:browser
 npm run build
+node scripts/check-physics-laws.mjs
+node scripts/check-controls.mjs
 ```
 
-`npm run test:browser` drives the house in a real browser against a running site. Machine-specific runnable checks live beside their models in `src/site/`. Browser checks require Playwright and a running site. Run `npm run test:deployment -- https://howthingswork.xera.ac/` for the deployment smoke check; use `PLAYWRIGHT_MODULE` for an external installation. Machine browser checks accept `SITE_URL` (default `http://127.0.0.1:5175/`); checks that inject source fixtures require the Vite dev server. Passing checks establishes the named behavior, not complete coverage of every machine or scientific assumption.
+`npm run test:browser` runs every browser check in `src/site/` against a Vite dev server it starts itself. It runs them one at a time on purpose: a single headless browser rendering these scenes takes most of the cores on a normal laptop, and several at once starve each other until pages stop finishing loading. A check that fails once and passes on a second run is reported as flaky rather than as a pass.
+
+`scripts/check-physics-laws.mjs` states the textbook law in its own terms and holds the models to it, so a model and the check written beside it cannot agree on the same mistake. `scripts/check-controls.mjs` opens every catalog entry that has a lesson and drives every one of its controls, reporting any setting that leaves the readings unchanged; it needs a running site.
+
+Machine-specific runnable checks live beside their models in `src/site/`. Browser checks require Playwright and a running site. Run `npm run test:deployment -- https://howthingswork.xera.ac/` for the deployment smoke check; use `PLAYWRIGHT_MODULE` for an external installation. Machine browser checks accept `SITE_URL` (default `http://127.0.0.1:5175/`); checks that inject source fixtures require the Vite dev server. Passing checks establishes the named behavior, not complete coverage of every machine or scientific assumption.
 
 ## Source layout
 
