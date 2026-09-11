@@ -120,7 +120,11 @@ for (const [index, entry] of entries.slice(0, limit).entries()) {
           const min = Number(control.min);
           const max = Number(control.max);
           const step = Number(control.step) || (max - min) / 4;
-          const middle = min + Math.round((max - min) / 2 / step) * step;
+          // A step of 0.1 counted up in binary reaches 0.6000000000000001,
+          // which a range input rejects outright, so the middle setting is
+          // rounded to the places the step itself is written to.
+          const places = (String(control.step).split('.')[1] || '').length;
+          const middle = Number((min + Math.round((max - min) / 2 / step) * step).toFixed(places));
           return [...new Set([min, middle, max].map(String))];
         })();
 

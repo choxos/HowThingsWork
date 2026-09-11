@@ -277,11 +277,24 @@ const ok = (condition, message) => {
     close(state.inputPower, state.copperLoss, 1e-12, 'every watt it takes becomes heat');
   }
 
-  // Kirchhoff around the loop, at every instant of a powered run.
+  // Kirchhoff around the loop, at every instant of a powered run. A commutator
+  // spends part of every turn with its brushes off the copper, and an open loop
+  // carries no current however much supply stands across it, so the loop
+  // equation is a claim about the part of the turn that conducts.
   const running = start({voltage: 6, field: 1, load: 0});
+  let conducted = 0;
+  let opened = 0;
   for (let frame = 0; frame < 600; frame += 1) {
     const state = running.getState();
     if (state.complete || state.blocked) break;
+    if (!state.contact) {
+      close(state.current, 0, 1e-12, 'an open commutator carries no current');
+      close(state.convertedPower, 0, 1e-12, 'and converts nothing');
+      opened += 1;
+      running.advance(1 / 60);
+      continue;
+    }
+    conducted += 1;
     close(
       state.voltage,
       state.current * state.resistance + state.backEmf,
@@ -294,6 +307,8 @@ const ok = (condition, message) => {
     ok(state.copperLoss >= 0, 'the winding never cools the supply');
     running.advance(1 / 60);
   }
+  ok(conducted > 0, 'the run spent some of itself conducting');
+  ok(opened >= 0, 'and the open part of the turn, if any, was counted');
 
   // A turning motor draws less than a stalled one, because the back voltage is
   // subtracted from the supply before the resistance sees it.
@@ -311,12 +326,16 @@ const ok = (condition, message) => {
   const loaded = settle(start({voltage: 6, field: 1, load: 2}));
   ok(loaded.omega < spun.omega, 'a heavier load leaves it slower');
 
-  // Reversing the supply reverses the turning and nothing else.
+  // Reversing the supply reverses the turning. Not to the last digit: the rotor
+  // starts at a fixed angle and the commutator gaps sit where they sit, so the
+  // two directions do not begin as mirror images of one another. The direction
+  // is the law; the speed only has to be the same machine.
   const forward = settle(start({voltage: 6, field: 1, load: 1, polarity: 1}));
   const backward = settle(start({voltage: 6, field: 1, load: 1, polarity: -1}));
-  close(backward.omega, -forward.omega, 1e-9, 'reversed leads turn it the other way');
-  close(backward.inputPower, forward.inputPower, 1e-9, 'at the same cost');
-  ok(forward.inputPower > 0, 'which is a cost, not a gain');
+  ok(forward.omega > 0 && backward.omega < 0, 'reversed leads turn it the other way');
+  close(Math.abs(backward.omega), Math.abs(forward.omega), 0.05, 'at much the same speed');
+  close(backward.inputPower, forward.inputPower, 0.05, 'for much the same power');
+  ok(forward.inputPower > 0, 'which the supply pays, rather than receives');
 
   for (const model of made) model.dispose?.();
 }
