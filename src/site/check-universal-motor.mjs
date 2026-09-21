@@ -4,7 +4,7 @@ import {chromium} from 'playwright';
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-const evidence=new URL('../../documentation/audit/evidence/universal-motor/',import.meta.url);
+const evidence=new URL(process.env.UNIVERSAL_MOTOR_EVIDENCE||'../../documentation/audit/evidence/universal-motor/',import.meta.url);
 await mkdir(evidence,{recursive:true});
 page.on('pageerror',error=>errors.push(error.message));
 const readings=()=>page.locator('.daily-readings').textContent();

@@ -1,22 +1,37 @@
 import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+import {electromagnetLesson as lesson} from './electromagnet-lesson.js';
+const evidence=new URL(process.env.ELECTROMAGNET_EVIDENCE||'../../documentation/audit/evidence/electromagnet/browser/',import.meta.url);await mkdir(evidence,{recursive:true});
+const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],observations=[];
 page.on('pageerror',e=>errors.push(e.message));
+const play=()=>page.getByRole('button',{name:'Run selected action',exact:true}).click();
+const read=()=>page.locator('.daily-readings>div').evaluateAll(ns=>Object.fromEntries(ns.map(n=>[n.querySelector('dt').textContent,n.querySelector('dd').textContent])));
+const wait=text=>page.waitForFunction(t=>document.querySelector('.daily-readings')?.textContent.includes(t)&&document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',text,{timeout:30000});
+const near=(text,value,tolerance=.0051)=>assert.ok(Math.abs(parseFloat(text)-value)<=tolerance,`${text} must display ${value}`);
+async function preset(i){await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.locator(`[data-experiment="${i}"]`).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();}
+const shot=async name=>{await page.mouse.move(0,0);await page.locator('canvas').evaluate(c=>c.scrollIntoView({block:'start',behavior:'instant'}));await page.waitForTimeout(150);await page.screenshot({path:new URL(name+'.png',evidence).pathname,clip:await page.locator('canvas').boundingBox()});};
 try{
- await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5175/'}#machine/electromagnet`);
- await page.getByRole('heading',{name:'Electromagnet',exact:true}).waitFor();
- const play=()=>page.getByRole('button',{name:'Run selected action',exact:true}).click();
- const wait=text=>page.waitForFunction(t=>document.querySelector('.daily-readings')?.textContent.includes(t)&&document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',text,{timeout:60000});
- for(const [i,outcome] of [[0,'Lifted · plate held above the tray'],[1,'No lift · attraction cannot raise this load'],[2,'Lifted · plate held above the tray'],[3,'No lift · nonmagnetic load'],[4,'No lift · attraction cannot raise this load']]){
-  await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.getByRole('button',{name:'Set up this experiment',exact:true}).nth(i).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();
-  assert.match(await page.locator('.daily-readings').textContent(),/Ready · plate rests in the tray/);
-  await play();try{await wait(outcome);}catch(error){console.error('Preset',i,await page.locator('.daily-readings').textContent());throw error;}console.log('PASS preset',i);
-  if(i===0||i===2){assert.ok(Math.abs(Number((await page.locator('.daily-readings').textContent()).match(/Load above tray([\d.]+) mm/)[1])-42)<.02);assert.match(await page.locator('.daily-readings').textContent(),i===0?/Center N · outer ring S/:/Center S · outer ring N/);await page.getByRole('combobox',{name:'Run action',exact:true}).selectOption('1');await play();await wait('Released · plate rests in the tray');assert.match(await page.locator('.daily-readings').textContent(),/Load above tray0.00 mm/);}
-  if(i===3)assert.match(await page.locator('.daily-readings').textContent(),/2.00 A/);
+ await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5193/'}#machine/electromagnet`,{waitUntil:'domcontentloaded',timeout:45000});await page.getByRole('heading',{name:'Electromagnet',exact:true}).waitFor();
+ for(const width of [1440,390]){
+  await page.setViewportSize({width,height:width===390?844:1000});
+  for(const [i,outcome] of [[0,'Lifted · plate held above the tray'],[1,'No lift · attraction cannot raise this load'],[2,'Lifted · plate held above the tray'],[3,'No lift · nonmagnetic load'],[4,'No lift · attraction cannot raise this load']]){
+   await preset(i);for(const [key,value] of Object.entries(lesson.tryIt[i].values))assert.equal(Number(await page.locator(`[data-control="${key}"]`).inputValue()),value);
+   assert.match((await read())['Your result'],/Ready/);near((await read())['Contact force'],lesson.tryIt[i].values.mass*9.81);
+   await play();await wait(outcome);const r=await read();assert.equal(Object.keys(r).length,12);assert.ok(await page.locator('.daily-readings>div').evaluateAll(ns=>ns.every(n=>n.querySelector('p')?.textContent.length>15)));
+   near(r['Coil current'],lesson.tryIt[i].values.current*lesson.tryIt[i].values.polarity);near(r['Load weight'],lesson.tryIt[i].values.mass*9.81);await shot(`result-${width}-${i}`);
+   if(i===0||i===2){near(r['Load above tray'],42);near(r['Magnetic attraction'],547.1117207833364);near(r['Central pole flux density'],1.2133047489726098,.00051);assert.match(r['Contact force'],/magnet face pushes down/);assert.equal(r['Pole direction'],i===0?'Center N · outer ring S':'Center S · outer ring N');await page.locator('[data-control="operation"]').selectOption('1');await play();await wait('Released · plate rests in the tray');const released=await read();near(released['Load above tray'],0);near(released['Hoist travel'],40);assert.match(released['Contact force'],/tray pushes up/);assert.match(released['Central pole flux density'],/outside capture gap/);await shot(`release-${width}-${i}`);}
+   if(i===1){near(r['Magnetic attraction'],.62789);near(r['Central pole flux density'],.0411,.00051);near(r['Contact force'],4.905-.62789);}
+   if(i===3){near(r['Magnetic attraction'],0);assert.match(r['Central pole flux density'],/nonmagnetic return path/);near(r['Contact force'],4.905);}
+   if(i===4){near(r['Magnetic attraction'],10.04718659);near(r['Central pole flux density'],.16442,.00051);near(r['Contact force'],14.715-10.04718659);}
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));observations.push({width,preset:i,readings:r});console.log('PASS',width,'preset',i);
+  }
  }
- await page.getByRole('button',{name:'Reset experiment',exact:true}).click();await page.getByRole('button',{name:'Advance one step',exact:true}).click();assert.doesNotMatch(await page.locator('.daily-readings').textContent(),/Ready · plate rests in the tray/);
- await page.getByRole('button',{name:'Return load to starting tray',exact:true}).click();assert.match(await page.locator('.daily-readings').textContent(),/Ready · plate rests in the tray/);
- await page.getByRole('button',{name:'The poles reverse, but the iron is still attracted.',exact:true}).click();assert.match(await page.locator('.daily-answer').textContent(),/That’s right/);
- await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.deepEqual(errors,[]);
- console.log('PASS electromagnet browser: all five presets, held height and poles, both releases, powered nonmagnetic failure, step, tray reset, quiz and mobile.');
+ await preset(0);await page.locator('[data-step]').click();assert.doesNotMatch((await read())['Your result'],/Ready/);await play();await page.waitForFunction(()=>parseFloat([...document.querySelectorAll('.daily-readings>div')].find(n=>n.querySelector('dt').textContent==='Coil current').querySelector('dd').textContent)>.8);await page.locator('[data-play]').click();const paused=await read();await page.waitForTimeout(250);assert.deepEqual(await read(),paused);await play();await wait('Lifted · plate held above the tray');await play();await page.waitForFunction(()=>document.querySelector('[data-play]').getAttribute('aria-pressed')==='true');await page.locator('[data-play]').click();assert.doesNotMatch((await read())['Your result'],/Lifted/);for(const [key,value] of Object.entries(lesson.tryIt[0].values))assert.equal(Number(await page.locator(`[data-control="${key}"]`).inputValue()),value);
+ await page.getByRole('button',{name:'Return load to starting tray',exact:true}).click();assert.match((await read())['Your result'],/Ready/);await page.getByRole('button',{name:'Reset experiment',exact:true}).click();assert.match((await read())['Your result'],/Ready/);
+ for(const [key,value] of [['current','3'],['mass','2'],['height','0']]){await page.locator(`[data-control="${key}"]`).fill(value);await page.locator(`[data-control="${key}"]`).dispatchEvent('input');assert.equal(await page.locator(`[data-control="${key}"]`).inputValue(),value);}await play();await wait('Lifted · plate held above the tray');near((await read())['Central pole flux density'],1.4,.00051);near((await read())['Load above tray'],2);
+ await page.locator('[data-control="material"]').selectOption('1');assert.equal((await read())['Magnetic attraction'],'0 N · no ferromagnetic load');await play();await wait('No lift · nonmagnetic load');near((await read())['Load above tray'],0);
+ const held=await read();await page.locator('[data-separation]').fill('100');await page.locator('[data-separation]').dispatchEvent('input');await page.waitForTimeout(800);assert.deepEqual(await read(),held);const categories=await page.locator('.daily-inventory-labels [data-category]').allTextContents();assert.equal(categories.length,6);assert.ok(!categories.includes('Forces on the load'));await shot('grouped-parts');await page.locator('[data-view="in"]').click();await page.locator('[data-view="out"]').click();assert.equal(await page.locator('[data-separation]').inputValue(),'100');await page.locator('[data-reassemble]').click();assert.deepEqual(await read(),held);
+ await page.getByRole('button',{name:lesson.quiz.options[1],exact:true}).click();assert.match(await page.locator('.daily-answer').textContent(),/Try thinking/);await page.getByRole('button',{name:lesson.quiz.options[0],exact:true}).click();assert.match(await page.locator('.daily-answer').textContent(),/That’s right/);assert.deepEqual(errors,[]);
+ const result={passed:true,presets:5,widths:[1440,390],cases:observations.length,releaseCases:4,pause:true,step:true,replay:true,reset:true,directControls:6,observations,errors};await writeFile(new URL('results.json',evidence),JSON.stringify(result,null,2)+'\n');console.log('PASS electromagnet browser: five presets at both widths, four releases, pause/step/replay/reset, direct control changes, saturation, support force, grouping and quiz.');
 }finally{await browser.close();}

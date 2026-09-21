@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {previewEntryIds} from './published-catalog.js';
 import * as THREE from 'three';
 import {frameModel} from './machine-viewer.js';
 import {createCarIgnitionModel,createIgnitionTrial,carIgnitionConstants as C} from './car-ignition-model.js';
@@ -40,4 +41,5 @@ function checkGeometryAndViews(){
  }
  const m=model(),resources=new Map();function watch(){m.root.traverse(o=>{if(o.geometry&&!resources.has(o.geometry)){resources.set(o.geometry,0);o.geometry.addEventListener('dispose',()=>resources.set(o.geometry,resources.get(o.geometry)+1));}});}watch();for(const points of [1,2,0]){m.update({points});watch();for(const a of m.actions.slice(1)){a.run();watch();}}m.dispose();for(const count of resources.values())near(count,1);
 }
-if(!process.argv.includes('--geometry')){checkGridAndConvergence();checkFiniteDifferencesAndEndpointSampling();checkPresetsAndLifecycle();}checkGeometryAndViews();console.log(`Induction coil: ${checks} checks passed;${process.argv.includes('--geometry')?'coil/switching geometry and views':'150 states with peak refinement,independent coupled equations/linkage/leakage KVL and finite differences,internal endpoint maxima,6presets×3histories,exact stages,fixed Run,defensive peak and lifecycle,coil/switching geometry and views'}.`);
+if(!process.argv.includes('--geometry')){checkGridAndConvergence();checkFiniteDifferencesAndEndpointSampling();checkPresetsAndLifecycle();}checkGeometryAndViews();assert.ok(previewEntryIds.includes('induction-coil'),'induction-coil is routed into the preview');
+console.log(`Induction coil: ${checks} checks passed;${process.argv.includes('--geometry')?'coil/switching geometry and views':'150 states with peak refinement,independent coupled equations/linkage/leakage KVL and finite differences,internal endpoint maxima,6presets×3histories,exact stages,fixed Run,defensive peak and lifecycle,coil/switching geometry and views'}.`);

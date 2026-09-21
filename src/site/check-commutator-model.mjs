@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import * as THREE from 'three';
+import {neighborhoodCatalog} from './published-catalog.js';
 import {houseComponents} from './house-components.js';
 import {createDailyLifeMachine} from './daily-life-models.js';
 import {commutatorLesson} from './commutator-lesson.js';
@@ -7,7 +8,7 @@ import {dcMotorLesson} from './dc-motor-lesson.js';
 const route=houseComponents.Commutator;
 assert.equal(route.machine,'Direct-current motor');assert.equal(route.part,'commutator');assert.equal(route.view,'back');assert.equal(route.isolate,false);assert.equal(route.lesson,commutatorLesson);assert.equal(route.intro,commutatorLesson.simple);
 assert.equal(commutatorLesson.limits,dcMotorLesson.limits);assert.equal(commutatorLesson.sources,dcMotorLesson.sources);assert.notEqual(commutatorLesson.simple,dcMotorLesson.simple);assert.notDeepEqual(commutatorLesson.tryIt,dcMotorLesson.tryIt);assert.equal(commutatorLesson.tryIt.length,4);assert.ok(!/\bbook\b|printed page/i.test(JSON.stringify(commutatorLesson)));
-assert.match(readFileSync(new URL('./catalog.js',import.meta.url),'utf8'),/const modeledNames = new Set\(\[[^\]]*'Commutator'/);
+assert.ok(neighborhoodCatalog.entries.some(entry=>entry.id==='commutator'&&entry.name==='Commutator'),'Commutator remains in the accepted public catalog');
 const models=[];
 function create(preset){const model=createDailyLifeMachine(route.machine);model.reset();model.update(preset.values);models.push(model);assert.ok(model.parts.some(p=>p.id==='commutator'));assert.equal(model.resultPart.focusOnComplete,false);return model;}
 function verify(model){const s=model.getState(),readout=s.readings.find(r=>r.label==='Brush pair')?.value;
@@ -20,9 +21,17 @@ function verify(model){const s=model.getState(),readout=s.readings.find(r=>r.lab
 function run(model,{coast=false}={}){let previousPair=null,previousSign=0,pairExchanges=0,currentReversals=0,gaps=0,samples=0;for(let i=0;i<16000;i++){const s=verify(model),pair=s.readings.find(r=>r.label==='Brush pair').value;if(coast){assert.equal(s.current,0);assert.equal(s.torque,0);}if(s.contact){if(previousPair&&pair!==previousPair)pairExchanges++;previousPair=pair;if(Math.abs(s.coilCurrent)>1e-8){const sign=Math.sign(s.coilCurrent);if(previousSign&&sign!==previousSign)currentReversals++;previousSign=sign;}}else if(Math.abs(s.omega)>0)gaps++;
  if(s.complete||s.blocked)return {state:s,pairExchanges,currentReversals,gaps,samples};model.advance(.005);samples++;}assert.fail('component demonstration did not finish');}
 for(const preset of commutatorLesson.tryIt){assert.equal(preset.reset,true);assert.equal(preset.part,'commutator');assert.equal(preset.view,'back');assert.equal(preset.isolate,false);assert.deepEqual(Object.keys(preset.values).sort(),['field','load','operation','polarity','startAngle','voltage']);}
-const normal=create(commutatorLesson.tryIt[0]);const forward=run(normal);assert.ok(forward.state.complete&&forward.state.omega>0);assert.ok(forward.pairExchanges>4&&forward.currentReversals>4&&forward.gaps>4,'normal run repeatedly exchanges copper and current across gaps');
+// The sleeve must have an actual shaft bore, not merely hide a solid cylinder inside the shaft.
+const normal=create(commutatorLesson.tryIt[0]);
+const sleeve=normal.parts.find(p=>p.id==='commutator-sleeve');assert.ok(sleeve);assert.equal(sleeve.parentId,'commutator');assert.ok(normal.catalogParts.includes(sleeve));
+normal.root.updateMatrixWorld(true);const mesh=sleeve.object.children[0],position=mesh.geometry.attributes.position;
+for(let i=0;i<position.count;i++){const radius=Math.hypot(position.getX(i),position.getZ(i));assert.ok(radius>=.065-1e-8&&radius<=.17+1e-8,'sleeve vertices stay between shaft and copper');}
+for(const z of [-1,1])for(const x of [0,.1,-.1]){const origin=sleeve.object.localToWorld(new THREE.Vector3(x,0,z)),direction=new THREE.Vector3(0,0,-z),hits=new THREE.Raycaster(origin,direction).intersectObject(sleeve.object,true);assert.equal(hits.length>0,x!==0,'axial ray passes through bore and strikes annular face');}
+assert.equal(commutatorLesson.parts.length,7);assert.ok(commutatorLesson.parts.some(p=>p.name==='Permanent winding-end connections'));
+const forward=run(normal);assert.ok(forward.state.complete&&forward.state.omega>0);assert.ok(forward.pairExchanges>4&&forward.currentReversals>4&&forward.gaps>4,'normal run repeatedly exchanges copper and current across gaps');
 const dead=create(commutatorLesson.tryIt[1]);const stopped=run(dead);assert.ok(stopped.state.blocked);assert.equal(stopped.state.theta,0);assert.equal(stopped.state.omega,0);assert.equal(stopped.state.current,0);const beforePush=dead.getState().theta;dead.actions.find(a=>a.label==='Give the rotor a small push').run();assert.equal(dead.getState().theta,beforePush);assert.equal(dead.getState().omega,2);const nudged=run(dead);assert.ok(nudged.state.complete&&nudged.pairExchanges>4&&nudged.currentReversals>4);
 const reverse=create(commutatorLesson.tryIt[2]);const initialPair=reverse.getState().readings.find(r=>r.label==='Brush pair').value;const sameAngle=create(commutatorLesson.tryIt[0]);assert.equal(sameAngle.getState().readings.find(r=>r.label==='Brush pair').value,initialPair,'polarity alone does not exchange geometric contacts');sameAngle.advance(.005);reverse.advance(.005);assert.ok(sameAngle.getState().torque>0&&reverse.getState().torque<0,'supply reversal reverses initial torque');const backward=run(reverse);assert.ok(backward.state.complete&&backward.state.omega<0&&backward.pairExchanges>4&&backward.currentReversals>4);
 const coast=create(commutatorLesson.tryIt[3]);run(coast);const before=coast.getState();coast.update({operation:1});assert.equal(coast.getState().theta,before.theta);assert.equal(coast.getState().omega,before.omega);assert.equal(coast.getState().current,0);const coasted=run(coast,{coast:true});assert.ok(coasted.state.complete);assert.equal(coasted.state.omega,0);assert.ok(coasted.pairExchanges>4&&coasted.currentReversals===0,'unpowered commutator still exchanges contacts while coasting');
 coast.reset();assert.equal(coast.getState().stage,'ready');assert.equal(coast.getState().omega,0);assert.equal(coast.getState().current,0);assert.equal(coast.getState().values.operation,0);verify(coast);
+console.log('PASS named sleeve ownership, true shaft bore, annular contact from both ends and seven distinct lesson part roles.');
 for(const model of models)model.dispose();console.log('Commutator exact component route, four original presets, geometric brush-pair readout, repeated current reversal, dead-center/nudge, supply reversal, unpowered contact exchange and reset passed.');

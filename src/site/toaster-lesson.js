@@ -1,0 +1,67 @@
+import {TOASTER_DEFAULTS} from './toaster-physics.js';
+
+const trial = (title, instruction, observe, values = {}, part = 'system') => ({title, instruction, observe, values: {...TOASTER_DEFAULTS, ...values}, reset: true, part, isolate: part === 'chart', cutaway: true, view: 'front'});
+
+export const toasterLesson = {
+  simple: 'How do hot ribbons brown bread, and how does a tiny heat-sensor contact release the toast?',
+  overview: 'Lower the bread between two heating elements. Current heats the nichrome ribbons; radiation and hot air transfer energy into the slice. In the book’s mechanism, a warming bimetal sensor touches an adjustable trip plate. That closes a circuit through a solenoid, which pulls the catch clear. The spring raises the rack and the main switch cuts power. Compare this temperature-sensitive release with a fixed electronic timer. The cutaway shows the causal chain; its dimensions, thermal parameters and color scale are illustrative.',
+  steps: [
+    {title: 'Lower and latch the rack', body: 'The raised rack begins with power off. Press Play: the handle lowers the bread, the left arm compresses the spring, and the right tab slips under the catch. The main contacts close once the rack is down.'},
+    {title: 'Turn electrical energy into heat', body: 'The chosen supply delivers 960 W into cold ribbons. Their resistance rises modestly as they heat, so operating power settles near 923 W. Ribbons become red while energy also warms the surrounding toaster.'},
+    {title: 'Heat, thaw and dry the bread', body: 'Fresh bread starts at room temperature; frozen bread must first absorb energy to melt its ice. The model separates the outer drying layers from the middle. A dry surface can become much hotter than the moist material beneath it.'},
+    {title: 'Bend the sensor', body: 'Two bonded metal layers expand by different amounts. Heating bends the strip toward the trip plate. The browning knob moves that plate: farther away means a higher trip temperature. This sensor receives a small share of the elements’ radiation.'},
+    {title: 'Make contact and pull the catch', body: 'Touching the plate closes the release branch. Current flows through the solenoid; its iron core attracts the shoe on the catch. Inspect the held stages to see the contact and the retracting ledge.'},
+    {title: 'Cut power and lift the toast', body: 'When the catch clears, the main switch opens and both currents stop. The spring raises the rack. The elements stay hot because they still contain thermal energy. The bread temperatures shown after removal are retained measurements, not a cooling simulation.'},
+  ],
+  parts: [
+    {name: 'Case and guides', role: 'Support the cards, spring and moving rack; front and right covers open.'},
+    {name: 'Heating elements', role: 'Two series-connected nichrome ribbons face the slice.'},
+    {name: 'Carriage and lever', role: 'Carry the bread, compress the spring and engage the catch.'},
+    {name: 'Slice of bread', role: 'Separate surface and middle temperatures reveal uneven heating.'},
+    {name: 'Carriage spring', role: 'Touches the base seat and rack arm; extends on release.'},
+    {name: 'Catch and retaining ledge', role: 'Hold the carriage tab down until the iron shoe is attracted.'},
+    {name: 'Bimetal heat sensor', role: 'Bends into an electrical contact as it warms.'},
+    {name: 'Browning knob and trip plate', role: 'Move the contact threshold, or select the electronic duration.'},
+    {name: 'Release solenoid', role: 'A short current pulse attracts the catch’s iron shoe.'},
+    {name: 'Main switch', role: 'Powers both branches while latched and opens at release.'},
+    {name: 'Electronic timer', role: 'An alternative fixed-time controller for the same release coil.'},
+    {name: 'Electrical connections', role: 'Show series heating ribbons and a parallel release branch.'},
+    {name: 'Heat reaching the bread', role: 'Equal-length direction arrows, not a watts scale.'},
+    {name: 'Temperature chart', role: 'All curves share Celsius units; the cursor shows heating time.'},
+  ],
+  tryIt: [
+    trial('Make toast', 'Use setting 4 in a cold toaster, then Play.', 'The model reaches red glow at 33.2 heating seconds. The sensor triggers at 146.0 s. At removal the face is 180.3°C, the middle 74.4°C, and the color index 1.04 is golden.'),
+    trial('Find the sensor contact', 'Choose “Inspect: sensor touches plate.”', 'The sensor reaches 110.0°C and bends 6.08 mm to the plate. The release coil has just switched on; the rack is still down.', {}, 'release'),
+    trial('Follow the release pulse', 'Choose “Inspect: coil pulls catch,” then “Inspect: switch opens.”', 'A chosen 0.15 s pulse pulls the catch. The release coil uses 1.80 J. At cutoff both currents are zero, but the ribbons remain hot.', {}, 'release'),
+    trial('The lightest setting', 'Choose setting 1, then Play.', 'The sensor triggers at 110.0 heating seconds. The illustrative index is 0.05, pale rather than a guaranteed commercial “light” shade.', {setting: 1}),
+    trial('The darkest setting', 'Choose setting 7, then Play.', 'The sensor triggers at 182.0 heating seconds. The face reaches 223.0°C and the illustrative index 21.82 is burnt.', {setting: 7}),
+    trial('A second slice with the sensor', 'Start 30 seconds after a fresh slice, keeping the heat sensor.', 'The sensor already starts at 88.5°C and triggers after 86.42 heating seconds. The result is light, index 0.26. Earlier release does not guarantee the first slice’s shade.', {start: 1}),
+    trial('A second slice by the clock', 'Choose the electronic timer and a warm toaster, then Play.', 'The fixed timer still waits 146 s. In this chosen thermal model, the warm toaster produces a burnt index of 57.93.', {timer: 1, start: 1}),
+    trial('Start with frozen bread', 'Choose frozen bread, then Play.', 'Melting and drying consume energy. The sensor triggers at 147.22 heating seconds, but the middle is only 24.9°C and the color index 0.02 is pale. This is not a food-safety assessment.', {bread: 1}),
+    trial('Account for the energy', 'Play the default trial and compare the energy readings.', 'By power cutoff, supply energy is 135.14 kJ, including the release pulse. Only 13.71 kJ has reached the bread; the heating-network balance also includes stored heat and energy lost to the room.'),
+    trial('Read the three temperatures', 'Choose “Inspect: temperature chart,” then Play.', 'Face, middle and sensor share one Celsius scale. The gold horizontal line is the sensor threshold. Bread curves stop at removal; there is no artificial temperature drop when the toast rises.', {}, 'chart'),
+  ],
+  deeper: [
+    {title: 'What the book establishes', body: 'The Way Things Work Now, pages 150–151, links electrical heating to a heat sensor that touches a trip plate, energizes a solenoid and releases the spring-loaded rack. It also mentions timing mechanisms. It does not specify this model’s temperatures, dimensions, material pair or settings. Those are chosen to make the chain inspectable.'},
+    {title: 'Why nichrome works', body: 'Resistance converts electrical energy to heat: power equals voltage squared divided by resistance. Kanthal’s Nikrothal 80 data give a temperature-dependent resistance factor, not a single constant slope. The model interpolates those published factors: 15.00 Ω cold becomes 15.60 Ω near the default operating temperature, giving 7.69 A. Glow colors are explanatory, not calibrated optical emission.'},
+    {title: 'Wet material and a hotter dry face', body: 'The outer drying layers initially contain 5.1 g of water. The model allocates energy to sensible heating, melting at 0°C and evaporation at 100°C. As a dry crust thickens, its thermal resistance allows the exposed face to run hotter than the moist layer. Real bread also has moisture diffusion, irregular pores and changing properties; these are not solved here.'},
+    {title: 'How the strip bends', body: 'The high-expansion layer lies on the outside of the bend, while the low-expansion layer lies inside. For a small-deflection cantilever, tip displacement grows with temperature change and length squared, and falls with thickness. This model uses a chosen specific deflection of 13.5 millionths per kelvin, a 50 mm length and 0.5 mm total thickness. The two displayed layers each occupy half that thickness. The plate limits further visible deflection; contact force is omitted.'},
+    {title: 'Why the second slice differs', body: 'A warm toaster already stores heat. Its sensor also starts warm and reaches the contact earlier. These effects compete; they do not automatically produce equal color. Here the sensor-controlled second slice is lighter than the first, while the fixed-time alternative is much darker. Actual products can use different compensation circuits and sensors.'},
+    {title: 'What the color index means', body: 'Browning chemistry depends on temperature, time, moisture and ingredients. The chosen index is zero below 100°C and increases with a rate that doubles per 10°C above that threshold. Its rate is one index unit per 90 s at 150°C. The names pale, light, golden, dark and burnt are chosen display bands, not experimentally calibrated predictions for real bread.'},
+    {title: 'The energy ledger', body: 'Element energy equals changes in the modeled thermal stores plus melting and evaporation energy plus heat lost to the room. The sensor receives radiation removed from the element balance, so no uncounted sensor heater is present. A separate short release pulse accounts for the coil’s electrical input; its small heat and mechanical work are outside the heating network.'},
+  ],
+  misconception: 'The heat sensor does not measure the toast’s color. It reacts to its own temperature. Bread temperature, moisture and the toaster’s starting heat can change the result at the same setting. A plain fixed timer reacts only to elapsed time.',
+  limits: 'Illustrative single-slot model: 120 V, 15 Ω cold nichrome load, 50 g bread with 38% water and a 15 mm thickness. Outer drying layers are 2 mm per face; their heat capacities stay fixed as water evaporates. Chosen radiation shares are 15% to the bread and 0.5% to the heat sensor, with the remainder heating the interior. The interior is one 350 J/K lump losing 3.5 W/K to a 20°C room. The sensor has 2 J/K heat capacity and 0.04 W/K room conductance. Cold sensor thresholds are calibrated to 110–182 heating seconds; these are not manufacturer shade settings. The alternative timer omits the sensor. Warm starts follow a fresh slice at the selected setting and a 30 s rest with the rack raised. The 0.6 s lowering, 0.15 s release pulse and 0.35 s lift are prescribed motion stages, not a solution of spring dynamics, magnetic force or switch contact mechanics. Lowering does not advance the thermal simulation. At release, bread is removed from the heating network; its temperatures and color are retained. Wiring is schematic. Omitted: internal timer electronics, AC waveforms, switch arcing, sensor temperature gradients, detailed convection, moisture diffusion, mass-dependent heat capacity, bread deformation, crumbs and uneven lateral heating. An independent five-minute cutoff bounds the simulation; it is not a certified safety design. Playback runs five times faster than modeled time.',
+  sources: [
+    {title: 'Kanthal: Nikrothal 80 material datasheet', url: 'https://www.kanthal.com/products/datasheets/material-datasheets/wire/resistance-heating-wire-and-resistance-wire/nikrothal-80/'},
+    {title: 'OpenStax: electric power and energy', url: 'https://openstax.org/books/college-physics-2e/pages/20-4-electric-power-and-energy'},
+    {title: 'OpenStax: thermal expansion and bimetal strips', url: 'https://openstax.org/books/university-physics-volume-2/pages/1-3-thermal-expansion'},
+    {title: 'Engineered Materials Solutions: Thermostatic Bimetal Designers Guide, pages 34–46', url: 'https://www.emsclad.com/wp-content/uploads/sites/12/2023/12/Thermostatic-Bimetal-Designers-Guide_compressed-1.pdf'},
+  ],
+  quiz: {
+    question: 'In the book’s sensor-controlled toaster, what happens immediately when the strip touches the trip plate?',
+    options: ['A circuit closes through the solenoid, which pulls the catch.', 'The strip directly supplies the force that lifts the bread.', 'The toaster measures the brown color of the bread.'],
+    answer: 0,
+    explanation: 'Contact supplies electrical control: current energizes the solenoid, the catch moves clear, and the spring supplies the lift. The main switch then cuts power. The sensor responds to heat, not to bread color.',
+  },
+};

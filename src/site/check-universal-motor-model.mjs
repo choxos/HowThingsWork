@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import {createPartExplosion} from './part-explosion.js';
 import {createUniversalMotorModel,solveUniversalCircuit,universalMotorConstants as C} from './universal-motor-model.js';
 const close=(a,b,tolerance=1e-9,label='values')=>assert.ok(Math.abs(a-b)<=tolerance,`${label}: ${a} vs ${b}`),tau=2*Math.PI;
 let circuitCases=0,maximumPowerResidual=0;
@@ -44,4 +45,19 @@ const pending=create();pending.advance(1);const position=pending.getState().thet
 const limits=create();for(const control of limits.controls){const values=control.options?control.options.map(o=>o.value):Array.from({length:Math.round((control.max-control.min)/control.step)+1},(_,i)=>control.min+i*control.step);for(const value of values){limits.reset();limits.update({[control.key]:value});close(limits.getState().values[control.key],value,1e-10);valid(limits);}}const frequencyControl=limits.controls.find(c=>c.key==='frequency');assert.equal(frequencyControl.enabledWhen({source:0}),false);assert.equal(frequencyControl.enabledWhen({source:1}),true);
 let reference;for(const fps of [30,60,144]){const model=create({source:1,frequency:.75});for(let i=0;i<fps*4;i++)model.advance(1/fps);const s=valid(model);if(!reference)reference=s;else for(const key of ['theta','omega','elapsed','sourceTime'])close(s[key],reference[key],1e-10,`${fps} Hz equal elapsed-time parity`);}
 normal.reset();assert.equal(normal.getState().stage,'ready');assert.equal(normal.getState().omega,0);assert.equal(normal.getState().sourceTime,0);normal.update({voltage:Infinity,frequency:NaN,load:-1});assert.equal(normal.getState().values.voltage,3);assert.equal(normal.getState().values.frequency,1);assert.equal(normal.getState().values.load,0);
+// Check the visible iron envelope and the real insulating bore, not only declared part names.
+const camera=new THREE.PerspectiveCamera();camera.position.set(4,3,6);camera.lookAt(0,1.5,0);
+for(const model of [reversed,ac,warm]){
+ const p=parts(model);model.root.updateMatrixWorld(true);const yoke=new THREE.Box3().setFromObject(p.yoke);
+ close(yoke.min.x,-1.72,1e-7);close(yoke.max.x,1.72,1e-7);close(yoke.min.z,-.798,1e-7);close(yoke.max.z,.798,1e-7);
+ const faces=new Set(new THREE.Raycaster(new THREE.Vector3(-1.62,1.5,-2),new THREE.Vector3(0,0,1)).intersectObject(p.yoke,true).map(hit=>hit.point.z.toFixed(5)));
+ assert.deepEqual([...faces],Array.from({length:8},(_,i)=>(-.798+i*.2).toFixed(5)),'axial ray crosses eight distinct stator sheet faces');
+ const sleeve=model.parts.find(part=>part.id==='commutator-sleeve');assert.equal(sleeve.parentId,'commutator');
+ for(const z of [-1,1])for(const x of [0,.12,-.12]){const origin=sleeve.object.localToWorld(new THREE.Vector3(x,0,z)),ray=new THREE.Raycaster(origin,new THREE.Vector3(0,0,-z));assert.equal(ray.intersectObject(sleeve.object,true).length>0,x!==0,'bore clears shaft; annulus remains solid from either end');}
+ const saved=model.getState();assert.equal(saved.readings.length,14);assert.ok(saved.readings.every(r=>r.hint));assert.equal(model.catalogParts.length,37);assert.equal(new Set(model.catalogParts.map(p=>p.name)).size,37);
+ const guides=new Set();model.root.traverse(o=>{if(o.userData.explosionExcluded)o.traverse(child=>{if(child.geometry)guides.add(child.geometry);});});assert.ok(guides.size>0);
+ const inventory=createPartExplosion(model,camera,1.4);inventory.update(1);assert.equal(inventory.categories.length,6);assert.ok(inventory.items.every(u=>u.id!=='field'));inventory.root.traverse(o=>assert.ok(!guides.has(o.geometry),'teaching arrows are absent from physical inventory'));
+ for(const part of model.catalogParts)assert.ok(!inventory.boundsFor(part.id).isEmpty(),part.id);assert.deepEqual(model.getState(),saved,'separation leaves circuit and rotor state unchanged');inventory.dispose();
+}
+console.log('PASS eight-sheet stator envelope, actual commutator bore, 14 explained readings, 37 unique physical targets and three guide-free inventories.');
 for(const model of all)model.dispose();console.log(`Universal motor passed ${circuitCases} circuit cases (max power residual ${maximumPowerResidual} W), all selectable starting angles and controls, DC/AC reversal, overlap currents, warm coasting, frame-rate parity and connected geometry.`);

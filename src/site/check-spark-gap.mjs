@@ -4,9 +4,14 @@ import {chromium} from 'playwright';
 import {sparkGapLesson as lesson} from './spark-gap-lesson.js';
 
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-const evidence=new URL('../../documentation/audit/evidence/spark-gap/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
+const evidence=new URL(process.env.SPARK_GAP_EVIDENCE||'../../documentation/audit/evidence/spark-gap/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
-const value=async label=>parseFloat(await reading(label)),control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
+const numeric=text=>parseFloat(text)*(/ kV$/.test(text)?1000:/ mA$/.test(text)?.001:1);
+// Each displayed number is rounded to three significant figures. Bound only
+// that display rounding; strict unrounded circuit checks stay in the model test.
+const rounding=n=>n===0?0:.5*10**(Math.floor(Math.log10(Math.abs(n)))-2);
+const shown=(actual,expected)=>near(actual,expected,rounding(actual)+1e-12);
+const value=async label=>numeric(await reading(label)),control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
 const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const progressed=minimum=>page.waitForFunction(min=>{const row=Array.from(document.querySelectorAll('.daily-readings > div')).find(e=>e.querySelector('dt')?.textContent==='Observation progress');return parseFloat(row?.querySelector('dd')?.textContent)>min;},minimum);
@@ -19,12 +24,12 @@ async function preset(i){
  near(await value('Observation progress'),0);near(await value('Plug A delivered energy'),0);near(await value('Plug A spark episodes'),0);near(await value('Relative gap width'),lesson.tryIt[i].values.width);near(await value('Strike requirement'),250*lesson.tryIt[i].values.width);assert.match(await reading('First A strike'),/No A strike/);
 }
 async function circuit(){
- const current=await value('Plug A current'),power=await value('Plug A power'),gap=await reading('Plug A gap voltage'),gapVoltage=parseFloat(gap);
- if(Number.isFinite(gapVoltage)){near(power,gapVoltage*current,.001);if(Math.abs(current)>1e-7)near(gapVoltage,10000*current,.011);}else{assert.match(gap,/Disconnected/i);assert.match(gap,/not modeled/i);near(current,0);near(power,0);}
+ const current=await value('Plug A current'),power=await value('Plug A power'),gap=await reading('Plug A gap voltage'),gapVoltage=numeric(gap);
+ if(Number.isFinite(gapVoltage)){near(power,gapVoltage*current,rounding(power)+Math.abs(current)*rounding(gapVoltage)+Math.abs(gapVoltage)*rounding(current)+rounding(gapVoltage)*rounding(current)+1e-12);if(Math.abs(current)>1e-7)near(gapVoltage,10000*current,rounding(gapVoltage)+10000*rounding(current)+1e-12);}else{assert.match(gap,/Disconnected/i);assert.match(gap,/not modeled/i);near(current,0);near(power,0);}
  assert.ok(power>=0);const energy=await value('Plug A delivered energy'),other=await value('Other plugs delivered energy');
- near(energy+other,await value('Delivered spark energy'),.00001);
+ const delivered=await value('Delivered spark energy');near(energy+other,delivered,rounding(energy)+rounding(other)+rounding(delivered)+1e-12);
  const budget={};for(const label of ['Ignition battery work','Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'])budget[label]=await value(label);
- near(budget['Ignition battery work'],budget['Stored magnetic energy']+budget['Stored capacitor energy']+budget['Winding heat']+budget['Points heat']+budget['Delivered spark energy'],.00001);
+ near(budget['Ignition battery work'],budget['Stored magnetic energy']+budget['Stored capacitor energy']+budget['Winding heat']+budget['Points heat']+budget['Delivered spark energy'],Object.values(budget).reduce((sum,n)=>sum+rounding(n),0)+1e-12);
  const width=await value('Relative gap width'),threshold=await value('Strike requirement');near(threshold,250*width);return {current,power,gap,energy,other,episodes:await value('Plug A spark episodes'),first:await reading('First A strike'),peak:await value('Sampled peak while A connected'),width,threshold,budget};
 }
 try{
@@ -41,14 +46,14 @@ try{
    if(j===3){assert.match(result.gap,/Disconnected/i);near(result.current,0);near(result.power,0);}else assert.ok(Number.isFinite(parseFloat(result.gap)),'selected gap voltage is available');
    if(i===2||i===5){near(result.current,0);near(result.power,0);near(result.energy,0);}await shot(`stage-${i}-${j}`);
   }
-  if(i===0){for(let step=0;step<17;step++)await page.locator('[data-step]').click();const otherActive=await circuit();near(await value('Observation progress'),42,.06);near(otherActive.energy,86.354237863,.00001);assert.ok(otherActive.other>0);near(otherActive.current,0);assert.match(otherActive.gap,/Disconnected/i);await shot('other-plug-conducting');}
+  if(i===0){for(let step=0;step<17;step++)await page.locator('[data-step]').click();const otherActive=await circuit();near(await value('Observation progress'),42,.06);shown(otherActive.energy,86.354237863);assert.ok(otherActive.other>0);near(otherActive.current,0);assert.match(otherActive.gap,/Disconnected/i);await shot('other-plug-conducting');}
   await play();await finished();near(await value('Observation progress'),100);outcomes.push(await circuit());await shot('experiment-'+i);console.log(`PASS experiment ${i+1}: ${lesson.tryIt[i].title}`);
  }
- near(normalStages[0].current,0);near(normalStages[0].energy,0);near(parseFloat(normalStages[0].gap),-16.33412768,.00001);
- near(normalStages[1].current,.063008598,.000001);near(normalStages[1].power,39.70083476,.00001);near(normalStages[1].energy,13.25578795,.00001);
- assert.ok(normalStages[2].current<0&&parseFloat(normalStages[2].gap)<0&&normalStages[2].power>0);near(normalStages[2].power,6.79331066,.00001);
- for(const [i,energy] of [86.354237863,86.571385005,0,19.875966481,35.780814347,0].entries()){near(outcomes[i].energy,energy,.00001);near(outcomes[i].episodes,[2,2,0,2,1,0][i]);}
- assert.ok(parseFloat(outcomes[1].first)<parseFloat(outcomes[0].first),'narrow A gap strikes earlier');near(parseFloat(outcomes[0].first),16.971678,.000001);near(parseFloat(outcomes[1].first),16.898067,.000001);assert.match(outcomes[2].first,/No A strike/);assert.ok(outcomes[2].peak>0&&outcomes[2].peak<outcomes[2].threshold);assert.ok(outcomes[2].other>0,'other fixed gaps can receive energy when A does not');
+ near(normalStages[0].current,0);near(normalStages[0].energy,0);shown(numeric(normalStages[0].gap),-16.33412768);
+ shown(normalStages[1].current,.063008598);shown(normalStages[1].power,39.70083476);shown(normalStages[1].energy,13.25578795);
+ assert.ok(normalStages[2].current<0&&parseFloat(normalStages[2].gap)<0&&normalStages[2].power>0);shown(normalStages[2].power,6.79331066);
+ for(const [i,energy] of [86.354237863,86.571385005,0,19.875966481,35.780814347,0].entries()){shown(outcomes[i].energy,energy);near(outcomes[i].episodes,[2,2,0,2,1,0][i]);}
+ assert.ok(parseFloat(outcomes[1].first)<parseFloat(outcomes[0].first),'narrow A gap strikes earlier');shown(parseFloat(outcomes[0].first),16.971678);shown(parseFloat(outcomes[1].first),16.898067);assert.match(outcomes[2].first,/No A strike/);assert.ok(outcomes[2].peak>0&&outcomes[2].peak<outcomes[2].threshold);assert.ok(outcomes[2].other>0,'other fixed gaps can receive energy when A does not');
  await preset(0);await inspect(3);await play();await finished();await page.locator('[data-result]').click();await shot('result');await play();
  const replay=await page.waitForFunction(()=>{const read=label=>parseFloat(Array.from(document.querySelectorAll('.daily-readings > div')).find(e=>e.querySelector('dt')?.textContent===label)?.querySelector('dd')?.textContent),progress=read('Observation progress');return progress>0&&progress<100?{progress,energy:read('Plug A delivered energy'),episodes:read('Plug A spark episodes')}:false;});
  const fresh=await replay.jsonValue();near(fresh.energy,0);near(fresh.episodes,0);await play();const replayHeld=await page.locator('.daily-readings').textContent();await nextFrames();assert.equal(await page.locator('.daily-readings').textContent(),replayHeld);

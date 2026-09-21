@@ -7,6 +7,7 @@ export function createTweezersModel(){
  const compliance=(x,a)=>(x<=a?x*x*(3*a-x):a*a*(3*x-a))/(6*rigidity);
  const system=part('system','Tweezers, block and tray','Squeeze the connected spring arms to grip the block, lift it, then release it into the tray.');
  const tool=part('tool','Connected spring tweezers','The whole tool moves upward. Its two continuous arms share a welded heel.',[0,0,0],system);tool.rotation.z=-Math.PI/2;
+ tool.userData.explosionRigid=true;
  const joint=part('joint','Joined heel / effective fulcrum','The joined heel supports both spring arms. There is no pivot pin.',[0,0,0],tool);box([.15,.12,.25],[.015,0,0],'ink',joint);
  const armParts=[];
  for(const side of [-1,1]){
@@ -51,7 +52,16 @@ export function createTweezersModel(){
   for(const {side,tip,finger,arrow,reaction} of armParts){const fingerY=side*(thickness/2+openGap*a/(2*length)-inward(a))*scale;tip.position.set(length*scale,side*(thickness+gap)*scale/2,0);finger.position.set(a*scale,fingerY+side*.08,0);arrow.position.set(a*scale,fingerY+side*(.28+force*.03),.2);arrow.setLength(.16+force*.03,.065,.04);reaction.visible=normalOnBlock>0;reaction.position.set((length+2)*scale,side*(gap*scale/2+.2),.17);}
   const complete=v.operation===0?held&&v.lift===1:v.squeeze===0&&!held&&!falling&&blockY===restHeight,blocked=v.operation===0&&v.squeeze===1&&!held&&!falling;
   const status=falling?'Block released · advance to watch it fall':complete&&v.operation===1?'Block released · resting in tray':held&&v.lift===1?'Block lifted · held above tray':held?'Block gripped · ready to lift':normalOnBlock>0?'Tips touch · grip cannot support the weight':overlap?'Open tips · block in tray':'Empty tweezers · block left behind';
-  return {state:{held,falling,complete,blocked,normalForce:normalOnBlock,holdingCapacity:capacity,weight:weightN,tipGap:gap,blockHeight:blockY-restHeight,forceRatio:force?normalOnBlock/force:0},readings:[r('Your result',status),r('Tip gap',gap.toFixed(2)+' mm'),r('Grip force per pad',normalOnBlock.toFixed(2)+' N'),r('Holding capacity',capacity.toFixed(3)+' N · weight '+weightN.toFixed(3)+' N'),r('Next action',complete&&v.operation===0?'Choose Release into the tray to open the arms.':falling?'Run or advance to continue the slowed fall.':blocked?'Move your fingers toward the tips, increase force, or lower the open tool over the block.':held?'Lift the whole tool while keeping the squeeze.':'Squeeze while the open tips surround the block.')]};
+  return {state:{held,falling,complete,blocked,normalForce:normalOnBlock,holdingCapacity:capacity,weight:weightN,tipGap:gap,blockHeight:blockY-restHeight,forceRatio:force?normalOnBlock/force:0},readings:[
+   r('Your result',status,'Contact alone is not a successful grip. Both pads must touch and their friction must support the block weight.'),
+   r('Tip gap',gap.toFixed(2)+' mm','Distance between the inner pad faces. Contact with this block holds the gap at 4.00 mm; empty tips can close to zero.'),
+   r('Finger force now',force.toFixed(2)+' N per arm','Force on each arm multiplied by Squeeze the arms. This is the input force, before the force needed to bend the spring arms is accounted for.'),
+   r('Effort distance',a.toFixed(1)+' mm from heel','Effort position multiplied by the 60 mm spring-arm length. Moving the same force farther from the heel bends the tips more.'),
+   r('Grip force per pad',normalOnBlock.toFixed(3)+' N','Normal force pressing on each block face. Some finger effort first bends the arms; only the remaining reaction produces grip. Zero when the pads miss the block.'),
+   r('Holding capacity',capacity.toFixed(3)+' N · weight '+weightN.toFixed(3)+' N','Maximum combined friction: two pads × 0.30 × grip force per pad. Compare it with mass in kilograms × 9.81 N/kg. The chosen coefficient is illustrative.'),
+   r('Block height',((blockY-restHeight)/scale).toFixed(1)+' mm above tray','Rise from the supported starting position. The block follows a sufficient grip, stays behind when missed, and returns to zero during the slowed fall.'),
+   r('Next action',complete&&v.operation===0?'Choose Release into the tray to open the arms.':falling?'Run or advance to continue the slowed fall.':blocked?'Move your fingers toward the tips, increase force, or lower the open tool over the block.':held?'Lift the whole tool while keeping the squeeze.':'Squeeze while the open tips surround the block.','Return block to starting tray opens and lowers the tool while keeping your effort position, force and mass settings.'),
+  ]};
  });
  const update=result.update;result.update=next=>{progress=null;return update(next);};
  function advance(seconds){
@@ -63,7 +73,7 @@ export function createTweezersModel(){
  result.advance=advance;result.animate=clock=>{const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};result.reset=()=>{fresh();lastClock=0;update(result.defaults);};
  result.actions=[{label:'Return block to starting tray',part:'system',view:'front',run:fresh}];
  result.playback={label:'Run selected action',stepLabel:'Advance one step',description:'Grip and lift holds the block above the tray. Release opens the arms and lets the block fall. Pause freezes both the tool and the falling block.',advance,step:()=>advance(.2),complete:()=>result.getState().complete,blocked:()=>result.getState().blocked};
- result.followParts=['tool','joint','left-arm','right-arm','left-tip','right-tip','left-finger','right-finger','block','weight'];
- result.framingBounds=new THREE.Box3().setFromObject(result.root);result.framingBounds.max.y+=liftHeight;
- result.resultPart={id:'system',context:'system',view:'front',focusOnComplete:true,label:'Inspect the tool and block',available:()=>true};return result;
+ result.initialPart='system';
+ result.followParts=['system','tool','joint','left-arm','right-arm','left-tip','right-tip','left-finger','right-finger','block','weight'];
+ result.resultPart={id:'system',context:'system',view:'front',focusOnComplete:false,label:'Inspect the tool and block',available:()=>true};return result;
 }

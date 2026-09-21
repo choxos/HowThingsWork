@@ -1,3 +1,11 @@
+import {bathroomScaleLesson} from './bathroom-scale-lesson.js';
+import {platformScaleLesson} from './platform-scale-lesson.js';
+import {robervalBalanceLesson} from './roberval-balance-lesson.js';
+import {pendulumClockLesson} from './pendulum-clock-lessons.js';
+import {watchLesson} from './watch-lessons.js';
+import {liquidThermometerLesson, sixThermometerLesson} from './thermometer-lessons.js';
+import {quartzClockLesson, kineticWatchLesson} from './quartz-lessons.js';
+import {waterClockLesson} from './water-clock-lesson.js';
 const s=rows=>rows.map(([title,body])=>({title,body})),p=rows=>rows.map(([name,role])=>({name,role}));
 const e=(title,instruction,observe,values)=>({title,instruction,observe,values});
 const q=(question,options,answer,explanation)=>({question,options,answer,explanation});
@@ -45,27 +53,14 @@ const thermometer={
  limits:'An imposed temperature and calibrated linear scale are used. The drawing is not a particular thermometric liquid or a dimensional expansion calculation; response delay and nonlinear calibration are omitted.',sources:[src('OpenStax: thermal expansion','https://openstax.org/books/college-physics-2e/pages/13-2-thermal-expansion-of-solids-and-liquids')],
  quiz:q('For the same displaced liquid volume, doubling bore area gives…',['Half the column-height change.','Twice the column-height change.','No column-height change.'],0,'Displaced volume equals bore area multiplied by height change.')};
 export const timeLessons={
- 'Bathroom scale':scale,
- 'Platform scale':{...scale,simple:'A platform and lever system carry a large load to a measuring spring or balance.'},
- 'Roberval balance':{
- simple:'Two linked pans compare masses without making the result depend on where each load sits on its pan.',
- overview:'A Roberval balance uses a parallelogram linkage: two equal horizontal beams are connected by vertical pan supports. The linkage keeps the pans upright and transfers the effect of off-center loads through the structure. In the ideal symmetric mechanism, equal masses balance wherever they are placed on their pans.',
- steps:s([['Support both pans','Upper and lower beams pivot at the center, while vertical links carry the pans.'],['Apply the loads','Gravity acts on both masses. The linkage constrains the pan supports to stay upright.'],['Compare the sides','Equal masses give balance. A heavier side descends until another constraint or restoring effect limits movement.']]),
- parts:p([['Fixed frame','Carries two central pivots.'],['Parallel beams','Form the top and bottom of the linkage.'],['Vertical links','Keep the pan supports upright.'],['Pans','Carry the compared masses.']]),
- tryIt:[e('Balance equal masses','Set both sides to 500 g.','The scale is level.',{left:500,right:500,position:0}),e('Move the load','Keep both masses equal and move the left load to the side.','The ideal balance remains level.',{left:500,right:500,position:.25}),e('Change one mass','Increase the left mass to 750 g.','The left side becomes heavier.',{left:750,right:500,position:.25})],
- deeper:[{title:'Why this is more than one beam',body:'A simple beam balance responds to the torque from each load’s distance to its pivot. In the Roberval mechanism, the second beam and vertical links constrain motion and carry additional forces. The complete linkage is what makes the ideal pan-position independence possible.'}],misconception:'You cannot explain the balance by taking moments on the upper beam alone while ignoring forces from the lower linkage.',limits:'Ideal equal geometry and friction-free joints are assumed. Displayed tilt indicates mass imbalance; it is not a dynamic or calibrated equilibrium-angle prediction.',sources:[src('Science Museum Group: Roberval balances','https://collection.sciencemuseumgroup.org.uk/search?q=Roberval')],quiz:q('Equal masses are balanced. One load moves sideways on its pan. In the ideal Roberval mechanism…',['The masses still balance.','The moved load automatically becomes heavier.','Gravity on the moved load disappears.'],0,'The linkage makes the comparison independent of where the load sits on its pan.')},
- 'Mechanical clock':mechanical,
- 'Mechanical watch':{...mechanical,simple:'A balance wheel and hairspring set the rhythm while a lever escapement releases the gears.',tryIt:[e('Inspect the balance oscillator','Use relative spring stiffness one.','The illustrative reference frequency is 4 Hz.',{stiffness:1,seconds:0}),e('Stiffen the spring','Increase stiffness to two at fixed inertia.','Frequency increases by the square root of two.',{stiffness:2,seconds:0})],quiz:q('At fixed balance inertia, a stiffer hairspring makes the ideal oscillation…',['Faster.','Slower.','Disappear because stiffness has no effect.'],0,'The natural frequency is proportional to the square root of torsional stiffness.')},
- 'Hairspring':{...mechanical,simple:'A thin spiral spring supplies the restoring torque for a watch’s balance wheel.',overview:'A hairspring is attached at its inner end to the balance staff and at its outer end to a fixed support. As the balance turns, the spring winds or unwinds and exerts an opposing torque. Together, spring stiffness and balance inertia determine the oscillator’s natural frequency.',tryIt:[e('Use the reference spring','Set relative stiffness to one.','The illustrative balance oscillates at 4 Hz.',{stiffness:1,seconds:0}),e('Change the restoring torque','Use twice the relative stiffness.','The period shortens by a factor of √2.',{stiffness:2,seconds:0})],deeper:[{title:'The torsional oscillator',body:'For a linear torsional spring, restoring torque is −κθ. With balance inertia I, the small-oscillation period is T = 2π√(I/κ). Real hairsprings have geometrical and material corrections, and the escapement perturbs the otherwise free oscillation.'}],quiz:q('What pulls a displaced balance wheel back toward its center?',['The hairspring’s restoring torque.','A new battery pulse on every free swing.','The clock hands pulling backward.'],0,'The deformed spring stores elastic energy and supplies torque toward equilibrium.')},
- 'Liquid-in-glass thermometer':thermometer,
- 'Maximum-minimum thermometer':{...thermometer,simple:'Movable markers remember the lowest and highest temperatures until they are reset.',tryIt:[e('Record a warm extreme','Set temperature to 35 °C.','The maximum marker moves to the warm reading.',{temperature:35,boreArea:1}),e('Cool after warming','Then set temperature to 5 °C.','The minimum falls while the previous maximum remains.',{temperature:5,boreArea:1})],quiz:q('After warming to 35 °C, the thermometer cools to 5 °C. What should the maximum marker show?',['35 °C until reset.','5 °C immediately.','An average of both readings.'],0,'The maximum marker stores the highest reading, rather than following the current temperature.')},
- 'Kinetic quartz watch':quartz,
- 'Quartz clock':{...quartz,simple:'A battery-powered quartz oscillator supplies pulses that a circuit counts into seconds.'},
- 'Water clock':{
- simple:'A changing water level marks passing time, but the flow slows as the water gets shallower.',
- overview:'An outflow water clock lets water escape through a small opening. The pressure head above the opening drives the flow. Because that head falls during draining, an ordinary straight-sided vessel does not lose equal depths in equal times. Its time marks must account for the changing rate, or its design must regulate the head.',
- steps:s([['Set the initial head','Fill the vessel to a known level above its outlet.'],['Let gravity drive flow','The ideal outlet speed scales with the square root of the head.'],['Track the falling level','As water leaves, the head and discharge rate decrease.'],['Calibrate time marks','Unequal height spacing can correspond to equal time intervals.']]),
- parts:p([['Vessel','Sets the relationship between stored volume and depth.'],['Small outlet','Restricts the escaping flow.'],['Water surface','Its height determines the pressure head.'],['Calibrated marks','Translate changing level into elapsed time.']]),
- tryIt:[e('Start the clock','Use 0.3 m initial depth and a 2 mm² outlet.','Inspect the initial flow and predicted emptying time.',{depth:.3,hole:2,minutes:0}),e('Watch the flow slow','Advance to 20 minutes.','Both remaining head and flow rate decrease.',{depth:.3,hole:2,minutes:20})],
- deeper:[{title:'The draining-vessel equation',body:'For a straight-sided tank of area A and small outlet area a, dh/dt = −Cd(a/A)√(2gh). Integrating gives √h = √h₀ − Cd(a/A)√(2g)t/2 until the tank is empty. The model uses this relation with a fixed discharge coefficient.'}],misconception:'Equal drops in water level do not mean equal amounts of elapsed time in an unregulated outflow clock.',limits:'Constant tank area, a small outlet, incompressible water, and a fixed discharge coefficient 0.62 are assumed. Viscosity changes, surface tension, and outlet blockage are omitted.',sources:[src('OpenStax: Bernoulli applications','https://openstax.org/books/college-physics-2e/pages/12-3-the-most-general-applications-of-bernoullis-equation')],quiz:q('As water depth falls, the outflow rate in this model…',['Decreases.','Increases.','Stays constant automatically.'],0,'Outlet speed is proportional to √h, so less head gives slower flow.')},
+ 'Bathroom scale':bathroomScaleLesson,
+ 'Platform scale':platformScaleLesson,
+ 'Roberval balance':robervalBalanceLesson,
+ 'Mechanical clock':pendulumClockLesson,
+ 'Mechanical watch':watchLesson,
+ 'Liquid-in-glass thermometer':liquidThermometerLesson,
+ 'Maximum-minimum thermometer':sixThermometerLesson,
+ 'Kinetic quartz watch':kineticWatchLesson,
+ 'Quartz clock':quartzClockLesson,
+ 'Water clock':waterClockLesson,
 };

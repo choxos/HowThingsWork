@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createStepperMotorModel,stepperPhase,stepperForces,stepperMotorConstants as C} from './stepper-motor-model.js';
 import {stepperMotorLesson} from './stepper-motor-lesson.js';
+import {createPartExplosion} from './part-explosion.js';
 
 const TAU=2*Math.PI,h=C.lead/TAU,close=(a,b,tolerance=1e-9,label='values')=>assert.ok(Math.abs(a-b)<=tolerance,`${label}: ${a} vs ${b}`);
 let forceCases=0;
@@ -38,4 +39,12 @@ for(const [key,value] of [['current',1.5],['load',4],['energized',0],['interval'
  if(key==='interval'&&!completed){model.advance(.98);assert.equal(model.getState().stepsIssued,before.stepsIssued,'interval change delays next pulse by its new interval');model.advance(.04);assert.equal(model.getState().stepsIssued,before.stepsIssued+1,'one new pulse follows new interval');}
  model.advance(90);const after=valid(model);assert.equal(after.stepsIssued,12,`${key} never reissues completed commands`);close(after.commandAngle,12*C.stepAngle,1e-12);close(after.commandPosition,.0024,1e-12);assert.equal(after.phaseIndex,0);assert.ok(after.complete||after.blocked);if(key==='energized'){assert.ok(after.blocked);assert.ok(Math.abs(after.position)<1e-6);}if(key==='current'&&completed)assert.ok(after.position>before.position,'more current reduces loaded holding offset');if(key==='load'&&completed)assert.ok(after.position<before.position,'more load increases holding offset');liveChanges.push({key,completed,stepsIssued:after.stepsIssued,requestedMm:after.commandPosition*1000});
 }
+const camera=new THREE.PerspectiveCamera(40,1.4,.1,100);camera.position.set(7,5,8);camera.lookAt(0,1,0);camera.updateMatrixWorld(true);
+for(const model of [released,held,limits]){
+ const saved=model.getState();assert.equal(saved.readings.length,14);assert.ok(saved.readings.every(r=>r.hint?.length>15));
+ assert.equal(model.catalogParts.length,30);assert.equal(new Set(model.catalogParts.map(p=>p.name)).size,30);assert.ok(model.catalogParts.every(p=>p.id!=='system'&&!model.covers.includes(p.object)));
+ model.covers.forEach(o=>o.visible=false);const inventory=createPartExplosion(model,camera,1.4);inventory.update(1);assert.equal(inventory.categories.length,11);
+ for(const part of model.catalogParts)assert.ok(!inventory.boundsFor(part.id).isEmpty(),part.id);assert.deepEqual(model.getState(),saved,'inventory does not alter physical state');inventory.dispose();
+}
+console.log('PASS 14 explained readings, 30 distinct catalog targets and three complete 11-category inventories.');
 for(const model of models)model.dispose();console.log(JSON.stringify({passed:true,forceCases,outcomes,liveChanges,checks:'phase equilibria and potential gradients; actual command/load outcomes; passive release; current heating; all selectable controls; equal-time frame parity; connected phase wiring and winding handedness; rotor registration and air gap; screw lead; conserved spring wire'},null,2));

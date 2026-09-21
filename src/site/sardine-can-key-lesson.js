@@ -1,0 +1,70 @@
+import {SARDINE_KEY_DEFAULTS} from './sardine-can-key-physics.js';
+
+const trial = (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...SARDINE_KEY_DEFAULTS, ...values}, reset: true, part: 'system', isolate: false, view: 'front'});
+
+export const sardineCanKeyLesson = {
+  simple: 'Why does a can key need more effort as its coil grows, and how do corners change its motion?',
+  overview: 'A key-opening can has a band of wall between two score lines. The key’s slot catches a tab at the end of the band, and turning the key tears the band out and winds it into a coil. The loop supplies torque and the growing coil winds the band. On a straight side this is a wheel and axle. Around a corner the key also turns with the wall heading. This ideal rolling model balances tearing and bending work against the complete shaft rotation, and shows where limited effort stops the opening.',
+  steps: [
+    {title: 'Catch the tab in the slot', body: 'The band ends in a short tab. It passes through the slot in the key’s shank, so the first turn bends the tab flat against the shank and every later turn winds band on top of it.'},
+    {title: 'Turn the loop', body: 'The effort control specifies an equivalent tangential force at the grip radius: effort times radius is the applied couple on the shank. It represents rotational input, not the separate contact forces of a real pinch grip. The loop is the wheel of a wheel and axle; the coil the band winds onto is the axle.'},
+    {title: 'Tear both score lines', body: 'The score lines are grooves pressed into the wall, leaving thin metal underneath. Taking a millimeter of band tears a millimeter of each line. The pull needed for that is the same at every point, whatever the coil looks like.'},
+    {title: 'Curl the strip onto the coil', body: 'The band arrives flat and has to be bent to the coil’s tight radius. At a few millimeters that is far past what springs back, so most of the steel thickness yields. Curling costs a fixed moment for every unit of curvature, which works out as the same torque on every turn.'},
+    {title: 'Roll around the can', body: 'The coil presses on the wall and rolls along it like a carpet being rolled up. The peel point advances along the wall by the length of band taken off. The key axis follows an offset path outside it. On a corner, the turning wall normal adds to the shaft rotation.'},
+    {title: 'Separate winding from going around a corner', body: 'Each winding turn adds a layer 0.2 mm thick. Along a straight side, increasing radius raises the tearing torque. On a corner, more shaft angle accompanies each millimeter peeled, reducing the tearing torque per shaft turn. Effort drops on entering the ideal corner and rises on leaving it. The bending moment still contributes on both.'},
+    {title: 'Stall or free the lid', body: 'If the torque needed ever passes what your fingers can make, the key stops there, on a straight side or as it leaves a corner. If it gets all the way round, nothing holds the top of the can: the key comes away with its coil and the lid section lifts off.'},
+  ],
+  parts: [
+    {name: 'Key loop', role: 'Where the fingers push. Its grip radius sets the torque from a given force and how far the fingers travel.'},
+    {name: 'Slotted shank', role: 'Catches the tab and carries the coil. Its radius is where winding starts, so it sets the force on the first turn.'},
+    {name: 'Wound coil', role: 'The band after it comes off, one 0.2 mm layer a turn. Its growing radius is the axle of the wheel and axle.'},
+    {name: 'Tear band and score lines', role: 'An 8 mm strip of the wall defined by two scores. Tearing the scores and curling the strip are the two costs of every millimeter.'},
+    {name: 'Can body', role: 'The wall below the band stays in place and guides the rolling coil around the can.'},
+    {name: 'Lid section', role: 'Held on only by the band, so it comes free when the whole band is off.'},
+    {name: 'Force chart', role: 'Shows the finger force needed at every point of the band against the force available, with the stall point marked.'},
+  ],
+  tryIt: [
+    trial('Open the default can', 'Play with a 15 N finger force, the 10 mm grip, the 2 mm shank, standard scores and TS275 tinplate.', 'The band comes off in 15.9 shaft turns. The required effort rises from 6.4 N at the start to a maximum of 12.4 N at the end, with temporary drops on the corners. Tearing and curling add up to 8.92 J.'),
+    trial('Start easily, stall on the last side', 'Set the finger force to 12 N and play.', 'The start needs only 6.4 N, yet the key stops with 92% of the band off after 15.0 shaft turns. It has left the last corner and reached the effort limit on the final straight side.', {effort: 12}),
+    trial('Too weak to start', 'Set the finger force to 6 N and play.', 'The first turn already needs 6.4 N, so the key never moves and no band comes off.', {effort: 6}),
+    trial('Stop leaving the second corner', 'Set the finger force to 9 N and play.', 'The key stops with 39% of the band off as it leaves the second corner. Required effort jumps from 8.0 N on the corner to 9.3 N on the straight side.', {effort: 9}),
+    trial('Use a wider loop', 'Set the grip radius to 16 mm.', 'The force needed drops to 4.0 N at the start and 7.7 N at the end. Equivalent rotational grip travel is 1.60 m instead of 1.00 m, and the work is the same 8.92 J.', {grip: 16}),
+    trial('Pinch a small loop', 'Set the grip radius to 6 mm.', 'The first turn needs 10.7 N and the last would need 20.6 N. With 15 N the key stops leaving the second corner, with 39% of the band off.', {grip: 6}),
+    trial('Wind onto a thin shank', 'Set the shank radius to 1.5 mm.', 'The first turn needs only 5.4 N, but the band takes 17.5 shaft turns and the last still needs 12.0 N. The coil ends 3.1 times its starting radius.', {shank: 1.5}),
+    trial('Wind onto a thick shank', 'Set the shank radius to 3 mm.', 'The band takes only 13.3 shaft turns, but the first turn needs 8.4 N and the last 13.3 N.', {shank: 3}),
+    trial('Score the band deeply', 'Choose the deep score.', 'Tearing falls to 12 N of pull, so the force needed runs from 4.7 N to 8.3 N. The work falls to 6.23 J, while curling still costs 2.20 J.', {score: 0}),
+    trial('Score the band lightly', 'Choose the shallow score.', 'The key stops with 77% of the band off, on the straight side after the third corner, where the need passes 15 N.', {score: 2}),
+    trial('Make the band from hard steel', 'Choose TH550 tinplate.', 'Curling now takes 44 N·mm. Required effort starts at 8.6 N and ends at 14.6 N, so the default effort still completes the opening.', {temper: 3}),
+    trial('Make the band from soft steel', 'Choose TS230 tinplate.', 'Curling takes 18 N·mm. The force needed runs from 6.0 N to 12.0 N, and curling work falls from 2.20 J to 1.84 J.', {temper: 0}),
+    trial('Beat the toughest band', 'Choose TH550 tinplate and the shallow score, a 16 mm grip and a 24 N finger force.', 'The band comes off. The force needed runs from 6.4 N to 11.6 N, but the work rises to 13.81 J.', {temper: 3, score: 2, grip: 16, effort: 24}),
+    {...trial('Read the force chart', 'Inspect the isolated chart. Compare the orange requirement with the green available-effort line, then change the effort control.', 'The green line moves with available effort. The orange curve stays tied to coil size, score depth and steel temper; changing available effort alone does not change the required work.'),part:'gauge',isolate:true},
+  ],
+  deeper: [
+    {title: 'A wheel and axle whose axle grows', body: 'A force F at the grip radius R makes a torque F R. On a straight side, dividing torque by coil radius ρ gives equivalent peel resistance F R / ρ, including the bending cost. The ideal motion advantage there is R / ρ. With the default 10 mm grip it starts at 4.8 to 1 and ends at 2.0 to 1, because the coil grows from 2.10 mm to 5.08 mm while the loop stays the same.'},
+    {title: 'How fast the coil grows', body: 'Each turn lays one layer of 0.2 mm tinplate on the last, so the coil radius after θ radians is ρ = r + h/2 + hθ/2π, an Archimedean spiral. The band wound is the integral of ρ dθ, which is ρ₀θ + hθ²/4π. Setting that equal to the 336 mm band gives 14.9 turns for a 2 mm shank. That is the winding angle relative to the local wall normal. The normal turns once around the can, so the shaft makes 15.9 turns relative to the fixed can. The peel point travels 336 mm; the axis travels farther on its offset path. The length formula uses the thin-strip approximation, neglecting the small radial pitch contribution to spiral arc length.'},
+    {title: 'Two costs: tearing and curling', body: 'Energy balances turn by turn. A small turn dθ takes ρ dθ of band, which tears both scores, 2Fₛ per millimeter, and curls the strip, Mₚ / ρ per millimeter. On a straight side, dividing by dθ gives torque 2Fₛρ + Mₚ. On a corner use the complete shaft angle β = θ + ψ, where ψ is the wall heading. Then dβ/ds = 1/ρ + κ, with κ the wall curvature, and torque becomes 2Fₛρ/(1 + ρκ) + Mₚ. This follows from torque times dβ equaling the tearing and bending work for ds of band. Softening the steel reduces the bending contribution; deeper scores reduce tearing.'},
+    {title: 'The fully plastic moment', body: 'In the fully plastic limit, a rectangular strip carries the moment Mₚ = σ w h² / 4. For TS275 steel, 8 mm wide and 0.2 mm thick, that is 22 N·mm. Steel only starts to yield when bent tighter than E h / 2σ, about 73 mm radius here. The coil is 14 to 35 times tighter, so the fully plastic limit is a useful teaching approximation. It neglects the remaining elastic core and springback; it is not a measured error bound for a real can. Grade numbers supply nominal yield strengths, and actual material strength varies.'},
+    {title: 'Why corners change the required torque', body: 'On the 15 mm corners, wall heading adds to shaft rotation. Bending through the opposite initial curvature costs extra work per millimeter, but that same millimeter also takes more shaft angle. In the ideal rolling constraint the bending contribution per shaft turn remains Mₚ, while the tearing contribution becomes 2Fₛρ/(1 + ρ/15). Effort therefore drops on entering a corner and jumps back up on leaving it. Real cans can still resist at corners because of friction, imperfect scores, deformation or coil jamming, none of which this model predicts.'},
+    {title: 'Lids rolled by a key', body: 'Many sardine tins wind up the whole lid rather than a band around the side. The same torque rule applies, but the strip is the width of the lid. A 60 mm lid of the same steel needs 165 N·mm just to curl, seven and a half times the band, before any tearing, so those keys are larger and harder to turn, and the lid is scored to guide the tear.'},
+    {title: 'What the model leaves out', body: 'Friction in the slot and between layers, air gaps that make a real coil grow faster than one sheet thickness a turn, the sharp bend of the tab, strain hardening, the Bauschinger effect on the corners, and the way real fingers pinch the loop as a pair of forces rather than one. The tearing forces are assumed teaching values, not measurements of any can.'},
+  ],
+  misconception: 'Winding turns and shaft turns are different on a curved can. Ignoring the added rotation of the wall heading gives an inconsistent work balance and the wrong corner effect. Along each straight side, the growing coil makes the same peeling task require more torque.',
+  limits: 'Illustrative key-opening can: 105 by 76 mm with 15 mm corners, a band 8 mm wide and 336 mm long in 0.20 mm tinplate, and a steady attempt of one and a quarter shaft turns a second. Tearing forces of 6, 10 and 14 N per score line are assumed teaching values. Curling uses the rigid, perfectly plastic moment and nominal yield strength for the chosen temper. Elastic springback and material variability are not calculated. The coil is packed at one sheet thickness per winding turn and follows an ideal rolling constraint. Spiral length and contact radius use a thin-strip approximation. Input is a pure couple expressed as equivalent tangential effort; hand translation and individual finger contact forces are not solved. No friction, strain hardening, tab bend, layer gaps, inertia or finger dynamics. At a stall the effort marker shows the maximum equivalent effort. Force arrows summarize work-conjugate input and peel resistance; they are not a full free-body diagram. After the band is off, the key is drawn moving away before the lid is lifted for inspection.',
+  sources: [
+    {title: 'OpenStax Physics: simple machines, including the wheel and axle', url: 'https://openstax.org/books/physics/pages/9-3-simple-machines'},
+    {title: 'MIT Mechanics and Materials II: sheet metal forming and elastic-plastic beam bending', url: 'https://ocw.mit.edu/courses/2-002-mechanics-and-materials-ii-spring-2004/00cf4c30d2a4c4573f78f2950809e765_2002_lab_sheet.pdf'},
+    {title: 'Tata Steel: tinplate product range with temper grades and yield strengths', url: 'https://www.tatasteeluk.com/packaging/products/tinplate'},
+    {title: 'US patent 2797020A: a can opened by winding a strip with a key', url: 'https://patents.google.com/patent/US2797020A/en'},
+    {title: 'US patent 834178A: a can whose lid strip is wound off by a key', url: 'https://patents.google.com/patent/US834178A/en'},
+  ],
+  quiz: {
+    question: 'A key turns easily at first but later stalls along a straight side. What can explain this?',
+    options: [
+      'The coil grew, raising the required torque along that straight side beyond the available effort.',
+      'The score lines get deeper toward the end of the band.',
+      'The key slot has let go of the tab.',
+    ],
+    answer: 0,
+    explanation: 'On a straight side the required torque is 2Fₛρ + Mₚ, and ρ grows with winding. The grip radius stays fixed, so limited effort can be exceeded later even when opening starts easily. On corners the complete rotation must also include the wall heading.',
+  },
+};

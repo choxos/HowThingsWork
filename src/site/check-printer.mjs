@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-const evidence=new URL('../../documentation/audit/evidence/3d-printer/',import.meta.url);await mkdir(evidence,{recursive:true});
+const evidence=new URL(process.env.PRINTER_EVIDENCE||'../../documentation/audit/evidence/3d-printer/',import.meta.url);await mkdir(evidence,{recursive:true});
 page.on('pageerror',error=>errors.push(error.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label));
@@ -12,6 +12,14 @@ async function preset(index){await page.getByRole('tab',{name:'Try it yourself',
 async function screenshot(name){await page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true});}
 try{
  await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5179/'}#machine/3d-printer`);await page.getByRole('heading',{name:'3D printer',exact:true}).waitFor();await page.locator('.daily-readings').waitFor();
+ for(const height of [.2,.4]){
+  await page.getByRole('button',{name:'Reset experiment',exact:true}).click();await page.locator('[data-number="layerHeight"]').fill(String(height));
+  for(let layer=1;layer<=Math.round(2.4/height);layer++){await page.getByRole('button',{name:'Finish this layer',exact:true}).click();assert.equal(await value('Completed layers'),layer);assert.ok(Math.abs(await value('Printed height')-layer*height)<.001);assert.equal(await page.locator('[data-play]').getAttribute('aria-pressed'),'false');}
+  const done=await page.locator('.daily-readings').textContent();await page.getByRole('button',{name:'Finish this layer',exact:true}).click();assert.equal(await page.locator('.daily-readings').textContent(),done);await screenshot('layer-action-'+height);
+  await run();await run();assert.equal(await value('Completed layers'),0,'completion replay starts the configured job, not the finished-layer actions');assert.equal(await page.locator('[data-control="layerHeight"]').inputValue(),String(height));
+ }
+ await preset(3);await page.getByRole('button',{name:'Finish this layer',exact:true}).click();assert.equal(await value('Plastic deposited'),0);await page.locator('[data-number="temperature"]').fill('200');await page.getByRole('button',{name:'Finish this layer',exact:true}).click();assert.equal(await value('Completed layers'),1);const layerVolume=await value('Plastic deposited');await page.locator('[data-step]').click();assert.equal(await value('Plastic deposited'),layerVolume,'short step still exposes nondepositing travel');
+ console.log('PASS exact fine/coarse layer action, paused boundary, completed no-op, configured replay and cold guard recovery.');
  await preset(0);assert.equal(await value('Plastic deposited'),0);await run();await page.waitForFunction(()=>parseFloat([...document.querySelectorAll('.daily-readings > div')].find(r=>r.querySelector('dt')?.textContent==='Plastic deposited')?.querySelector('dd')?.textContent)>0);await run();const paused=await page.locator('.daily-readings').textContent();await page.waitForTimeout(300);assert.equal(await page.locator('.daily-readings').textContent(),paused);await screenshot('partial-print');const partialVolume=await value('Plastic deposited');for(const [key,next,original] of [['speed','25','20'],['temperature','210','200']]){await page.locator(`[data-number="${key}"]`).fill(next);assert.equal(await value('Plastic deposited'),partialVolume);await page.locator(`[data-number="${key}"]`).fill(original);}await run();await finished();assert.equal(await value('Print progress'),100);const volume=await value('Plastic deposited'),filament=await value('Filament consumed');assert.ok(volume>0&&filament>0);assert.match(await reading('Layer'),/12/);await screenshot('completed-tray');await page.getByRole('button',{name:'Inspect the printed tray',exact:true}).click();assert.match(await page.locator('.daily-part-detail').textContent(),/Deposited square vessel/);await screenshot('tray-closeup');await page.getByRole('checkbox',{name:'Isolate selected part',exact:true}).uncheck();await page.getByRole('button',{name:'Reset view',exact:true}).click();
  await run();await run();assert.ok(await value('Print progress')<100);assert.equal(await page.locator('[data-control="speed"]').inputValue(),'20');
  await preset(1);await run();await finished();assert.equal(await value('Print progress'),100);assert.match(await reading('Layer'),/6/);await screenshot('coarse-layers');

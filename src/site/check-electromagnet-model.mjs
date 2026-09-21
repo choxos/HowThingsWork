@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import {createPartExplosion} from './part-explosion.js';
 import {createElectromagnetModel} from './electromagnet-model.js';
 
 const close=(a,b,tolerance=1e-8,label='values')=>assert.ok(Math.abs(a-b)<=tolerance,`${label}: ${a} vs ${b}`);
@@ -15,6 +16,20 @@ function geometry(model){
  leadMeshes.forEach((mesh,i)=>{const side=i?1:-1,curve=mesh.geometry.parameters.path,start=curve.getPoint(0),end=curve.getPoint(1);close(curve.getLength(),s.leadLength,1e-6,'fixed service-wire length');assert.ok(start.distanceTo(new THREE.Vector3(side*.55,3.2,.07))<1e-8);assert.ok(end.distanceTo(new THREE.Vector3(side*.55,parts.magnet.position.y+1.18,.07))<1e-8,'moving terminal endpoint');const terminal=parts[i?'positive-terminal':'negative-terminal'].children.find(o=>o.geometry?.type==='CylinderGeometry');const terminalBounds=new THREE.Box3().setFromObject(terminal);close(end.y,terminalBounds.max.y,1e-7,'wire meets terminal top');});
  const suspension=new THREE.Box3().setFromObject(parts.cable);close(suspension.max.y,3.2,1e-8,'cable enters hoist');close(suspension.min.y,parts.magnet.position.y+1.39,1e-8,'cable meets ferrule');assert.ok(suspension.getSize(new THREE.Vector3()).y>.1);
  const eye=parts['lifting-eye'];const pin=parts.shackle.children[2];const pinTop=new THREE.Box3().setFromObject(pin).max.y;close(pinTop,parts.magnet.position.y+1.17+.08-.016,1e-7,'shackle pin bears on eye inner surface');
+ const contactArrow=parts.forces.children[2],direction=new THREE.Vector3(0,1,0).applyQuaternion(contactArrow.quaternion);
+ const contactForce=s.normalReaction+s.trayReaction;
+ assert.equal(contactArrow.visible,contactForce>1e-8,'support arrow is present exactly when a contact supplies force');
+ if(contactArrow.visible)close(direction.y,s.trayReaction>0?1:-1,1e-12,'tray pushes up, magnet face pushes down');
+ if(s.loadY===0)close(s.trayReaction+s.force,s.weight,1e-8,'tray force closes the static force balance');
+ if(s.held)close(s.force-s.normalReaction,s.requiredForce,1e-8,'magnet contact closes m(g+a) balance');
+ const readings=Object.fromEntries(s.readings.map(r=>[r.label,r.value]));assert.equal(s.readings.length,12);assert.ok(s.readings.every(r=>r.hint?.length>15),'each quantity is explained');
+ if(s.magneticCircuitValid){
+  // Separate pole pressures give the same net pull as the circuit energy calculation.
+  const B=Math.min(1.4,200*Math.abs(s.current)/( .15/(4e-7*Math.PI*1000)+s.gap*(1+.015**2/(.04**2-.03**2))/(4e-7*Math.PI)));
+  close(s.centralFluxDensity,B,1e-12,'independent central B');
+  const outerB=B*.015**2/(.04**2-.03**2),pressureForce=(B*B*Math.PI*.015**2+outerB*outerB*Math.PI*(.04**2-.03**2))/(8e-7*Math.PI);
+  close(s.force,pressureForce,1e-8,'sum of both pole pressures');assert.equal(readings['Central pole flux density'],`${B.toFixed(3)} T`);
+ }else assert.match(readings['Central pole flux density'],/Not estimated/,'missing magnetic circuit never means zero coil field');
  assert.equal(parts.field.visible,Math.abs(s.current)>.005,'powered field indicator survives nonmagnetic material');
 }
 function validState(model){const s=model.getState();for(const key of ['current','loadY','loadVelocity','hoistY','hoistVelocity','hoistAcceleration','force','weight','requiredForce','gap','separation'])assert.ok(Number.isFinite(s[key]),key);assert.ok(s.force>=0,'magnetic force is attractive for either current direction');assert.ok(s.loadY>=0&&s.separation>=0,'no penetration');assert.ok(Math.abs(s.hoistAcceleration)<=.800000001,'bounded hoist acceleration');if(s.held){assert.ok(s.contact,'holding requires actual face contact');assert.ok(s.force+1e-8>=s.requiredForce,'holding includes m(g+a)');}return s;}
@@ -40,5 +55,18 @@ manual.reset();run(manual);manual.update({current:0});let detached=false;for(let
 manual.reset();run(manual);manual.update({operation:1});run(manual);manual.update({operation:0});run(manual);assert.ok(manual.getState().blocked&&!manual.getState().forceValid&&!manual.getState().held);
 manual.reset();const fresh=manual.getState();assert.equal(fresh.current,0);assert.equal(fresh.stage,'ready');assert.equal(fresh.loadY,0);assert.equal(fresh.hoistY,0);geometry(manual);
 manual.update({current:Infinity,height:NaN,mass:-1});assert.equal(manual.getState().values.current,2);assert.equal(manual.getState().values.height,40);assert.equal(manual.getState().values.mass,.1);
+// Every supported numeric setting is accepted without moving paused bodies.
+let numericSettings=0;
+for(const c of manual.controls.filter(c=>!c.options))for(let value=c.min;value<=c.max+1e-9;value+=c.step){const before=manual.getState();manual.update({[c.key]:value});close(manual.getState().values[c.key],value,1e-9);close(manual.getState().loadY,before.loadY);close(manual.getState().hoistY,before.hoistY);numericSettings++;}
+manual.reset();run(manual);close(manual.getState().centralFluxDensity,1.2133047489726098,1e-9,'2 A contact field');
+assert.ok(manual.getState().force>540&&manual.getState().force<550,'about 550 N at contact');
+const camera=new THREE.PerspectiveCamera();camera.position.set(4,3,6);camera.lookAt(0,1.7,0);
+for(const model of [limits,manual,all.find(m=>m.getState().values.material===1)]){
+ const saved=model.getState(),explosion=createPartExplosion(model,camera,1.4,{width:700,height:500});explosion.update(1);
+ assert.equal(explosion.categories.length,6);assert.ok(explosion.items.every(u=>!['field','forces'].includes(u.id)),'diagrams are excluded from physical inventory');
+ for(const p of model.catalogParts){assert.ok(!['system','field','forces'].includes(p.id));assert.ok(!explosion.boundsFor(p.id).isEmpty(),`${p.id} has physical inventory geometry`);}
+ assert.equal(model.catalogParts.length,25);assert.deepEqual(model.getState(),saved,'inventory leaves live physics intact');explosion.dispose();
+}
 for(const model of all)model.dispose();
+console.log(`PASS ${numericSettings} numeric settings, 12 explained readings, independent pole pressures, support-arrow directions, 3 inventories and 25 catalog parts.`);
 console.log('Electromagnet pickup/release, force/current/material controls, moving contacts and wires, actual winding, paused changes and 30/60/144 Hz parity passed.');

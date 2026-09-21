@@ -17,6 +17,31 @@ try{
  prepare(2);const coarse=finish();assert.ok(coarse.complete);assert.equal(coarse.completedLayers,6);close(coarse.printedHeight,2.4);close(coarse.extrudedVolume,fine.extrudedVolume);
  const partial=prepare(3),saved=Array.from(part('print').children[0].instanceMatrix.array);assert.ok(partial.progress>0&&partial.progress<base.progress);assert.ok(finish().blocked);assert.equal(m.getState().extrudedVolume,partial.extrudedVolume);assert.deepEqual(Array.from(part('print').children[0].instanceMatrix.array),saved);m.update({loaded:1});assert.ok(finish().complete);close(m.getState().extrudedVolume,fine.extrudedVolume);
  prepare(1);m.update({speed:10,temperature:210});close(m.getState().printedHeight,.4);close(m.getState().extrudedVolume,60.048);m.update({layerHeight:.4});assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().completedLayers,0);assert.equal(part('print').children[0].count,0);assert.equal(m.getState().layerCount,6);
+ prepare(4);assert.ok(finish().blocked);assert.equal(m.getState().layer,1);assert.equal(m.getState().completedLayers,0);assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().extrudedVolume,0);m.update({temperature:200});assert.ok(finish().complete);close(m.getState().extrudedVolume,fine.extrudedVolume);
  m.reset();assert.equal(m.getState().printedHeight,0);assert.equal(m.getState().completedLayers,0);
- console.log('PASS four fabrication presets, exact completed-base geometry/prefix, nondepositing lift with unchanged material, first wall growth without premature completed layer, preserved material history, fine/coarse final equivalence, interrupted recovery and reslicing reset.');
+ console.log('PASS five fabrication presets, exact completed-base geometry/prefix, nondepositing lift with unchanged material, first wall growth without premature completed layer, preserved material history, fine/coarse final equivalence, interrupted recovery and reslicing reset.');
 }finally{m.dispose();}
+
+const layerModel=map.createModel();
+try{
+ const short=layerModel.actions.find(action=>action.label==='Advance a short moment');assert.ok(short);assert.equal(short.replay,false);
+ layerModel.reset({basePrinted:true});const base=layerModel.getState();short.run();const travel=layerModel.getState();close(travel.position.z,.6);close(travel.printedHeight,.4);assert.equal(travel.extrudedVolume,base.extrudedVolume);assert.equal(travel.completedLayers,2);close(travel.elapsed-base.elapsed,.4);
+ short.run();const bead=layerModel.getState();assert.ok(bead.extrudedVolume>base.extrudedVolume);close(bead.printedHeight,.6);assert.equal(bead.completedLayers,2);
+
+ for(const height of [.2,.4]){
+  layerModel.reset();layerModel.update({layerHeight:height});
+  for(let count=1;count<=Math.round(2.4/height);count++){
+   layerModel.playback.step();const state=layerModel.getState();
+   assert.deepEqual(state.readings.slice(0,5).map(r=>r.label),['Your result','Completed layers','Printed height','Layer','Print progress']);
+   assert.equal(state.completedLayers,count,'one click completes exactly one layer');
+   close(state.printedHeight,count*height);assert.equal(state.segmentDistance,0);
+  }
+  assert.equal(layerModel.playback.complete(),true);
+ }
+ layerModel.reset({partiallyPrinted:true});const start=layerModel.getState();
+ layerModel.playback.step();assert.equal(layerModel.getState().completedLayers,start.completedLayers+1);
+ layerModel.reset();layerModel.update({loaded:0});layerModel.playback.step();
+ assert.equal(layerModel.getState().completedLayers,0);assert.equal(layerModel.playback.blocked(),true);
+ layerModel.update({loaded:1});layerModel.playback.step();assert.equal(layerModel.getState().completedLayers,1);
+ console.log('PASS component one-layer steps: fine, coarse, partial and missing-filament recovery; parent retains small steps.');
+}finally{layerModel.dispose();}

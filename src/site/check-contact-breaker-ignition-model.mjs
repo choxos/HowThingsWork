@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {previewEntryIds} from './published-catalog.js';
 import * as THREE from 'three';
 import {frameModel} from './machine-viewer.js';
 import {createCarIgnitionModel,createIgnitionTrial,carIgnitionConstants as C} from './car-ignition-model.js';
@@ -30,4 +31,5 @@ for(const aspect of [1,1.16]){
   const positions=mesh.geometry.attributes.position;let visible=false;for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld).project(camera);ok(Math.abs(p.x)<.98&&Math.abs(p.y)<.98,'entire actual breaker/capacitor stage mesh lies within inspection frame');if(visible)continue;const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(p.x,p.y),camera);visible=ray.intersectObjects(meshes)[0]?.object===mesh;}ok(visible,'connected component surface is visible from wide/mobile inspection camera');
  }focused.dispose();
 }
+assert.ok(previewEntryIds.includes('contact-breaker-ignition'),'contact-breaker-ignition is routed into the preview');
 console.log(`Contact-breaker ignition: ${checks} checks passed;150 control states,exact opening boundaries and energy/KCL records,six presets from three histories,63-degree inspection,fixed Run,held-open transient,defensive records and frame-independent lifecycle.`);

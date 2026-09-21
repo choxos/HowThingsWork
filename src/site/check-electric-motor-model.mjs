@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict';
 import {createDCMotorModel} from './dc-motor-model.js';
+import {dcMotorLesson as lesson} from './dc-motor-lesson.js';
+import {electricMotorLesson} from './electric-motor-lesson.js';
+import {houseComponents} from './house-components.js';
+import {groupCatalogEntries} from './catalog-hierarchy.js';
+import {neighborhoodCatalog} from './published-catalog.js';
+assert.equal(electricMotorLesson,lesson);assert.equal(houseComponents['Electric motor'].redirectTo,'direct-current-motor');
+assert.equal(lesson.tryIt.length,12);assert.ok(lesson.tryIt.slice(6).every(p=>p.title.startsWith('Energy: ')&&p.reset&&p.isolate===false));
+const families=groupCatalogEntries(neighborhoodCatalog.entries);assert.ok(!families.some(f=>f.entry.id==='electric-motor'));assert.ok(families.find(f=>f.entry.id==='direct-current-motor').components.some(e=>e.id==='electric-motor'));
+assert.ok(lesson.deeper.some(d=>d.title==='Energy: Predict where the power goes'));
+console.log('PASS one motor catalog row, retained Electric motor alias and all six energy experiments in the twelve-experiment canonical lesson.');
 const close=(a,b,tolerance=1e-10,label='values')=>assert.ok(Math.abs(a-b)<=tolerance,`${label}: ${a} vs ${b}`);
 const models=[];function create(values={}){const model=createDCMotorModel();model.update(values);models.push(model);return model;}
 function energy(model){const s=model.getState();close(s.inputPower,s.copperLoss+s.convertedPower,1e-12,'source power equals heating plus mechanical conversion');close(s.backEmf*s.current,s.torque*s.omega,1e-12,'electromechanical conversion identity');close(s.copperLoss,s.current**2*s.resistance,1e-12);close(s.kineticEnergy,.5*s.inertia*s.omega**2,1e-12);assert.ok(s.copperLoss>=0&&s.kineticEnergy>=0&&s.fanPower>=0);
@@ -7,7 +17,7 @@ function energy(model){const s=model.getState();close(s.inputPower,s.copperLoss+
 }
 function run(model,fps=60){for(let i=0;i<fps*60;i++){const s=energy(model);if(s.complete||s.blocked)return s;model.advance(1/fps);}assert.fail('electric-motor demonstration did not finish');}
 const normal=create();const ready=energy(normal);assert.equal(ready.omega,0);assert.equal(ready.current,0);assert.equal(ready.kineticEnergy,0);const powered=run(normal);assert.ok(powered.complete&&powered.omega>0&&powered.fanPower>0&&powered.kineticEnergy>0);assert.ok(powered.inputPower>0&&powered.copperLoss>0);close(powered.actionTime,2,1e-8);
-const lower=create({voltage:2}),lowerResult=run(lower);assert.ok(lowerResult.complete&&lowerResult.omega>0&&lowerResult.omega<powered.omega,'lower voltage produces a slower running result');const loaded=create({load:2}),loadedResult=run(loaded);assert.ok(loadedResult.complete&&loadedResult.omega>0&&loadedResult.omega<powered.omega,'larger fan load produces a slower running result');
+const lower=create({voltage:1.5}),lowerResult=run(lower);assert.ok(lowerResult.complete&&lowerResult.omega>0&&lowerResult.omega<powered.omega,'lower voltage produces a slower running result');const loaded=create({load:2}),loadedResult=run(loaded);assert.ok(loadedResult.complete&&loadedResult.omega>0&&loadedResult.omega<powered.omega,'larger fan load produces a slower running result');
 const unpowered=create({voltage:0}),zero=run(unpowered);assert.ok(zero.blocked);assert.equal(zero.omega,0);assert.equal(zero.current,0);assert.equal(zero.inputPower,0);assert.equal(zero.copperLoss,0);assert.equal(zero.convertedPower,0);assert.equal(zero.kineticEnergy,0);
 const noField=create({field:0}),resistor=run(noField);assert.ok(resistor.blocked&&resistor.contact);assert.equal(resistor.current,1.5);assert.equal(resistor.torque,0);assert.equal(resistor.omega,0);assert.equal(resistor.inputPower,4.5);assert.equal(resistor.copperLoss,4.5);assert.equal(resistor.convertedPower,0);assert.equal(resistor.kineticEnergy,0);
 const prepared=create({voltage:6,load:2,polarity:-1,startAngle:90});prepared.reset({poweredFan:true});const warm=energy(prepared);assert.deepEqual(warm.values,prepared.defaults,'prepared initial state uses the declared default powered run');for(const key of ['theta','omega','elapsed','kineticEnergy','turnsTravelled'])close(warm[key],powered[key],1e-10,'prepared state is an integrated powered result');assert.ok(warm.complete&&warm.omega>0);

@@ -6,7 +6,9 @@ import {neighborhoodCatalog as catalog} from './catalog-data.js';
 
 const mapping=houseComponents['Motor rotor'];
 assert.equal(mapping.machine,'Universal motor');assert.equal(mapping.part,'rotor');
-assert.equal(mapping.lesson,lesson);assert.equal(mapping.isolate,false);
+assert.equal(mapping.lesson,lesson);assert.equal(mapping.isolate,false);assert.equal(mapping.view,'back');
+assert.equal(lesson.parts.length,7);assert.ok(lesson.parts.some(p=>p.name==='Insulating commutator sleeve'));assert.ok(lesson.parts.some(p=>p.name==='Permanent winding-end leads'));
+assert.ok(lesson.tryIt.every(p=>p.isolate===false),'experiments retain the complete connected mechanism');
 assert.equal(catalog.entries.filter(e=>e.name==='Motor rotor').length,1);
 const model=createUniversalMotorModel(),part=id=>model.parts.find(p=>p.id===id).object;
 const prepare=index=>{const experiment=lesson.tryIt[index];model.reset(experiment.initialState);model.update(experiment.values);assert.ok(model.parts.some(p=>p.id===experiment.part));return model.getState();};

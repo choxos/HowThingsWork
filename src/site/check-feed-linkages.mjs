@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import * as THREE from 'three';
+import {createSewingModel} from './sewing-model.js';
+import {utilityComponentLessons} from './utility-lessons.js';
+const lesson=utilityComponentLessons['Feed-dog lift and advance linkages'],model=createSewingModel({feedLesson:true,linkageLesson:true});
+const out=process.env.EVIDENCE_DIR||'/tmp/howthingswork-feed-linkages';await mkdir(out,{recursive:true});
+const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`),object=id=>model.parts.find(p=>p.id===id).object,read=label=>model.getState().readings.find(r=>r.label===label).value;
+const feed=object('feed-bar'),regulator=object('feed-regulator'),output=object('feed-output'),travelFollower=object('travel-follower'),liftFollower=object('lift-follower');
+const cams=[object('lift-cam'),object('advance-cam')],followers=[liftFollower,travelFollower],walls=cams.map(cam=>cam.children.filter(p=>p.geometry?.parameters?.path));
+assert.equal(model.parts.find(p=>p.id==='feed-bar').parentId,'feed-linkages');
+for(const preset of lesson.tryIt){assert.equal(preset.reset,true);assert.equal(preset.part,'feed-linkages');assert.equal(preset.view,'iso');assert.equal(preset.isolate,true);assert.deepEqual(Object.keys(preset.values).sort(),Object.keys(model.defaults).sort());}
+for(const [index,cam] of cams.entries()){assert.ok(model.covers.includes(cam.children[0]));assert.ok(followers[index].children[0].geometry.parameters.radiusTop<.018-walls[index][0].geometry.parameters.radius,'pin fits between the actual groove walls');}
+const clearances=[];
+for(let j=0;j<2;j++){
+ const paths=walls[j].map(w=>w.geometry.parameters.path.getPoints(6000));let min=Infinity,maxSampleSpacing=0;
+ for(const path of paths)for(let i=1;i<path.length;i++)maxSampleSpacing=Math.max(maxSampleSpacing,path[i].distanceTo(path[i-1]));
+ model.reset();for(let i=0;i<720;i++){
+  if(i)model.advance(1/720);model.root.updateMatrixWorld(true);const pin=followers[j].children[0],position=cams[j].worldToLocal(pin.getWorldPosition(new THREE.Vector3()));
+  for(const path of paths)for(const point of path)min=Math.min(min,Math.hypot(position.y-point.y,position.z-point.z)-walls[j][0].geometry.parameters.radius-pin.geometry.parameters.radiusTop);
+ }
+ assert.ok(min-maxSampleSpacing>.002,`actual groove wall must clear pin at all sampled phases: ${min}`);clearances.push({cam:cams[j].name,min,maxSampleSpacing});
+}
+let poses=0;const strokes=[];
+for(const length of [1,3,5])for(const rate of [.5,1,3]){
+ model.reset();model.update({length,rate});let min=Infinity,max=-Infinity,minOutput=Infinity,maxOutput=-Infinity,maxLift=0;
+ for(let i=0;i<180;i++){
+  if(i)model.advance(1/180/rate);model.root.updateMatrixWorld(true);
+  for(let j=0;j<2;j++){
+   const index=((j?180:0)-i*4+720)%720,center=walls[j][0].geometry.parameters.path.points[index].clone().add(walls[j][1].geometry.parameters.path.points[index]).multiplyScalar(.5);cams[j].localToWorld(center);const pin=followers[j].children[0],position=pin.getWorldPosition(new THREE.Vector3());near(position.y,center.y);near(position.z,center.z);assert.ok(Math.abs(position.x-center.x)<pin.geometry.parameters.height/2);
+  }
+  const input=regulator.worldToLocal(travelFollower.localToWorld(new THREE.Vector3(.10,0,0))),pin=regulator.worldToLocal(output.children[3].getWorldPosition(new THREE.Vector3()));near(input.x,0);near(input.z,0);near(pin.x,0);near(pin.z,0);near(pin.y/input.y,length*.25);assert.ok(pin.y>.008+.012&&pin.y<.32-.012-.012,'output pin clears pivot brace and top of slot');
+  near(regulator.children[0].position.z,-.04);near(regulator.children[1].position.z,.04);assert.ok(.04-regulator.children[0].geometry.parameters.radiusTop>output.children[3].geometry.parameters.radiusTop);
+  near(feed.position.y,liftFollower.position.y+.10);near(feed.position.z,output.position.z);const forkBounds=new THREE.Box3().setFromObject(output.children[0]);assert.ok(feed.position.y>forkBounds.min.y&&feed.position.y<forkBounds.max.y);
+  const bridge=new THREE.Box3().setFromObject(feed.children[16]);for(const row of [feed.children[0],feed.children[8]])assert.ok(bridge.intersectsBox(new THREE.Box3().setFromObject(row)),'crossbar joins both actual tooth-row carriers');
+  min=Math.min(min,travelFollower.position.z);max=Math.max(max,travelFollower.position.z);minOutput=Math.min(minOutput,feed.position.z);maxOutput=Math.max(maxOutput,feed.position.z);maxLift=Math.max(maxLift,liftFollower.position.y-.81);assert.equal(read('Regulator ratio'),`${(length*.25).toFixed(2)}×`);assert.ok(Math.abs(parseFloat(read('Lift follower rise'))-(liftFollower.position.y-.81))<.000501);assert.equal(model.getState().readings.length,14);assert.ok(model.getState().readings.every(r=>r.hint));poses++;
+ }
+ near(max-min,.1);near(maxOutput-minOutput,length*.025);near(maxLift,.05);strokes.push({length,rate,input:max-min,output:maxOutput-minOutput,lift:maxLift});
+}
+model.reset();model.update({template:1,length:1.5});for(let i=0;i<13;i++)model.playback.step();model.root.updateMatrixWorld(true);let lastPin=regulator.worldToLocal(output.children[3].getWorldPosition(new THREE.Vector3()));assert.ok(lastPin.y>.020,'short corner stroke clears the pivot brace');model.advance(120);near(output.position.y,.445);assert.ok(model.getState().complete,'completion retains the last real stroke geometry');
+const outcomes=[];
+for(const [index,preset] of lesson.tryIt.entries()){
+ model.reset();model.update(preset.values);
+ if(index===3){model.playback.step();near(model.getState().distance,0);model.update({foot:1});}
+ if(index===4){model.actions[0].run();model.update({length:5});assert.equal(read('Regulator ratio'),'0.75×');model.playback.step();near(model.getState().distance,3);assert.equal(read('Regulator ratio'),'1.25×');model.playback.step();near(model.getState().distance,8);}
+ model.advance(120);const state=model.getState();assert.equal(state.stitches.length,[14,40,8,14,9][index]);near(state.sewn,40);assert.equal(read('Regulator ratio'),'Run finished');outcomes.push({index,count:state.stitches.length,sewn:state.sewn});
+}
+model.dispose();await writeFile(out+'/model.json',JSON.stringify({poses,clearances,strokes,outcomes},null,2)+'\n');console.log('PASS Feed linkages: 1,620 actual groove/follower/slider poses and 1,440 dense wall-clearance poses, connected tooth rows, independent lift/travel, short corner clearance, completion geometry and five outcomes.');
+if(process.env.MODEL_ONLY!=='1'){
+ const {chromium}=await import('playwright'),browser=await chromium.launch({headless:true});const base=process.env.SITE_URL||'http://127.0.0.1:5193/',cases=[],errors=[];
+ try{
+  for(const width of [1440,390]){
+   const page=await browser.newPage({viewport:{width,height:width===390?844:1000},reducedMotion:'reduce'});page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'#machine/feed-dog-lift-and-advance-linkages');await page.locator('[data-play]').waitFor();
+   const reading=label=>page.locator('.daily-readings>div').filter({has:page.locator('dt',{hasText:new RegExp('^'+label+'$')})}).locator('dd');
+   const values=async()=>Object.fromEntries(await page.locator('[data-control]').evaluateAll(es=>es.map(e=>[e.dataset.control,Number(e.value)])));
+   const capture=async name=>{await page.mouse.move(0,0);await page.locator('canvas').evaluate(c=>c.scrollIntoView({block:'start',behavior:'instant'}));await page.waitForTimeout(150);return page.screenshot({path:`${out}/${name}-${width}.png`,clip:await page.locator('canvas').boundingBox()});};
+   const renderedPixels=()=>page.evaluate(async()=>{document.querySelector('[data-control="length"]').dispatchEvent(new Event('input',{bubbles:true}));const source=document.querySelector('canvas'),copy=new OffscreenCanvas(source.width,source.height),context=copy.getContext('2d');context.drawImage(source,0,0);const pixels=context.getImageData(0,0,copy.width,copy.height).data;if(!pixels.some((value,i)=>i%4===0&&value<100&&pixels[i+1]<100&&pixels[i+2]<100))throw new Error('rendered canvas must contain dark case or hook geometry');return {width:copy.width,height:copy.height,sha256:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',pixels))).map(v=>v.toString(16).padStart(2,'0')).join('')};});
+   const setup=async index=>{await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.locator(`[data-experiment="${index}"]`).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();};
+   assert.equal(await page.locator('.daily-part-path [data-parent]').last().getAttribute('data-parent'),'feed-linkages');assert.equal(await page.locator('[data-isolate]').isChecked(),true);await capture('opening');await page.locator('[data-view="top"]').click();await capture('two-rows');
+   for(const [index,preset] of lesson.tryIt.entries()){
+    await page.locator('[data-control="template"]').selectOption('1');await page.locator('[data-control="foot"]').selectOption('0');await page.locator('[data-control="threaded"]').selectOption('0');await page.locator('[data-number="length"]').fill('4');await page.locator('[data-number="length"]').press('Enter');await page.locator('[data-number="rate"]').fill('3');await page.locator('[data-number="rate"]').press('Enter');await page.locator('[data-isolate]').uncheck();await page.locator('[data-cutaway]').uncheck();await page.locator('[data-view="top"]').click();
+    await setup(index);assert.deepEqual(await values(),preset.values);assert.equal(await page.locator('[data-isolate]').isChecked(),true);assert.equal(await page.locator('[data-cutaway]').isChecked(),preset.cutaway);assert.equal(await reading('Fabric progress').textContent(),'0.0 / 40 mm advanced');assert.equal(await page.locator('.daily-readings>div').count(),14);assert.equal(await page.locator('.daily-readings>div').filter({has:page.locator('p')}).count(),14);await capture('setup-'+index);const start=await renderedPixels();await page.locator('[data-view="iso"]').click();await capture('view-check-'+index);assert.deepEqual(await renderedPixels(),start,'preset restores focused Angled view');
+    if(index===0){await page.getByRole('button',{name:'Next stitch stage',exact:true}).click();assert.equal(await reading('Fabric progress').textContent(),'3.0 / 40 mm advanced');assert.equal(await reading('Tooth height vs plate').textContent(),'0.020 model units');assert.equal(await reading('Lift follower rise').textContent(),'0.050 model units');await capture('raised-forward');await page.locator('[data-control="foot"]').selectOption('0');assert.equal(await reading('Fabric progress').textContent(),'3.0 / 40 mm advanced');assert.equal(await page.locator('[data-play]').isDisabled(),true);await page.locator('[data-step]').click();assert.equal(await reading('Cycle position').textContent(),'14.0%');await capture('paused-foot');await page.locator('[data-control="foot"]').selectOption('1');await page.getByRole('button',{name:'Next stitch stage',exact:true}).click();assert.equal(await reading('Fabric progress').textContent(),'3.0 / 40 mm advanced');assert.equal(await reading('Tooth height vs plate').textContent(),'-0.030 model units');assert.equal(await reading('Lift follower rise').textContent(),'0.000 model units');await capture('lowered-return');}
+    if(index===3){await capture('guides-visible');await page.locator('[data-cutaway]').check();await capture('grooves-visible');assert.equal(await page.locator('[data-play]').isDisabled(),true);await page.locator('[data-step]').click();assert.equal(await reading('Fabric progress').textContent(),'0.0 / 40 mm advanced');await page.locator('[data-control="foot"]').selectOption('1');}
+    if(index===4){await page.getByRole('button',{name:'Next stitch stage',exact:true}).click();await page.locator('[data-number="length"]').fill('5');await page.locator('[data-number="length"]').press('Enter');assert.equal(await reading('Regulator ratio').textContent(),'0.75×');await page.locator('[data-step]').click();assert.equal(await reading('Regulator ratio').textContent(),'1.25×');assert.equal(await reading('Your result').textContent(),'1 lockstitch · 3.0 / 40 mm sewn');await page.locator('[data-step]').click();assert.equal(await reading('Your result').textContent(),'2 lockstitches · 8.0 / 40 mm sewn');await capture('changed-length');}
+    else{await page.locator('[data-step]').click();assert.equal(await reading('Your result').textContent(),`1 lockstitch · ${preset.values.length.toFixed(1)} / 40 mm sewn`);}
+    if(index===2){await page.locator('[data-play]').click();await page.waitForTimeout(250);await page.locator('[data-play]').click();const stopped=await reading('Cycle position').textContent();await page.waitForTimeout(180);assert.equal(await reading('Cycle position').textContent(),stopped);await page.locator('[data-play]').click();await page.waitForTimeout(150);await page.locator('[data-play]').click();}
+    for(let i=0;i<41;i++){if((await page.locator('[data-play]').getAttribute('title')).startsWith('Play again'))break;await page.locator('[data-step]').click();}
+    const count=[14,40,8,14,9][index];assert.equal(await reading('Your result').textContent(),`${count} lockstitches · 40.0 / 40 mm sewn`);assert.equal(await reading('Feed phase').textContent(),'Run finished');assert.equal(await page.locator('.daily-part-path [data-parent]').last().getAttribute('data-parent'),'feed-linkages');await capture('complete-'+index);await page.locator('[data-result]').click();await page.locator('[data-view="top"]').click();await capture('top-'+index);await page.locator('[data-view="bottom"]').click();await capture('bottom-'+index);await page.locator('[data-play]').evaluate(b=>{b.click();b.click()});assert.equal(await reading('Fabric progress').textContent(),'0.0 / 40 mm advanced');assert.equal(await page.locator('.daily-part-path [data-parent]').last().getAttribute('data-parent'),'feed-linkages');assert.equal(await page.locator('[data-isolate]').isChecked(),true);assert.deepEqual(await values(),{...preset.values,foot:1,length:index===4?5:preset.values.length});await capture('replay-'+index);cases.push({width,index,count,replay:true});
+   }
+   await page.locator('[data-reset-controls]').click();await page.locator('[data-separation]').fill('100');await page.getByText('Fully separated',{exact:true}).waitFor();await page.locator('[data-view="in"]').click();await page.locator('[data-view="out"]').click();assert.equal(await page.locator('[data-separation]').inputValue(),'100');await capture('separated');await page.locator('[data-reassemble]').click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.close();
+  }
+  assert.equal(cases.length,10);assert.deepEqual(errors,[]);await writeFile(out+'/browser.json',JSON.stringify({base,cases,errors},null,2)+'\n');console.log('PASS Feed linkages: ten desktop/phone cases, focused linked mechanism, guide/cutaway states, feed phases, foot pause/resume, spacing change, completed seam, replay and separation.');
+ }finally{await browser.close();}
+}

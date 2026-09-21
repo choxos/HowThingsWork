@@ -1,609 +1,156 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
+import {surface} from './scene-kit.js';
+import {fixed} from './format.js';
+import {faucetConstants as C, FAUCET_DEFAULTS as D, FAUCET_DOMAINS, sampleFaucet, faucetPlan} from './faucet-physics.js';
+export {faucetConstants, faucetFlow, washerLeak, aeratorLoss} from './faucet-physics.js';
 
-// ---------------------------------------------------------------------------
-// A pillar tap, from the thread to the bang in the pipe.
-//
-// Scale: one scene unit is 40 mm. The seat bore is 12 mm across, so it is drawn
-// 0.3 units; the handle is 90 mm across and drawn 2.25. Every length in the
-// drawing is a real length divided by 40 mm.
-//
-// Four separate pieces of physics meet in one small machine.
-//
-// The thread. A turn of the handle lifts the washer by exactly the pitch of the
-// spindle thread, 1.5 mm, so the opening is set by turns and by nothing else.
-//
-// The opening. What the water sees is not the bore of the seat but the curtain
-// between the washer and the seat: a cylinder of diameter 12 mm and height
-// equal to the lift. That curtain is smaller than the bore until the washer is
-// a quarter of the bore diameter up, which is why the first turn of a tap does
-// nearly all of the work and the last one does almost none.
-//
-// The flow. The tap is an orifice in series with the whole run of pipe behind
-// it, and both resist as the square of the flow, so the two add and the flow
-// goes as the square root of the pressure. That square root is why doubling the
-// pressure does not double the flow.
-//
-// The bang. Stopping moving water is stopping a moving mass. Joukowsky's
-// relation gives the pressure it takes: the density times the speed of sound in
-// the pipe times the change in speed. Close a tap in a hundredth of a second on
-// water moving two metres a second and the surge is tens of bar, far beyond the
-// supply pressure. Close it slowly and the wave has time to run to the far end
-// of the pipe and back, which relieves it.
-//
-// What is not modeled: temperature, dissolved air, the detail of the aerator's
-// mixing, cavitation at the seat, the flexing of the pipe, and any protection
-// device fitted to absorb the surge.
-// ---------------------------------------------------------------------------
-
-/** Metres to a scene unit. */
-const UNIT = 0.04;
-const TAU = Math.PI * 2;
-
-export const faucetConstants = Object.freeze({
-  /** The spindle thread lifts the washer this far for every turn of the handle. */
-  pitch: 0.0015,
-  turnsToStop: 4,
-  /** Seat bore, which is also the bore of the spout. */
-  seatDiameter: 0.012,
-  /** A sharp-edged orifice discharges about this fraction of the ideal. */
-  discharge: 0.62,
-  /** Everything behind the tap, as a loss coefficient on the 15 mm pipe. */
-  pipeLoss: 200,
-  pipeDiameter: 0.015,
-  /** Water. */
-  density: 1000,
-  /** Pressure waves travel this fast in a water filled copper pipe. */
-  waveSpeed: 1200,
-  /** How far it is back to the nearest thing that can absorb a surge. */
-  pipeRun: 20,
-  /** The bucket the demonstration fills. */
-  bucket: 10,
-  /** A drip is this many millilitres. */
-  dripVolume: 0.05,
-  duration: 90,
-});
-
-/**
- * What the washer lets past when it is supposed to be shut, in square
- * millimetres. These are small numbers on purpose: a tap that drips once a
- * second is losing about three millilitres a minute, and at mains pressure that
- * takes an opening of a few thousandths of a square millimetre.
- */
-export const washerLeak = Object.freeze({0: 0, 1: 0.0007, 2: 0.007});
-/** An aerator adds its own resistance; taking it off leaves the tap barer and faster. */
-export const aeratorLoss = Object.freeze({0: 0, 1: 60});
-
-const area = diameter => (Math.PI * diameter * diameter) / 4;
-
-/**
- * The whole tap at one handle position and one supply pressure.
- *
- * Everything here is arithmetic on the constants above; nothing is fitted to
- * make a number come out nicely.
- */
-export function faucetFlow(values) {
-  const C = faucetConstants;
-  const lift = Math.max(0, values.turns) * C.pitch;
-  const bore = area(C.seatDiameter);
-  // The water squeezes through the cylindrical curtain between washer and seat,
-  // until that curtain is wider than the bore it is feeding.
-  const curtain = Math.PI * C.seatDiameter * lift;
-  const leak = (washerLeak[values.washer] ?? 0) * 1e-6;
-  const openArea = lift > 0 ? Math.min(bore, curtain) : leak;
-  const limitedBy = lift <= 0 ? 'a washer that no longer seals' : curtain < bore ? 'the gap under the washer' : 'the bore of the seat';
-
-  const supply = values.pressure * 1e5;
-  const pipeArea = area(C.pipeDiameter);
-  const extra = aeratorLoss[values.aerator] ?? 0;
-  // Two resistances in series, each going as the square of the flow, so they add
-  // as coefficients and the flow comes out as a square root.
-  const seatCoefficient =
-    openArea > 0 ? 1 / (C.discharge * C.discharge * openArea * openArea) : Infinity;
-  const pipeCoefficient = (C.pipeLoss + extra) / (pipeArea * pipeArea);
-  const total = seatCoefficient + pipeCoefficient;
-  const flow =
-    openArea > 0 && supply > 0 ? Math.sqrt(((2 * supply) / C.density) / total) : 0;
-
-  // How the supply pressure is spent between the tap and everything behind it.
-  const seatDrop = openArea > 0 ? ((C.density / 2) * flow * flow * seatCoefficient) / 1e5 : 0;
-  const pipeDrop = ((C.density / 2) * flow * flow * pipeCoefficient) / 1e5;
-
-  const spoutSpeed = flow / bore;
-  const litresPerMinute = flow * 60000;
-  // Null rather than an infinity: nothing is filling, and a state carrying a
-  // non-finite number is the shape of a bug rather than of a shut tap.
-  const fillTime = flow > 0 ? C.bucket / (flow * 1000) : null;
-
-  // Joukowsky, relieved by however much longer than one pipe period the closing
-  // takes. The wave needs to reach the far end and come back before the tap is
-  // shut for the surge to be less than the full value.
-  const pipePeriod = (2 * C.pipeRun) / C.waveSpeed;
-  const closing = Math.max(1e-4, values.closing);
-  const fullSurge = (C.density * C.waveSpeed * spoutSpeed) / 1e5;
-  const surge = fullSurge * Math.min(1, pipePeriod / closing);
-
-  return {
-    lift,
-    bore,
-    curtain,
-    openArea,
-    limitedBy,
-    leak,
-    flow,
-    litresPerMinute,
-    spoutSpeed,
-    fillTime,
-    seatDrop,
-    pipeDrop,
-    surge,
-    fullSurge,
-    pipePeriod,
-    sealed: lift <= 0 && leak <= 0,
-    dripping: lift <= 0 && leak > 0,
-  };
+const MM=.01, M=1000*MM, TAU=2*Math.PI;
+const SEAT=94, OUTLET=76, BUCKET={x:160,bottom:-216,radius:125,height:10000000/(Math.PI*125**2)};
+function annulus(inner,outer,height,start=0,span=TAU){
+  const shape=new THREE.Shape();shape.absarc(0,0,outer*MM,start,start+span,false);shape.absarc(0,0,inner*MM,start+span,start,true);shape.closePath();
+  const g=new THREE.ExtrudeGeometry(shape,{depth:height*MM,bevelEnabled:false,curveSegments:48});g.rotateX(-Math.PI/2);return g;
 }
-
-export function createFaucetModel() {
-  const m = houseModel('Faucet');
-  const {part, box, cylinder, disk, sphere, ring, rod, tube, control, finish, covers} = m;
-  const C = faucetConstants;
-  const seatRadius = C.seatDiameter / 2 / UNIT;
-
-  const system = part(
-    'system',
-    'Pillar tap and the pipe behind it',
-    'A screw lifts a washer off a seat. What comes out is decided by the gap that opens, by the pressure behind it, and by every metre of pipe on the way.',
-  );
-
-  const basin = part(
-    'basin',
-    'Basin and standpipe',
-    'The tap is bolted through the basin; the supply arrives from below at mains pressure.',
-    [0, 0, 0],
-    system,
-  );
-  box([5.2, 0.3, 3], [0.9, -0.15, 0], 'cream', basin);
-  cylinder(0.55, 0.5, [0, 0.25, 0], 'metal', basin);
-
-  const bodyPart = part(
-    'body',
-    'Tap body and waterway',
-    'Cast in one piece. The supply comes up the middle, turns at the seat, and leaves along the spout.',
-    [0, 0, 0],
-    system,
-  );
-  const shell = tube(
-    [
-      [0, 0.2, 0],
-      [0, 2.0, 0],
-      [0.9, 2.3, 0],
-      [1.9, 2.0, 0],
-      [2.1, 1.3, 0],
-    ],
-    0.42,
-    'metal',
-    bodyPart,
-  );
-  covers.push(shell);
-  const waterway = part(
-    'waterway',
-    'Waterway through the tap',
-    'Look inside to follow it: up the inlet, through the seat, along the spout and down.',
-    [0, 0, 0],
-    bodyPart,
-  );
-  tube(
-    [
-      [0, 0.2, 0],
-      [0, 1.95, 0],
-      [0.9, 2.22, 0],
-      [1.85, 1.95, 0],
-      [2.05, 1.35, 0],
-    ],
-    0.28,
-    'blue',
-    waterway,
-  );
-
-  const seat = part(
-    'seat',
-    'Valve seat',
-    'A flat ring of 12 mm bore. It is the thing the washer closes on, and the bore the water can never beat however far the handle is turned.',
-    [0, 1.9, 0],
-    system,
-  );
-  const seatRing = ring(seatRadius, 0.07, [0, 0, 0], 'gold', seat);
-  seatRing.rotation.x = Math.PI / 2;
-  disk(seatRadius + 0.24, 0.12, [0, -0.08, 0], 'gold', seat).rotation.x = Math.PI / 2;
-
-  const spindlePart = part(
-    'spindle',
-    'Threaded spindle',
-    'A 1.5 mm pitch thread. One full turn of the handle raises the washer 1.5 mm, no matter how hard or how gently it is turned.',
-    [0, 0, 0],
-    system,
-  );
-  const spindle = new THREE.Group();
-  spindlePart.add(spindle);
-  rod([0, 1.95, 0], [0, 4.2, 0], 0.16, 'gold', spindle);
-  for (let i = 0; i < 11; i += 1) {
-    const thread = ring(0.2, 0.035, [0, 2.6 + i * 0.13, 0], 'metal', spindle);
-    thread.rotation.x = Math.PI / 2;
+function threadGeometry(inner,crest,from,to,phase=0,half=false){
+  const positions=[],indices=[],pitch=C.pitch*1000,segments=Math.round((to-from)/pitch*64);
+  for(let i=0;i<=segments;i++){
+    const y=from+(to-from)*i/segments,a=-(y-124-phase)/pitch*TAU;
+    for(const [radius,offset]of [[inner,-.5],[crest,0],[inner,.5]])positions.push(radius*Math.cos(a)*MM,(y+offset)*MM,radius*Math.sin(a)*MM);
+    if(i&&(!half||Math.sin(a+TAU/128)<0))for(let j=0;j<3;j++){const k=(j+1)%3,b=(i-1)*3;indices.push(b+j,b+3+j,b+k,b+k,b+3+j,b+3+k);}
   }
-  const washerPart = part(
-    'washer',
-    'Washer',
-    'A disc of rubber on the end of the spindle. New it seals; worn it weeps; perished it runs whatever the handle is doing.',
-    [0, 0, 0],
-    spindle,
-  );
-  const washer = cylinder(seatRadius + 0.12, 0.16, [0, 1.98, 0], 'ink', washerPart);
-
-  const handlePart = part(
-    'handle',
-    'Handle',
-    'The only thing the hand touches. Its turns are the whole of the setting; how hard it is gripped changes nothing.',
-    [0, 0, 0],
-    spindle,
-  );
-  disk(1.1, 0.2, [0, 4.3, 0], 'clay', handlePart).rotation.x = Math.PI / 2;
-  for (let i = 0; i < 4; i += 1) {
-    const a = (i * TAU) / 4;
-    box([0.9, 0.24, 0.3], [Math.cos(a) * 0.7, 4.3, Math.sin(a) * 0.7], 'clay', handlePart).rotation.y = -a;
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();return g;
+}
+export function createFaucetModel(){
+  const kit=houseModel('Faucet'),{root,part,control,finish,covers}=kit;
+  const cylinder=(radius,height,pos,color,parent)=>kit.cylinder(radius*MM,height*MM,pos.map(v=>v*MM),color,parent);
+  const rod=(a,b,radius,color,parent)=>kit.rod(a.map(v=>v*MM),b.map(v=>v*MM),radius*MM,color,parent);
+  const shell=(inner,outer,height,y,color,parent,start=0,span=TAU)=>{const m=surface(kit,annulus(inner,outer,height,start,span),color,parent);m.position.y=y*MM;return m;};
+  const transparent=(mesh,opacity)=>{mesh.material=mesh.material.clone();mesh.material.transparent=true;mesh.material.opacity=opacity;mesh.material.depthWrite=false;return mesh;};
+  const system=part('system','Compression faucet and collection bucket','A handwheel turns a threaded spindle in a fixed nut. A washer controls a real open seat. Collect for twenty seconds, close the handle, then check for leakage.');
+  const supply=part('supply','Supply tail','The visible 15 mm bore tail supplies the valve from below. The model represents another 20 m of upstream pipe with a fixed resistance; that long run is not drawn.',[0,0,0],system);
+  const inletBack=shell(7.5,9,250,-160,'gold',supply,0,Math.PI),inletFront=shell(7.5,9,250,-160,'gold',supply,Math.PI,Math.PI);covers.push(inletFront);
+  const body=part('body','Sectioned tap body','The inlet reaches the seat from below. Above the washer, the chamber joins the hollow spout. The missing front wall is a cutaway, not a leak.',[0,0,0],system);
+  const bodyBack=[],bodyFront=[];
+  for(const [y,h,port]of [[90,6,false],[96,16,true],[112,24,false]]){
+    const angle=port?.73:0;
+    bodyBack.push(shell(12,16,h,y,'metal',body,angle,Math.PI-angle));
+    bodyFront.push(shell(12,16,h,y,'metal',body,Math.PI,Math.PI-angle));
   }
-
-  const aeratorPart = part(
-    'aerator',
-    'Aerator',
-    'A gauze and a chamber at the spout mouth. It mixes air into the stream so the same flow feels fuller, and it is one more resistance in the line.',
-    [2.1, 1.25, 0],
-    system,
-  );
-  const aeratorMesh = cylinder(0.34, 0.22, [0, 0, 0], 'gold', aeratorPart);
-  for (let i = 0; i < 3; i += 1) ring(0.26 - i * 0.05, 0.02, [0, -0.05 - i * 0.04, 0], 'metal', aeratorPart).rotation.x = Math.PI / 2;
-
-  const streamPart = part(
-    'stream',
-    'The stream',
-    'Its thickness follows the flow and its length follows the speed, so a wide slow stream and a thin fast one look as different here as they do at a sink.',
-    [0, 0, 0],
-    system,
-  );
-  const jet = cylinder(0.2, 1, [2.1, 0.6, 0], 'blue', streamPart);
-  const dripPart = part(
-    'drip',
-    'The drip',
-    'A washer that no longer seals lets a measured trickle past with the handle hard shut.',
-    [0, 0, 0],
-    system,
-  );
-  const drip = sphere(0.13, [2.1, 0.8, 0], 'blue', dripPart);
-
-  const bucketPart = part(
-    'bucket',
-    'Ten litre bucket',
-    'The demonstration fills it. Filling time is the honest way to feel a flow rate: litres a minute is an abstraction, a bucket is not.',
-    [2.1, 0, 0],
-    system,
-  );
-  cylinder(1.05, 1.5, [0, 0.45, 0], 'leaf', bucketPart);
-  const water = cylinder(0.95, 1, [0, 0.2, 0], 'blue', bucketPart);
-
-  const surgePart = part(
-    'surge',
-    'Pressure wave in the supply',
-    'When the tap shuts, the column of moving water behind it has to be stopped. The shorter the stop, the larger the pressure it takes.',
-    [0, 0, 0],
-    system,
-  );
-  const surgeGlow = ring(0.62, 0.1, [0, 1.0, 0], 'red', surgePart);
-  surgeGlow.rotation.x = Math.PI / 2;
-
-  control(
-    'turns',
-    'Turns of the handle',
-    0,
-    4,
-    0.25,
-    0,
-    'turns',
-    'Each turn raises the washer 1.5 mm. Shut is shut; after about two thirds of a turn the seat bore is the limit and further turning does almost nothing.',
-  );
-  control(
-    'pressure',
-    'Supply pressure',
-    0.5,
-    6,
-    0.5,
-    2,
-    'bar',
-    'What the mains delivers at the tap with nothing flowing. Flow follows its square root, not the pressure itself.',
-  );
-  control(
-    'washer',
-    'Washer condition',
-    0,
-    2,
-    1,
-    0,
-    '',
-    'What the tap does with the handle hard shut.',
-    [
-      {value: 0, label: 'New · seals'},
-      {value: 1, label: 'Worn · weeps'},
-      {value: 2, label: 'Perished · runs'},
-    ],
-  );
-  control(
-    'aerator',
-    'Aerator',
-    0,
-    1,
-    1,
-    1,
-    '',
-    'Fitted, it mixes air in and adds resistance. Removed, the tap is barer, faster and noisier.',
-    [
-      {value: 1, label: 'Fitted'},
-      {value: 0, label: 'Removed'},
-    ],
-  );
-  control(
-    'closing',
-    'Time taken to close it',
-    0.05,
-    2,
-    0.05,
-    1,
-    's',
-    'How quickly the handle is shut at the end of the run. The pressure wave needs a thirtieth of a second to reach the far end of the pipe and back; a stop quicker than that gets the full surge.',
-  );
-
-  let stage = 'ready';
-  let complete = false;
-  let elapsed = 0;
-  let filled = 0;
-  let closingFor = 0;
-  let peakSurge = 0;
-  let accumulator = 0;
-  let lastClock = 0;
-
-  const fmt = (n, digits = 2) => (Number.isFinite(n) ? n.toFixed(digits) : '—');
-
-  const result = finish(
-    values => {
-      const open = stage === 'closing' ? Math.max(0, 1 - closingFor / Math.max(1e-4, values.closing)) : stage === 'ready' || stage === 'filling' ? 1 : 0;
-      const effective = {...values, turns: values.turns * open};
-      const flow = faucetFlow(effective);
-      const shut = faucetFlow({...values, turns: 0});
-
-      spindle.position.y = (flow.lift / UNIT) * 6;
-      spindle.rotation.y = values.turns * open * TAU;
-      washer.position.y = 1.98;
-
-      aeratorPart.visible = values.aerator === 1;
-
-      const running = flow.flow > 0 && stage !== 'ready';
-      streamPart.visible = running;
-      jet.scale.x = jet.scale.z = Math.max(0.25, Math.sqrt(flow.litresPerMinute / 14));
-      jet.scale.y = Math.max(0.4, Math.min(2.2, flow.spoutSpeed / 1.6));
-      jet.position.y = 1.25 - jet.scale.y / 2;
-
-      dripPart.visible = !running && shut.dripping;
-      drip.position.y = 0.9 - ((elapsed % 1) * 0.5);
-
-      const level = Math.min(1, filled / C.bucket);
-      water.scale.y = Math.max(0.001, level);
-      water.position.y = 0.45 - 0.75 + (1.5 * level) / 2;
-
-      surgePart.visible = peakSurge > 0.2;
-      surgeGlow.scale.setScalar(Math.max(0.4, Math.min(2.6, peakSurge / 4)));
-
-      // Cubic metres a second to millilitres a minute, then counted out in drips.
-      const millilitresPerMinute = shut.flow * 60 * 1e6;
-      const dripsPerMinute = millilitresPerMinute / C.dripVolume;
-
-      const outcome =
-        stage === 'ready'
-          ? flow.lift > 0
-            ? 'Ready · the handle is open; press Fill the bucket'
-            : shut.dripping
-              ? 'Ready · shut, and still losing water past the washer'
-              : 'Ready · shut and sealed'
-          : stage === 'filling'
-            ? flow.flow > 0
-              ? `Filling · ${fmt(filled, 2)} of ${C.bucket} litres`
-              : 'Nothing is coming out · open the handle'
-            : stage === 'closing'
-              ? 'Closing the handle'
-              : peakSurge > 4
-                ? `Bucket full · closing it that fast put ${fmt(peakSurge, 1)} bar into the pipe`
-                : `Bucket full in ${fmt(elapsed, 1)} s · surge on closing ${fmt(peakSurge, 2)} bar`;
-
-      return {
-        state: {
-          ...flow,
-          stage,
-          complete,
-          elapsed,
-          filled,
-          peakSurge,
-          dripsPerMinute,
-          shutFlow: shut.flow,
-          blocked: false,
-        },
-        readings: [
-          r('Your result', outcome),
-          r(
-            'Washer lift',
-            `${fmt(flow.lift * 1000, 2)} mm`,
-            'Turns times the 1.5 mm thread pitch. The thread is the only thing that sets it.',
-          ),
-          r(
-            'Opening the water sees',
-            `${fmt(flow.openArea * 1e6, 1)} mm²`,
-            `Set by ${flow.limitedBy}. The gap under the washer is a curtain of 12 mm diameter and the lift in height; it only stops mattering once it is wider than the 113 mm² bore.`,
-          ),
-          r(
-            'Flow',
-            `${fmt(flow.litresPerMinute, 2)} L/min`,
-            'The seat and the pipe behind it both resist as the square of the flow, so the flow goes as the square root of the pressure.',
-          ),
-          r(
-            'Speed in the spout',
-            `${fmt(flow.spoutSpeed, 2)} m/s`,
-            'Flow divided by the 113 mm² bore. This is the speed the pipe has to lose when the tap is shut.',
-          ),
-          r(
-            'Where the pressure goes',
-            `${fmt(flow.seatDrop, 2)} bar at the seat · ${fmt(flow.pipeDrop, 2)} bar in the pipe`,
-            'Wide open, most of the supply is spent getting through the pipework rather than through the tap.',
-          ),
-          r(
-            'Time to fill ten litres',
-            `${fmt(flow.fillTime, 1)} s`,
-            'The honest version of a flow rate.',
-          ),
-          r('Water in the bucket', `${fmt(filled, 2)} L`),
-          r(
-            'Losing when shut',
-            shut.dripping
-              ? `${fmt(millilitresPerMinute, 1)} mL/min · about ${fmt(dripsPerMinute, 0)} drips a minute`
-              : 'Nothing',
-            shut.dripping
-              ? 'A perished washer leaves an opening the supply pressure pushes water through all day.'
-              : 'A new washer seals against the seat and the opening is zero.',
-          ),
-          r(
-            'Surge on closing',
-            `${fmt(peakSurge, 2)} bar`,
-            `Density times the speed of sound in the pipe times the speed lost, relieved by however much longer than ${fmt(flow.pipePeriod * 1000, 0)} ms the closing takes. Stopped instantly it would be ${fmt(flow.fullSurge, 1)} bar.`,
-          ),
-          r('Time running', `${fmt(elapsed, 1)} s`),
-          r(
-            'Model limit',
-            'Steady incompressible flow · one fixed pipe run · no temperature',
-            '15 mm pipe with a loss coefficient of 200 standing for 20 m of run, bends and a stop valve. Cavitation at the seat, pipe flexing, dissolved air and any surge arrestor are all left out.',
-          ),
-        ],
-      };
-    },
-    {animated: true},
-  );
-
-  const render = result.update;
-  result.update = next => {
-    const before = {...result.getState().values};
-    const readings = render(next);
-    const after = result.getState().values;
-    if (Object.keys(before).some(key => before[key] !== after[key])) {
-      stage = 'ready';
-      complete = false;
-      elapsed = 0;
-      filled = 0;
-      closingFor = 0;
-      peakSurge = 0;
-      accumulator = 0;
-      return render();
-    }
-    return readings;
+  covers.push(...bodyFront);
+  const seat=part('seat','Valve seat','The 12 mm open bore ends in a flat sealing ring. The washer touches its upper face when the handle is closed.',[0,0,0],system);
+  const seatMesh=shell(6,12,4,90,'gold',seat);
+  const nut=part('nut','Fixed threaded bonnet','The fixed internal thread supports the moving spindle. Its front half is removed here so the matching 1.5 mm pitch can be inspected.',[0,0,0],body);
+  shell(4.45,12,34,136,'gold',nut,0,Math.PI);
+  const nutFront=shell(4.45,12,34,136,'gold',nut,Math.PI,Math.PI);covers.push(nutFront);
+  const femaleThread=surface(kit,threadGeometry(4.45,3.65,136.75,163.75,.75,true),'gold',nut,true);
+  const packing=part('packing','Stem packing and cap','A seal around the smooth stem keeps water from escaping beside the handle. Packing compression and friction are not simulated.',[0,0,0],body);
+  shell(3.55,8,6,174,'ink',packing,0,Math.PI);shell(3.55,12,4,180,'gold',packing,0,Math.PI);
+  shell(4.45,12,4,170,'gold',nut,0,Math.PI);
+  const spindle=part('spindle','Threaded spindle assembly','Counterclockwise opening raises this assembly by exactly 1.5 mm per turn. The handle, stem and washer move together.',[0,0,0],system);
+  const shaft=cylinder(3.5,93,[0,143.5,0],'gold',spindle);
+  const thread=part('thread','Spindle thread','A continuous helical ridge, not stacked rings. Its 1.5 mm lead matches the fixed nut. The ideal screw-force ratio excludes thread and packing friction.',[0,0,0],spindle);
+  const maleThread=surface(kit,threadGeometry(3.5,4.3,124,166),'metal',thread,true);
+  const washer=part('washer','Sealing washer','A 3 mm rubber washer meets the flat seat. Worn conditions use small equivalent leak areas below display resolution; their color marks wear, not a magnified physical hole.',[0,0,0],spindle);
+  const washerMesh=cylinder(9,3,[0,95.5,0],'ink',washer);washerMesh.material=washerMesh.material.clone();
+  cylinder(6,2,[0,98,0],'gold',washer);
+  const handle=part('handle','Handwheel','The rim is 45 mm from the spindle axis. One newton applied tangentially provides 0.045 N·m of torque, before losses.',[0,0,0],spindle);
+  const rim=kit.ring(45*MM,2.5*MM,[0,190*MM,0],'clay',handle);rim.rotation.x=Math.PI/2;
+  cylinder(7,6,[0,190,0],'clay',handle);
+  for(let i=0;i<4;i++){const a=i*TAU/4;rod([0,190,0],[45*Math.cos(a),190,45*Math.sin(a)],2.5,'clay',handle);}
+  const handleMark=kit.sphere(3*MM,[45*MM,190*MM,0],'ink',handle);
+  const spout=part('spout','Hollow spout','Water crosses the opened seat, turns into this chamber outlet and leaves downward through a 12 mm bore.',[0,0,0],body);
+  const curve=new THREE.CatmullRomCurve3([[13,104,0],[45,115,0],[135,115,0],[160,98,0],[160,76,0]].map(p=>new THREE.Vector3(...p.map(v=>v*MM))));
+  const [spoutShell,spoutFront]=[-Math.PI/2,Math.PI/2].map(start=>{
+    const shape=new THREE.Shape();shape.absarc(0,0,8*MM,start,start+Math.PI,false);shape.absarc(0,0,6*MM,start+Math.PI,start,true);shape.closePath();
+    return surface(kit,new THREE.ExtrudeGeometry(shape,{steps:100,bevelEnabled:false,extrudePath:curve,curveSegments:32}),'metal',spout);
+  });covers.push(spoutFront);
+  const aerator=part('aerator','Aerator sleeve and screen','The open sleeve and screen add resistance. Air entrainment and individual screen jets are omitted; displayed spout speed is a bulk average over the nominal bore.',[160*MM,0,0],system);
+  shell(6,8.5,10,70,'gold',aerator);
+  for(const z of [-4,-2,0,2,4]){const x=Math.sqrt(36-z*z);rod([-x,71,z],[x,71,z],.2,'metal',aerator);rod([z,71,-x],[z,71,x],.2,'metal',aerator);}
+  const waterway=part('waterway','Water in the valve','Blue water identifies the connected inlet and spout. Moving dots show direction at a schematic speed; they are not a water-velocity scale.',[0,0,0],system);waterway.userData.explosionExcluded=true;
+  const inletWater=transparent(cylinder(5.8,254,[0,-33,0],'blue',waterway),.55);
+  const curtainWater=transparent(surface(kit,annulus(5.8,9,1),'blue',waterway),.65);curtainWater.position.y=SEAT*MM;
+  const spoutWater=transparent(surface(kit,new THREE.TubeGeometry(curve,100,5.7*MM,16,false),'blue',waterway),.6);
+  const feedDots=Array.from({length:5},()=>kit.sphere(.8*MM,[0,0,0],'ink',waterway));
+  const spoutDots=Array.from({length:5},()=>kit.sphere(.8*MM,[0,0,0],'ink',waterway));
+  const stream=part('stream','Water leaving the spout','The continuous jet narrows as gravity accelerates it. Low flows use 0.05 mL drops. Transit delays and aerator bubbles are omitted; all discharged volume is assigned to the bucket.',[0,0,0],system);stream.userData.explosionExcluded=true;
+  const jet=transparent(surface(kit,new THREE.CylinderGeometry(1,1,1,24,24,true),'blue',stream),.65);
+  jet.position.x=160*MM;
+  const jetTemplate=Array.from(jet.geometry.attributes.position.array);
+  const drip=kit.sphere(Math.cbrt(3*C.dripVolume*1000/(4*Math.PI))*MM,[160*MM,0,0],'blue',stream);
+  const bucket=part('bucket','Ten-liter collection bucket','The inside radius is 125 mm. Its ten-liter mark is 203.72 mm above the inner floor. All water delivered during collection, closure and the leak check is counted.',[160*MM,0,0],system);
+  const profile=[[0,-220],[128,-220],[128,-2],[125,-2],[125,-216],[0,-216]].map(([x,y])=>new THREE.Vector2(x*MM,y*MM));
+  const bucketBack=transparent(surface(kit,new THREE.LatheGeometry(profile,64,Math.PI/2,Math.PI),'leaf',bucket),.65);
+  const bucketFront=transparent(surface(kit,new THREE.LatheGeometry(profile,64,-Math.PI/2,Math.PI),'leaf',bucket),.4);covers.push(bucketFront);
+  const bucketMarks=[];
+  for(let liters=2;liters<=10;liters+=2){const y=BUCKET.bottom+liters*1000000/(Math.PI*125**2),mark=surface(kit,new THREE.TorusGeometry(125.5*MM,.6*MM,8,48,Math.PI),'ink',bucket);mark.position.y=y*MM;mark.rotation.x=-Math.PI/2;bucketMarks.push(mark);}
+  const collectedWater=part('collected-water','Collected water','The level follows the exact integrated discharge divided by the bucket area. No visible stream volume or evaporation is subtracted.',[160*MM,0,0],system);collectedWater.userData.explosionExcluded=true;
+  const water=transparent(cylinder(125,1,[0,BUCKET.bottom,0],'blue',collectedWater),.7);
+  const specs={
+    turns:['Starting handle position','turns',null,'Each opening turn raises the washer 1.5 mm. Closing during playback is a prescribed handle motion.'],
+    pressure:['Supply pressure','bar',null,'Upstream pressure above atmosphere; the model keeps it fixed during this trial.'],
+    washer:['Washer condition','',[{value:0,label:'New · seals'},{value:1,label:'Worn · slow drip'},{value:2,label:'Damaged · faster drip'}],'Small equivalent leak areas remain when the handle is shut. Wear changes the seal, not the thread pitch.'],
+    aerator:['Aerator','',[{value:1,label:'Fitted'},{value:0,label:'Removed'}],'The fitted screen adds resistance. Its air mixing is not simulated.'],
+    closing:['Time taken to close','s',null,'After twenty seconds, the prescribed handle position falls linearly to zero over this time. Actual surge pressure is not calculated.'],
   };
-
-  function tick(dt) {
-    const values = result.getState().values;
-    if (stage === 'ready') {
-      stage = 'filling';
-      filled = 0;
-      elapsed = 0;
-      closingFor = 0;
-      peakSurge = 0;
+  for(const [key,[min,max,step]]of Object.entries(FAUCET_DOMAINS)){const [label,unit,options,help]=specs[key];control(key,label,min,max,step,D[key],unit,help,options,{primary:key==='washer'});}
+  let elapsed=0,lastClock=0,disposed=false;
+  const result=finish(values=>{
+    const s=sampleFaucet(values,elapsed),liters=s.filled;
+    spindle.position.y=s.lift*M;spindle.rotation.y=s.turns*TAU;
+    washerMesh.material.color.set([0x374736,0x917449,0xbd684a][values.washer]);aerator.visible=Boolean(values.aerator);
+    curtainWater.visible=s.lift>0;curtainWater.scale.y=Math.max(.001,s.lift*1000);
+    spoutWater.visible=s.flow>0;
+    for(let i=0;i<5;i++){
+      feedDots[i].position.set(0,(-155+((s.elapsed*25+i*48)%240))*MM,0);feedDots[i].visible=s.flow>0;
+      spoutDots[i].position.copy(curve.getPointAt((s.elapsed*.15+i/5)%1));spoutDots[i].visible=s.flow>0;
     }
-    elapsed += dt;
-    if (stage === 'filling') {
-      const flow = faucetFlow(values);
-      filled = Math.min(C.bucket, filled + flow.flow * 1000 * dt);
-      if (flow.flow <= 0 && elapsed > 3) {
-        stage = 'done';
-        complete = true;
-      } else if (filled >= C.bucket) {
-        stage = 'closing';
-        closingFor = 0;
-        // The surge belongs to the speed the water had when the closing began.
-        peakSurge = flow.surge;
+    const outlet=values.aerator?70:OUTLET,level=BUCKET.bottom+s.bucketLevel*1000,height=outlet-level;
+    jet.visible=s.flow>5e-6;
+    if(jet.visible){
+      const positions=jet.geometry.attributes.position;
+      for(let i=0;i<positions.count;i++){
+        const u=jetTemplate[i*3+1]+.5,y=level+height*u,velocity=Math.sqrt(s.spoutSpeed**2+2*9.81*(outlet-y)/1000),radius=Math.sqrt(s.flow/(Math.PI*velocity))*M;
+        positions.setXYZ(i,jetTemplate[i*3]*radius,y*MM,jetTemplate[i*3+2]*radius);
       }
-      return render();
+      positions.needsUpdate=true;jet.geometry.computeVertexNormals();jet.geometry.boundingBox=null;jet.geometry.boundingSphere=null;
     }
-    if (stage === 'closing') {
-      closingFor += dt;
-      if (closingFor >= values.closing) {
-        stage = 'done';
-        complete = true;
-      }
-      return render();
-    }
-    return render();
-  }
-
-  function advance(dt) {
-    if (!Number.isFinite(dt) || dt <= 0 || complete) return render();
-    accumulator += dt;
-    while (accumulator >= 0.01 - 1e-9 && !complete) {
-      accumulator -= 0.01;
-      tick(0.01);
-    }
-    if (complete) accumulator = 0;
-    return render();
-  }
-
-  result.reset = (initialState = {}) => {
-    stage = 'ready';
-    complete = false;
-    elapsed = 0;
-    filled = Number.isFinite(initialState.filled) ? initialState.filled : 0;
-    closingFor = 0;
-    peakSurge = 0;
-    accumulator = 0;
-    lastClock = 0;
-    return render(result.defaults);
-  };
-  result.advance = advance;
-  result.animate = t => {
-    const dt = Math.max(0, t - lastClock);
-    lastClock = t;
-    return advance(dt);
-  };
-  result.playback = {
-    label: 'Fill the bucket',
-    stepLabel: 'Advance one second',
-    description:
-      'Runs the tap at the chosen setting until ten litres are in the bucket, then closes the handle over the time you chose and reports the surge that stopping the water costs.',
-    advance,
-    step: () => advance(1),
-    complete: () => complete,
-    blocked: () => false,
-  };
-  result.actions = [
-    {
-      label: 'Open the handle one turn',
-      run: () => {
-        const values = result.getState().values;
-        result.update({turns: Math.min(C.turnsToStop, values.turns + 1)});
-      },
-    },
-    {
-      label: 'Shut it hard',
-      run: () => result.update({turns: 0}),
-    },
+    const period=s.flow>0?C.dripVolume*1e-6/s.flow:Infinity,fall=Math.sqrt(2*height/1000/9.81),age=s.elapsed%period;
+    drip.visible=s.flow>0&&!jet.visible&&age<fall;drip.position.y=(outlet-4.905*age*age*1000)*MM;
+    water.visible=liters>0;water.scale.y=s.bucketLevel*1000;water.position.y=(BUCKET.bottom+s.bucketLevel*500)*MM;
+    const outcome=s.complete?(values.turns===0?(s.dripping?'Leak measured with handle shut':'Sealed · no water collected'):(s.shut.flow>0?'Trial ended · closed washer still leaks':'Trial ended · washer sealed')):s.stage==='ready'?'Ready · press Play':s.stage==='collecting'?(s.sealed?'Observing a sealed tap':s.dripping?'Measuring the closed tap’s leak':'Collecting water'):s.stage==='closing'?'Handle closing · water still counted':'Handle shut · checking the seal';
+    return {state:{...s,blocked:false},readings:[
+      r('Your result',outcome),r('Trial clock',`${fixed(s.elapsed,2)} / ${fixed(s.duration,2)} s`,'Twenty seconds of collection, followed by the selected closure and a two-second seal check. An already shut tap uses a twenty-second leak trial.'),
+      r('Handle position now',`${fixed(s.turns,3)} turns`),r('Washer lift',`${fixed(s.lift*1000,3)} mm`,'Exact 1.5 mm pitch. The drawing uses the same lift without exaggeration.'),
+      r('Flow now',`${fixed(s.litersPerMinute,3)} L/min`,'Quasi-steady flow at the current opening. Completion holds the final state; a damaged washer still has a nonzero leak.'),
+      r('Water collected',`${fixed(liters,4)} L · ${fixed(liters*1000,2)} mL`,'All discharge is integrated, including while closing and during the seal check.'),
+      r('Collected while closing',`${fixed(s.closureCollected,2)} mL`),
+      r('Effective opening',`${fixed(s.openArea*1e6,4)} mm² · ${s.limitedBy}`,'The smaller of the washer-gap curtain and the seat bore, with a nonzero floor for a damaged seal.'),
+      r('Pipe / spout speed',`${fixed(s.pipeSpeed,3)} / ${fixed(s.spoutSpeed,3)} m/s`,'The 15 mm supply pipe and 12 mm spout have different speeds for the same flow.'),
+      r('Pressure budget',`${fixed(s.seatDrop,3)} seat + ${fixed(s.pipeDrop,3)} pipe + ${fixed(s.aeratorDrop,3)} screen + ${fixed(s.outletHead,3)} exit = ${fixed(values.pressure,3)} bar`,'The exit term is kinetic-energy head. With a sound closed seal, the supply pressure stands across the seat.'),
+      r('Leak with handle shut',`${fixed(s.shut.flow*60*1e6,3)} mL/min · ${fixed(s.dripsPerMinute,1)} drops/min`,'Each illustrative drop is 0.05 mL. Very small leak openings are equivalent hydraulic areas, not resolved cracks.'),
+      r('Leak left for one day',`${fixed(s.dayLoss,3)} L`),
+      r('Sudden-stop reference',`${fixed(s.suddenStopReference,3)} bar`,'Density × 1200 m/s wave speed × supply-pipe velocity lost from the starting opening to the closed leak. This is a first-wave reference for abrupt flow change, not the actual peak during the chosen closure.'),
+      r('Ideal screw-force ratio',`${fixed(s.idealForceRatio,1)} N per 1 N at rim`,'A 45 mm handwheel radius gives 0.045 N·m per newton. Lossless work balance gives force = 2π × torque / 1.5 mm lead. Actual force is lower and depends on friction and washer compression.'),
+      r('Ten liters at starting flow',s.open.fillTime===null?'No filling':`${fixed(s.open.fillTime,1)} s`,'An estimate for leaving the starting setting unchanged; this finite trial closes after twenty seconds.'),
+    ]};
+  });
+  const render=result.update;
+  result.update=(next={})=>{const before=result.getState().values;const readings=render(next);if(Object.keys(D).some(k=>before[k]!==result.getState().values[k])){elapsed=0;return render();}return readings;};
+  result.advance=dt=>{if(Number.isFinite(dt)&&dt>0)elapsed=Math.min(faucetPlan(result.getState().values).duration,elapsed+dt);return render();};
+  result.animate=t=>{const dt=Number.isFinite(t)?Math.max(0,t-lastClock):0;if(Number.isFinite(t))lastClock=t;return result.advance(dt);};
+  result.reset=()=>{elapsed=lastClock=0;root.rotation.set(.12,-.55,0);return render(D);};
+  result.actions=[
+    ...[['Start of trial',()=>0],['After ten seconds',()=>10],['Halfway through closure',v=>v.turns>0?20+v.closing/2:20],['Finish the trial',v=>faucetPlan(v).duration]].map(([label,time])=>({label,part:'system',view:'front',isolate:false,group:'Run',replay:false,run(){elapsed=time(result.getState().values);root.rotation.set(.12,-.55,0);return render();}})),
+    {label:'See the seat bore',part:'seat',view:'top',isolate:true,group:'Look closer',replay:false,run(){root.rotation.set(0,0,0);return render();}},
+    ...[['See the valve seat','seat'],['See the screw and nut','thread'],['See collected water','bucket'],['See the whole faucet','system']].map(([label,id])=>({label,part:id,view:'front',isolate:false,group:'Look closer',replay:false,run(){root.rotation.set(0,id==='system'?-.55:0,0);return render();}})),
   ];
-  result.followParts = ['seat', 'washer', 'stream'];
-  result.resultPart = {
-    id: 'bucket',
-    context: 'system',
-    view: 'front',
-    focusOnComplete: true,
-    label: 'Inspect the bucket',
-    available: () => complete,
-  };
-  return result;
+  result.playback={label:'Collect, close and check',description:'Observe twenty seconds of flow, then the chosen handle closure and a two-second leak check. An already closed tap uses twenty seconds. Completion holds the result; pipe dots move at a schematic speed.',stepLabel:'Advance by 0.1 second',advance:result.advance,step:()=>result.advance(.1),complete:()=>result.getState().complete,blocked:()=>false};
+  result.resultPart={id:'bucket',context:'system',label:'Inspect collected water',view:'front',focusOnComplete:false,available:()=>result.getState().complete};
+  result.initialPart='system';result.initialView='front';result.frameVisibleOnly=true;result.framePadding=.7;result.selectionOutline=false;result.transparentBackground=true;
+  result.frameBoundsForPart=id=>{if(id!=='system')return null;root.updateWorldMatrix(true,false);return new THREE.Box3(new THREE.Vector3(-50*MM,-222*MM,-130*MM),new THREE.Vector3(290*MM,205*MM,130*MM)).applyMatrix4(root.matrixWorld);};
+  result.parts.find(p=>p.id==='thread').maxZoom=25;result.parts.find(p=>p.id==='seat').maxZoom=25;
+  root.rotation.set(.12,-.55,0);
+  result.topology={system,supply,body,seat,seatMesh,nut,femaleThread,packing,spindle,shaft,thread,maleThread,washer,washerMesh,handle,rim,handleMark,spout,spoutShell,spoutFront,curve,aerator,waterway,inletWater,curtainWater,spoutWater,feedDots,spoutDots,stream,jet,drip,bucket,bucketBack,bucketFront,bucketMarks,collectedWater,water,MM,M,SEAT,OUTLET,BUCKET};
+  const dispose=result.dispose;result.dispose=()=>{if(!disposed){disposed=true;dispose();}};return result;
 }

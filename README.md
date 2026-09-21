@@ -1,50 +1,81 @@
 # How Things Work
 
-Explore everyday machines through a neighborhood, rooms, and interactive 3D lessons. Select a machine or component, inspect its parts, change its controls, and follow the resulting motion and readouts. Lessons include guided experiments, explanations, and questions.
+Explore everyday machines through an illustrated neighborhood and interactive 3D lessons. Follow a mechanism, inspect its parts, change its controls, and see the result.
 
-Live at https://howthingswork.xera.ac
+[Explore the website](https://howthingswork.xera.ac/) · [Watch the tour](https://howthingswork.xera.ac/tour.mp4)
 
-The neighborhood is the main website. The catalog also contains entries still awaiting individual lessons; a catalog entry does not imply a completed simulation. Models explain selected mechanisms with stated assumptions and limits. They are teaching models, not engineering specifications.
+[![The How Things Work neighborhood](public/og.png)](https://howthingswork.xera.ac/)
 
-The earlier collection of 30 principle studies remains available at `/studies.html`. Existing `/#/topic/...` bookmarks continue to open those studies.
+## Explore
 
-## Local development
+- Enter places and rooms, or search **All machines & ideas**.
+- Use **How it works**, **Meet the parts**, **Controls**, and **Try it yourself** to explore each lesson.
+- Hover over or click a part to see its name. Click elsewhere to clear selection.
+- Drag the object to move it; drag outside it to rotate. Scroll or pinch outward to separate related parts into groups. The **+** and **−** buttons change camera zoom.
+- Use the back button to leave a machine. From a room or place, zoom outward or use the back button to return.
 
-Use Node.js 22.18 or newer (Node.js 24 recommended).
+The public catalog contains individually reviewed lessons. Complete smaller mechanisms appear beneath their parent machine. Work in progress stays outside the public catalog. Each lesson states its modeling assumptions and limits; these are teaching models, not engineering specifications.
+
+The silent tour lasts about 3 minutes 45 seconds and has no subtitles. It covers neighborhood navigation, a sewing-machine cycle, part inspection and separation, a refrigerator compressor, mirrors, lenses, and a 3D printer completing a layer.
+
+## Run locally
+
+Use Node.js 22.18 or newer. Node.js 24 LTS is a suitable choice.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-## Checks
+Open the local URL printed by Vite. To build and serve the production site:
+
+```sh
+npm run build
+npm run preview
+```
+
+Serve the contents of `dist/` from the root of a static web host. Navigation uses URL fragments; no application server or database is required.
+
+## Verify changes
 
 ```sh
 npm test
-npm run test:scenes
-npm run test:models
-npm run test:browser
 npm run build
-node scripts/check-physics-laws.mjs
-node scripts/check-controls.mjs
+node src/site/check-house.mjs
+node src/site/check-lessons.mjs
 ```
 
-`npm run test:browser` runs every browser check in `src/site/` against a Vite dev server it starts itself. It runs them one at a time on purpose: a single headless browser rendering these scenes takes most of the cores on a normal laptop, and several at once starve each other until pages stop finishing loading. A check that fails once and passes on a second run is reported as flaky rather than as a pass.
+Focused model and browser checks live beside their lessons in `src/site/`. Browser checks require Playwright and its Chromium browser (`npx playwright install chromium`); some detailed visual checks use installed Google Chrome. `npm run test:browser` runs checks sequentially and reports any failed attempt as a failure. Use `SITE_URL` to check an existing server. The deployment smoke checker also accepts `PLAYWRIGHT_MODULE` for an external Playwright installation. Checks that load source fixtures require the Vite development server.
 
-`scripts/check-physics-laws.mjs` states the textbook law in its own terms and holds the models to it, so a model and the check written beside it cannot agree on the same mistake. `scripts/check-controls.mjs` opens every catalog entry that has a lesson and drives every one of its controls, reporting any setting that leaves the readings unchanged; it needs a running site.
+```sh
+SITE_URL=http://127.0.0.1:4173/ npm run check:publication
+npm run test:deployment -- https://howthingswork.xera.ac/
+```
 
-Machine-specific runnable checks live beside their models in `src/site/`. Browser checks require Playwright and a running site. Run `npm run test:deployment -- https://howthingswork.xera.ac/` for the deployment smoke check; use `PLAYWRIGHT_MODULE` for an external installation. Machine browser checks accept `SITE_URL` (default `http://127.0.0.1:5175/`); checks that inject source fixtures require the Vite dev server. Passing checks establishes the named behavior, not complete coverage of every machine or scientific assumption.
+Passing a check establishes the behavior it tests. It does not establish complete coverage of every mechanism or scientific assumption.
+
+## Record the tour
+
+`scripts/record-tour.mjs` records real browser interactions and encodes a silent MP4. It requires installed Google Chrome, FFmpeg, and Playwright. Output goes to the local `documentation/` directory. Move an existing tour aside before recording; the encoder refuses to overwrite it.
+
+```sh
+npm install --no-save --package-lock=false playwright
+node scripts/record-tour.mjs
+```
+
+Review the recording before copying it to `public/tour.mp4` for publication.
 
 ## Source layout
 
-- `src/site/`: neighborhood, house navigation, machine models, lessons, and checks.
-- `src/scene/`: the principle-study scenes.
-- `public/`: shared static site files.
+- `src/site/`: neighborhood navigation, catalog, 3D mechanisms, lessons, and their checks.
+- `src/scene/`: earlier principle-study modules and checks.
+- `public/`: static images, icons, sitemap, and published tour.
+- `scripts/`: build helpers, browser checks, and tour recording.
 
-Reference documents and local review evidence are excluded from the public repository.
+`src/site/published-catalog.js` controls public lesson admission. Development-only previews can be enabled with `VITE_PREVIEW_UNPUBLISHED=1`; production builds retain the public admission list. A preview route is not a completed lesson.
 
-## Hosting
+Reference documents, review evidence, local drafts outside the source tree, and private deployment settings are excluded from Git. Optional analytics uses `VITE_GOOGLE_ANALYTICS_ID` in an untracked `.env.local`. Client build settings are visible to visitors and must never contain secrets.
 
-Run `npm run build` and serve `dist/` at the root of any static web host. Machine navigation uses URL fragments; the principle studies and introductory experiments are separate HTML pages.
+## License
 
-Analytics is optional. To enable it, set `VITE_GOOGLE_ANALYTICS_ID` in an untracked `.env.local` before building. No analytics tag loads when that setting is absent. Build-time client settings are visible to visitors and must never contain secrets.
+[MIT](LICENSE).

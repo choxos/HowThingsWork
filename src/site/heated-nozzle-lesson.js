@@ -12,6 +12,7 @@ export const heatedNozzleLesson={
   {title:'Inspect what the nozzle made',body:'Run the job to completion and inspect the printed tray. Its base and walls are accumulated deposited paths. The missing-filament experiment preserves a partial tray while demonstrating why a hot nozzle alone cannot supply new material.'},
  ],
  parts:[
+  {name:'Filament-feed motor',role:'Turns the driven gripping gear. Its shaft supplies the motion that pushes filament; the heater supplies heat.'},
   {name:'Feed gear and idler',role:'Grip incoming filament and advance it into the heated path.'},
   {name:'Cold side and heat break',role:'Guide firm filament above the region intended to soften it.'},
   {name:'Heater and melt block',role:'Supply heat to the lower material path; actual temperature takes time to change.'},

@@ -24,3 +24,6 @@ deploy/
 plans/
 *.pem
 *.key
+
+# Local implementation evidence.
+evidence/

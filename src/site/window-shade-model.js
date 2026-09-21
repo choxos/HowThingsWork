@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 
-export function createWindowShadeModel(){
+export function createWindowShadeModel({rodLesson=false}={}){
  const m=houseModel('Window shade'),{part,box,rod,disk,ring,sphere,control,finish}=m;
  const tau=Math.PI*2,step=Math.PI/2,top=2.55,core=.2,clothThickness=.012,total=2.35,windowHeight=2.15;
  const fullRadius=Math.sqrt(core*core+clothThickness*total/Math.PI);
  const lengthAt=angle=>fullRadius*angle-clothThickness*angle*angle/(4*Math.PI);
  const angleAt=length=>2*Math.PI/clothThickness*(fullRadius-Math.sqrt(fullRadius*fullRadius-clothThickness*length/Math.PI));
+ const maxStop=Math.floor(angleAt(total)/step),lowerStop=(coverage,from=0)=>Math.min(maxStop,Math.max(Math.ceil(from/step-1e-9),(coverage===1?Math.ceil:Math.round)(angleAt(windowHeight*coverage)/step)))*step;
  const maxAngle=angleAt(total),pivotRadius=.16,pawlLength=.1,toeRadius=.004,seatRadius=.095;
  const seatedBeta=Math.acos((seatRadius*seatRadius-pivotRadius*pivotRadius-pawlLength*pawlLength)/(2*pivotRadius*pawlLength));
  const baseAngle=Math.asin(toeRadius/seatRadius)-Math.atan2(pawlLength*Math.sin(seatedBeta),pivotRadius+pawlLength*Math.cos(seatedBeta));
@@ -18,7 +19,8 @@ export function createWindowShadeModel(){
  const assembly=part('assembly','Connected roller mechanism','The spring, roller and pawl carrier share one axis; the central stem and notched hub remain fixed.',[0,top,0],system);
  const supports=part('supports','Mounting brackets','A rectangular tang fixes the central stem to the right bracket. The roller turns in its bearings.',[0,0,0],assembly);
  for(const x of [-1.47,1.47]){box([.07,.16,.1],[x,-.3,-.24],'wood',supports);rod([x,-.22,-.24],[x,-.055,0],.02,'metal',supports);const halfY=x>0?.0225:.031,halfZ=x>0?.025:.031;for(const z of [-halfZ-.0125,halfZ+.0125])box([.065,2*halfY+.05,.025],[x,0,z],'metal',supports);for(const y of [-halfY-.0125,halfY+.0125])box([.065,.025,2*halfZ],[x,y,0],'metal',supports);}
- const shaft=part('shaft','Fixed central rod','The rod is anchored to the right bracket and to one end of the coil spring.',[0,0,0],assembly);rod([-.93,0,0],[1.4,0,0],.03,'ink',shaft);box([.15,.045,.05],[1.44,0,0],'ink',shaft);
+ const rodTone=rodLesson?'blue':'ink';
+ const shaft=part('shaft','Fixed central rod','The rod is anchored to the right bracket and to one end of the coil spring.',[0,0,0],assembly);rod([-.93,0,0],[1.4,0,0],.03,rodTone,shaft);box([.15,.045,.05],[1.44,0,0],rodTone,shaft);
  const roller=part('roller','Rotating roller tube','The tube turns with the fabric and locking disk, around the fixed central rod.',[0,0,0],assembly);
  rod([-1.51,0,0],[-1.32,0,0],.026,'metal',roller);rod([-1.32,-.19,0],[-1.32,.19,0],.012,'metal',roller);
  const shell=new THREE.Mesh(new THREE.CylinderGeometry(core,core,2.64,64,1,true),new THREE.MeshToonMaterial({color:0xb4c5b0,side:THREE.DoubleSide}));shell.rotation.z=Math.PI/2;roller.add(shell);m.covers.push(shell);
@@ -63,9 +65,9 @@ export function createWindowShadeModel(){
   pawls.push({mount,pawl});
  }
  control('operation','Run action',0,1,1,0,'','Lower to the chosen coverage, or tug the existing shade and let it return.',[{value:0,label:'Lower and gently hold'},{value:1,label:'Tug and release'}]);
- control('coverage','Requested window coverage',.2,1,.05,.75,'fraction','The catch settles at the next available stop, so final coverage is approximate. Used when lowering.');
+ control('coverage','Requested window coverage',.2,1,.05,.75,'fraction','Requested fraction of the window, from 0.20 to 1.00. Lowering target shows the reachable stop: about 16, 32, 48, 63, 78, 93 or 100%. Lowering cannot raise an already-lowered shade; use Tug and release for that.');
  control('release','Release after the tug',0,1,1,1,'','A guided slow release lets a pawl catch again. Brisk release demonstrates pawls held clear during spring rewind.',[{value:0,label:'Gentle: catch again'},{value:1,label:'Brisk: rewind'}]);
- let angle=0,stage='ready',stageClock=0,destination=0,settleAngle=0,complete=false,accumulator=0,lastClock=0,lastAngle=NaN;
+ let angle=0,actionStartAngle=0,stage='ready',stageClock=0,destination=0,settleAngle=0,complete=false,accumulator=0,lastClock=0,lastAngle=NaN;
  function pointDistance(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy)));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
  function segmentDistance(a,b,c,d){const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);if(cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)return 0;return Math.min(pointDistance(a,c,d),pointDistance(b,c,d),pointDistance(c,a,b),pointDistance(d,a,b));}
  function clearance(a,b){const p=[pivotRadius*Math.cos(a),pivotRadius*Math.sin(a)],c=Math.cos(a+b),s=Math.sin(a+b),elbow=[p[0]+.105*c+.045*s,p[1]+.105*s-.045*c],toe=[p[0]+pawlLength*c,p[1]+pawlLength*s];let gap=1;for(let i=0;i<camPoints.length;i++){const u=camPoints[i],v=camPoints[(i+1)%camPoints.length];gap=Math.min(gap,segmentDistance(p,elbow,u,v),segmentDistance(elbow,toe,u,v));}return gap-toeRadius;}
@@ -84,11 +86,22 @@ export function createWindowShadeModel(){
    pawls[i].pawl.rotation.x=a+beta;
   }
   const held=stage==='held'||stage==='ready'&&angle>0&&Math.abs(angle/step-Math.round(angle/step))<1e-8,raised=stage==='raised',winding=angle/tau,coverage=Math.min(1,length/windowHeight);
-  return {state:{angle,extension:length,coverage,stage,held,complete,winding,springRadius,wireLength,rollerRadius:radius},readings:[r('Your result',raised?'Shade raised · window uncovered':held?(coverage===1?'Shade held · window fully covered':'Shade held · window partly covered'):stage==='rewind'?'Spring rewinding · window opening':stage==='lower'?'Lowering · covering the window':stage==='tug'?'Tug moves the catch off its stop':'Ready to lower the shade'),r('Window covered',Math.round(coverage*100)+'%'),r('Added spring winding',winding.toFixed(2)+' turns'),r('Coil diameter',((springRadius/.11)*100).toFixed(1)+'% of raised position'),r('Holding mechanism',held?'Upper pawl against a fixed stop':stage==='rewind'||stage==='clear'?'Both pawls clear':stage==='lower'?'Pawls passing the stationary ratchet':'Inspect the fixed hub and moving pawls'),r('Next action',held?'Choose Tug and release, then compare gentle and brisk release.':raised?'Lower the shade to cover the window again.':'Run the selected hand motion.') ]};
+  const targetAngle=v.operation===0&&(stage==='lower'||stage==='settle')?settleAngle:lowerStop(v.coverage,angle),targetCoverage=Math.min(1,lengthAt(targetAngle)/windowHeight),holdingStop=held?Math.round(angle/step):null;
+  return {state:{angle,extension:length,coverage,stage,held,complete,winding,springRadius,wireLength,rollerRadius:radius,targetCoverage,holdingStop},readings:[
+   r('Your result',raised?'Shade raised · window uncovered':held?(coverage===1?'Shade held · window fully covered':coverage===0?'Shade held · window uncovered':'Shade held · window partly covered'):stage==='rewind'?'Spring rewinding · window opening':stage==='lower'?'Lowering · covering the window':stage==='tug'?'Tug moves the catch off its stop':stage==='settle'?'Settling back toward a holding stop':stage==='clear'?'Pawls clearing for rewind':v.operation===1?(angle>0?'Ready to tug the lowered shade':'Already raised · no fabric to rewind'):'Ready to lower the shade'),
+   ...(rodLesson?[r('Rod rotation',(shaft.rotation.x/tau).toFixed(2)+' turns','Measured rotation of the blue central rod from its raised reference. Its fitted end stays fixed in the right bracket.'),r('Roller rotation',((roller.rotation.x-baseAngle)/tau).toFixed(2)+' turns','Measured outer-tube rotation from its raised reference. It gains turns during lowering and loses them during rewind while the rod stays fixed.')]:[]),
+   r('Window covered',Math.round(coverage*100)+'%','Actual overlap of the hanging fabric with the window opening, not the requested slider value.'),
+   r('Lowering target',v.operation===0?Math.round(targetCoverage*100)+'%':'Not used during tug','Reachable holding position for the selected lowering action. Four stops per revolution give discrete heights. A lower request cannot rewind fabric already hanging.'),
+   r('Holding position',angle===0?'Fully raised':held?holdingStop+' of '+maxStop:'Between stops','Number of quarter-turn holding steps unwound from the raised position. The upper pawl bears against a fixed face at a held stop.'),
+   r('Added spring winding',winding.toFixed(2)+' turns','Relative end rotation added by lowering, measured from the raised pose. Zero added turns does not mean a real spring has no preload.'),
+   r('Coil diameter',((springRadius/.11)*100).toFixed(1)+'% of raised position','Illustrated coil diameter relative to its raised value. Wire length is conserved; spring torque and elastic equilibrium are not calculated.'),
+   r('Holding mechanism',held?'Upper pawl against a fixed stop':stage==='rewind'||stage==='clear'?'Both pawls clear':stage==='lower'||stage==='tug'?'Pawls passing the stationary ratchet':stage==='settle'?'Upper pawl approaching a fixed stop':'No pawl holding the roller','The fixed ratchet blocks reverse rotation only when a pawl is seated. Rapid-release clearance is a prescribed teaching motion.'),
+   r('Next action',held?(v.operation===0?'Change requested coverage to lower farther, or choose Tug and release.':'Run the selected tug to compare gentle and brisk release.'):raised?'Lower the shade to cover the window again.':'Run the selected hand motion.','Changing a control keeps the current fabric position and prepares a new action. A preset prepares its stated starting pose; completion replay restores that pose.')
+  ]};
  });
  const render=result.update;
- function start(){const v=result.getState().values;stageClock=0;complete=false;if(v.operation===0){settleAngle=Math.min(Math.floor(maxAngle/step)*step,Math.max(Math.ceil(angle/step-1e-9),(v.coverage===1?Math.ceil:Math.round)(angleAt(windowHeight*v.coverage)/step))*step);destination=Math.min(maxAngle,settleAngle+.18);stage='lower';}else if(angle<=1e-9){stage='raised';complete=true;}else{destination=Math.min(maxAngle,angle+.48);settleAngle=Math.floor(destination/step)*step;stage='tug';}}
- result.update=next=>{const changed=next&&Object.keys(next).some(k=>next[k]!==result.getState().values[k]);if(changed){stage='ready';complete=false;stageClock=0;}return render(next);};
+ function start(){const v=result.getState().values;actionStartAngle=angle;stageClock=0;complete=false;if(v.operation===0){settleAngle=lowerStop(v.coverage,angle);destination=Math.min(maxAngle,settleAngle+.18);stage='lower';}else if(angle<=1e-9){stage='raised';complete=true;}else{destination=Math.min(maxAngle,angle+.48);settleAngle=Math.floor(destination/step)*step;stage='tug';}}
+ result.update=next=>{const before=result.getState().values;render(next);if(Object.keys(before).some(k=>before[k]!==result.getState().values[k])){stage='ready';complete=false;stageClock=0;accumulator=0;}return render();};
  function advance(seconds){if(!Number.isFinite(seconds)||seconds<=0)return render();if(stage==='ready')start();accumulator+=seconds;while(accumulator>=.01-1e-9&&!complete){accumulator-=.01;stageClock+=.01;const v=result.getState().values;
   if(stage==='lower'||stage==='tug'){angle=Math.min(destination,angle+(stage==='lower'?.9:1.8)*.01);if(angle>=destination){stage=stage==='lower'||v.release===0?'settle':'clear';stageClock=0;}}
   else if(stage==='settle'){angle=Math.max(settleAngle,angle-.6*.01);if(angle<=settleAngle){stage='held';complete=true;}}
@@ -96,10 +109,12 @@ export function createWindowShadeModel(){
   else if(stage==='rewind'){angle=Math.max(0,angle-2.8*.01);if(angle===0){stage='raised';complete=true;}}
   render();
  }if(complete)accumulator=0;return render();}
- function reset(){angle=0;stage='ready';stageClock=0;complete=false;accumulator=0;lastClock=0;render(result.defaults);}
- result.advance=advance;result.animate=clock=>{const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};result.reset=reset;
+ function reset(initialState={}){const heldCoverage=initialState?.heldCoverage;if(heldCoverage!==undefined&&(!Number.isFinite(heldCoverage)||heldCoverage<.2||heldCoverage>1))throw new RangeError('Invalid held coverage');if(initialState?.angle!==undefined&&(!Number.isFinite(initialState.angle)||initialState.angle<0||initialState.angle>maxAngle))throw new RangeError('Invalid initial angle');angle=initialState?.angle??(heldCoverage===undefined?0:lowerStop(heldCoverage));actionStartAngle=angle;stage='ready';stageClock=0;complete=false;accumulator=0;lastClock=0;return render(result.defaults);}
+ result.advance=advance;result.animate=clock=>{if(!Number.isFinite(clock))return render();const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};result.reset=reset;
  result.playback={label:'Run selected action',stepLabel:'Advance one step',description:'Guided hand motions demonstrate lowering, gentle settling, tugging and spring rewind. Pause freezes the mechanism; Advance one step continues it.',advance,step:()=>advance(.2),complete:()=>complete,blocked:()=>false};
+ // Preserve the actual action start, including manually configured and interrupted runs.
+ result.replayState=()=>({angle:actionStartAngle});
  result.followParts=['rail','carrier','pivot-0','pivot-1','pawl-0','pawl-1'];
  result.framingBounds=new THREE.Box3().setFromObject(result.root);result.framingBounds.min.y=Math.min(result.framingBounds.min.y,top-.08-total-.03-.285);
- result.resultPart={id:'system',context:'system',view:'front',focusOnComplete:true,label:'Inspect the window coverage',available:()=>true};return result;
+ result.resultPart={id:'system',context:'system',view:'front',focusOnComplete:!rodLesson,label:'Inspect the window coverage',available:()=>true};return result;
 }

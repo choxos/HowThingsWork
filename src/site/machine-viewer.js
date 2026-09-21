@@ -23,8 +23,9 @@ export function bindObjectDragging(canvas,camera,root,controls){
   canvas.addEventListener('pointerdown',event=>{
     const rect=canvas.getBoundingClientRect();
     point.set((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2);
-    root.updateMatrixWorld(true);camera.updateMatrixWorld();ray.setFromCamera(point,camera);
-    const onObject=ray.intersectObject(root,true).some(hit=>{if(!hit.object.isMesh)return false;for(let object=hit.object;object;object=object.parent)if(!object.visible)return false;return true;});
+    const target=typeof root==='function'?root():root;
+    target.updateMatrixWorld(true);camera.updateMatrixWorld();ray.setFromCamera(point,camera);
+    const onObject=ray.intersectObject(target,true).some(hit=>{if(!hit.object.isMesh)return false;for(let object=hit.object;object;object=object.parent)if(!object.visible)return false;return true;});
     // OrbitControls swaps pan and rotate for modifiers; compensate to preserve the hit rule.
     const modified=event.ctrlKey||event.metaKey||event.shiftKey;
     controls.mouseButtons.LEFT=onObject!==modified?THREE.MOUSE.PAN:THREE.MOUSE.ROTATE;
@@ -45,8 +46,15 @@ export function renderRoomMachines(container,entries,factory=createMachine) {
       const model=factory(entry.name);
       if(!model){thumbnails.set(entry.name,null);continue;}
       const scene=new THREE.Scene();lighting(scene);scene.add(model.root);
-      const {camera}=frameModel(model,1.2);renderer.render(scene,camera);
-      thumbnails.set(entry.name,renderer.domElement.toDataURL('image/png'));model.dispose();
+      const omitted=(model.thumbnailOmit||[]).map(object=>[object,object.parent]);
+      try{
+        for(const [object] of omitted)object.removeFromParent();
+        const {camera}=frameModel(model,1.2);renderer.render(scene,camera);
+        thumbnails.set(entry.name,renderer.domElement.toDataURL('image/png'));
+      }finally{
+        for(const [object,parent] of omitted)parent?.add(object);
+        model.dispose();
+      }
     }
     renderer.dispose();renderer.forceContextLoss();
   }

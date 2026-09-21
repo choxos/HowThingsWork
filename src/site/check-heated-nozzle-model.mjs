@@ -1,16 +1,17 @@
 import assert from 'node:assert/strict';
-import {createPrinterModel,planPrinterJob,printerConstants as C} from './printer-model.js';
+import {planPrinterJob,printerConstants as C} from './printer-model.js';
 import {heatedNozzleLesson as lesson} from './heated-nozzle-lesson.js';
 import {houseComponents} from './house-components.js';
 import {neighborhoodCatalog as catalog} from './catalog-data.js';
 const mapping=houseComponents['Heated extrusion nozzle'];
 assert.equal(mapping.machine,'3D printer');assert.equal(mapping.part,'extruder');assert.equal(mapping.lesson,lesson);assert.equal(mapping.isolate,false);
 assert.equal(catalog.entries.filter(e=>e.name==='Heated extrusion nozzle').length,1);
-const m=createPrinterModel(),part=id=>m.parts.find(p=>p.id===id).object;
+const m=mapping.createModel(),part=id=>m.parts.find(p=>p.id===id).object;
 const prepare=i=>{const p=lesson.tryIt[i];m.reset(p.initialState);m.update(p.values);assert.ok(m.parts.some(x=>x.id===p.part));return m.getState();};
 const flow=()=>{for(let i=0;i<4000;i++){const s=m.getState();if(s.plasticFlow>0)return s;m.advance(.02);}assert.fail('No deposition');};
 const finish=()=>{for(let i=0;i<5000;i++){const s=m.getState();if(s.complete||s.blocked)return s;m.advance(.05);}assert.fail('No terminal state');};
 try{
+ assert.equal(m.playback.label,'Run heated extrusion');assert.equal(part('feed-motor').parent,part('extruder'));assert.ok(lesson.parts.some(p=>p.name==='Filament-feed motor'));
  assert.equal(part('hotend').parent,part('extruder'));assert.equal(part('nozzle').parent,part('hotend'));assert.equal(part('material-in-head').parent,part('hotend'));assert.equal(part('feed-gears').parent,part('extruder'));
  prepare(0);assert.equal(m.getState().plasticFlow,0);m.advance(.1);assert.equal(m.getState().plasticFlow,0);assert.ok(m.getState().temperature>C.ambient);
  const normal=flow();assert.equal(normal.plasticFlow,2.4);assert.ok(Math.abs(normal.filamentFeed-2.4/(Math.PI*1.75**2/4))<1e-12);

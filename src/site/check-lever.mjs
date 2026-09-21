@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {chromium} from 'playwright';
 import {createLeverModel} from './lever-model.js';
+import {dailyLifeLessons} from './daily-life-lessons.js';
+import {mkdir,writeFile} from 'node:fs/promises';
 
 const m=createLeverModel(),object=id=>m.parts.find(p=>p.id===id).object;
 for(const hz of [30,60,144]){
@@ -35,20 +37,48 @@ for(const keyPattern of [0,1,2]){
   if(roller.y>=0){const left=-state.boltTravel,right=.6-state.boltTravel;assert.ok(roller.x>=left-1e-7&&roller.x<=right+1e-7,'drive roller stays inside actual slot');}
  }
 }
+for(const [index,preset] of dailyLifeLessons['Lever lock'].tryIt.entries()){
+ m.reset();m.update(preset.values);const state=m.getState();assert.deepEqual(state.values,preset.values,'preset '+index+' establishes its named state');assert.ok(state.readings.every(row=>row.hint),'every reading explains its meaning');
+ m.advance(20);assert.equal(m.getState().blocked,[0,4].includes(index));assert.equal(m.getState().complete,![0,4].includes(index));
+}
+m.reset();assert.equal(object('key').position.z,.8);m.root.updateMatrixWorld(true);
+const withdrawn=new THREE.Box3().setFromObject(object('key')),plates=new THREE.Box3().setFromObject(object('lever-pack'));assert.ok(withdrawn.min.z>plates.max.z,'withdrawn key clears the plate pack');
+m.update({insertion:1,turn:135});assert.match(m.getState().readings.find(row=>row.label==='Next action').value,/roller must reach/);m.update({turn:360});assert.match(m.getState().readings.find(row=>row.label==='Lever gates').value,/hold the retracted bolt/);m.update({insertion:0});assert.match(m.getState().readings.find(row=>row.label==='Next action').value,/Open the door/);
 m.reset();m.root.updateMatrixWorld(true);const fixed=object('frame').matrixWorld.clone();m.advance(12);m.root.updateMatrixWorld(true);assert.ok(object('frame').matrixWorld.equals(fixed));assert.notEqual(object('door').rotation.y,0);m.dispose();
 
+console.log('PASS lever model: original contact/gate/spring/slot checks and three frame rates, six independent valid presets, reading hints and withdrawn-key clearance.');
+if(process.env.MODEL_ONLY==='1')process.exit(0);
+const evidence=process.env.EVIDENCE_DIR||'/tmp/howthingswork-lever';await mkdir(evidence,{recursive:true});
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
 try{
  await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5175/'}#machine/lever-lock`);await page.getByRole('button',{name:'Run selected action',exact:true}).waitFor();
  await page.getByRole('combobox',{name:'Key pattern',exact:true}).selectOption('1');await page.getByRole('button',{name:'Run selected action',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-number="turn"]').value==='180');assert.match(await page.locator('.daily-readings').textContent(),/Door held closed/);await page.screenshot({path:'/tmp/howthingswork-lever-wrong-key.png',fullPage:true});
  await page.getByRole('button',{name:'Reset experiment',exact:true}).click();await page.getByRole('button',{name:'Run selected action',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-number="door"]').value==='65');assert.equal(await page.getByRole('spinbutton',{name:'Key insertion value',exact:true}).inputValue(),'0');assert.match(await page.locator('.daily-readings').textContent(),/Door open · passage clear/);await page.screenshot({path:'/tmp/howthingswork-lever-open.png',fullPage:true});
  await page.getByRole('combobox',{name:'Run action',exact:true}).selectOption('1');await page.getByRole('button',{name:'Run selected action',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.daily-readings').textContent.includes('Door secured · key removed'));await page.screenshot({path:'/tmp/howthingswork-lever-secured.png',fullPage:true});
- for(const [i,turn,pattern] of [[3,0,0],[0,0,1],[1,135,0],[2,270,0]]){
-  await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.getByRole('button',{name:'Set up this experiment',exact:true}).nth(i).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();
-  assert.equal(await page.getByRole('spinbutton',{name:'Turn the key value',exact:true}).inputValue(),String(turn));assert.equal(await page.getByRole('spinbutton',{name:'Open the door value',exact:true}).inputValue(),'0');assert.equal(await page.getByRole('combobox',{name:'Key pattern',exact:true}).inputValue(),String(pattern));assert.equal(await page.getByRole('combobox',{name:'Run action',exact:true}).inputValue(),'0');
-  await page.getByRole('button',{name:'Run selected action',exact:true}).click();await page.waitForFunction(wrong=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false'&&(wrong?document.querySelector('[data-number="turn"]').value==='180':document.querySelector('[data-number="door"]').value==='65'),i===0);
-  assert.match(await page.locator('.daily-readings').textContent(),i===0?/Door held closed/:/Door open · passage clear/);
+ const cases=[];
+ for(const width of [1440,390]){
+  await page.setViewportSize({width,height:width===1440?1000:844});
+  const capture=async name=>{await page.locator('canvas').scrollIntoViewIfNeeded();await page.waitForTimeout(100);await page.screenshot({path:`${evidence}/${name}-${width}.png`,clip:await page.locator('canvas').boundingBox()});};
+  for(const [index,preset] of dailyLifeLessons['Lever lock'].tryIt.entries()){
+   await page.locator('[data-cutaway]').uncheck();await page.locator('[data-labels]').check();await page.locator('button[data-label-part="door"]').click();await page.locator('[data-isolate]').check();await page.locator('[data-labels]').uncheck();
+   await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.getByRole('button',{name:'Set up this experiment',exact:true}).nth(index).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();
+   for(const [key,value] of Object.entries(preset.values))assert.equal(await page.locator(`[data-control="${key}"]`).inputValue(),String(value),'preset '+index+' '+key);
+   assert.equal(await page.locator('[data-cutaway]').isChecked(),true);assert.equal(await page.locator('[data-isolate]').isChecked(),false);assert.equal(await page.locator('.daily-part-detail h3').textContent(),index===5?'Door and lever lock':'Enlarged lever-lock assembly');assert.equal(await page.locator('.daily-readings>div>p').count(),7);await capture('initial-'+index);
+   await page.locator('[data-step]').click();assert.notEqual(await page.locator(index===5?'[data-number="door"]':preset.values.insertion?'[data-number="turn"]':'[data-number="insertion"]').inputValue(),String(index===5?preset.values.door:preset.values.insertion?preset.values.turn:preset.values.insertion),'Advance changes the current stage');
+   await page.locator('[data-play]').click();await page.waitForTimeout(200);await page.getByRole('button',{name:'Pause',exact:true}).click();const paused=await page.locator('.daily-readings').textContent();await page.waitForTimeout(150);assert.equal(await page.locator('.daily-readings').textContent(),paused,'pause preserves state');await page.locator('[data-play]').click();
+   const wrong=[0,4].includes(index);await page.waitForFunction(({wrong,closing})=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false'&&(wrong?document.querySelector('[data-number="turn"]').value==='180':document.querySelector('.daily-readings').textContent.includes(closing?'Door secured · key removed':'Door open · passage clear')),{wrong,closing:index===5},{timeout:30000});
+   assert.match(await page.locator('.daily-readings').textContent(),wrong?/Wrong key: gate obstructed/:index===5?/Door secured · key removed/:/Door open · passage clear/);assert.equal(await page.locator('[data-number="door"]').inputValue(),wrong||index===5?'0':'65');await capture('complete-'+index);
+   if(wrong){
+    assert.equal(await page.locator('[data-number="insertion"]').isDisabled(),true);assert.equal(await page.locator('[data-control="keyPattern"]').isDisabled(),true);await page.locator('[data-number="turn"]').fill('0');await page.locator('[data-number="insertion"]').fill('0');await page.locator('[data-control="keyPattern"]').selectOption('0');await page.locator('[data-play]').click();await page.locator('[data-play][title^="Play again"]').waitFor({timeout:30000});assert.equal(await page.locator('[data-number="door"]').inputValue(),'65');await capture('recovered-'+index);
+   }else{
+    const started=await page.locator('[data-play]').evaluate(button=>{button.click();const playing=button.getAttribute('aria-pressed')==='true';button.click();return playing;});assert.equal(started,true);for(const [key,value] of Object.entries(preset.values))assert.equal(await page.locator(`[data-control="${key}"]`).inputValue(),String(value),'replay restores '+key);if(index===5)assert.equal(await page.locator('.daily-part-detail h3').textContent(),'Door and lever lock','replay retains and reframes a directly selected result');await capture('replay-'+index);
+   }
+   cases.push({width,preset:index,title:preset.title,independent:true,result:wrong?'Blocked and recovered':index===5?'Secured':'Open',replay:!wrong});
+  }
+  await page.locator('[data-reset-controls]').click();await page.locator('[data-number="door"]').fill('65');await page.locator('[data-number="door"]').blur();assert.equal(await page.locator('[data-number="door"]').inputValue(),'0');await page.locator('[data-number="insertion"]').fill('0.8');await page.locator('[data-number="turn"]').fill('360');await page.locator('[data-number="turn"]').blur();assert.equal(await page.locator('[data-number="turn"]').inputValue(),'0');
+  await page.locator('[data-reset-controls]').click();await page.locator('[data-labels]').check();await page.locator('button[data-label-part="stump"]').click();await page.getByRole('heading',{name:'Lever lock',exact:true}).click();assert.match(await page.locator('.daily-part-detail').textContent(),/Select a part/);await page.locator('[data-labels]').uncheck();await page.locator('[data-separation]').fill('100');await page.getByText('Fully separated',{exact:true}).waitFor();assert.ok(await page.locator('.daily-inventory-labels [data-category]:visible').count()>=4);await page.locator('[data-view="in"]').click();await page.locator('[data-view="out"]').click();assert.equal(await page.locator('[data-separation]').inputValue(),'100');await capture('separated');await page.getByRole('button',{name:'Reassemble',exact:true}).click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  }
- await page.getByRole('button',{name:'The stump rests in the other end pockets while the springs lower the levers.',exact:true}).click();assert.match(await page.getByRole('status').textContent(),/That’s right/);
+ await writeFile(`${evidence}/browser.json`,JSON.stringify({cases,errors},null,2));assert.equal(cases.length,12);
+ await page.getByRole('button',{name:'The stump rests in the other end pockets while the springs lower the levers.',exact:true}).click();assert.match(await page.locator('.daily-answer').textContent(),/That’s right/);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.deepEqual(errors,[]);console.log('PASS lever lock: contact, actual gate openings, spring attachment, wrong-key obstruction, full opening and relocking at three frame rates, browser presets, quiz and mobile.');
 }catch(error){console.error(await page.locator('.daily-readings').textContent());throw error;}finally{await browser.close();}

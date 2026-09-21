@@ -1,0 +1,5278 @@
+{
+  "cylinder-lock": [
+    {
+      "id": "frame",
+      "name": "Fixed door frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lever-lock": [
+    {
+      "id": "frame",
+      "name": "Fixed frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "keys": [
+    {
+      "id": "frame",
+      "name": "Fixed door frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "can-opener": [
+    {
+      "id": "body",
+      "name": "Can body",
+      "parentId": "can"
+    },
+    {
+      "id": "rim",
+      "name": "Rolled rim",
+      "parentId": "can"
+    },
+    {
+      "id": "lid",
+      "name": "Cut lid",
+      "parentId": "can"
+    },
+    {
+      "id": "fixed-handle",
+      "name": "Fixed handle and upper bearing",
+      "parentId": "clamp-head"
+    },
+    {
+      "id": "hinge",
+      "name": "Handle hinge",
+      "parentId": "clamp-head"
+    },
+    {
+      "id": "crank",
+      "name": "Hand crank and upper shaft",
+      "parentId": "transmission"
+    },
+    {
+      "id": "driver-gear",
+      "name": "Upper driving spur gear",
+      "parentId": "transmission"
+    },
+    {
+      "id": "cutting-wheel",
+      "name": "Beveled cutting wheel",
+      "parentId": "transmission"
+    },
+    {
+      "id": "moving-handle",
+      "name": "Moving handle and lower jaw",
+      "parentId": "transmission"
+    },
+    {
+      "id": "driven-gear",
+      "name": "Lower driven spur gear",
+      "parentId": "moving-handle"
+    },
+    {
+      "id": "feed-wheel",
+      "name": "Toothed feed wheel",
+      "parentId": "moving-handle"
+    }
+  ],
+  "zipper": [
+    {
+      "id": "body",
+      "name": "Separate garment panels",
+      "parentId": "garment"
+    },
+    {
+      "id": "zipper",
+      "name": "Complete separating zipper",
+      "parentId": "garment"
+    }
+  ],
+  "bottle-opener": [
+    {
+      "id": "bottle",
+      "name": "Glass bottle",
+      "parentId": "system"
+    },
+    {
+      "id": "bead",
+      "name": "Retaining bead and mouth",
+      "parentId": "neck"
+    },
+    {
+      "id": "crown-top",
+      "name": "Cap top",
+      "parentId": "cap"
+    },
+    {
+      "id": "liner",
+      "name": "Sealing liner",
+      "parentId": "crown-top"
+    },
+    {
+      "id": "retaining-crimps",
+      "name": "Connected retaining crimps",
+      "parentId": "cap"
+    },
+    {
+      "id": "support",
+      "name": "Supporting toe",
+      "parentId": "opener"
+    },
+    {
+      "id": "hook",
+      "name": "Cap hook",
+      "parentId": "opener"
+    },
+    {
+      "id": "handle",
+      "name": "Long handle",
+      "parentId": "opener"
+    }
+  ],
+  "nutcracker": [
+    {
+      "id": "hinge",
+      "name": "Shared hinge",
+      "parentId": "system"
+    },
+    {
+      "id": "handles",
+      "name": "Paired handles",
+      "parentId": "system"
+    },
+    {
+      "id": "jaws",
+      "name": "Opposing rounded jaws",
+      "parentId": "system"
+    },
+    {
+      "id": "shell",
+      "name": "Nut shell",
+      "parentId": "nut"
+    },
+    {
+      "id": "kernel",
+      "name": "Kernel",
+      "parentId": "nut"
+    }
+  ],
+  "nail-clippers": [
+    {
+      "id": "spring-arms",
+      "name": "Paired spring arms",
+      "parentId": "system"
+    },
+    {
+      "id": "post",
+      "name": "Retaining post and lower head",
+      "parentId": "system"
+    },
+    {
+      "id": "handle",
+      "name": "Operating handle",
+      "parentId": "system"
+    },
+    {
+      "id": "nail-result",
+      "name": "Clipped nail and fragment",
+      "parentId": "system"
+    },
+    {
+      "id": "force-arrows",
+      "name": "Force directions",
+      "parentId": "system"
+    }
+  ],
+  "tweezers": [
+    {
+      "id": "tool",
+      "name": "Connected spring tweezers",
+      "parentId": "system"
+    },
+    {
+      "id": "block",
+      "name": "Small practice block",
+      "parentId": "system"
+    },
+    {
+      "id": "tray",
+      "name": "Receiving tray",
+      "parentId": "system"
+    },
+    {
+      "id": "weight",
+      "name": "Block weight",
+      "parentId": "system"
+    }
+  ],
+  "bathroom-scale": [
+    {
+      "id": "base",
+      "name": "Chassis and fixed supports",
+      "parentId": "system"
+    },
+    {
+      "id": "platform",
+      "name": "Load platform and four feet",
+      "parentId": "system"
+    },
+    {
+      "id": "levers",
+      "name": "Four third-class levers",
+      "parentId": "system"
+    },
+    {
+      "id": "calibration",
+      "name": "Load-carrying calibrating plate",
+      "parentId": "system"
+    },
+    {
+      "id": "spring",
+      "name": "Main tension spring",
+      "parentId": "system"
+    },
+    {
+      "id": "crank",
+      "name": "Bell crank and sliding follower",
+      "parentId": "system"
+    },
+    {
+      "id": "rack",
+      "name": "Guided toothed rack",
+      "parentId": "system"
+    },
+    {
+      "id": "dial-spring",
+      "name": "Light dial tension spring",
+      "parentId": "system"
+    },
+    {
+      "id": "zero",
+      "name": "Zero adjustment and carriage",
+      "parentId": "system"
+    },
+    {
+      "id": "pinion",
+      "name": "Dial pinion and shaft",
+      "parentId": "zero"
+    },
+    {
+      "id": "dial",
+      "name": "Horizontal graduated dial",
+      "parentId": "pinion"
+    }
+  ],
+  "platform-scale": [
+    {
+      "id": "base",
+      "name": "Rigid frame and pivot bearings",
+      "parentId": "system"
+    },
+    {
+      "id": "lower",
+      "name": "Lower lever",
+      "parentId": "system"
+    },
+    {
+      "id": "upper",
+      "name": "Upper reversing lever",
+      "parentId": "system"
+    },
+    {
+      "id": "beam",
+      "name": "Calibrated weighing beam",
+      "parentId": "system"
+    },
+    {
+      "id": "rod-one",
+      "name": "First connecting rod",
+      "parentId": "system"
+    },
+    {
+      "id": "rod-two",
+      "name": "Second connecting rod",
+      "parentId": "system"
+    },
+    {
+      "id": "platform",
+      "name": "Guided platform and captured pin",
+      "parentId": "system"
+    },
+    {
+      "id": "load",
+      "name": "Secured payload",
+      "parentId": "platform"
+    },
+    {
+      "id": "poise",
+      "name": "Sliding poise and lock",
+      "parentId": "beam"
+    },
+    {
+      "id": "stops",
+      "name": "Two travel stops",
+      "parentId": "system"
+    },
+    {
+      "id": "level",
+      "name": "Beam level reference",
+      "parentId": "base"
+    },
+    {
+      "id": "flywheel",
+      "name": "Lower-shaft flywheel",
+      "parentId": "lower"
+    },
+    {
+      "id": "damper",
+      "name": "Rotary viscous damper",
+      "parentId": "system"
+    }
+  ],
+  "roberval-balance": [
+    {
+      "id": "frame",
+      "name": "Fixed frame and bored bearings",
+      "parentId": "system"
+    },
+    {
+      "id": "upper-beam",
+      "name": "Upper equal-arm beam",
+      "parentId": "system"
+    },
+    {
+      "id": "lower-beam",
+      "name": "Lower equal-arm beam",
+      "parentId": "system"
+    },
+    {
+      "id": "left-carrier",
+      "name": "Left upright carrier",
+      "parentId": "system"
+    },
+    {
+      "id": "left-pan",
+      "name": "Left horizontal pan",
+      "parentId": "left-carrier"
+    },
+    {
+      "id": "left-load",
+      "name": "Left secured payload",
+      "parentId": "left-pan"
+    },
+    {
+      "id": "right-carrier",
+      "name": "Right upright carrier",
+      "parentId": "system"
+    },
+    {
+      "id": "right-pan",
+      "name": "Right horizontal pan",
+      "parentId": "right-carrier"
+    },
+    {
+      "id": "right-load",
+      "name": "Right secured payload",
+      "parentId": "right-pan"
+    },
+    {
+      "id": "damper",
+      "name": "Upper-shaft viscous damper",
+      "parentId": "system"
+    },
+    {
+      "id": "stops",
+      "name": "Paired travel stops",
+      "parentId": "system"
+    },
+    {
+      "id": "pointer",
+      "name": "Beam-angle pointer",
+      "parentId": "upper-beam"
+    },
+    {
+      "id": "comparison-arc",
+      "name": "Fixed angle comparison arc",
+      "parentId": "system"
+    }
+  ],
+  "scale-calibrating-plate": [
+    {
+      "id": "base",
+      "name": "Chassis and fixed supports",
+      "parentId": "system"
+    },
+    {
+      "id": "platform",
+      "name": "Load platform and four feet",
+      "parentId": "system"
+    },
+    {
+      "id": "levers",
+      "name": "Four third-class levers",
+      "parentId": "system"
+    },
+    {
+      "id": "calibration",
+      "name": "Load-carrying calibrating plate",
+      "parentId": "system"
+    },
+    {
+      "id": "spring",
+      "name": "Main tension spring",
+      "parentId": "system"
+    },
+    {
+      "id": "crank",
+      "name": "Bell crank and sliding follower",
+      "parentId": "system"
+    },
+    {
+      "id": "rack",
+      "name": "Guided toothed rack",
+      "parentId": "system"
+    },
+    {
+      "id": "dial-spring",
+      "name": "Light dial tension spring",
+      "parentId": "system"
+    },
+    {
+      "id": "zero",
+      "name": "Zero adjustment and carriage",
+      "parentId": "system"
+    }
+  ],
+  "sardine-can-key": [
+    {
+      "id": "body",
+      "name": "Can body and contents",
+      "parentId": "system"
+    },
+    {
+      "id": "band",
+      "name": "Scored tear band",
+      "parentId": "system"
+    },
+    {
+      "id": "lid",
+      "name": "Lid section",
+      "parentId": "system"
+    },
+    {
+      "id": "key",
+      "name": "Winding key",
+      "parentId": "system"
+    },
+    {
+      "id": "gauge",
+      "name": "Force needed along the band",
+      "parentId": "system"
+    }
+  ],
+  "salad-spinner": [
+    {
+      "id": "bowl",
+      "name": "Outer bowl",
+      "parentId": "system"
+    },
+    {
+      "id": "basket",
+      "name": "Perforated basket",
+      "parentId": "system"
+    },
+    {
+      "id": "clutch",
+      "name": "One-way roller clutch",
+      "parentId": "system"
+    },
+    {
+      "id": "lid",
+      "name": "Lid and planet carrier",
+      "parentId": "system"
+    },
+    {
+      "id": "gears",
+      "name": "Epicyclic gear train",
+      "parentId": "system"
+    },
+    {
+      "id": "drops",
+      "name": "Water drops",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Water left against basket speed",
+      "parentId": "system"
+    }
+  ],
+  "rack-and-pinion-corkscrew": [
+    {
+      "id": "bottle",
+      "name": "Bottle neck",
+      "parentId": "system"
+    },
+    {
+      "id": "cork",
+      "name": "Cork",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Body and pinion pins",
+      "parentId": "system"
+    },
+    {
+      "id": "rack",
+      "name": "Rack, shaft and knob",
+      "parentId": "system"
+    },
+    {
+      "id": "right-wing",
+      "name": "Right wing and pinion",
+      "parentId": "system"
+    },
+    {
+      "id": "left-wing",
+      "name": "Left wing and pinion",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Push needed on each wing",
+      "parentId": "system"
+    }
+  ],
+  "egg-whisk": [
+    {
+      "id": "bowl",
+      "name": "Bowl and mixture",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Frame and handle",
+      "parentId": "system"
+    },
+    {
+      "id": "drive",
+      "name": "Crown wheel and pinions",
+      "parentId": "system"
+    },
+    {
+      "id": "beater-pair",
+      "name": "Both beaters",
+      "parentId": "system"
+    }
+  ],
+  "electric-mixer": [
+    {
+      "id": "bowl",
+      "name": "Bowl and mixture",
+      "parentId": "system"
+    },
+    {
+      "id": "housing",
+      "name": "Housing and handle",
+      "parentId": "system"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor",
+      "parentId": "system"
+    },
+    {
+      "id": "drive",
+      "name": "Worm and both wheels",
+      "parentId": "system"
+    },
+    {
+      "id": "beater-pair",
+      "name": "Both beaters",
+      "parentId": "system"
+    }
+  ],
+  "sewing-machine": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "lockstitch": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "feed-dog": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "screw-corkscrew": [
+    {
+      "id": "bottle",
+      "name": "Bottle neck",
+      "parentId": "system"
+    },
+    {
+      "id": "cork",
+      "name": "Cork",
+      "parentId": "system"
+    },
+    {
+      "id": "corkscrew",
+      "name": "Corkscrew",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Pull needed as the cork comes out",
+      "parentId": "system"
+    }
+  ],
+  "faucet": [
+    {
+      "id": "supply",
+      "name": "Supply tail",
+      "parentId": "system"
+    },
+    {
+      "id": "body",
+      "name": "Sectioned tap body",
+      "parentId": "system"
+    },
+    {
+      "id": "seat",
+      "name": "Valve seat",
+      "parentId": "system"
+    },
+    {
+      "id": "spindle",
+      "name": "Threaded spindle assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "aerator",
+      "name": "Aerator sleeve and screen",
+      "parentId": "system"
+    },
+    {
+      "id": "waterway",
+      "name": "Water in the valve",
+      "parentId": "system"
+    },
+    {
+      "id": "stream",
+      "name": "Water leaving the spout",
+      "parentId": "system"
+    },
+    {
+      "id": "bucket",
+      "name": "Ten-liter collection bucket",
+      "parentId": "system"
+    }
+  ],
+  "meat-grinder": [
+    {
+      "id": "body",
+      "name": "Barrel and support",
+      "parentId": "system"
+    },
+    {
+      "id": "auger",
+      "name": "Feed auger and drive shaft",
+      "parentId": "system"
+    },
+    {
+      "id": "cutter",
+      "name": "Knife and fixed plate",
+      "parentId": "system"
+    },
+    {
+      "id": "crank",
+      "name": "Crank handle",
+      "parentId": "system"
+    },
+    {
+      "id": "meat",
+      "name": "Feed and output markers",
+      "parentId": "system"
+    },
+    {
+      "id": "collection",
+      "name": "Mince collection bowl",
+      "parentId": "system"
+    }
+  ],
+  "window-shade": [
+    {
+      "id": "window",
+      "name": "Window opening",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Connected roller mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "rail",
+      "name": "Bottom rail and pull ring",
+      "parentId": "system"
+    }
+  ],
+  "ratchet": [
+    {
+      "id": "frame",
+      "name": "Fixed supporting frame",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Wheel and holding catch",
+      "parentId": "system"
+    }
+  ],
+  "raft": [
+    {
+      "id": "timbers",
+      "name": "Six buoyant timbers",
+      "parentId": "system"
+    },
+    {
+      "id": "bindings",
+      "name": "Rope bindings",
+      "parentId": "system"
+    },
+    {
+      "id": "cargo",
+      "name": "Steel cargo",
+      "parentId": "system"
+    },
+    {
+      "id": "water",
+      "name": "Water and depth reference",
+      "parentId": "system"
+    },
+    {
+      "id": "forces",
+      "name": "Force comparison",
+      "parentId": "system"
+    }
+  ],
+  "drinking-straw": [
+    {
+      "id": "glass",
+      "name": "Glass",
+      "parentId": "system"
+    },
+    {
+      "id": "reservoir",
+      "name": "Drink in the glass",
+      "parentId": "system"
+    },
+    {
+      "id": "straw",
+      "name": "Straw wall",
+      "parentId": "system"
+    },
+    {
+      "id": "vent",
+      "name": "Side vent",
+      "parentId": "system"
+    },
+    {
+      "id": "column",
+      "name": "Liquid column",
+      "parentId": "system"
+    },
+    {
+      "id": "mouth",
+      "name": "Sealed lips",
+      "parentId": "system"
+    },
+    {
+      "id": "pressure",
+      "name": "Pressure comparison",
+      "parentId": "system"
+    },
+    {
+      "id": "atmosphere",
+      "name": "Atmospheric pressure",
+      "parentId": "system"
+    }
+  ],
+  "toilet-tank": [
+    {
+      "id": "tank",
+      "name": "Cistern and lid",
+      "parentId": "system"
+    },
+    {
+      "id": "water",
+      "name": "Stored tank water",
+      "parentId": "system"
+    },
+    {
+      "id": "siphon",
+      "name": "Primed siphon passage",
+      "parentId": "system"
+    },
+    {
+      "id": "actuator",
+      "name": "Handle and lift linkage",
+      "parentId": "system"
+    },
+    {
+      "id": "inlet",
+      "name": "Supply pipe and float valve",
+      "parentId": "system"
+    }
+  ],
+  "siphon": [
+    {
+      "id": "tank",
+      "name": "Cistern and lid",
+      "parentId": "system"
+    },
+    {
+      "id": "water",
+      "name": "Stored tank water",
+      "parentId": "system"
+    },
+    {
+      "id": "siphon",
+      "name": "Primed siphon passage",
+      "parentId": "system"
+    },
+    {
+      "id": "actuator",
+      "name": "Handle and lift linkage",
+      "parentId": "system"
+    },
+    {
+      "id": "inlet",
+      "name": "Supply pipe and float valve",
+      "parentId": "system"
+    }
+  ],
+  "water-meter": [
+    {
+      "id": "pipe",
+      "name": "Inlet and outlet pipes",
+      "parentId": "system"
+    },
+    {
+      "id": "chamber",
+      "name": "Measuring chamber",
+      "parentId": "system"
+    },
+    {
+      "id": "seal",
+      "name": "Shaft seal and rotor bearings",
+      "parentId": "system"
+    },
+    {
+      "id": "impeller",
+      "name": "Impeller and first worm shaft",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Dry gearbox frame and shaft supports",
+      "parentId": "system"
+    },
+    {
+      "id": "first-wheel",
+      "name": "20-tooth worm wheel and indicator shaft",
+      "parentId": "system"
+    },
+    {
+      "id": "pointer-drive",
+      "name": "40-tooth pointer gear and shaft",
+      "parentId": "system"
+    },
+    {
+      "id": "counter-drive",
+      "name": "20-tooth counter pinion and second worm",
+      "parentId": "system"
+    },
+    {
+      "id": "dial",
+      "name": "Fixed one-liter dial",
+      "parentId": "system"
+    },
+    {
+      "id": "register",
+      "name": "Cubic-meter roller register",
+      "parentId": "system"
+    },
+    {
+      "id": "case",
+      "name": "Upper register casing",
+      "parentId": "system"
+    },
+    {
+      "id": "waterway",
+      "name": "Water route through the rotor",
+      "parentId": "system"
+    }
+  ],
+  "dishwasher": [
+    {
+      "id": "cabinet",
+      "name": "Cabinet and sump",
+      "parentId": "system"
+    },
+    {
+      "id": "rack",
+      "name": "Rack and dishes",
+      "parentId": "system"
+    },
+    {
+      "id": "heater",
+      "name": "Base heater",
+      "parentId": "system"
+    },
+    {
+      "id": "filter",
+      "name": "Return filter",
+      "parentId": "system"
+    },
+    {
+      "id": "pump",
+      "name": "Circulation pump",
+      "parentId": "system"
+    },
+    {
+      "id": "softener",
+      "name": "Water softener",
+      "parentId": "system"
+    },
+    {
+      "id": "inlet",
+      "name": "Fresh-water inlet and valve",
+      "parentId": "system"
+    },
+    {
+      "id": "drain",
+      "name": "Drain pump and hose",
+      "parentId": "system"
+    },
+    {
+      "id": "spray-arm",
+      "name": "Rotating spray arm",
+      "parentId": "system"
+    },
+    {
+      "id": "cycle",
+      "name": "Cycle timeline",
+      "parentId": "system"
+    }
+  ],
+  "rotating-spray-arm": [
+    {
+      "id": "pump",
+      "name": "Circulation pump",
+      "parentId": "system"
+    },
+    {
+      "id": "spray-arm",
+      "name": "Rotating spray arm",
+      "parentId": "system"
+    },
+    {
+      "id": "spray",
+      "name": "Water jets",
+      "parentId": "system"
+    }
+  ],
+  "microwave-oven": [
+    {
+      "id": "cavity",
+      "name": "Reflecting cavity and chassis",
+      "parentId": "system"
+    },
+    {
+      "id": "interlock",
+      "name": "Door latch and interlock switches",
+      "parentId": "system"
+    },
+    {
+      "id": "source",
+      "name": "Electrical supply and microwave source",
+      "parentId": "system"
+    },
+    {
+      "id": "stirrer",
+      "name": "Mode stirrer and drive",
+      "parentId": "system"
+    },
+    {
+      "id": "turntable-drive",
+      "name": "Turntable drive and rollers",
+      "parentId": "system"
+    },
+    {
+      "id": "field",
+      "name": "Prescribed field and energy guides",
+      "parentId": "system"
+    },
+    {
+      "id": "timer",
+      "name": "Timer and burst-power control",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Temperature and energy comparison",
+      "parentId": "system"
+    },
+    {
+      "id": "molecules",
+      "name": "Polar molecules and dielectric heating",
+      "parentId": "system"
+    }
+  ],
+  "vacuum-flask": [
+    {
+      "id": "gap",
+      "name": "Double wall and insulating gap",
+      "parentId": "system"
+    },
+    {
+      "id": "stopper",
+      "name": "Stopper",
+      "parentId": "system"
+    },
+    {
+      "id": "drink",
+      "name": "Drink",
+      "parentId": "system"
+    },
+    {
+      "id": "support",
+      "name": "Insulating support",
+      "parentId": "system"
+    },
+    {
+      "id": "case",
+      "name": "Protective case",
+      "parentId": "system"
+    },
+    {
+      "id": "heat-flow",
+      "name": "Heat flow directions",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Temperature and heat transfer",
+      "parentId": "system"
+    }
+  ],
+  "toaster": [
+    {
+      "id": "system",
+      "name": "Toaster"
+    },
+    {
+      "id": "chart",
+      "name": "Temperature chart"
+    }
+  ],
+  "refrigerator": [
+    {
+      "id": "system",
+      "name": "Refrigerator"
+    },
+    {
+      "id": "charts",
+      "name": "Cabinet temperature chart"
+    },
+    {
+      "id": "cycle-chart",
+      "name": "Refrigerant cycle chart"
+    },
+    {
+      "id": "indicator",
+      "name": "Pressure in the cylinder"
+    }
+  ],
+  "refrigerant-compressor": [
+    {
+      "id": "system",
+      "name": "Refrigerant compressor"
+    },
+    {
+      "id": "indicator",
+      "name": "Cylinder pressure-volume chart"
+    }
+  ],
+  "binoculars": [
+    {
+      "id": "body",
+      "name": "Channel bridge",
+      "parentId": "optics"
+    },
+    {
+      "id": "left-channel",
+      "name": "Left optical channel",
+      "parentId": "optics"
+    },
+    {
+      "id": "right-channel",
+      "name": "Right optical channel",
+      "parentId": "optics"
+    }
+  ],
+  "polarized-light": [
+    {
+      "id": "first",
+      "name": "First polarizer",
+      "parentId": "train"
+    },
+    {
+      "id": "analyzer",
+      "name": "Analyzer",
+      "parentId": "train"
+    },
+    {
+      "id": "source",
+      "name": "Input light",
+      "parentId": "train"
+    },
+    {
+      "id": "result",
+      "name": "Transmitted light meter",
+      "parentId": "train"
+    },
+    {
+      "id": "meter",
+      "name": "Power comparison",
+      "parentId": "train"
+    }
+  ],
+  "liquid-crystal-display": [
+    {
+      "id": "front",
+      "name": "Front polarizer",
+      "parentId": "cell"
+    },
+    {
+      "id": "rear",
+      "name": "Rear polarizer",
+      "parentId": "cell"
+    },
+    {
+      "id": "segment-electrode",
+      "name": "Transparent segment electrode",
+      "parentId": "cell"
+    },
+    {
+      "id": "common-electrode",
+      "name": "Transparent common electrode",
+      "parentId": "cell"
+    },
+    {
+      "id": "molecules",
+      "name": "Liquid-crystal directors",
+      "parentId": "cell"
+    },
+    {
+      "id": "mirror",
+      "name": "Rear reflector",
+      "parentId": "cell"
+    },
+    {
+      "id": "driver",
+      "name": "Alternating segment driver",
+      "parentId": "cell"
+    },
+    {
+      "id": "connections",
+      "name": "Electrode connections",
+      "parentId": "cell"
+    },
+    {
+      "id": "result",
+      "name": "Display seen by the observer",
+      "parentId": "system"
+    },
+    {
+      "id": "meter",
+      "name": "Selected-cell optical power",
+      "parentId": "system"
+    }
+  ],
+  "electromagnet": [
+    {
+      "id": "gantry",
+      "name": "Supported bench gantry",
+      "parentId": "system"
+    },
+    {
+      "id": "tray",
+      "name": "Receiving tray",
+      "parentId": "system"
+    },
+    {
+      "id": "hoist",
+      "name": "Powered vertical hoist",
+      "parentId": "gantry"
+    },
+    {
+      "id": "drum",
+      "name": "Cable drum",
+      "parentId": "hoist"
+    },
+    {
+      "id": "cable",
+      "name": "Suspension cable",
+      "parentId": "hoist"
+    },
+    {
+      "id": "magnet",
+      "name": "Suspended pot electromagnet",
+      "parentId": "system"
+    },
+    {
+      "id": "core",
+      "name": "Connected iron core and casing",
+      "parentId": "magnet"
+    },
+    {
+      "id": "central-pole",
+      "name": "Central iron pole",
+      "parentId": "core"
+    },
+    {
+      "id": "outer-pole",
+      "name": "Annular outer pole and casing",
+      "parentId": "core"
+    },
+    {
+      "id": "bridge",
+      "name": "Iron top bridge",
+      "parentId": "core"
+    },
+    {
+      "id": "lifting-eye",
+      "name": "Lifting eye",
+      "parentId": "magnet"
+    },
+    {
+      "id": "shackle",
+      "name": "Pinned cable shackle",
+      "parentId": "lifting-eye"
+    },
+    {
+      "id": "surface-spacer",
+      "name": "Thin nonmagnetic contact layer",
+      "parentId": "magnet"
+    },
+    {
+      "id": "coil-plate",
+      "name": "Nonmagnetic coil plate",
+      "parentId": "magnet"
+    },
+    {
+      "id": "coil",
+      "name": "200-turn annular coil",
+      "parentId": "magnet"
+    },
+    {
+      "id": "terminals",
+      "name": "Insulated coil terminals",
+      "parentId": "magnet"
+    },
+    {
+      "id": "negative-terminal",
+      "name": "Return terminal",
+      "parentId": "terminals"
+    },
+    {
+      "id": "positive-terminal",
+      "name": "Outgoing terminal",
+      "parentId": "terminals"
+    },
+    {
+      "id": "internal-leads",
+      "name": "Connected winding ends",
+      "parentId": "coil"
+    },
+    {
+      "id": "supply",
+      "name": "Regulated current source",
+      "parentId": "system"
+    },
+    {
+      "id": "current-knob",
+      "name": "Current-setting dial",
+      "parentId": "supply"
+    },
+    {
+      "id": "supply-switch",
+      "name": "Supply output switch",
+      "parentId": "supply"
+    },
+    {
+      "id": "wires",
+      "name": "Complete supply and return wiring",
+      "parentId": "system"
+    },
+    {
+      "id": "flex-leads",
+      "name": "Flexible service loops",
+      "parentId": "wires"
+    },
+    {
+      "id": "load",
+      "name": "Practice load plate",
+      "parentId": "system"
+    }
+  ],
+  "electric-bell": [
+    {
+      "id": "board",
+      "name": "Mounting board",
+      "parentId": "system"
+    },
+    {
+      "id": "gong",
+      "name": "Metal gong",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Magnet and striking mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage battery",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Door button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete series wiring",
+      "parentId": "system"
+    }
+  ],
+  "electric-horn": [
+    {
+      "id": "housing",
+      "name": "Clamped housing and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Electromagnet and diaphragm assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "trumpet",
+      "name": "Hollow projecting horn",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage supply",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Horn push-button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete electrical circuit",
+      "parentId": "system"
+    }
+  ],
+  "electric-motor": [
+    {
+      "id": "base",
+      "name": "Rigid supporting base",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Motor axis and magnetic gap",
+      "parentId": "system"
+    },
+    {
+      "id": "magnets",
+      "name": "Permanent north and south poles",
+      "parentId": "assembly"
+    },
+    {
+      "id": "pole-markers",
+      "name": "North at left; south at right",
+      "parentId": "magnets"
+    },
+    {
+      "id": "bearings",
+      "name": "Two fixed bearing pedestals",
+      "parentId": "assembly"
+    },
+    {
+      "id": "rotor",
+      "name": "Rigid rotor, winding and fan",
+      "parentId": "assembly"
+    },
+    {
+      "id": "shaft",
+      "name": "Continuous rotating shaft",
+      "parentId": "rotor"
+    },
+    {
+      "id": "carrier",
+      "name": "Insulated winding carrier",
+      "parentId": "rotor"
+    },
+    {
+      "id": "coil",
+      "name": "One insulated rectangular winding",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator",
+      "name": "Insulated split-ring commutator",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator-sleeve",
+      "name": "Insulating commutator sleeve",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-a",
+      "name": "Copper segment A",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-b",
+      "name": "Copper segment B",
+      "parentId": "commutator"
+    },
+    {
+      "id": "brushes",
+      "name": "Two fixed carbon brushes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "negative-brush",
+      "name": "Normal-negative brush (−x)",
+      "parentId": "brushes"
+    },
+    {
+      "id": "positive-brush",
+      "name": "Normal-positive brush (+x)",
+      "parentId": "brushes"
+    },
+    {
+      "id": "battery",
+      "name": "Reversible DC supply",
+      "parentId": "system"
+    },
+    {
+      "id": "switch",
+      "name": "Supply disconnect",
+      "parentId": "battery"
+    },
+    {
+      "id": "leads",
+      "name": "Complete fixed supply leads",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Shaft-mounted fan: added useful load",
+      "parentId": "rotor"
+    },
+    {
+      "id": "fan-blade-0",
+      "name": "Pitched fan blade 1",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-1",
+      "name": "Pitched fan blade 2",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-2",
+      "name": "Pitched fan blade 3",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-3",
+      "name": "Pitched fan blade 4",
+      "parentId": "fan"
+    },
+    {
+      "id": "ribbon-stand",
+      "name": "Supported airflow indicator",
+      "parentId": "system"
+    },
+    {
+      "id": "ribbon",
+      "name": "Flexible airflow ribbon",
+      "parentId": "system"
+    }
+  ],
+  "universal-motor": [
+    {
+      "id": "base",
+      "name": "Rigid mounting base",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Supported motor assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "stator",
+      "name": "Laminated stator and two pole shoes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "yoke",
+      "name": "Joined laminated iron yoke",
+      "parentId": "stator"
+    },
+    {
+      "id": "left-pole",
+      "name": "Left wound pole",
+      "parentId": "stator"
+    },
+    {
+      "id": "right-pole",
+      "name": "Right wound pole",
+      "parentId": "stator"
+    },
+    {
+      "id": "field-coils",
+      "name": "Two series-connected stator windings",
+      "parentId": "assembly"
+    },
+    {
+      "id": "left-field-coil",
+      "name": "Left series field winding",
+      "parentId": "field-coils"
+    },
+    {
+      "id": "right-field-coil",
+      "name": "Right series field winding",
+      "parentId": "field-coils"
+    },
+    {
+      "id": "bearings",
+      "name": "Two fixed shaft bearings",
+      "parentId": "assembly"
+    },
+    {
+      "id": "rotor",
+      "name": "Three-coil laminated rotor",
+      "parentId": "assembly"
+    },
+    {
+      "id": "shaft",
+      "name": "Continuous steel shaft",
+      "parentId": "rotor"
+    },
+    {
+      "id": "armature-core",
+      "name": "Laminated six-slot armature stack",
+      "parentId": "rotor"
+    },
+    {
+      "id": "armature-clamps",
+      "name": "Armature clamping collars",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator",
+      "name": "Three-segment commutator",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator-sleeve",
+      "name": "Insulating commutator sleeve",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-0",
+      "name": "Copper segment S0",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-1",
+      "name": "Copper segment S1",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-2",
+      "name": "Copper segment S2",
+      "parentId": "commutator"
+    },
+    {
+      "id": "armature-windings",
+      "name": "Three closed-ring winding branches",
+      "parentId": "rotor"
+    },
+    {
+      "id": "coil-0",
+      "name": "Armature branch 0 · S0 to S1",
+      "parentId": "armature-windings"
+    },
+    {
+      "id": "coil-1",
+      "name": "Armature branch 1 · S1 to S2",
+      "parentId": "armature-windings"
+    },
+    {
+      "id": "coil-2",
+      "name": "Armature branch 2 · S2 to S0",
+      "parentId": "armature-windings"
+    },
+    {
+      "id": "brushes",
+      "name": "Fixed P and Q brushes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "brush-q",
+      "name": "Brush Q at −x",
+      "parentId": "brushes"
+    },
+    {
+      "id": "brush-p",
+      "name": "Brush P at +x",
+      "parentId": "brushes"
+    },
+    {
+      "id": "supply",
+      "name": "Low-voltage DC or slow-AC source",
+      "parentId": "system"
+    },
+    {
+      "id": "switch",
+      "name": "Series-circuit disconnect",
+      "parentId": "supply"
+    },
+    {
+      "id": "leads",
+      "name": "Complete series-field supply circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Shaft-mounted useful fan load",
+      "parentId": "rotor"
+    },
+    {
+      "id": "fan-blade-0",
+      "name": "Pitched fan blade 1",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-1",
+      "name": "Pitched fan blade 2",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-2",
+      "name": "Pitched fan blade 3",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-3",
+      "name": "Pitched fan blade 4",
+      "parentId": "fan"
+    },
+    {
+      "id": "ribbon-stand",
+      "name": "Supported airflow-indicator stand",
+      "parentId": "system"
+    },
+    {
+      "id": "ribbon",
+      "name": "Clamped flexible airflow ribbon",
+      "parentId": "system"
+    },
+    {
+      "id": "cover",
+      "name": "Removable transparent front guard",
+      "parentId": "assembly"
+    }
+  ],
+  "motor-rotor": [
+    {
+      "id": "base",
+      "name": "Rigid mounting base",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Supported motor assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "stator",
+      "name": "Laminated stator and two pole shoes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "yoke",
+      "name": "Joined laminated iron yoke",
+      "parentId": "stator"
+    },
+    {
+      "id": "left-pole",
+      "name": "Left wound pole",
+      "parentId": "stator"
+    },
+    {
+      "id": "right-pole",
+      "name": "Right wound pole",
+      "parentId": "stator"
+    },
+    {
+      "id": "field-coils",
+      "name": "Two series-connected stator windings",
+      "parentId": "assembly"
+    },
+    {
+      "id": "left-field-coil",
+      "name": "Left series field winding",
+      "parentId": "field-coils"
+    },
+    {
+      "id": "right-field-coil",
+      "name": "Right series field winding",
+      "parentId": "field-coils"
+    },
+    {
+      "id": "bearings",
+      "name": "Two fixed shaft bearings",
+      "parentId": "assembly"
+    },
+    {
+      "id": "rotor",
+      "name": "Three-coil laminated rotor",
+      "parentId": "assembly"
+    },
+    {
+      "id": "shaft",
+      "name": "Continuous steel shaft",
+      "parentId": "rotor"
+    },
+    {
+      "id": "armature-core",
+      "name": "Laminated six-slot armature stack",
+      "parentId": "rotor"
+    },
+    {
+      "id": "armature-clamps",
+      "name": "Armature clamping collars",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator",
+      "name": "Three-segment commutator",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator-sleeve",
+      "name": "Insulating commutator sleeve",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-0",
+      "name": "Copper segment S0",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-1",
+      "name": "Copper segment S1",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-2",
+      "name": "Copper segment S2",
+      "parentId": "commutator"
+    },
+    {
+      "id": "armature-windings",
+      "name": "Three closed-ring winding branches",
+      "parentId": "rotor"
+    },
+    {
+      "id": "coil-0",
+      "name": "Armature branch 0 · S0 to S1",
+      "parentId": "armature-windings"
+    },
+    {
+      "id": "coil-1",
+      "name": "Armature branch 1 · S1 to S2",
+      "parentId": "armature-windings"
+    },
+    {
+      "id": "coil-2",
+      "name": "Armature branch 2 · S2 to S0",
+      "parentId": "armature-windings"
+    },
+    {
+      "id": "brushes",
+      "name": "Fixed P and Q brushes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "brush-q",
+      "name": "Brush Q at −x",
+      "parentId": "brushes"
+    },
+    {
+      "id": "brush-p",
+      "name": "Brush P at +x",
+      "parentId": "brushes"
+    },
+    {
+      "id": "supply",
+      "name": "Low-voltage DC or slow-AC source",
+      "parentId": "system"
+    },
+    {
+      "id": "switch",
+      "name": "Series-circuit disconnect",
+      "parentId": "supply"
+    },
+    {
+      "id": "leads",
+      "name": "Complete series-field supply circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Shaft-mounted useful fan load",
+      "parentId": "rotor"
+    },
+    {
+      "id": "fan-blade-0",
+      "name": "Pitched fan blade 1",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-1",
+      "name": "Pitched fan blade 2",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-2",
+      "name": "Pitched fan blade 3",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-3",
+      "name": "Pitched fan blade 4",
+      "parentId": "fan"
+    },
+    {
+      "id": "ribbon-stand",
+      "name": "Supported airflow-indicator stand",
+      "parentId": "system"
+    },
+    {
+      "id": "ribbon",
+      "name": "Clamped flexible airflow ribbon",
+      "parentId": "system"
+    },
+    {
+      "id": "cover",
+      "name": "Removable transparent front guard",
+      "parentId": "assembly"
+    }
+  ],
+  "direct-current-motor": [
+    {
+      "id": "base",
+      "name": "Rigid supporting base",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Motor axis and magnetic gap",
+      "parentId": "system"
+    },
+    {
+      "id": "magnets",
+      "name": "Permanent north and south poles",
+      "parentId": "assembly"
+    },
+    {
+      "id": "pole-markers",
+      "name": "North at left; south at right",
+      "parentId": "magnets"
+    },
+    {
+      "id": "bearings",
+      "name": "Two fixed bearing pedestals",
+      "parentId": "assembly"
+    },
+    {
+      "id": "rotor",
+      "name": "Rigid rotor, winding and fan",
+      "parentId": "assembly"
+    },
+    {
+      "id": "shaft",
+      "name": "Continuous rotating shaft",
+      "parentId": "rotor"
+    },
+    {
+      "id": "carrier",
+      "name": "Insulated winding carrier",
+      "parentId": "rotor"
+    },
+    {
+      "id": "coil",
+      "name": "One insulated rectangular winding",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator",
+      "name": "Insulated split-ring commutator",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator-sleeve",
+      "name": "Insulating commutator sleeve",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-a",
+      "name": "Copper segment A",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-b",
+      "name": "Copper segment B",
+      "parentId": "commutator"
+    },
+    {
+      "id": "brushes",
+      "name": "Two fixed carbon brushes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "negative-brush",
+      "name": "Normal-negative brush (−x)",
+      "parentId": "brushes"
+    },
+    {
+      "id": "positive-brush",
+      "name": "Normal-positive brush (+x)",
+      "parentId": "brushes"
+    },
+    {
+      "id": "battery",
+      "name": "Reversible DC supply",
+      "parentId": "system"
+    },
+    {
+      "id": "switch",
+      "name": "Supply disconnect",
+      "parentId": "battery"
+    },
+    {
+      "id": "leads",
+      "name": "Complete fixed supply leads",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Shaft-mounted fan: added useful load",
+      "parentId": "rotor"
+    },
+    {
+      "id": "fan-blade-0",
+      "name": "Pitched fan blade 1",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-1",
+      "name": "Pitched fan blade 2",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-2",
+      "name": "Pitched fan blade 3",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-3",
+      "name": "Pitched fan blade 4",
+      "parentId": "fan"
+    },
+    {
+      "id": "ribbon-stand",
+      "name": "Supported airflow indicator",
+      "parentId": "system"
+    },
+    {
+      "id": "ribbon",
+      "name": "Flexible airflow ribbon",
+      "parentId": "system"
+    }
+  ],
+  "commutator": [
+    {
+      "id": "base",
+      "name": "Rigid supporting base",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Motor axis and magnetic gap",
+      "parentId": "system"
+    },
+    {
+      "id": "magnets",
+      "name": "Permanent north and south poles",
+      "parentId": "assembly"
+    },
+    {
+      "id": "pole-markers",
+      "name": "North at left; south at right",
+      "parentId": "magnets"
+    },
+    {
+      "id": "bearings",
+      "name": "Two fixed bearing pedestals",
+      "parentId": "assembly"
+    },
+    {
+      "id": "rotor",
+      "name": "Rigid rotor, winding and fan",
+      "parentId": "assembly"
+    },
+    {
+      "id": "shaft",
+      "name": "Continuous rotating shaft",
+      "parentId": "rotor"
+    },
+    {
+      "id": "carrier",
+      "name": "Insulated winding carrier",
+      "parentId": "rotor"
+    },
+    {
+      "id": "coil",
+      "name": "One insulated rectangular winding",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator",
+      "name": "Insulated split-ring commutator",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator-sleeve",
+      "name": "Insulating commutator sleeve",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-a",
+      "name": "Copper segment A",
+      "parentId": "commutator"
+    },
+    {
+      "id": "segment-b",
+      "name": "Copper segment B",
+      "parentId": "commutator"
+    },
+    {
+      "id": "brushes",
+      "name": "Two fixed carbon brushes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "negative-brush",
+      "name": "Normal-negative brush (−x)",
+      "parentId": "brushes"
+    },
+    {
+      "id": "positive-brush",
+      "name": "Normal-positive brush (+x)",
+      "parentId": "brushes"
+    },
+    {
+      "id": "battery",
+      "name": "Reversible DC supply",
+      "parentId": "system"
+    },
+    {
+      "id": "switch",
+      "name": "Supply disconnect",
+      "parentId": "battery"
+    },
+    {
+      "id": "leads",
+      "name": "Complete fixed supply leads",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Shaft-mounted fan: added useful load",
+      "parentId": "rotor"
+    },
+    {
+      "id": "fan-blade-0",
+      "name": "Pitched fan blade 1",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-1",
+      "name": "Pitched fan blade 2",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-2",
+      "name": "Pitched fan blade 3",
+      "parentId": "fan"
+    },
+    {
+      "id": "fan-blade-3",
+      "name": "Pitched fan blade 4",
+      "parentId": "fan"
+    },
+    {
+      "id": "ribbon-stand",
+      "name": "Supported airflow indicator",
+      "parentId": "system"
+    },
+    {
+      "id": "ribbon",
+      "name": "Flexible airflow ribbon",
+      "parentId": "system"
+    }
+  ],
+  "3d-printer": [
+    {
+      "id": "frame",
+      "name": "Rigid printer frame",
+      "parentId": "system"
+    },
+    {
+      "id": "y-drive",
+      "name": "Y plate drive and guides",
+      "parentId": "system"
+    },
+    {
+      "id": "bed",
+      "name": "Moving build plate",
+      "parentId": "system"
+    },
+    {
+      "id": "gantry",
+      "name": "Screw-lifted X gantry",
+      "parentId": "system"
+    },
+    {
+      "id": "z-drive",
+      "name": "Z lead screw and guide rods",
+      "parentId": "system"
+    },
+    {
+      "id": "z-motor",
+      "name": "Z screw motor",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-screw",
+      "name": "Two-millimeter lead screw",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-nut",
+      "name": "Captive screw nut",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-drive",
+      "name": "X head drive",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-belt",
+      "name": "X continuous timing belt",
+      "parentId": "x-drive"
+    },
+    {
+      "id": "x-pulley-drive",
+      "name": "X driven timing pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-pulley-idler",
+      "name": "X supported idler pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-motor",
+      "name": "X belt motor",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "y-belt",
+      "name": "Y continuous timing belt",
+      "parentId": "y-drive"
+    },
+    {
+      "id": "y-pulley-drive",
+      "name": "Y driven timing pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-pulley-idler",
+      "name": "Y supported idler pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-motor",
+      "name": "Y belt motor",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "x-carriage",
+      "name": "Guided printing head carriage",
+      "parentId": "gantry"
+    },
+    {
+      "id": "extruder",
+      "name": "Direct-drive filament extruder",
+      "parentId": "x-carriage"
+    },
+    {
+      "id": "feed-gears",
+      "name": "Filament feed gear and idler",
+      "parentId": "extruder"
+    },
+    {
+      "id": "feed-gear",
+      "name": "Driven gripping gear",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-idler",
+      "name": "Pressure idler",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-motor",
+      "name": "Filament-feed motor",
+      "parentId": "extruder"
+    },
+    {
+      "id": "hotend",
+      "name": "Cutaway cold side, heat break and melt zone",
+      "parentId": "extruder"
+    },
+    {
+      "id": "heater",
+      "name": "Electrical heater and cutaway melt block",
+      "parentId": "hotend"
+    },
+    {
+      "id": "nozzle",
+      "name": "Cutaway 0.6-mm nozzle",
+      "parentId": "hotend"
+    },
+    {
+      "id": "material-in-head",
+      "name": "Primed filament and melt path",
+      "parentId": "hotend"
+    },
+    {
+      "id": "reel",
+      "name": "Supported filament reel",
+      "parentId": "system"
+    },
+    {
+      "id": "spool",
+      "name": "Rotating reel core and flanges",
+      "parentId": "reel"
+    },
+    {
+      "id": "filament",
+      "name": "Continuous reel-to-head filament",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Printer controller",
+      "parentId": "system"
+    }
+  ],
+  "stepper-motor": [
+    {
+      "id": "base",
+      "name": "Common mounting base",
+      "parentId": "system"
+    },
+    {
+      "id": "motor",
+      "name": "Eight-pole hybrid motor",
+      "parentId": "system"
+    },
+    {
+      "id": "stator",
+      "name": "Fixed iron stator",
+      "parentId": "motor"
+    },
+    {
+      "id": "poles",
+      "name": "Eight reversible electromagnet poles",
+      "parentId": "stator"
+    },
+    {
+      "id": "phase-a",
+      "name": "Phase A circuit",
+      "parentId": "motor"
+    },
+    {
+      "id": "phase-b",
+      "name": "Phase B circuit",
+      "parentId": "motor"
+    },
+    {
+      "id": "pole-0",
+      "name": "Stator pole 0",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-1",
+      "name": "Stator pole 1",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-2",
+      "name": "Stator pole 2",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-3",
+      "name": "Stator pole 3",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-4",
+      "name": "Stator pole 4",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-5",
+      "name": "Stator pole 5",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-6",
+      "name": "Stator pole 6",
+      "parentId": "poles"
+    },
+    {
+      "id": "pole-7",
+      "name": "Stator pole 7",
+      "parentId": "poles"
+    },
+    {
+      "id": "rotor",
+      "name": "Rigid two-cup rotor",
+      "parentId": "motor"
+    },
+    {
+      "id": "permanent-magnet",
+      "name": "Axially magnetized permanent magnet",
+      "parentId": "rotor"
+    },
+    {
+      "id": "north-cup",
+      "name": "North rotor cup · ten teeth",
+      "parentId": "rotor"
+    },
+    {
+      "id": "south-cup",
+      "name": "South rotor cup · ten offset teeth",
+      "parentId": "rotor"
+    },
+    {
+      "id": "shaft",
+      "name": "Continuous supported rotor shaft",
+      "parentId": "rotor"
+    },
+    {
+      "id": "screw",
+      "name": "Single-start lead screw",
+      "parentId": "rotor"
+    },
+    {
+      "id": "bearings",
+      "name": "Three fixed shaft bearings",
+      "parentId": "system"
+    },
+    {
+      "id": "guides",
+      "name": "Two straight carriage guides",
+      "parentId": "system"
+    },
+    {
+      "id": "carriage",
+      "name": "Guided moving carriage",
+      "parentId": "system"
+    },
+    {
+      "id": "nut",
+      "name": "Cutaway captive nut",
+      "parentId": "carriage"
+    },
+    {
+      "id": "spring-anchor",
+      "name": "Fixed spring anchor",
+      "parentId": "system"
+    },
+    {
+      "id": "spring",
+      "name": "Captive restoring spring",
+      "parentId": "system"
+    },
+    {
+      "id": "ruler",
+      "name": "Position ruler",
+      "parentId": "system"
+    },
+    {
+      "id": "target",
+      "name": "Requested position pointer",
+      "parentId": "system"
+    },
+    {
+      "id": "driver",
+      "name": "Two-phase current driver",
+      "parentId": "system"
+    },
+    {
+      "id": "leads",
+      "name": "Closed phase wiring",
+      "parentId": "system"
+    }
+  ],
+  "two-way-light-switch": [
+    {
+      "id": "supply",
+      "name": "DC teaching supply"
+    },
+    {
+      "id": "switches",
+      "name": "Two changeover switches"
+    },
+    {
+      "id": "wiring",
+      "name": "Traveler and return wires"
+    },
+    {
+      "id": "light-station",
+      "name": "Lamp and reading surface"
+    },
+    {
+      "id": "resistor",
+      "name": "Variable series resistor"
+    },
+    {
+      "id": "electrons",
+      "name": "Electron-flow markers"
+    }
+  ],
+  "electricity-meter": [
+    {
+      "id": "frame",
+      "name": "Frame and spindle bearings",
+      "parentId": "meter"
+    },
+    {
+      "id": "rotor",
+      "name": "Aluminum disk and spindle",
+      "parentId": "meter"
+    },
+    {
+      "id": "voltage-coil",
+      "name": "Voltage coil and magnetic return",
+      "parentId": "meter"
+    },
+    {
+      "id": "current-coil",
+      "name": "Series current coils",
+      "parentId": "meter"
+    },
+    {
+      "id": "brake",
+      "name": "Permanent braking magnet",
+      "parentId": "meter"
+    },
+    {
+      "id": "eddy-paths",
+      "name": "Schematic eddy-current loops",
+      "parentId": "meter"
+    },
+    {
+      "id": "worm",
+      "name": "Single-start counting worm",
+      "parentId": "meter"
+    },
+    {
+      "id": "register",
+      "name": "Energy register",
+      "parentId": "meter"
+    },
+    {
+      "id": "terminals",
+      "name": "Supply and load connections",
+      "parentId": "meter"
+    }
+  ],
+  "fuse": [
+    {
+      "id": "supply",
+      "name": "12 V teaching supply",
+      "parentId": "circuit"
+    },
+    {
+      "id": "fuse",
+      "name": "Cartridge fuse",
+      "parentId": "circuit"
+    },
+    {
+      "id": "load",
+      "name": "Protected lamp",
+      "parentId": "circuit"
+    },
+    {
+      "id": "wiring",
+      "name": "Series wires",
+      "parentId": "circuit"
+    }
+  ],
+  "circuit-breaker": [
+    {
+      "id": "frame",
+      "name": "Insulating body and bearings",
+      "parentId": "circuit"
+    },
+    {
+      "id": "supply",
+      "name": "12 V teaching supply",
+      "parentId": "circuit"
+    },
+    {
+      "id": "magnet",
+      "name": "Series electromagnet",
+      "parentId": "circuit"
+    },
+    {
+      "id": "plunger",
+      "name": "Moving iron core and retaining hook",
+      "parentId": "circuit"
+    },
+    {
+      "id": "return-spring",
+      "name": "Core return spring",
+      "parentId": "circuit"
+    },
+    {
+      "id": "contact",
+      "name": "Moving contact arm",
+      "parentId": "circuit"
+    },
+    {
+      "id": "fixed-contact",
+      "name": "Fixed contact and outlet",
+      "parentId": "circuit"
+    },
+    {
+      "id": "opening-spring",
+      "name": "Contact opening spring",
+      "parentId": "circuit"
+    },
+    {
+      "id": "arc-chute",
+      "name": "Arc splitter plates",
+      "parentId": "circuit"
+    },
+    {
+      "id": "load",
+      "name": "Protected lamp",
+      "parentId": "circuit"
+    },
+    {
+      "id": "wiring",
+      "name": "Series current path",
+      "parentId": "circuit"
+    }
+  ],
+  "sensors-and-detectors": [
+    {
+      "id": "board",
+      "name": "Illustrative demonstration board",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Spring-loaded platform",
+      "parentId": "system"
+    },
+    {
+      "id": "platform",
+      "name": "Guided moving platform",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "payload",
+      "name": "Applied payload",
+      "parentId": "platform"
+    },
+    {
+      "id": "guide",
+      "name": "Fixed stem guide",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "damper",
+      "name": "Viscous damper",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "spring",
+      "name": "Seated compression spring",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "spring-cover",
+      "name": "Removable spring guard",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "pickup",
+      "name": "Linear potentiometer pickup",
+      "parentId": "system"
+    },
+    {
+      "id": "linkage",
+      "name": "Rigid platform-to-wiper linkage",
+      "parentId": "platform"
+    },
+    {
+      "id": "power",
+      "name": "Adjustable sensor supply",
+      "parentId": "system"
+    },
+    {
+      "id": "readout",
+      "name": "Powered readout and ideal comparator",
+      "parentId": "system"
+    },
+    {
+      "id": "gauge",
+      "name": "Continuous indicated-load scale · −1 to 6 kg",
+      "parentId": "readout"
+    },
+    {
+      "id": "indicator",
+      "name": "Continuous load indication",
+      "parentId": "gauge"
+    },
+    {
+      "id": "threshold-marker",
+      "name": "Adjustable detection threshold",
+      "parentId": "gauge"
+    },
+    {
+      "id": "lamp",
+      "name": "Threshold detection lamp",
+      "parentId": "system"
+    },
+    {
+      "id": "supply-wires",
+      "name": "Supply to track and powered package",
+      "parentId": "system"
+    },
+    {
+      "id": "return-wires",
+      "name": "Upper track, package and lamp common return",
+      "parentId": "system"
+    },
+    {
+      "id": "output-wires",
+      "name": "Comparator output to detection lamp",
+      "parentId": "system"
+    },
+    {
+      "id": "signal-wire",
+      "name": "Flexible wiper signal wire",
+      "parentId": "system"
+    }
+  ],
+  "feedback-mechanism": [
+    {
+      "id": "board",
+      "name": "Demonstration base",
+      "parentId": "system"
+    },
+    {
+      "id": "tank",
+      "name": "Water storage tank",
+      "parentId": "system"
+    },
+    {
+      "id": "tank-front",
+      "name": "Removable tank front",
+      "parentId": "tank"
+    },
+    {
+      "id": "water",
+      "name": "Stored water",
+      "parentId": "tank"
+    },
+    {
+      "id": "ruler",
+      "name": "Fixed 0–300 mm level ruler",
+      "parentId": "system"
+    },
+    {
+      "id": "shutoff-mark",
+      "name": "Float shutoff mark",
+      "parentId": "ruler"
+    },
+    {
+      "id": "linkage",
+      "name": "Rigid float rocker",
+      "parentId": "system"
+    },
+    {
+      "id": "rocker",
+      "name": "Pivoted rigid lever",
+      "parentId": "linkage"
+    },
+    {
+      "id": "float",
+      "name": "Buoyant level-sensing float",
+      "parentId": "rocker"
+    },
+    {
+      "id": "pivot",
+      "name": "Adjustable fixed pivot and valve assembly",
+      "parentId": "linkage"
+    },
+    {
+      "id": "valve",
+      "name": "Slotted follower and inlet needle",
+      "parentId": "system"
+    },
+    {
+      "id": "follower",
+      "name": "Horizontal pin slot",
+      "parentId": "valve"
+    },
+    {
+      "id": "valve-chamber",
+      "name": "Cutaway valve chamber",
+      "parentId": "valve"
+    },
+    {
+      "id": "opening-gauge",
+      "name": "Valve opening indicator",
+      "parentId": "valve"
+    },
+    {
+      "id": "supply",
+      "name": "Pressurized supply and connected inlet",
+      "parentId": "system"
+    },
+    {
+      "id": "inlet-pipe",
+      "name": "Valve outlet to tank",
+      "parentId": "supply"
+    },
+    {
+      "id": "inlet-stream",
+      "name": "Inlet water stream",
+      "parentId": "system"
+    },
+    {
+      "id": "pump",
+      "name": "Downstream metering pump and receiver",
+      "parentId": "system"
+    },
+    {
+      "id": "overflow",
+      "name": "Overflow over the rim",
+      "parentId": "system"
+    }
+  ],
+  "seismograph": [
+    {
+      "id": "reference",
+      "name": "Stationary displacement reference",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Ground-carried frame",
+      "parentId": "system"
+    },
+    {
+      "id": "guides",
+      "name": "Fixed linear guides",
+      "parentId": "frame"
+    },
+    {
+      "id": "mass",
+      "name": "Spring-supported proof mass",
+      "parentId": "frame"
+    },
+    {
+      "id": "spring",
+      "name": "Preloaded restoring spring",
+      "parentId": "frame"
+    },
+    {
+      "id": "damper",
+      "name": "Ideal viscous magnetic damper",
+      "parentId": "frame"
+    },
+    {
+      "id": "paper",
+      "name": "Moving paper and retained seismogram",
+      "parentId": "frame"
+    },
+    {
+      "id": "stylus",
+      "name": "Pen rigidly attached to the mass",
+      "parentId": "mass"
+    },
+    {
+      "id": "ruler",
+      "name": "Fixed relative-displacement ruler",
+      "parentId": "frame"
+    }
+  ],
+  "horizontal-seismograph-pendulum": [
+    {
+      "id": "reference",
+      "name": "Stationary world reference",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Ground-carried support and display",
+      "parentId": "system"
+    },
+    {
+      "id": "support",
+      "name": "Inclined suspension axis",
+      "parentId": "frame"
+    },
+    {
+      "id": "mechanism",
+      "name": "Boom, wire and proof mass",
+      "parentId": "frame"
+    },
+    {
+      "id": "mass",
+      "name": "Pendulum proof mass",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "pickup",
+      "name": "Ideal noncontact angular pickup",
+      "parentId": "frame"
+    },
+    {
+      "id": "damper",
+      "name": "Ideal rotational viscous damper",
+      "parentId": "frame"
+    },
+    {
+      "id": "axes",
+      "name": "Horizontal input direction and sensitive direction",
+      "parentId": "frame"
+    },
+    {
+      "id": "record",
+      "name": "Retained horizontal-displacement record",
+      "parentId": "frame"
+    },
+    {
+      "id": "cable",
+      "name": "Pickup-to-recording cable",
+      "parentId": "frame"
+    }
+  ],
+  "vertical-seismograph-pendulum": [
+    {
+      "id": "reference",
+      "name": "Stationary world reference",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Ground-carried base and mast",
+      "parentId": "system"
+    },
+    {
+      "id": "support",
+      "name": "Horizontal pivot and upper anchor",
+      "parentId": "frame"
+    },
+    {
+      "id": "mechanism",
+      "name": "Boom and proof mass",
+      "parentId": "frame"
+    },
+    {
+      "id": "mass",
+      "name": "Inertial proof mass",
+      "parentId": "mechanism"
+    },
+    {
+      "id": "spring",
+      "name": "Preloaded ordinary extension spring",
+      "parentId": "frame"
+    },
+    {
+      "id": "pickup",
+      "name": "Ideal noncontact angle pickup",
+      "parentId": "frame"
+    },
+    {
+      "id": "damper",
+      "name": "Ideal rotational viscous damper",
+      "parentId": "frame"
+    },
+    {
+      "id": "record",
+      "name": "Retained vertical-displacement record",
+      "parentId": "frame"
+    },
+    {
+      "id": "cable",
+      "name": "Pickup-to-recording cable",
+      "parentId": "frame"
+    }
+  ],
+  "seismic-waves": [
+    {
+      "id": "source",
+      "name": "Schematic earthquake source",
+      "parentId": "system"
+    },
+    {
+      "id": "ground",
+      "name": "Material along the modeled ray",
+      "parentId": "system"
+    },
+    {
+      "id": "near-station",
+      "name": "Near station at 30 km",
+      "parentId": "system"
+    },
+    {
+      "id": "far-station",
+      "name": "Far recording station",
+      "parentId": "system"
+    },
+    {
+      "id": "p-front",
+      "name": "P leading-edge marker",
+      "parentId": "system"
+    },
+    {
+      "id": "near-inset",
+      "name": "Near ground detail · 30 to 32 km",
+      "parentId": "system"
+    },
+    {
+      "id": "far-inset",
+      "name": "Far ground detail · station ±1 km",
+      "parentId": "system"
+    },
+    {
+      "id": "record",
+      "name": "Retained two-component station records",
+      "parentId": "system"
+    }
+  ],
+  "crash-sensor": [
+    {
+      "id": "chip",
+      "name": "Square and four flexures",
+      "parentId": "system"
+    },
+    {
+      "id": "bridge",
+      "name": "Equivalent circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "records",
+      "name": "Actual motion and signal records",
+      "parentId": "system"
+    }
+  ],
+  "autopilot": [
+    {
+      "id": "aircraft",
+      "name": "Aircraft and control surfaces",
+      "parentId": "system"
+    },
+    {
+      "id": "heading-loop",
+      "name": "Heading feedback loop",
+      "parentId": "system"
+    },
+    {
+      "id": "height-loop",
+      "name": "Height feedback loop",
+      "parentId": "system"
+    },
+    {
+      "id": "ground-track",
+      "name": "Ground track and original north line",
+      "parentId": "system"
+    },
+    {
+      "id": "records",
+      "name": "Retained response records",
+      "parentId": "system"
+    }
+  ],
+  "inertial-guidance": [
+    {
+      "id": "platform",
+      "name": "Ideal aligned sensor platform",
+      "parentId": "system"
+    },
+    {
+      "id": "east-channel",
+      "name": "East calibrated channel",
+      "parentId": "platform"
+    },
+    {
+      "id": "north-channel",
+      "name": "North calibrated channel",
+      "parentId": "platform"
+    },
+    {
+      "id": "up-channel",
+      "name": "Up calibrated channel",
+      "parentId": "platform"
+    },
+    {
+      "id": "cover",
+      "name": "Removable instrument guard",
+      "parentId": "platform"
+    },
+    {
+      "id": "channel-readouts",
+      "name": "Measured specific-force gauges",
+      "parentId": "system"
+    },
+    {
+      "id": "signals",
+      "name": "Connected measurement and calculation routes",
+      "parentId": "system"
+    },
+    {
+      "id": "calculation",
+      "name": "Gravity, velocity and position calculation",
+      "parentId": "system"
+    },
+    {
+      "id": "gravity-correction",
+      "name": "Gravity correction",
+      "parentId": "calculation"
+    },
+    {
+      "id": "velocity-integration",
+      "name": "Velocity integration",
+      "parentId": "calculation"
+    },
+    {
+      "id": "position-integration",
+      "name": "Position integration",
+      "parentId": "calculation"
+    },
+    {
+      "id": "initial-state",
+      "name": "Known gravity and entered starting state",
+      "parentId": "calculation"
+    },
+    {
+      "id": "navigation-record",
+      "name": "Actual and estimated Cartesian routes",
+      "parentId": "system"
+    },
+    {
+      "id": "true-position",
+      "name": "Actual position and aligned triad",
+      "parentId": "navigation-record"
+    },
+    {
+      "id": "estimated-position",
+      "name": "Estimated position",
+      "parentId": "navigation-record"
+    },
+    {
+      "id": "error-record",
+      "name": "Retained East position error",
+      "parentId": "system"
+    }
+  ],
+  "zipper-slide-wedges": [
+    {
+      "id": "body",
+      "name": "Separate garment panels",
+      "parentId": "garment"
+    },
+    {
+      "id": "zipper",
+      "name": "Complete separating zipper",
+      "parentId": "garment"
+    }
+  ],
+  "interlocking-zipper-teeth": [
+    {
+      "id": "body",
+      "name": "Separate garment panels",
+      "parentId": "garment"
+    },
+    {
+      "id": "zipper",
+      "name": "Complete separating zipper",
+      "parentId": "garment"
+    }
+  ],
+  "bobbin-and-bobbin-thread": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "needle-and-needle-thread": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "rotary-sewing-hook": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "rotary-shuttle": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "thread-take-up-lever": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "feed-dog-lift-and-advance-linkages": [
+    {
+      "id": "stitch-formation",
+      "name": "Needle, hook and thread interlock"
+    },
+    {
+      "id": "body",
+      "name": "Frame and bearings"
+    },
+    {
+      "id": "drive",
+      "name": "Handwheel, main shaft and needle crank"
+    },
+    {
+      "id": "motor",
+      "name": "Electric motor and drive belt"
+    },
+    {
+      "id": "transmission",
+      "name": "Timing belt and hook shaft"
+    },
+    {
+      "id": "needle-plate",
+      "name": "Needle plate and feed slots"
+    },
+    {
+      "id": "presser-foot",
+      "name": "Presser foot and spring"
+    },
+    {
+      "id": "feed-dog",
+      "name": "Four-motion feed assembly"
+    },
+    {
+      "id": "upper-thread",
+      "name": "Upper thread path"
+    },
+    {
+      "id": "take-up",
+      "name": "Thread take-up lever and timing cam"
+    },
+    {
+      "id": "cloth",
+      "name": "Practice fabric and sewn seam"
+    }
+  ],
+  "consumer-unit": [
+    {
+      "id": "cabinet",
+      "name": "Distribution enclosure",
+      "parentId": "system"
+    },
+    {
+      "id": "source",
+      "name": "12 V teaching supply",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Supply conductors",
+      "parentId": "system"
+    },
+    {
+      "id": "main",
+      "name": "Linked main isolator",
+      "parentId": "system"
+    },
+    {
+      "id": "live-bus",
+      "name": "Supply busbar",
+      "parentId": "system"
+    },
+    {
+      "id": "return-bus",
+      "name": "Return bar",
+      "parentId": "system"
+    },
+    {
+      "id": "earth-bar",
+      "name": "Unswitched protective bond",
+      "parentId": "system"
+    },
+    {
+      "id": "branch-0",
+      "name": "Kitchen lighting circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "branch-1",
+      "name": "Study lighting circuit",
+      "parentId": "system"
+    }
+  ],
+  "protective-earth-wire": [
+    {
+      "id": "source",
+      "name": "Bonded 12 V teaching supply",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Normal supply and return wires",
+      "parentId": "system"
+    },
+    {
+      "id": "protective",
+      "name": "Overcurrent disconnection contact",
+      "parentId": "system"
+    },
+    {
+      "id": "enclosure",
+      "name": "Accessible metal enclosure",
+      "parentId": "system"
+    },
+    {
+      "id": "lamp",
+      "name": "Lamp on an insulating mount",
+      "parentId": "system"
+    },
+    {
+      "id": "sleeves",
+      "name": "Insulating feedthroughs",
+      "parentId": "system"
+    },
+    {
+      "id": "fault",
+      "name": "Insulation-fault connection",
+      "parentId": "system"
+    },
+    {
+      "id": "earth",
+      "name": "Protective earth conductor",
+      "parentId": "system"
+    }
+  ],
+  "power-socket": [
+    {
+      "id": "socket",
+      "name": "Fixed socket assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "supply",
+      "name": "12 V teaching supply",
+      "parentId": "system"
+    },
+    {
+      "id": "plug",
+      "name": "Moving plug and cable terminals",
+      "parentId": "system"
+    },
+    {
+      "id": "lamp",
+      "name": "Connected desk lamp",
+      "parentId": "system"
+    },
+    {
+      "id": "page",
+      "name": "Page beneath the lamp",
+      "parentId": "system"
+    },
+    {
+      "id": "cable",
+      "name": "Flexible cable conductors",
+      "parentId": "system"
+    }
+  ],
+  "cylinder-lock-cam-and-bolt": [
+    {
+      "id": "frame",
+      "name": "Fixed door frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lock-pin-stacks": [
+    {
+      "id": "frame",
+      "name": "Fixed door frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lock-return-springs": [
+    {
+      "id": "frame",
+      "name": "Fixed door frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lever-lock-return-springs": [
+    {
+      "id": "frame",
+      "name": "Fixed frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lever-lock-tumblers-and-stumps": [
+    {
+      "id": "frame",
+      "name": "Fixed frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lever-lock-bolt-and-bolt-pin": [
+    {
+      "id": "frame",
+      "name": "Fixed frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lock-cylinder-plug": [
+    {
+      "id": "frame",
+      "name": "Fixed door frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "lever-lock-key": [
+    {
+      "id": "frame",
+      "name": "Fixed frame and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Hinged door",
+      "parentId": "system"
+    }
+  ],
+  "zipper-bottom-pin-and-box": [
+    {
+      "id": "body",
+      "name": "Separate garment panels",
+      "parentId": "garment"
+    },
+    {
+      "id": "zipper",
+      "name": "Complete separating zipper",
+      "parentId": "garment"
+    }
+  ],
+  "window-shade-pawls-and-locking-disk": [
+    {
+      "id": "window",
+      "name": "Window opening",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Connected roller mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "rail",
+      "name": "Bottom rail and pull ring",
+      "parentId": "system"
+    }
+  ],
+  "window-shade-winding-spring": [
+    {
+      "id": "window",
+      "name": "Window opening",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Connected roller mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "rail",
+      "name": "Bottom rail and pull ring",
+      "parentId": "system"
+    }
+  ],
+  "window-shade-roller-shaft-and-fixed-central-rod": [
+    {
+      "id": "window",
+      "name": "Window opening",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Connected roller mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "rail",
+      "name": "Bottom rail and pull ring",
+      "parentId": "system"
+    }
+  ],
+  "armature": [
+    {
+      "id": "board",
+      "name": "Mounting board",
+      "parentId": "system"
+    },
+    {
+      "id": "gong",
+      "name": "Metal gong",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Magnet and striking mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage battery",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Door button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete series wiring",
+      "parentId": "system"
+    }
+  ],
+  "electromagnetic-make-and-break-contacts": [
+    {
+      "id": "board",
+      "name": "Mounting board",
+      "parentId": "system"
+    },
+    {
+      "id": "gong",
+      "name": "Metal gong",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Magnet and striking mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage battery",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Door button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete series wiring",
+      "parentId": "system"
+    }
+  ],
+  "vibrating-horn-diaphragm": [
+    {
+      "id": "housing",
+      "name": "Clamped housing and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Electromagnet and diaphragm assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "trumpet",
+      "name": "Hollow projecting horn",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage supply",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Horn push-button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete electrical circuit",
+      "parentId": "system"
+    }
+  ],
+  "horn-make-and-break-contacts": [
+    {
+      "id": "housing",
+      "name": "Clamped housing and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Electromagnet and diaphragm assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "trumpet",
+      "name": "Hollow projecting horn",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage supply",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Horn push-button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete electrical circuit",
+      "parentId": "system"
+    }
+  ],
+  "electric-horn-moving-iron-bar": [
+    {
+      "id": "housing",
+      "name": "Clamped housing and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Electromagnet and diaphragm assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "trumpet",
+      "name": "Hollow projecting horn",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage supply",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Horn push-button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete electrical circuit",
+      "parentId": "system"
+    }
+  ],
+  "electric-bell-pushbutton-switch": [
+    {
+      "id": "board",
+      "name": "Mounting board",
+      "parentId": "system"
+    },
+    {
+      "id": "gong",
+      "name": "Metal gong",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Magnet and striking mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage battery",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Door button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete series wiring",
+      "parentId": "system"
+    }
+  ],
+  "electric-bell-hammer-and-metal-bell": [
+    {
+      "id": "board",
+      "name": "Mounting board",
+      "parentId": "system"
+    },
+    {
+      "id": "gong",
+      "name": "Metal gong",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Magnet and striking mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage battery",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Door button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete series wiring",
+      "parentId": "system"
+    }
+  ],
+  "electric-bell-return-spring": [
+    {
+      "id": "board",
+      "name": "Mounting board",
+      "parentId": "system"
+    },
+    {
+      "id": "gong",
+      "name": "Metal gong",
+      "parentId": "system"
+    },
+    {
+      "id": "mechanism",
+      "name": "Magnet and striking mechanism",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Low-voltage battery",
+      "parentId": "system"
+    },
+    {
+      "id": "button",
+      "name": "Door button",
+      "parentId": "system"
+    },
+    {
+      "id": "wires",
+      "name": "Complete series wiring",
+      "parentId": "system"
+    }
+  ],
+  "heated-extrusion-nozzle": [
+    {
+      "id": "frame",
+      "name": "Rigid printer frame",
+      "parentId": "system"
+    },
+    {
+      "id": "y-drive",
+      "name": "Y plate drive and guides",
+      "parentId": "system"
+    },
+    {
+      "id": "bed",
+      "name": "Moving build plate",
+      "parentId": "system"
+    },
+    {
+      "id": "gantry",
+      "name": "Screw-lifted X gantry",
+      "parentId": "system"
+    },
+    {
+      "id": "z-drive",
+      "name": "Z lead screw and guide rods",
+      "parentId": "system"
+    },
+    {
+      "id": "z-motor",
+      "name": "Z screw motor",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-screw",
+      "name": "Two-millimeter lead screw",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-nut",
+      "name": "Captive screw nut",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-drive",
+      "name": "X head drive",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-belt",
+      "name": "X continuous timing belt",
+      "parentId": "x-drive"
+    },
+    {
+      "id": "x-pulley-drive",
+      "name": "X driven timing pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-pulley-idler",
+      "name": "X supported idler pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-motor",
+      "name": "X belt motor",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "y-belt",
+      "name": "Y continuous timing belt",
+      "parentId": "y-drive"
+    },
+    {
+      "id": "y-pulley-drive",
+      "name": "Y driven timing pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-pulley-idler",
+      "name": "Y supported idler pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-motor",
+      "name": "Y belt motor",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "x-carriage",
+      "name": "Guided printing head carriage",
+      "parentId": "gantry"
+    },
+    {
+      "id": "extruder",
+      "name": "Direct-drive filament extruder",
+      "parentId": "x-carriage"
+    },
+    {
+      "id": "feed-gears",
+      "name": "Filament feed gear and idler",
+      "parentId": "extruder"
+    },
+    {
+      "id": "feed-gear",
+      "name": "Driven gripping gear",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-idler",
+      "name": "Pressure idler",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-motor",
+      "name": "Filament-feed motor",
+      "parentId": "extruder"
+    },
+    {
+      "id": "hotend",
+      "name": "Cutaway cold side, heat break and melt zone",
+      "parentId": "extruder"
+    },
+    {
+      "id": "heater",
+      "name": "Electrical heater and cutaway melt block",
+      "parentId": "hotend"
+    },
+    {
+      "id": "nozzle",
+      "name": "Cutaway 0.6-mm nozzle",
+      "parentId": "hotend"
+    },
+    {
+      "id": "material-in-head",
+      "name": "Primed filament and melt path",
+      "parentId": "hotend"
+    },
+    {
+      "id": "reel",
+      "name": "Supported filament reel",
+      "parentId": "system"
+    },
+    {
+      "id": "spool",
+      "name": "Rotating reel core and flanges",
+      "parentId": "reel"
+    },
+    {
+      "id": "filament",
+      "name": "Continuous reel-to-head filament",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Printer controller",
+      "parentId": "system"
+    }
+  ],
+  "printer-filament-reel": [
+    {
+      "id": "frame",
+      "name": "Rigid printer frame",
+      "parentId": "system"
+    },
+    {
+      "id": "y-drive",
+      "name": "Y plate drive and guides",
+      "parentId": "system"
+    },
+    {
+      "id": "bed",
+      "name": "Moving build plate",
+      "parentId": "system"
+    },
+    {
+      "id": "gantry",
+      "name": "Screw-lifted X gantry",
+      "parentId": "system"
+    },
+    {
+      "id": "z-drive",
+      "name": "Z lead screw and guide rods",
+      "parentId": "system"
+    },
+    {
+      "id": "z-motor",
+      "name": "Z screw motor",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-screw",
+      "name": "Two-millimeter lead screw",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-nut",
+      "name": "Captive screw nut",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-drive",
+      "name": "X head drive",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-belt",
+      "name": "X continuous timing belt",
+      "parentId": "x-drive"
+    },
+    {
+      "id": "x-pulley-drive",
+      "name": "X driven timing pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-pulley-idler",
+      "name": "X supported idler pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-motor",
+      "name": "X belt motor",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "y-belt",
+      "name": "Y continuous timing belt",
+      "parentId": "y-drive"
+    },
+    {
+      "id": "y-pulley-drive",
+      "name": "Y driven timing pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-pulley-idler",
+      "name": "Y supported idler pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-motor",
+      "name": "Y belt motor",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "x-carriage",
+      "name": "Guided printing head carriage",
+      "parentId": "gantry"
+    },
+    {
+      "id": "extruder",
+      "name": "Direct-drive filament extruder",
+      "parentId": "x-carriage"
+    },
+    {
+      "id": "feed-gears",
+      "name": "Filament feed gear and idler",
+      "parentId": "extruder"
+    },
+    {
+      "id": "feed-gear",
+      "name": "Driven gripping gear",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-idler",
+      "name": "Pressure idler",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-motor",
+      "name": "Filament-feed motor",
+      "parentId": "extruder"
+    },
+    {
+      "id": "hotend",
+      "name": "Cutaway cold side, heat break and melt zone",
+      "parentId": "extruder"
+    },
+    {
+      "id": "heater",
+      "name": "Electrical heater and cutaway melt block",
+      "parentId": "hotend"
+    },
+    {
+      "id": "nozzle",
+      "name": "Cutaway 0.6-mm nozzle",
+      "parentId": "hotend"
+    },
+    {
+      "id": "material-in-head",
+      "name": "Primed filament and melt path",
+      "parentId": "hotend"
+    },
+    {
+      "id": "reel",
+      "name": "Supported filament reel",
+      "parentId": "system"
+    },
+    {
+      "id": "spool",
+      "name": "Rotating reel core and flanges",
+      "parentId": "reel"
+    },
+    {
+      "id": "filament",
+      "name": "Continuous reel-to-head filament",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Printer controller",
+      "parentId": "system"
+    }
+  ],
+  "layer-by-layer-fabrication": [
+    {
+      "id": "frame",
+      "name": "Rigid printer frame",
+      "parentId": "system"
+    },
+    {
+      "id": "y-drive",
+      "name": "Y plate drive and guides",
+      "parentId": "system"
+    },
+    {
+      "id": "bed",
+      "name": "Moving build plate",
+      "parentId": "system"
+    },
+    {
+      "id": "gantry",
+      "name": "Screw-lifted X gantry",
+      "parentId": "system"
+    },
+    {
+      "id": "z-drive",
+      "name": "Z lead screw and guide rods",
+      "parentId": "system"
+    },
+    {
+      "id": "z-motor",
+      "name": "Z screw motor",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-screw",
+      "name": "Two-millimeter lead screw",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-nut",
+      "name": "Captive screw nut",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-drive",
+      "name": "X head drive",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-belt",
+      "name": "X continuous timing belt",
+      "parentId": "x-drive"
+    },
+    {
+      "id": "x-pulley-drive",
+      "name": "X driven timing pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-pulley-idler",
+      "name": "X supported idler pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-motor",
+      "name": "X belt motor",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "y-belt",
+      "name": "Y continuous timing belt",
+      "parentId": "y-drive"
+    },
+    {
+      "id": "y-pulley-drive",
+      "name": "Y driven timing pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-pulley-idler",
+      "name": "Y supported idler pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-motor",
+      "name": "Y belt motor",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "x-carriage",
+      "name": "Guided printing head carriage",
+      "parentId": "gantry"
+    },
+    {
+      "id": "extruder",
+      "name": "Direct-drive filament extruder",
+      "parentId": "x-carriage"
+    },
+    {
+      "id": "feed-gears",
+      "name": "Filament feed gear and idler",
+      "parentId": "extruder"
+    },
+    {
+      "id": "feed-gear",
+      "name": "Driven gripping gear",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-idler",
+      "name": "Pressure idler",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-motor",
+      "name": "Filament-feed motor",
+      "parentId": "extruder"
+    },
+    {
+      "id": "hotend",
+      "name": "Cutaway cold side, heat break and melt zone",
+      "parentId": "extruder"
+    },
+    {
+      "id": "heater",
+      "name": "Electrical heater and cutaway melt block",
+      "parentId": "hotend"
+    },
+    {
+      "id": "nozzle",
+      "name": "Cutaway 0.6-mm nozzle",
+      "parentId": "hotend"
+    },
+    {
+      "id": "material-in-head",
+      "name": "Primed filament and melt path",
+      "parentId": "hotend"
+    },
+    {
+      "id": "reel",
+      "name": "Supported filament reel",
+      "parentId": "system"
+    },
+    {
+      "id": "spool",
+      "name": "Rotating reel core and flanges",
+      "parentId": "reel"
+    },
+    {
+      "id": "filament",
+      "name": "Continuous reel-to-head filament",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Printer controller",
+      "parentId": "system"
+    }
+  ],
+  "spark-gap": [
+    {
+      "id": "gap",
+      "name": "Separated electrode tips",
+      "parentId": "system"
+    },
+    {
+      "id": "center",
+      "name": "Insulated incoming electrode",
+      "parentId": "gap"
+    },
+    {
+      "id": "ceramic",
+      "name": "Annular ceramic separator",
+      "parentId": "gap"
+    },
+    {
+      "id": "ground",
+      "name": "Grounded opposing electrode and return",
+      "parentId": "gap"
+    },
+    {
+      "id": "boundary",
+      "name": "Distributor A supply boundary",
+      "parentId": "system"
+    },
+    {
+      "id": "selector",
+      "name": "Actual A connection contact",
+      "parentId": "boundary"
+    },
+    {
+      "id": "feed",
+      "name": "Insulated incoming A lead",
+      "parentId": "system"
+    },
+    {
+      "id": "return",
+      "name": "Continuous common body return",
+      "parentId": "system"
+    },
+    {
+      "id": "reference",
+      "name": "Common upstream body reference",
+      "parentId": "system"
+    },
+    {
+      "id": "voltage-comparison",
+      "name": "A voltage comparison",
+      "parentId": "system"
+    },
+    {
+      "id": "energy-record",
+      "name": "Retained A delivered energy",
+      "parentId": "system"
+    }
+  ],
+  "electronic-ignition": [
+    {
+      "id": "board",
+      "name": "Insulating cutaway board",
+      "parentId": "system"
+    },
+    {
+      "id": "power",
+      "name": "Battery and primary switch",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "12 V class teaching supply",
+      "parentId": "power"
+    },
+    {
+      "id": "coil",
+      "name": "Coupled ignition coil",
+      "parentId": "system"
+    },
+    {
+      "id": "core",
+      "name": "Common magnetic core",
+      "parentId": "coil"
+    },
+    {
+      "id": "primary",
+      "name": "Primary winding · 3 turns",
+      "parentId": "coil"
+    },
+    {
+      "id": "secondary",
+      "name": "Secondary winding · 30 turns",
+      "parentId": "coil"
+    },
+    {
+      "id": "switch",
+      "name": "Fixed solid-state switch package",
+      "parentId": "power"
+    },
+    {
+      "id": "capacitor",
+      "name": "20 µF teaching capacitor across the switch",
+      "parentId": "power"
+    },
+    {
+      "id": "primary-wires",
+      "name": "Battery–primary–switch–return wiring",
+      "parentId": "power"
+    },
+    {
+      "id": "capacitor-wires",
+      "name": "Parallel switch capacitor wiring",
+      "parentId": "power"
+    },
+    {
+      "id": "command",
+      "name": "Prescribed timing command",
+      "parentId": "system"
+    },
+    {
+      "id": "timing-pivot",
+      "name": "Prescribed timing phase",
+      "parentId": "command"
+    },
+    {
+      "id": "command-wires",
+      "name": "Ideal command signal path",
+      "parentId": "command"
+    },
+    {
+      "id": "routing",
+      "name": "Distributor and plug circuits",
+      "parentId": "system"
+    },
+    {
+      "id": "body-return",
+      "name": "Common body return",
+      "parentId": "routing"
+    },
+    {
+      "id": "distributor",
+      "name": "Four-terminal distributor",
+      "parentId": "routing"
+    },
+    {
+      "id": "rotor",
+      "name": "Prescribed conducting rotor",
+      "parentId": "distributor"
+    },
+    {
+      "id": "secondary-wires",
+      "name": "Coil secondary feed to distributor",
+      "parentId": "routing"
+    },
+    {
+      "id": "stray-capacitor",
+      "name": "0.05 µF secondary-node capacitance",
+      "parentId": "routing"
+    },
+    {
+      "id": "stray-capacitor-wires",
+      "name": "Secondary capacitance to body return",
+      "parentId": "routing"
+    },
+    {
+      "id": "terminal-0",
+      "name": "Distributor terminal A",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-1",
+      "name": "Distributor terminal B",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-2",
+      "name": "Distributor terminal C",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-3",
+      "name": "Distributor terminal D",
+      "parentId": "distributor"
+    },
+    {
+      "id": "plug-A-wires",
+      "name": "Plug A feed and return",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-A",
+      "name": "Plug A discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-B-wires",
+      "name": "Plug B feed and return",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-B",
+      "name": "Plug B discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-C-wires",
+      "name": "Plug C feed and return",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-C",
+      "name": "Plug C discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-D-wires",
+      "name": "Plug D feed and return",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-D",
+      "name": "Plug D discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "energy-records",
+      "name": "Retained plug energies",
+      "parentId": "system"
+    },
+    {
+      "id": "energy-A",
+      "name": "Plug A retained energy · 0–200 mJ",
+      "parentId": "energy-records"
+    },
+    {
+      "id": "energy-B",
+      "name": "Plug B retained energy · 0–200 mJ",
+      "parentId": "energy-records"
+    },
+    {
+      "id": "energy-C",
+      "name": "Plug C retained energy · 0–200 mJ",
+      "parentId": "energy-records"
+    },
+    {
+      "id": "energy-D",
+      "name": "Plug D retained energy · 0–200 mJ",
+      "parentId": "energy-records"
+    }
+  ],
+  "earthquake-location-by-arrival-times": [
+    {
+      "id": "map",
+      "name": "Distance circles and compatible locations",
+      "parentId": "system"
+    },
+    {
+      "id": "records",
+      "name": "Retained P and S timing records",
+      "parentId": "system"
+    }
+  ],
+  "vertical-seismograph-suspension-spring": [
+    {
+      "id": "frame",
+      "name": "Stationary base, mast and anchors",
+      "parentId": "system"
+    },
+    {
+      "id": "boom",
+      "name": "Rigid pivoted boom",
+      "parentId": "frame"
+    },
+    {
+      "id": "mass",
+      "name": "Supported proof mass",
+      "parentId": "boom"
+    },
+    {
+      "id": "spring",
+      "name": "Preloaded ordinary extension spring",
+      "parentId": "frame"
+    },
+    {
+      "id": "damper",
+      "name": "Rotational viscous damper",
+      "parentId": "frame"
+    },
+    {
+      "id": "equilibrium",
+      "name": "Equilibrium and horizontal indicators",
+      "parentId": "frame"
+    },
+    {
+      "id": "record",
+      "name": "Retained angle response",
+      "parentId": "system"
+    }
+  ],
+  "seismograph-recording-pen-and-moving-paper": [
+    {
+      "id": "reference",
+      "name": "Stationary world reference",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Ground-carried recording frame",
+      "parentId": "system"
+    },
+    {
+      "id": "guides",
+      "name": "Linear guides",
+      "parentId": "frame"
+    },
+    {
+      "id": "mass",
+      "name": "Guided inertial mass",
+      "parentId": "frame"
+    },
+    {
+      "id": "spring",
+      "name": "Gravity-preloaded spring",
+      "parentId": "frame"
+    },
+    {
+      "id": "damper",
+      "name": "Fixed damping poles and moving vane",
+      "parentId": "frame"
+    },
+    {
+      "id": "paper",
+      "name": "Moving paper and retained ink",
+      "parentId": "frame"
+    },
+    {
+      "id": "rollers",
+      "name": "Paper feed rollers and supports",
+      "parentId": "frame"
+    },
+    {
+      "id": "stylus",
+      "name": "Rigid mass-carried pen support",
+      "parentId": "mass"
+    },
+    {
+      "id": "pen-tip",
+      "name": "Hinged contact nib",
+      "parentId": "stylus"
+    },
+    {
+      "id": "ruler",
+      "name": "Fixed relative-displacement ruler",
+      "parentId": "frame"
+    }
+  ],
+  "spark-plug-electrodes-and-ceramic-insulator": [
+    {
+      "id": "plug",
+      "name": "Plug A and connected supply/return",
+      "parentId": "system"
+    },
+    {
+      "id": "center",
+      "name": "Continuous center terminal and electrode",
+      "parentId": "plug"
+    },
+    {
+      "id": "ceramic",
+      "name": "Annular ceramic insulator and nose",
+      "parentId": "plug"
+    },
+    {
+      "id": "shell",
+      "name": "Metal shell and threaded mounting",
+      "parentId": "plug"
+    },
+    {
+      "id": "head",
+      "name": "Cylinder-head metal and chamber side",
+      "parentId": "plug"
+    },
+    {
+      "id": "ground-electrode",
+      "name": "Bent grounded side electrode",
+      "parentId": "plug"
+    },
+    {
+      "id": "boundary",
+      "name": "Distributor A connection boundary",
+      "parentId": "plug"
+    },
+    {
+      "id": "selector",
+      "name": "Actual selected/disconnected A path",
+      "parentId": "boundary"
+    },
+    {
+      "id": "feed",
+      "name": "Incoming A lead",
+      "parentId": "plug"
+    },
+    {
+      "id": "return",
+      "name": "Head-to-body return",
+      "parentId": "plug"
+    },
+    {
+      "id": "reference",
+      "name": "Common upstream body reference",
+      "parentId": "plug"
+    },
+    {
+      "id": "energy-record",
+      "name": "Retained gap and bypass energy",
+      "parentId": "system"
+    },
+    {
+      "id": "bypass",
+      "name": "Equivalent exterior bypass jumper",
+      "parentId": "plug"
+    },
+    {
+      "id": "bypass-resistor",
+      "name": "Illustrative bypass resistor",
+      "parentId": "bypass"
+    },
+    {
+      "id": "bypass-switch",
+      "name": "Open or connected bypass",
+      "parentId": "bypass"
+    }
+  ],
+  "inertial-accelerometer-armature-spring-and-coils": [
+    {
+      "id": "housing",
+      "name": "Co-moving sensor housing",
+      "parentId": "system"
+    },
+    {
+      "id": "primary-source",
+      "name": "Ideal AC current driver",
+      "parentId": "system"
+    },
+    {
+      "id": "primary-wires",
+      "name": "Primary source circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "pickup-wires",
+      "name": "Opposed open-port pickups",
+      "parentId": "system"
+    },
+    {
+      "id": "signal-processor",
+      "name": "Difference, phase detection and finite filtering",
+      "parentId": "system"
+    },
+    {
+      "id": "response-record",
+      "name": "Retained mechanical and acceleration response",
+      "parentId": "system"
+    },
+    {
+      "id": "signal-window",
+      "name": "Actual recent 40-millisecond signal window",
+      "parentId": "system"
+    },
+    {
+      "id": "housing-travel",
+      "name": "Actual housing travel in meters",
+      "parentId": "system"
+    }
+  ],
+  "microchip-deceleration-sensor": [
+    {
+      "id": "chip",
+      "name": "Square and four flexures",
+      "parentId": "system"
+    },
+    {
+      "id": "bridge",
+      "name": "Equivalent circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "records",
+      "name": "Actual motion and signal records",
+      "parentId": "system"
+    }
+  ],
+  "crash-sensor-proof-square-and-sensing-strips": [
+    {
+      "id": "chip",
+      "name": "Square and four flexures",
+      "parentId": "system"
+    },
+    {
+      "id": "bridge",
+      "name": "Equivalent circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "records",
+      "name": "Actual motion and signal records",
+      "parentId": "system"
+    }
+  ],
+  "airbag-warning-indicator": [
+    {
+      "id": "board",
+      "name": "Circuit mounting board",
+      "parentId": "circuit"
+    },
+    {
+      "id": "power",
+      "name": "12 V teaching supply",
+      "parentId": "circuit"
+    },
+    {
+      "id": "indicator-path",
+      "name": "Controlled electronic switch",
+      "parentId": "circuit"
+    },
+    {
+      "id": "resistor",
+      "name": "Current-limiting resistor",
+      "parentId": "circuit"
+    },
+    {
+      "id": "lamp",
+      "name": "AIRBAG warning LED",
+      "parentId": "circuit"
+    },
+    {
+      "id": "monitor",
+      "name": "Monitor and startup timer",
+      "parentId": "circuit"
+    },
+    {
+      "id": "report-input",
+      "name": "Imposed report input",
+      "parentId": "circuit"
+    },
+    {
+      "id": "buzzer",
+      "name": "Backup sounder",
+      "parentId": "circuit"
+    },
+    {
+      "id": "wires",
+      "name": "Lamp branch and return",
+      "parentId": "circuit"
+    },
+    {
+      "id": "feedback",
+      "name": "Command, sensing and sounder connections",
+      "parentId": "circuit"
+    },
+    {
+      "id": "records",
+      "name": "Observed indicator history",
+      "parentId": "system"
+    }
+  ],
+  "mirrors": [
+    {
+      "id": "mirror",
+      "name": "Reflecting surfaces",
+      "parentId": "system"
+    },
+    {
+      "id": "source",
+      "name": "Cat object",
+      "parentId": "system"
+    },
+    {
+      "id": "eye",
+      "name": "Eye or detector",
+      "parentId": "system"
+    },
+    {
+      "id": "rays",
+      "name": "Physical light paths",
+      "parentId": "system"
+    },
+    {
+      "id": "image",
+      "name": "Geometric constructions",
+      "parentId": "system"
+    },
+    {
+      "id": "normal",
+      "name": "Surface normal",
+      "parentId": "system"
+    }
+  ],
+  "lenses": [
+    {
+      "id": "result",
+      "name": "Image and receiver",
+      "parentId": "system"
+    },
+    {
+      "id": "source",
+      "name": "Cat object",
+      "parentId": "system"
+    },
+    {
+      "id": "lenses",
+      "name": "Glass lenses",
+      "parentId": "system"
+    },
+    {
+      "id": "rays",
+      "name": "Light rays",
+      "parentId": "system"
+    },
+    {
+      "id": "focus",
+      "name": "Focal points",
+      "parentId": "system"
+    }
+  ],
+  "telescopes": [
+    {
+      "id": "result",
+      "name": "Image and eyepiece",
+      "parentId": "optical"
+    },
+    {
+      "id": "objective",
+      "name": "Objective or primary",
+      "parentId": "optical"
+    },
+    {
+      "id": "rays",
+      "name": "Ray paths",
+      "parentId": "optical"
+    },
+    {
+      "id": "source",
+      "name": "Distant cat reference",
+      "parentId": "optical"
+    },
+    {
+      "id": "housing",
+      "name": "Cutaway tube and supports",
+      "parentId": "optical"
+    }
+  ],
+  "microscopes": [
+    {
+      "id": "specimen",
+      "name": "Illuminated specimen",
+      "parentId": "optical"
+    },
+    {
+      "id": "objective",
+      "name": "Objective",
+      "parentId": "optical"
+    },
+    {
+      "id": "eyepiece",
+      "name": "Eyepiece",
+      "parentId": "optical"
+    },
+    {
+      "id": "condenser",
+      "name": "Illumination condenser",
+      "parentId": "optical"
+    },
+    {
+      "id": "illumination-mirror",
+      "name": "Illumination mirror",
+      "parentId": "optical"
+    },
+    {
+      "id": "lamp",
+      "name": "Illumination lamp",
+      "parentId": "optical"
+    }
+  ]
+}

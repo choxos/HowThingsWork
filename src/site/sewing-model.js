@@ -3,8 +3,9 @@ import {houseModel,reading as r} from './house-model-kit.js';
 
 const TAU=2*Math.PI, NX=-.85, NZ=.15, FABRIC=1.04, SCALE=.025;
 const clamp=x=>Math.max(0,Math.min(1,x));
-export function createSewingModel(){
+export function createSewingModel({feedLesson=false,needleLesson=false,hookLesson=false,takeUpLesson=false,linkageLesson=false}={}){
  const m=houseModel('Sewing machine'),{root,part,box,disk,ring,rod,cylinder,control,covers}=m;
+ const formation=part('stitch-formation','Needle, hook and thread interlock','The needle presents an upper-thread loop to the rotating hook, which carries it around the lower-thread supply.');
  const frame=part('body','Frame and bearings','The rigid frame keeps the needle, shafts, hook and feed aligned.');
  box([3,.18,1.5],[0,.12,0],'leaf',frame);box([.43,1.95,.65],[1.05,1.35,-.15],'leaf',frame);box([2.3,.22,.65],[.05,2.28,-.15],'leaf',frame);
  const cover=box([.55,.92,.65],[NX,1.88,-.15],'leaf',frame);covers.push(cover);
@@ -17,30 +18,39 @@ export function createSewingModel(){
  const motor=part('motor','Electric motor and drive belt','The motor turns the handwheel through a belt. The pace control selects a slowed teaching speed.',[1.13,.40,.55]);
  const motorCover=cylinder(.17,.34,[0,0,0],'leaf',motor);motorCover.rotation.z=Math.PI/2;covers.push(motorCover);
  const rotor=part('motor-rotor','Motor rotor and pulley','The small motor pulley turns 3.1 times per handwheel revolution.',[0,0,0],motor);
- rod([-.16,0,0],[.36,0,0],.03,'metal',rotor);disk(.10,.06,[.36,0,0],'gold',rotor).rotation.y=Math.PI/2;rod([.40,0,0],[.40,.085,0],.014,'ink',rotor);
+ rod([-.16,0,0],[.36,0,0],.03,'metal',rotor);disk(.10,.06,[.36,0,0],'gold',rotor).rotation.set(0,0,Math.PI/2);rod([.40,0,0],[.40,.085,0],.014,'ink',rotor);
  for(let j=0;j<4;j++){const a=j*TAU/4;box([.22,.055,.055],[0,.12*Math.cos(a),.12*Math.sin(a)],'clay',motor);}
  rod([0,-.17,0],[0,-.21,0],.06,'metal',motor);
  const motorDistance=Math.hypot(1.65,-.40),motorUy=1.65/motorDistance,motorUz=-.40/motorDistance,motorSin=-.21/motorDistance,motorCos=Math.sqrt(1-motorSin**2);
  for(const sign of [-1,1]){const ny=motorSin*motorUy+sign*motorCos*motorUz,nz=motorSin*motorUz-sign*motorCos*motorUy;rod([1.49,2.05+.31*ny,NZ+.31*nz],[1.49,.40+.10*ny,.55+.10*nz],.017,'ink',drive);}
- const crank=part('crank','Needle crank','An off-center pin drives the connecting rod.',[NX,2.05,NZ],drive);disk(.075,.09,[0,0,0],'gold',crank).rotation.y=Math.PI/2;rod([0,0,0],[0,.32,0],.05,'gold',crank);const pin=cylinder(.052,.12,[0,.32,0],'metal',crank);pin.rotation.z=Math.PI/2;
- const needle=part('needle','Needle bar, needle and eye','The bar slides through fixed bearings. Its eye carries red upper thread through the cloth.');
+ const crank=part('crank','Needle crank','An off-center pin drives the connecting rod.',[NX,2.05,NZ],drive);disk(.075,.09,[0,0,0],'gold',crank).rotation.set(0,0,Math.PI/2);rod([0,0,0],[0,.32,0],.05,'gold',crank);const pin=cylinder(.052,.12,[0,.32,0],'metal',crank);pin.rotation.z=Math.PI/2;
+ const needle=part('needle','Needle bar, needle and eye','The bar slides through fixed bearings. Its eye carries red upper thread through the cloth.',[0,0,0],formation);
  rod([NX,0,NZ],[NX,.52,NZ],.043,'metal',needle);rod([NX,0,NZ],[NX,-.35,NZ],.013,'metal',needle);ring(.016,.005,[NX,-.30,NZ],'gold',needle);
  for(const y of [1.51,1.79]){const bearing=cylinder(.073,.10,[NX,y,NZ],'ink',frame);covers.push(bearing);}
  const connecting=part('connecting-rod','Crank connecting rod','A fixed-length rod joins the rotating crank pin to the sliding needle bar.',[0,0,0],drive);
  const conrod=rod([0,0,0],[0,1,0],.03,'clay',connecting);
  function link(object,a,b){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b),d=bv.clone().sub(av);object.position.copy(av).add(bv).multiplyScalar(.5);object.scale.y=d.length();object.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());}
  const transmission=part('transmission','Timing belt and hook shaft','The large upper pulley drives the half-size lower pulley: two hook turns per needle cycle.');
- const drivePulleys=[];for(const [y,rad] of [[2.05,.24],[.47,.12]]){const pulley=part(y>1?'upper-pulley':'hook-pulley',y>1?'Main-shaft pulley':'Hook-shaft pulley','A spoke makes the shaft rotation visible.',[1.29,y,NZ],transmission);disk(rad,.10,[0,0,0],'gold',pulley).rotation.y=Math.PI/2;rod([.06,0,0],[.06,rad*.85,0],.018,'ink',pulley);drivePulleys.push(pulley);}
+ const drivePulleys=[];for(const [y,rad] of [[2.05,.24],[.47,.12]]){const pulley=part(y>1?'upper-pulley':'hook-pulley',y>1?'Main-shaft pulley':'Hook-shaft pulley','A spoke makes the shaft rotation visible.',[1.29,y,NZ],transmission);disk(rad,.10,[0,0,0],'gold',pulley).rotation.set(0,0,Math.PI/2);rod([.06,0,0],[.06,rad*.85,0],.018,'ink',pulley);drivePulleys.push(pulley);}
  // Tangents to unequal pulleys keep the belt connected to both pitch circles.
  const alpha=Math.asin((.24-.12)/1.58);
  for(const sign of [-1,1])rod([1.29,2.05-.24*Math.sin(alpha),NZ+sign*.24*Math.cos(alpha)],[1.29,.47-.12*Math.sin(alpha),NZ+sign*.12*Math.cos(alpha)],.022,'ink',transmission);
  rod([NX,.47,NZ],[1.29,.47,NZ],.038,'metal',transmission);
  const shaftMark=part('hook-shaft','Rotating hook shaft','Transmits the lower pulley rotation to the hook.',[0,.47,NZ],transmission);rod([NX,.045,0],[1.29,.045,0],.01,'clay',shaftMark);
- const hookAssembly=part('hook-assembly','Rotary hook and bobbin assembly','The rotating hook surrounds a bobbin case held against rotation.',[NX,.47,NZ]);
- const bobbin=part('bobbin','Bobbin and stationary case','Blue lower thread unwinds from the bobbin. A retaining finger holds the case still.',[.03,0,0],hookAssembly);
- for(const x of [-.07,.07]){const flange=disk(.20,.025,[x,0,0],'metal',bobbin);flange.rotation.y=Math.PI/2;}
+ const hookAssembly=part('hook-assembly','Rotary hook and bobbin assembly','The rotating hook surrounds a bobbin case held against rotation.',[NX,.47,NZ],formation);
+ const bobbin=part('bobbin','Bobbin spool and flanges','The small spool stores blue lower thread inside the stationary case. Its unwinding rotation and decreasing fill are not simulated.',[.03,0,0],hookAssembly);
+ for(const x of [-.07,.07]){const flange=disk(.20,.025,[x,0,0],'metal',bobbin);flange.rotation.set(0,0,Math.PI/2);}
  const spool=cylinder(.165,.12,[0,0,0],'blue',bobbin);spool.rotation.z=Math.PI/2;
- rod([.14,.17,0],[.14,.27,0],.022,'ink',hookAssembly);rod([.14,.27,0],[.32,.27,0],.022,'ink',hookAssembly);
+ const bobbinCase=part('bobbin-case','Stationary bobbin case','A separate case locates the spool inside the rotating hook. Look inside removes its side wall and rear plate, leaving the rim and thread exit visible.',[.03,0,0],hookAssembly);
+ const caseRim=ring(.224,.007,[.08,0,0],'ink',bobbinCase);caseRim.rotation.y=Math.PI/2;
+ const caseShell=new THREE.Mesh(new THREE.CylinderGeometry(.224,.224,.16,48,1,true),caseRim.material.clone());caseShell.material.side=THREE.DoubleSide;caseShell.rotation.z=Math.PI/2;bobbinCase.add(caseShell);
+ const caseBack=disk(.224,.012,[-.08,0,0],'metal',bobbinCase);caseBack.rotation.set(0,0,Math.PI/2);covers.push(caseShell,caseBack);
+ const tension=part('bobbin-tension','Bobbin tension spring and exit','Lower thread passes under this leaf spring and out through its guide. The enlarged spring is a path marker; tension is not calculated.',[0,0,0],bobbinCase);
+ box([.07,.012,.10],[.06,.225,-.04],'clay',tension);ring(.014,.004,[.06,.239,0],'gold',tension).rotation.y=Math.PI/2;
+ const retainer=part('bobbin-retainer','Bobbin-case retaining finger','This fixed finger engages the case stop and prevents the case from following the rotating hook.',[0,0,0],hookAssembly);
+ rod([.14,.17,0],[.14,.27,0],.008,'ink',retainer);rod([.14,.27,0],[.32,.27,0],.008,'ink',retainer);
+ for(const x of [.09,.13])box([.018,.065,.05],[x,.20,0],'metal',bobbinCase);
+ const lowerThread=part('bobbin-thread','Lower thread from case to cloth','Blue thread leaves the case guide and joins the stitch beneath the cloth. Removing the lower supply hides this entire path.',[.03,0,0],hookAssembly);
  const hook=part('hook','Rotary hook and point','The point reaches the needle during its early rise and draws its loop around the bobbin.',[0,0,0],hookAssembly);
  const hookPoints=[];for(let i=0;i<=50;i++){const a=i/50*TAU*.84;hookPoints.push([-.045,.28*Math.cos(a),.28*Math.sin(a)]);}m.tube(hookPoints,.025,'gold',hook);rod([-.045,.28,0],[-.07,.30,0],.014,'gold',hook);
  const plate=part('needle-plate','Needle plate and feed slots','The needle passes through the central opening; feed dogs rise through the side slots.');
@@ -50,50 +60,70 @@ export function createSewingModel(){
  rod([NX+.20,FABRIC+.10,NZ-.13],[NX+.20,1.88,NZ-.13],.035,'metal',foot);m.spring([NX+.20,1.5,NZ-.13],.055,.25,7,foot);
  for(const x of [NX-.10,NX+.10])box([.08,.045,.34],[x,FABRIC+.05,NZ],'metal',foot);rod([NX-.10,FABRIC+.09,NZ-.13],[NX+.20,FABRIC+.09,NZ-.13],.028,'metal',foot);
  const feedAssembly=part('feed-dog','Four-motion feed assembly','Follow the drive through lift and travel to the teeth moving the cloth.');
- const feed=part('feed-bar','Feed dogs and feed bar','Teeth rise, move the cloth with the needle clear, drop, and return below the plate.',[0,0,0],feedAssembly);
- for(const x of [NX-.20,NX+.20]){box([.075,.07,.38],[x,0,NZ],'metal',feed);for(let i=0;i<7;i++)box([.08,.035,.025],[x,.05,NZ-.15+i*.05],'gold',feed);}
  const feedDrive=part('feed-drive','Feed shaft, cams and slotted regulator','A separate 1:1 belt keeps the feed cycle synchronized with the needle. Two grooved cams drive lift and travel; a slotted lever scales travel.',[0,0,0],feedAssembly);
+ const feedLinkages=part('feed-linkages','Feed cams, sliding joints and teeth','Two guided followers combine lift and travel at the feed bar. Look inside hides the cam backing disks and fixed guide blocks.',[0,0,0],feedDrive);
+ const feed=part('feed-bar','Feed dogs and feed bar','Teeth rise, move the cloth with the needle clear, drop, and return below the plate.',[0,0,0],feedLinkages);
+ for(const x of [NX-.20,NX+.20]){box([.075,.07,.38],[x,0,NZ],'metal',feed);for(let i=0;i<7;i++)box([.08,.035,.025],[x,.05,NZ-.15+i*.05],'gold',feed);}
+ box([.475,.04,.06],[NX,-.035,NZ-.16],'metal',feed);
  const feedShaft=part('feed-shaft','Feed shaft and equal pulleys','Equal pulleys give one feed cycle per needle cycle.',[0,0,0],feedDrive);
  rod([NX-.3,.62,-.48],[1.15,.62,-.48],.032,'metal',feedShaft);
- const feedPulleys=[];for(const [y,z] of [[2.05,NZ],[.62,-.48]]){const pulley=part(y>1?'feed-input-pulley':'feed-output-pulley','Feed timing pulley','The matching pulleys turn together.',[1.15,y,z],feedShaft);disk(.16,.07,[0,0,0],'gold',pulley).rotation.y=Math.PI/2;rod([.045,0,0],[.045,.13,0],.015,'ink',pulley);feedPulleys.push(pulley);}
+ const feedPulleys=[];for(const [y,z] of [[2.05,NZ],[.62,-.48]]){const pulley=part(y>1?'feed-input-pulley':'feed-output-pulley',y>1?'Feed input pulley':'Feed output pulley','The matching pulleys turn together.',[1.15,y,z],feedShaft);disk(.16,.07,[0,0,0],'gold',pulley).rotation.set(0,0,Math.PI/2);rod([.045,0,0],[.045,.13,0],.015,'ink',pulley);feedPulleys.push(pulley);}
  const beltDy=1.43,beltDz=.63,beltD=Math.hypot(beltDy,beltDz);
  for(const sign of [-1,1])rod([1.15,2.05+sign*.16*beltDz/beltD,NZ-sign*.16*beltDy/beltD],[1.15,.62+sign*.16*beltDz/beltD,-.48-sign*.16*beltDy/beltD],.014,'ink',feedShaft);
  const smooth=t=>{const u=clamp(t);return u*u*(3-2*u);};
- function feedMotion(c){return {lift:.05*(smooth(c/.02)-smooth((c-.14)/.06)),travel:c<.20?.5-smooth((c-.02)/.12):-.5+smooth((c-.24)/.70)};}
+ function feedMotion(c){return {lift:.05*(smooth(c/.06)-smooth((c-.14)/.06)),travel:c<.20?.5-smooth((c-.06)/.08):-.5+smooth((c-.24)/.70)};}
  const cams=[];
  for(let index=0;index<2;index++){
-  const x=NX+(index?.20:-.20),cam=part(index?'advance-cam':'lift-cam',index?'Feed travel cam':'Feed lift cam','A pin constrained to its guide follows this closed groove.',[x,.62,-.48],feedDrive);
-  disk(.315,.025,[.025,0,0],'gold',cam).rotation.y=Math.PI/2;
-  for(const offset of [-.025,.025]){const points=[];for(let j=0;j<=180;j++){const angle=j/180*TAU,c=((index?.25:0)-angle/TAU+2)%1,motion=feedMotion(c),radius=(index?.24+.05*motion.travel*2:.19+motion.lift)+offset;points.push([-.01,radius*Math.cos(angle),radius*Math.sin(angle)]);}m.tube(points,.008,'ink',cam);}cams.push(cam);
+  const x=NX+(index?.20:-.20),cam=part(index?'advance-cam':'lift-cam',index?'Feed travel cam':'Feed lift cam','A pin constrained to its guide follows this closed groove. Look inside hides its backing disk.',[x,.62,-.48],feedLinkages);
+  const backing=disk(.315,.025,[.025,0,0],'gold',cam);backing.rotation.set(0,0,Math.PI/2);covers.push(backing);
+  const groove=[];for(let j=0;j<=720;j++){const angle=j/720*TAU,c=((index?.25:0)-angle/TAU+2)%1,motion=feedMotion(c),radius=index?.24+.10*motion.travel:.19+motion.lift;groove.push(new THREE.Vector3(-.01,radius*Math.cos(angle),radius*Math.sin(angle)));}
+  for(const offset of [-.018,.018]){const points=groove.map((p,j)=>{const tangent=groove[(j+1)%720].clone().sub(groove[(j+719)%720]).normalize();return [p.x,p.y-offset*tangent.z,p.z+offset*tangent.y];});m.tube(points,.004,'ink',cam);}cams.push(cam);
  }
- const liftFollower=part('lift-follower','Lift follower and horizontal fork','The vertical follower raises a fork. The feed bar can slide along the fork.',[NX-.20,0,0],feedDrive);
- disk(.022,.045,[-.025,0,-.48],'clay',liftFollower).rotation.y=Math.PI/2;
+ const liftFollower=part('lift-follower','Lift follower and horizontal fork','The vertical follower raises a fork. The feed bar can slide along the fork.',[NX-.20,0,0],feedLinkages);
+ disk(.010,.045,[-.025,0,-.48],'clay',liftFollower).rotation.set(0,0,Math.PI/2);
  rod([0,0,-.48],[0,.10,-.48],.025,'metal',liftFollower);
  for(const x of [-.035,.035])rod([x,.10,-.53],[x,.10,.34],.018,'metal',liftFollower);
- const travelFollower=part('travel-follower','Travel cam follower','This guided follower moves horizontally.',[NX+.20,.62,0],feedDrive);
- disk(.022,.045,[-.025,0,0],'clay',travelFollower).rotation.y=Math.PI/2;
- rod([0,0,0],[.10,0,0],.02,'metal',travelFollower);
- const regulator=part('feed-regulator','Slotted stitch-length regulator','Moving the output slider farther from the pivot increases the feed stroke.',[NX+.30,.42,-.24],feedDrive);
- for(const x of [-.028,.028])rod([x,-.04,0],[x,.32,0],.018,'clay',regulator);
- const feedOutput=part('feed-output','Feed travel slider and vertical fork','The horizontal output pushes the feed bar through a vertical sliding joint.',[NX+.20,0,0],feedDrive);
+ const travelFollower=part('travel-follower','Travel cam follower','This guided follower moves horizontally.',[NX+.20,.62,0],feedLinkages);
+ disk(.010,.045,[-.025,0,0],'clay',travelFollower).rotation.set(0,0,Math.PI/2);
+ rod([0,0,0],[.10,0,0],.012,'metal',travelFollower);
+ const regulator=part('feed-regulator','Slotted stitch-length regulator','Moving the output slider farther from the pivot increases the feed stroke.',[NX+.30,.42,-.24],feedLinkages);
+ for(const z of [-.04,.04])rod([0,-.04,z],[0,.32,z],.012,'clay',regulator);
+ for(const y of [-.04,.32])rod([0,y,-.04],[0,y,.04],.012,'clay',regulator);
+ rod([0,0,-.04],[0,0,.04],.008,'clay',regulator);disk(.008,.07,[0,0,0],'ink',regulator).rotation.set(0,0,Math.PI/2);
+ const feedOutput=part('feed-output','Feed travel slider and vertical fork','The horizontal output pushes the feed bar through a vertical sliding joint.',[NX+.20,0,0],feedLinkages);
  for(const x of [-.035,.035])rod([x,0,NZ],[x,.65,NZ],.018,'metal',feedOutput);
- rod([0,0,-.24],[0,0,NZ],.025,'metal',feedOutput);disk(.025,.05,[.10,0,-.24],'gold',feedOutput).rotation.y=Math.PI/2;
- const feedGuide=part('feed-guides','Fixed follower guides','Guides constrain lift vertically and travel horizontally.',[0,0,0],feedDrive);
+ rod([0,0,-.24],[0,0,NZ],.025,'metal',feedOutput);disk(.012,.05,[.10,0,-.24],'gold',feedOutput).rotation.set(0,0,Math.PI/2);
+ const feedGuide=part('feed-guides','Fixed follower guides','Guides constrain lift vertically and travel horizontally. Turn off Look inside to show these blocks.',[0,0,0],feedLinkages);
  box([.12,.12,.13],[NX-.20,.76,-.48],'metal',feedGuide);box([.12,.12,.13],[NX+.20,.62,-.24],'metal',feedGuide);
  covers.push(...feedGuide.children);
  const upper=part('upper-thread','Upper thread path','Red thread runs from spool through tension discs and take-up lever to the needle eye and stitch.');
  rod([.40,2.40,-.18],[.40,2.76,-.18],.026,'metal',upper);cylinder(.13,.28,[.40,2.57,-.18],'red',upper);
  for(const z of [.30,.35])disk(.11,.035,[-.34,1.78,z],'gold',upper);
- const takeup=part('take-up','Thread take-up lever','This driven lever supplies slack for the hook loop, then draws the interlock tight.',[NX,2.13,-.40]);
+ const takeAssembly=part('take-up','Thread take-up lever and timing cam','A shaft-driven groove times the rocker and the thread passing through its eye.');
+ const takeup=part('take-up-rocker','Pivoted take-up rocker','This rigid lever supplies slack for the hook loop, then draws the interlock tight.',[NX,2.13,-.40],takeAssembly);
  rod([0,0,0],[0,.45,0],.025,'metal',takeup);ring(.025,.009,[0,.45,0],'gold',takeup);
- const takeLink=rod([0,0,0],[0,1,0],.018,'clay',drive);
+ const takeAngle=c=>.15+.9*(smooth(c/.45)-smooth((c-.88)/.12));
+ const takeCam=part('take-up-cam','Take-up timing cam','A main-shaft groove holds the take-up low during loop carry, then raises it after release. Look inside hides the backing disk so you can see the rocker and follower.',[NX+.12,2.05,NZ],takeAssembly);
+ const takeBacking=disk(.61,.025,[-.02,0,0],'gold',takeCam);takeBacking.rotation.set(0,0,Math.PI/2);covers.push(takeBacking);
+ const takeGroove=[];
+ for(let i=0;i<=720;i++){
+  const c=i/720,a=takeAngle(c),p=new THREE.Vector3(0,.08+.15*Math.cos(a),-.55+.15*Math.sin(a));
+  p.applyAxisAngle(new THREE.Vector3(1,0,0),-TAU*c);takeGroove.push(p);
+ }
+ for(const side of [-1,1]){
+  const points=takeGroove.map((p,i)=>{const tangent=takeGroove[(i+1)%720].clone().sub(takeGroove[(i+719)%720]).normalize();return [.02,p.y-side*.021*tangent.z,p.z+side*.021*tangent.y];});
+  m.tube(points,.005,'ink',takeCam);
+ }
+ const takeFollower=part('take-up-follower','Take-up groove follower','This pin is fixed to the rocker between its pivot and thread eye. The two groove walls constrain its path.',[0,.15,0],takeup);
+ disk(.015,.025,[.14,0,0],'clay',takeFollower).rotation.set(0,0,Math.PI/2);rod([.14,0,0],[0,0,0],.01,'metal',takeFollower);
+ rod([NX-.2,2.13,-.40],[NX+.04,2.13,-.40],.035,'ink',takeAssembly);
  function line(parent,color,count=160,segments=false){const data=new Float32Array(count*3),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(data,3));const object=new (segments?THREE.LineSegments:THREE.Line)(geometry,new THREE.LineBasicMaterial({color,depthTest:true}));parent.add(object);return points=>{points.forEach((p,i)=>data.set(p,i*3));geometry.setDrawRange(0,points.length);geometry.attributes.position.needsUpdate=true;geometry.computeBoundingSphere();};}
  function threadPath(parent,color){const draw=threadSegments(parent,color);return points=>{const pairs=[];for(let i=1;i<points.length;i++)pairs.push(points[i-1],points[i]);draw(pairs);};}
- const upperLine=threadPath(upper,0xc14f39),loopLine=threadPath(upper,0xc14f39),lowerLine=threadPath(bobbin,0x2684b1);
+ const upperLine=threadPath(takeAssembly,0xc14f39),loopLine=threadPath(hookAssembly,0xc14f39),lowerLine=threadPath(lowerThread,0x2684b1);
  const cloth=part('cloth','Practice fabric and sewn seam','The pattern moves with the cloth. Red stitches above and blue stitches below remain after the machine stops.');
  box([1.65,.032,2.1],[0,0,0],'cream',cloth);
  const guide=line(cloth,0x927b55),seam=part('seam','Completed lockstitches','Each completed stitch joins upper and lower thread through the fabric.',[0,0,0],cloth);
- function threadSegments(parent,color){const mesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(.009,.009,1,8),new THREE.MeshToonMaterial({color}),300);mesh.count=0;parent.add(mesh);const pose=new THREE.Object3D(),up=new THREE.Vector3(0,1,0);return points=>{mesh.count=points.length/2;for(let i=0;i<points.length;i+=2){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]),delta=b.clone().sub(a);pose.position.copy(a).add(b).multiplyScalar(.5);pose.quaternion.setFromUnitVectors(up,delta.clone().normalize());pose.scale.set(1,delta.length(),1);pose.updateMatrix();mesh.setMatrixAt(i/2,pose.matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingBox();mesh.computeBoundingSphere();};}
+ function threadSegments(parent,color){const mesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(.009,.009,1,8),new THREE.MeshToonMaterial({color}),300);mesh.count=0;parent.add(mesh);const pose=new THREE.Object3D(),axis=new THREE.Vector3();return points=>{mesh.count=points.length/2;for(let i=0;i<points.length;i+=2){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]),delta=b.clone().sub(a);pose.position.copy(a).add(b).multiplyScalar(.5);const radial=Math.hypot(delta.x,delta.z);axis.set(radial?delta.z/radial:1,0,radial?-delta.x/radial:0);pose.quaternion.setFromAxisAngle(axis,Math.atan2(radial,delta.y));pose.scale.set(1,delta.length(),1);pose.updateMatrix();mesh.setMatrixAt(i/2,pose.matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingBox();mesh.computeBoundingSphere();};}
  const punctures=new THREE.InstancedMesh(new THREE.SphereGeometry(.012,8,6),new THREE.MeshToonMaterial({color:0x514831}),42);punctures.count=0;seam.add(punctures);
  const redSeam=threadSegments(seam,0xc14f39),blueSeam=threadSegments(seam,0x2684b1);
  control('template','Practice template',0,1,1,0,'','Changing the template starts fresh fabric. The corner template includes a simulated operator turning the cloth at needle-up.',[{value:0,label:'Straight seam · 40 mm'},{value:1,label:'Pocket corner · 20 + 20 mm'}]);
@@ -102,25 +132,26 @@ export function createSewingModel(){
  control('foot','Presser foot',0,1,1,1,'','Lower the foot before sewing.',[{value:1,label:'Down · ready to feed'},{value:0,label:'Up · fabric released'}]);
  control('threaded','Thread setup',0,1,1,1,'','Both threads are required for a lockstitch.',[{value:1,label:'Upper thread + bobbin thread'},{value:0,label:'Bobbin thread missing'}]);
  let cycle=0,distance=0,stitches=[],holes=[],previousTemplate=0,lastClock=0,cycleLength=3,cycleGood=true;
+ const nextStroke=v=>Math.min(v.length,40-distance,previousTemplate===1&&distance<20?20-distance:40);
  const pointAt=d=>previousTemplate===0?[0,0,(d-20)*SCALE]:d<=20?[-.25,0,(d-10)*SCALE]:[-.25+(d-20)*SCALE,0,.25];
  function fresh(){cycle=0;distance=0;stitches=[];holes=[];lastClock=0;cycleLength=3;cycleGood=true;}
  const result=m.finish(v=>{
   if(v.template!==previousTemplate){previousTemplate=v.template;fresh();}
+  if(cycle===0&&distance<40)cycleLength=nextStroke(v);
   const a=cycle*TAU,cy=2.05+.32*Math.cos(a),cz=NZ+.32*Math.sin(a),slider=cy-Math.sqrt(.70**2-(cz-NZ)**2),needleTip=slider-.35;
   crank.rotation.x=a;wheel.rotation.x=a;rotor.rotation.x=3.1*a;needle.position.y=slider;link(conrod,[NX,cy,cz],[NX,slider,NZ]);
   drivePulleys[0].rotation.x=a;drivePulleys[1].rotation.x=shaftMark.rotation.x=2*a;feedPulleys.forEach(pulley=>pulley.rotation.x=a);
   hook.rotation.x=2*a-2*.55*TAU;
-  const dy=cy-2.13,dz=cz+.40,d=Math.hypot(dy,dz),along=(.45**2-.65**2+d*d)/(2*d),across=Math.sqrt(.45**2-along**2);
-  const ey=2.13+along*dy/d+across*dz/d,ez=-.40+along*dz/d-across*dy/d;
-  takeup.rotation.x=Math.atan2(ez+.40,ey-2.13);const eye=new THREE.Vector3(NX,ey,ez);link(takeLink,[NX,cy,cz],[NX,ey,ez]);
-  const feeding=cycle>=.02&&cycle<.14,portion=smooth((cycle-.02)/.12),travel=Math.min(cycleLength,40-distance)*SCALE,motion=feedMotion(cycle);
+  takeup.rotation.x=takeAngle(cycle);takeCam.rotation.x=a;
+  const eye=new THREE.Vector3(NX,2.13+.45*Math.cos(takeup.rotation.x),-.40+.45*Math.sin(takeup.rotation.x));
+  const feeding=cycle>=.06&&cycle<.14,portion=smooth((cycle-.06)/.08),travel=cycleLength*SCALE,motion=feedMotion(cycle);
   feed.position.y=.91+motion.lift;feed.position.z=travel*motion.travel;
   cams.forEach(cam=>cam.rotation.x=a);liftFollower.position.y=feed.position.y-.10;
   const inputTravel=.10*motion.travel,gain=travel/.10;
   travelFollower.position.z=-.24+inputTravel;regulator.rotation.x=Math.atan2(inputTravel,.20);
   feedOutput.position.y=.42+.20*gain;feedOutput.position.z=feed.position.z;
   foot.position.y=v.foot&&!(previousTemplate===1&&distance===20&&cycle<.02)?0:.20;
-  const progress=distance+(v.foot?portion*Math.min(cycleLength,40-distance):0),p=pointAt(progress);
+  const progress=distance+portion*Math.min(cycleLength,40-distance),p=pointAt(progress);
   const turn=previousTemplate===1&&distance>=20?-Math.PI/2*(distance===20?smooth(cycle/.02):1):0;
   cloth.rotation.y=turn;const local=new THREE.Vector3(...p).applyAxisAngle(new THREE.Vector3(0,1,0),turn);cloth.position.set(NX-local.x,FABRIC,NZ-local.z);
   guide((previousTemplate===0?[pointAt(0),pointAt(40)]:[pointAt(0),pointAt(20),pointAt(40)]).map(p=>[p[0],.02,p[2]]));
@@ -132,22 +163,41 @@ export function createSewingModel(){
    const caughtAngle=(Math.min(cycle,.88)-.55)*2*TAU,tight=smooth((cycle-.88)/.12);
    for(const side of [0,1])for(let i=0;i<=48;i++){const angle=(side?1-i/48:i/48)*caughtAngle,x=NX+(side?.14:-.07),y=.47+.30*Math.cos(angle),z=NZ+.30*Math.sin(angle);loop.push([x+(NX-x)*tight,y+(FABRIC-y)*tight,z+(NZ-z)*tight]);}
   }else if(cycle>=.5){const slack=smooth((cycle-.5)/.05);loop.push([NX-.07*slack,slider-.30+.016*slack,NZ]);}
-  loop.push([NX,FABRIC,NZ],anchor);loopLine(loop);
+  loop.push([NX,FABRIC,NZ],anchor);loopLine(loop.map(([x,y,z])=>[x-NX,y-.47,z-NZ]));
   punctures.count=holes.length;const puncturePose=new THREE.Object3D();holes.forEach((position,i)=>{const p=pointAt(position);puncturePose.position.set(p[0],.016,p[2]);puncturePose.scale.set(1,.25,1);puncturePose.updateMatrix();punctures.setMatrixAt(i,puncturePose.matrix);});punctures.instanceMatrix.needsUpdate=true;punctures.computeBoundingBox();punctures.computeBoundingSphere();
-  spool.visible=Boolean(v.threaded);lowerLine(v.threaded?[[0,.17,0],[-.03,FABRIC-.47,0]]:[]);
+  spool.visible=Boolean(v.threaded);lowerLine(v.threaded?[[0,.165,-.04],[.06,.219,-.04],[.06,.239,0],[-.03,FABRIC-.47,0]]:[]);
   const sewn=stitches.reduce((sum,s)=>sum+s.to-s.from,0),complete=distance>=40,stage=complete?(sewn>=40?'Template complete':'Run finished: seam incomplete'):!v.foot?'Lower the presser foot to sew':cycle<.14?'Needle clear: feed dogs advance the cloth':cycle<.5?'Needle carries red thread down':cycle<.62?'Hook catches the rising-needle loop':cycle<.88?'Hook carries the loop around the bobbin':'Take-up tightens the interlock';
-  return {state:{phase:cycle,stage,needleTip,feeding,feedDistance:progress-distance,distance,stitches:stitches.map(s=>({...s})),sewn,complete,rodLength:.70,stitchLength:v.length},readings:[r('What is happening',stage),r('Your result',`${stitches.length} lockstitches · ${sewn.toFixed(1)} / 40 mm sewn`),r('Thread check',v.threaded?'Two threads ready':'No bobbin thread: needle holes, no lockstitch'),r('Next stitch',`${v.length} mm`),r('Pattern',v.template?'Pocket corner: operator turns cloth at the corner':'Straight seam'),r('Motion model','Connected rigid parts; enlarged, prescribed thread loop. No fabric or thread-force solver.')]};
+  return {state:{phase:cycle,takeUpHeight:eye.y,takeUpRecovering:cycle>=.88,stage,needleTip,feeding,feedDistance:progress-distance,distance,stitches:stitches.map(s=>({...s})),sewn,complete,rodLength:.70,stitchLength:v.length},readings:[
+   r('What is happening',stage,complete?'The run stops after the last cycle. Missing-thread gaps remain unsewn even when the template has finished.':!v.foot?'The raised foot pauses this exercise. Lower it to resume from the same cycle position.':cycle<.14?'The feed teeth rise and advance the cloth while the needle is clear; they return below the plate.':cycle<.5?'The crank and fixed-length rod lower the needle eye through the cloth.':cycle<.62?'The needle starts rising and leaves slack. At 55% the hook point meets the enlarged red loop beside its eye.':cycle<.88?'The hook carries the loop around the stationary bobbin case while the take-up remains at its low dwell.':'The released loop shrinks as the take-up rises. The red-and-blue stitch is retained when this cycle finishes.'),
+   r('Your result',`${stitches.length} lockstitch${stitches.length===1?'':'es'} · ${sewn.toFixed(1)} / 40 mm sewn`,'Counts completed two-thread stitches and their total length. Needle holes made without bobbin thread do not count as sewing.'),
+   r('Thread check',v.threaded?'Two threads ready':'No bobbin thread: needle holes, no lockstitch','Red is upper thread; blue is bobbin thread. Restoring blue thread permits later stitches but does not repair earlier gaps. A cycle interrupted by missing thread must finish before a good stitch can begin.'),
+   r('Next stitch',`${v.length} mm`,'Requested spacing for the next needle cycle. Changing it mid-cycle leaves the current feed stroke unchanged. A shorter final stroke lands exactly at a corner or the 40 mm endpoint.'),
+   r('Fabric progress',`${progress.toFixed(1)} / 40 mm advanced`,'Distance along the marked template, including the current feed stroke. Fabric can advance without forming a lockstitch, so compare this with Your result.'),
+   r('Sewing pace',`${(v.rate*60).toFixed(0)} cycles/min`,'Slowed teaching pace: one main-shaft turn per cycle, even without bobbin thread. Pace changes playback time, not the spacing or number of completed stitches.'),
+   r('Pattern',v.template?'Pocket corner: operator turns cloth at the corner':'Straight seam','Both templates are 40 mm long. The corner has two 20 mm sides and a simulated needle-up turn; changing templates starts fresh fabric.'),
+   r('Cycle position',`${(cycle*100).toFixed(1)}%`,'One main-shaft turn makes one needle cycle. The take-up dwells low from 45% to 88%, then recovers slack. Next stitch stage pauses at key phases, including 94% during tightening.'),
+   r('Take-up eye lift',`${(eye.y-(2.13+.45*Math.cos(1.05))).toFixed(3)} model units`,'Height above its low dwell. The thread loop is enlarged; this is not a calibrated thread-length or tension reading.'),
+   r('Motion model','Needle linkage and timed take-up cam; enlarged, prescribed thread loop. No fabric or thread-force solver.','Timing and thread paths demonstrate the sequence. Clearances, tension and production-machine operating limits are not predicted.'),
+   ...(linkageLesson?[r('Lift follower rise',`${(liftFollower.position.y-.81).toFixed(3)} model units`,'Height of the guided lift follower above its low position. It rises 0.050 model units at every stitch length. The horizontal fork shares this lift while allowing the feed bar to slide.'),r('Regulator ratio',complete?'Run finished':`${gain.toFixed(2)}×`,'Current output stroke divided by the fixed 0.100-model-unit travel-follower stroke. Ratios 0.25, 0.75 and 1.25 produce 1, 3 and 5 mm feed strokes. Changing length mid-cycle changes the next stroke; the lift cam is unchanged.')]:[]),
+   ...(takeUpLesson?[r('Take-up phase',complete?'Run finished':!v.foot?'Paused: foot up':cycle<.45?'Lowering: allowing slack':cycle<.88?'Low dwell: holding slack':'Rising: recovering slack','The designed groove lowers the eye from 0% to 45%, holds it low through 88%, then raises it after loop release. The cam keeps rotating throughout the dwell.'),r('Thread route through eye',`${(Math.hypot(eye.x+.34,eye.y-1.78,eye.z-.36)+Math.hypot(eye.x-NX,eye.y-1.50,eye.z-.23)).toFixed(3)} model units`,'Length of the two red segments from the fixed tension-guide point, through the moving eye, to the fixed lower guide. Shortening this route permits slack elsewhere; lengthening it recovers slack. This is geometry, not thread tension or total thread consumption.')]:[]),
+   ...(hookLesson?[r('Hook turns this cycle',`${((hook.rotation.x+2*.55*TAU)/TAU).toFixed(3)} turns`,'Turns since this needle cycle began: one at 50%, then a second before the cycle ends. The counter resets at each stitch boundary. Hook orientation alone repeats halfway through the needle cycle.'),r('Needle rise from bottom',`${Math.max(0,slider-.30-.73).toFixed(3)} model units`,'Eye height above its lowest position. At 50% this is zero; at the 55% catch it has risen 0.023 model units. These enlarged dimensions explain timing, not a real-machine clearance setting.')]:[]),
+   ...(needleLesson?[r('Needle eye height',`${(slider-.30-FABRIC).toFixed(3)} model units`,'Eye center relative to the cloth midplane: positive is above and negative is below. At 50% it is at its lowest point; at 55% it has begun rising. The cloth is hidden in the isolated interlock view.'),r('Needle tip clearance',`${(needleTip-(FABRIC+.016)).toFixed(3)} model units`,'Point height above the upper cloth surface. Positive means the point is clear of the cloth. Feed occurs only while this clearance is positive. Enlarged geometry is not a real-machine adjustment specification.')]:[]),
+   ...(feedLesson?[r('Feed phase',complete?'Run finished':!v.foot?'Paused: foot up':cycle<.06?'Raising the teeth':cycle<.14?'Advancing the cloth':cycle<.20?'Lowering after the feed':cycle<.24?'Waiting below the plate':cycle<.94?'Returning below the plate':'Waiting below the plate','One cycle raises, advances, lowers and returns the teeth. At the 14% stage, forward travel has finished and lowering begins. At 50%, the return is below the plate.'),r('Tooth height vs plate',`${(feed.position.y+.0675-(FABRIC-.0325)).toFixed(3)} model units`,'Highest tooth surface minus the top of the needle plate: positive is above, negative is below. The plate is hidden in the isolated tooth-row view. This enlarged geometry is not a machine-adjustment specification.')]:[]),
+  ]};
  });
  function advance(dt){if(!Number.isFinite(dt)||dt<=0)return result.getState().readings;const v=result.getState().values;if(!v.foot||distance>=40)return result.getState().readings;let remaining=Math.min(dt,120)*v.rate;
-  while(remaining>1e-10&&distance<40){if(cycle===0){cycleLength=Math.min(v.length,40-distance,previousTemplate===1&&distance<20?20-distance:40);cycleGood=Boolean(v.threaded);}
+  while(remaining>1e-10&&distance<40){if(cycle===0){cycleLength=nextStroke(v);cycleGood=Boolean(v.threaded);}
    cycleGood=cycleGood&&Boolean(v.threaded);const step=Math.min(1-cycle,remaining);cycle+=step;remaining-=step;
    if(cycle>=1-1e-10){if(cycleGood)stitches.push({from:distance,to:distance+cycleLength});holes.push(distance+cycleLength);distance+=cycleLength;cycle=0;}
   }return result.update();
  }
  result.advance=advance;result.animate=clock=>{const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};
- result.reset=()=>{fresh();result.update();};
- result.actions=[{label:'Next stitch stage',run(){const next=[.14,.50,.55,.70,.84,1].find(p=>p>cycle+1e-8)||1;advance((next-cycle)/result.getState().values.rate);}}];
+ result.reset=initialState=>{fresh();result.update(result.defaults);if(Number.isFinite(initialState?.phase)&&initialState.phase>0&&initialState.phase<1)advance(initialState.phase/result.getState().values.rate);};
+ result.actions=[{label:'Next stitch stage',replay:false,run(){const next=[.14,.50,.55,.70,.84,.94,1].find(p=>p>cycle+1e-8)||1;advance((next-cycle)/result.getState().values.rate);}}];
+ result.followParts=['cloth','seam'];
+ result.frameBoundsForPart=id=>id==='seam'?new THREE.Box3().setFromPoints([0,20,40].map(d=>cloth.localToWorld(new THREE.Vector3(...pointAt(d))))).expandByScalar(.04):null;
  result.resultPart={id:'seam',context:'cloth',label:'Inspect your stitching',available:()=>holes.length>0};
  result.playback={label:'Sew the template',stepLabel:'Make one stitch',advance,step:()=>advance((1-cycle)/result.getState().values.rate),complete:()=>result.getState().complete,blocked:()=>result.getState().values.foot===0};
+ result.topology={takeCam,takeFollower,takeup,takeGroove};
  return result;
 }

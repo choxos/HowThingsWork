@@ -1,4 +1,5 @@
-import {neighborhoodCatalog} from './catalog-data.js';
+import {neighborhoodCatalog} from './published-catalog.js';
+import {groupCatalogEntries, inspectableParts, catalogMachineComponents} from './catalog-hierarchy.js';
 import {zoomMarkup, bindZoom, disposeZoom} from './zoom.js';
 document.querySelectorAll('[data-entry-count]').forEach(node=>node.textContent=neighborhoodCatalog.entries.length);
 document.querySelectorAll('[data-group-count]').forEach(node=>node.textContent=neighborhoodCatalog.groups.length);
@@ -7,11 +8,9 @@ const groupsById = new Map(neighborhoodCatalog.groups.map(group => [group.id, gr
 const placesById = new Map(neighborhoodCatalog.places.map(place => [place.id, place]));
 const principlesById = new Map(neighborhoodCatalog.principles.map(principle => [principle.id, principle]));
 const allEntries = neighborhoodCatalog.entries.map(entry => ({...entry, ...groupsById.get(entry.group), id: entry.id}));
-const modeledNames = new Set(["Spark gap","Solenoid","Spark plug","Ignition-coil primary and secondary windings","Induction coil","Distributor","Contact-breaker ignition","Car ignition system","Power pylon","Power-line insulator","Home-supply transformer","Distribution transformer","Transmission transformer","Electricity transmission","Transformer turns ratio","Transformer","Generator slip rings","DC generator","AC generator","Electric generator","Laser scanning of 3D objects","Computer-aided design","Three-axis positioning","Layer-by-layer fabrication","Printer filament reel","Heated extrusion nozzle","3D printer","Stepper motor","Electric motor","Motor rotor","Universal motor",'Commutator','Direct-current motor','Electromagnet','Electric-horn moving iron bar','Horn make-and-break contacts','Electric horn','Vibrating horn diaphragm',...neighborhoodCatalog.places.flatMap(place=>place.featured),...allEntries.filter(entry=>entry.place==="home").map(entry=>entry.name)]);
 const entriesById = new Map(allEntries.map(entry => [entry.id, entry]));
 const entriesByName = new Map(allEntries.map(entry => [entry.name, entry]));
 const filters = {query: '', place: '', room: '', principle: ''};
-let listKind = 'entries';
 let routePlace = '';
 const escapeText = value => String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const searchable = value => value.normalize('NFKD').replace(/\p{Diacritic}/gu,'').toLowerCase();
@@ -107,30 +106,30 @@ function mapView(place) {
 function filterControls(list=false) {
   const scoped = filters.place ? allEntries.filter(entry=>entry.place===filters.place) : allEntries;
   const rooms = [...new Set(scoped.map(entry=>entry.room))].sort();
-  return `<div class="filters ${list?'list-filters':''}"><div class="filter"><label for="catalog-search">Find a machine or idea</label><input id="catalog-search" type="search" placeholder="Try sewing machine, satellite, or gears" value="${escapeText(filters.query)}"></div>${list?`<div class="filter"><label for="place-filter">Place</label><select id="place-filter"><option value="">Everywhere</option>${neighborhoodCatalog.places.map(p=>`<option value="${p.id}" ${filters.place===p.id?'selected':''}>${escapeText(p.name)}</option>`).join('')}</select></div>`:''}<div class="filter"><label for="room-filter">Room or area</label><select id="room-filter"><option value="">All rooms</option>${rooms.map(room=>`<option ${filters.room===room?'selected':''}>${escapeText(room)}</option>`).join('')}</select></div><div class="filter"><label for="principle-filter">Principle</label><select id="principle-filter"><option value="">All principles</option>${neighborhoodCatalog.principles.map(c=>`<option value="${c.id}" ${filters.principle===c.id?'selected':''}>${escapeText(c.name)}</option>`).join('')}</select></div></div>`;
+  return `<div class="filters ${list?'list-filters':''}"><div class="filter"><label for="catalog-search">Find a machine or idea</label><input id="catalog-search" type="search" placeholder="Try sewing machine, motor, or sensor" value="${escapeText(filters.query)}"></div>${list?`<div class="filter"><label for="place-filter">Place</label><select id="place-filter"><option value="">Everywhere</option>${neighborhoodCatalog.places.map(p=>`<option value="${p.id}" ${filters.place===p.id?'selected':''}>${escapeText(p.name)}</option>`).join('')}</select></div>`:''}<div class="filter"><label for="room-filter">Room or area</label><select id="room-filter"><option value="">All rooms</option>${rooms.map(room=>`<option ${filters.room===room?'selected':''}>${escapeText(room)}</option>`).join('')}</select></div><div class="filter"><label for="principle-filter">Principle</label><select id="principle-filter"><option value="">All principles</option>${neighborhoodCatalog.principles.map(c=>`<option value="${c.id}" ${filters.principle===c.id?'selected':''}>${escapeText(c.name)}</option>`).join('')}</select></div></div>`;
 }
 
 function filteredEntries() {
   const query = searchable(filters.query.trim());
-  return allEntries.filter(entry => (location.hash!=='#list'||listKind!=='models'||modeledNames.has(entry.name)) && (!filters.place || entry.place===filters.place) && (!filters.room || entry.room===filters.room) && (!filters.principle || entry.principle===filters.principle) && (!query || searchable([entry.name,entry.room,principlesById.get(entry.principle)?.name || ''].join(' ')).includes(query)));
+  return allEntries.filter(entry => (!filters.place || entry.place===filters.place) && (!filters.room || entry.room===filters.room) && (!filters.principle || entry.principles.includes(filters.principle)) && (!query || searchable([entry.name,entry.room,...entry.principles.map(id=>principlesById.get(id)?.name || ''),...inspectableParts(entry).map(part=>part.name)].join(' ')).includes(query)));
 }
 
 function renderResults() {
   const container = document.querySelector('#results');
   if (!container) return;
   const entries = filteredEntries();
+  const families = groupCatalogEntries(allEntries, entries);
   const onList = location.hash === '#list';
-  document.querySelector('#result-count').textContent = `${entries.length} of ${filters.place ? allEntries.filter(e=>e.place===filters.place).length : allEntries.length} machines, components & ideas`;
+  document.querySelector('#result-count').textContent = `Machines and ideas shown: ${families.length}. Smaller machines: ${families.reduce((total, family) => total + catalogMachineComponents(family.components).length, 0)}. Explore individual parts inside each item.`;
   if (!entries.length) {
     container.innerHTML = '<p class="no-results">No entries match these filters. Try a shorter search or choose “All rooms” and “All principles.”</p>';
     return;
   }
+  const componentLinks = (_entry, components) => {const machines=catalogMachineComponents(components);return machines.length ? `<ul class="catalog-components" aria-label="Smaller machines">${machines.map(entry => `<li><button data-entry="${entry.id}">${escapeText(entry.name)}</button></li>`).join('')}</ul>` : '';};
   if (onList) {
-    container.innerHTML = `<table class="catalog-table"><thead><tr><th scope="col">Machine or idea</th><th scope="col">Find it in</th><th scope="col">Principle</th></tr></thead><tbody>${entries.map(entry=>`<tr><td><button data-entry="${entry.id}">${escapeText(entry.name)}</button><small>${modeledNames.has(entry.name)?'3D discovery':'Catalogued'}</small></td><td><a href="#place/${entry.place}">${escapeText(placesById.get(entry.place).name)}</a><small>${escapeText(entry.room)}</small></td><td>${escapeText(principlesById.get(entry.principle)?.name || 'General ideas')}</td></tr>`).join('')}</tbody></table>`;
+    container.innerHTML = `<table class="catalog-table"><thead><tr><th scope="col">Machine or idea</th><th scope="col">Find it in</th><th scope="col">Principles</th></tr></thead><tbody>${families.map(({entry,components})=>`<tr><td><button data-entry="${entry.id}">${escapeText(entry.name)}</button>${componentLinks(entry,components)}</td><td><a href="#place/${entry.place}">${escapeText(placesById.get(entry.place).name)}</a><small>${escapeText(entry.room)}</small></td><td>${[...new Set([entry,...components].flatMap(item=>item.principles))].map(id=>escapeText(principlesById.get(id)?.name || '')).join(' · ')}</td></tr>`).join('')}</tbody></table>`;
   } else {
-    const grouped = new Map();
-    entries.forEach(entry => { const list=grouped.get(entry.group)||[];list.push(entry);grouped.set(entry.group,list); });
-    container.innerHTML = `<div class="group-grid">${[...grouped.values()].map(items=>`<section class="machine-group"><h3>${escapeText(items[0].items[0])}</h3><p class="group-meta">${escapeText(items[0].room)}</p><div class="entry-links">${items.map(entry=>`<button class="entry-link" data-entry="${entry.id}">${escapeText(entry.name)}</button>`).join('')}</div></section>`).join('')}</div>`;
+    container.innerHTML = `<div class="group-grid">${families.map(({entry,components})=>`<section class="machine-group"><h3><button class="catalog-machine" data-entry="${entry.id}">${escapeText(entry.name)}</button></h3><p class="group-meta">${escapeText(entry.room)}</p>${componentLinks(entry,components)}</section>`).join('')}</div>`;
   }
 }
 
@@ -147,26 +146,31 @@ function bindFilters() {
 }
 
 function showListBody() {
-  document.querySelectorAll('[data-list-kind]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.listKind===listKind)));
   document.querySelector('#list-body').innerHTML=filterControls(true)+'<p class="result-count" id="result-count" role="status"></p><div id="results"></div>';
   bindFilters();renderResults();
 }
 
 let housePage=null,houseGeneration=0;
 async function renderPlan() {
-  if(location.hash.startsWith('#/topic/')){
-    location.replace(`studies.html${location.hash}`);
-    return;
-  }
   const generation=++houseGeneration;
   housePage?.dispose();housePage=null;
   disposeZoom();
-  const route=location.hash.replace(/^#/, '');
+  const [routePath,query='']=location.hash.replace(/^#/, '').split('?');
+  let route=routePath;
+  const requestedPart=new URLSearchParams(query).get('part');
+  const rooms = new Set(neighborhoodCatalog.groups.filter(group => group.place === 'home').map(group => 'room/' + group.room.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')));
+  const available = !route || route === 'neighborhood' || route === 'list' ||
+    (route.startsWith('machine/') && entriesById.has(route.slice(8))) ||
+    (route.startsWith('place/') && placesById.has(route.slice(6))) || rooms.has(route);
+  if (!available) {
+    route = 'list';
+    history.replaceState(null, '', '#list');
+  }
   const routeEntry=route.startsWith('machine/')?entriesById.get(route.slice(8)):null;
-  if(route==='place/home'||route.startsWith('room/')||route==='assembly/front-door'||routeEntry){
+  if(route==='place/home'||route.startsWith('room/')||routeEntry){
     const {mountHouse}=await import('./house.js');
     if(generation!==houseGeneration)return;
-    housePage=mountHouse(planApp,route,neighborhoodCatalog);
+    housePage=mountHouse(planApp,route,neighborhoodCatalog,{part:requestedPart});
     if(housePage){document.querySelector('#map-link').setAttribute('aria-current','page');document.querySelector('#list-link').setAttribute('aria-current','false');return;}
   }
   routePlace=routeEntry?.place||(route.startsWith('place/')?route.slice(6):'');
@@ -176,16 +180,15 @@ async function renderPlan() {
   document.querySelector('#list-link').setAttribute('aria-current',onList?'page':'false');
   filters.query='';filters.room='';filters.principle='';filters.place=place?.id||'';
   if(onList) {
-    planApp.innerHTML='<span class="badge">Explore the collection</span><h1 class="list-title" tabindex="-1">Every machine has a place.</h1><p class="list-intro">Browse the whole collection, or find something familiar. The list and the neighborhood lead to the same discoveries.</p><div class="reference-tools"><button data-list-kind="entries" aria-pressed="true">Machines & ideas</button><button data-list-kind="models" aria-pressed="false">3D discoveries · '+modeledNames.size+'</button></div><section id="list-body" aria-label="Machine catalog"></section>';
-    document.querySelectorAll('[data-list-kind]').forEach(button=>button.addEventListener('click',()=>{listKind=button.dataset.listKind;showListBody();}));
+    planApp.innerHTML='<span class="badge">Explore the collection</span><h1 class="list-title" tabindex="-1">Explore the finished collection.</h1><p class="list-intro">Every item here has a working interactive lesson. New discoveries join the collection as they are completed.</p><section id="list-body" aria-label="Machine catalog"></section>';
     showListBody();
   } else if(place) {
     const count=allEntries.filter(entry=>entry.place===place.id).length;
     const rooms=[...new Set(neighborhoodCatalog.groups.filter(group=>group.place===place.id).map(group=>group.room))];
-    planApp.innerHTML=`<div class="plan-layout"><section class="plan-intro"><a class="back" href="#neighborhood">← Back to the neighborhood</a><h1 class="place-title" tabindex="-1">${escapeText(place.name)}</h1><p class="intro">${escapeText(place.description)}</p><p class="room-summary">${rooms.length} rooms and areas · ${count} catalogued entries</p><a class="page-link" href="#list">See the full list</a><p class="plan-note">Scroll or pinch toward a machine. Zoom back out to return to the neighborhood.</p></section>${mapView(place)}</div><section class="collection" aria-label="All machines in ${escapeText(place.name)}"><div class="collection-heading"><div><h2>Keep looking around.</h2><p>Pick a room, or browse everything in this place.</p></div></div>${filterControls()}<p class="result-count" id="result-count" role="status"></p><div id="results"></div></section>`;
+    planApp.innerHTML=`<div class="plan-layout"><section class="plan-intro"><a class="back" href="#neighborhood">← Back to the neighborhood</a><h1 class="place-title" tabindex="-1">${escapeText(place.name)}</h1><p class="intro">${escapeText(place.description)}</p><p class="room-summary">${rooms.length} rooms and areas · ${count} interactive discoveries</p><a class="page-link" href="#list">See the full list</a><p class="plan-note">Scroll or pinch toward a machine. Zoom back out to return to the neighborhood.</p></section>${mapView(place)}</div><section class="collection" aria-label="All machines in ${escapeText(place.name)}"><div class="collection-heading"><div><h2>Keep looking around.</h2><p>Pick a room, or browse everything in this place.</p></div></div>${filterControls()}<p class="result-count" id="result-count" role="status"></p><div id="results"></div></section>`;
     bindFilters();renderResults();
   } else {
-    planApp.innerHTML=`<div class="plan-layout"><section class="plan-intro"><span class="badge">Explore the neighborhood</span><h1 tabindex="-1">A little neighborhood.<br>A world to discover.</h1><p class="intro">Zoom toward a place. Watch its walls fade away, then move closer to a machine to look inside.</p><a class="primary" href="#list">Browse all machines & ideas</a><p class="plan-note">Explore the house with working mechanisms and component close-ups, plus 3D models across the neighborhood. Other catalog entries remain reading topics.</p></section>${mapView()}</div><section class="place-directory" aria-label="Places in the neighborhood">${neighborhoodCatalog.places.map(p=>`<a class="directory-item" href="#place/${p.id}"><span class="color-dot" style="background:${p.color}" aria-hidden="true"></span><div><h2>${escapeText(p.name)}</h2><p>${escapeText(p.description)}</p></div></a>`).join('')}</section>`;
+    planApp.innerHTML=`<div class="plan-layout"><section class="plan-intro"><span class="badge">Explore the neighborhood</span><h1 tabindex="-1">A little neighborhood.<br>A world to discover.</h1><p class="intro">Zoom toward a place. Watch its walls fade away, then move closer to a machine to look inside.</p><a class="primary" href="#list">Browse all machines & ideas</a><p class="plan-note">Explore the house with working mechanisms and component close-ups, plus 3D models across the neighborhood. New discoveries are added as their lessons are completed.</p></section>${mapView()}</div><section class="place-directory" aria-label="Places in the neighborhood">${neighborhoodCatalog.places.map(p=>`<a class="directory-item" href="#place/${p.id}"><span class="color-dot" style="background:${p.color}" aria-hidden="true"></span><div><h2>${escapeText(p.name)}</h2><p>${escapeText(p.description)}</p></div></a>`).join('')}</section>`;
   }
   if (!onList) bindZoom(place,routeEntry);
   document.title=`${onList?'All machines & ideas':routeEntry?routeEntry.name:place?place.name:'The whole neighborhood'} · How Things Work`;

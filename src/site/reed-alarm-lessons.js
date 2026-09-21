@@ -1,0 +1,75 @@
+import {REED_ALARM_DEFAULTS} from './reed-alarm-physics.js';
+
+const trial = (defaults, part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
+const chart = trial(REED_ALARM_DEFAULTS, 'field'), close = trial(REED_ALARM_DEFAULTS, 'switch');
+const swing = trial(REED_ALARM_DEFAULTS, 'run'), circuit = trial(REED_ALARM_DEFAULTS, 'loop'), leaf = trial(REED_ALARM_DEFAULTS, 'door');
+
+export const sources = {
+  reed: {title: 'Wikipedia: Reed switch', url: 'https://en.wikipedia.org/wiki/Reed_switch'},
+  alarm: {title: 'Wikipedia: Burglar alarm', url: 'https://en.wikipedia.org/wiki/Burglar_alarm'},
+  magnet: {title: 'Wikipedia: Magnet', url: 'https://en.wikipedia.org/wiki/Magnet'},
+  neodymium: {title: 'Wikipedia: Neodymium magnet', url: 'https://en.wikipedia.org/wiki/Neodymium_magnet'},
+  dipole: {title: 'Wikipedia: Magnetic dipole', url: 'https://en.wikipedia.org/wiki/Magnetic_dipole'},
+  relay: {title: 'Wikipedia: Reed relay', url: 'https://en.wikipedia.org/wiki/Reed_relay'},
+  permeability: {title: 'Wikipedia: Vacuum permeability', url: 'https://en.wikipedia.org/wiki/Vacuum_permeability'},
+  guide: {title: 'Standex Electronics: Activate Distance Guide for Reed Sensors', url: 'https://standexdetect.com/wp-content/uploads/sites/2/2025/12/Activate-Distance-Guide-for-Reed-Sensors.pdf'},
+  distances: {title: 'Standex Electronics: Reed Sensor Activation Distances', url: 'https://standexdetect.com/resources/reed-technology-academy/reed-sensor-activation-distances/'},
+  glossary: {title: 'Standex Electronics: glossary', url: 'https://standexdetect.com/resources/glossary/'},
+  whatIsReed: {title: 'Standex Electronics: What is a Reed Switch and How Does it Work?', url: 'https://standexdetect.com/blog/what-is-a-reed-switch-and-how-does-it-work/'},
+  gri50: {title: 'George Risk Industries: 50, 50F and 55F miniature contacts', url: 'https://www.grisk.com/mdocs-posts/c_sm-5-mini-50-50f-55f-series/c_sm-5-mini-50-50f-55f-series-2/'},
+  gri28: {title: 'George Risk Industries: 28, 29 and 29P commercial contacts', url: 'https://www.grisk.com/mdocs-posts/28_29_29p-series_2-5-in-commercial/28_29_29p-series_2-5-in-commercial-2/'},
+  gri400: {title: 'George Risk Industries: 400, 410 and 410P commercial and industrial contacts', url: 'https://www.grisk.com/mdocs-posts/400_410_410p-series_4-in-commercial-indust/400_410_410p-series_4-in-commercial-indust-2/'},
+  gri700: {title: 'George Risk Industries: 700 series capped mini contacts', url: 'https://www.grisk.com/700-series_1-in-capped-mini-wide-gap/'},
+};
+
+export const reedAlarmLimits = 'The magnet is a neodymium block of 8 by 4 by 6 mm, 6 by 3 by 5 mm or 4 by 2 by 3 mm at 1.3 T, which is inside the 1 to 1.5 T such magnets are made to but is a choice, not a part anyone sells; each size was picked because the distance at which it works the most sensitive switch lands on a gap George Risk sell a contact for. Its field is worked out on its own axis by the pole model, and the switch is taken to answer the size of that field along its own axis at its middle, with the magnet held parallel to it all the way through the swing. The four switches and the fields they pull in at are Standex’s; the share of that field the model lets it fall to before the blades part, 55%, is not a figure any page read gives for one switch, and it was chosen so the two distances come out inside the band Standex’s own four rows span. The door is taken as 0.6 to 1.1 m from hinge to magnet, and the magnet’s distance from the switch as the hypotenuse of the installed gap and the chord it has swung through. The loop is drawn as a circuit and the sounder is drawn, not sounded; the panel is taken to latch the moment the loop breaks. Contact bounce, the time the blades take to move, the ampere turns a coil would need, the earth’s own field and anything steel near the magnet are all left out. The door swings out and shuts again in 0.8 s in life and 8 s here, ten times slower.';
+
+export const reedAlarmLesson = {
+  simple: 'How does a magnet on a door tell an alarm that the door has opened?',
+  overview: 'A magnet rides on the door and a sealed switch sits on the frame beside it. The magnet’s field pulls two thin steel blades inside that switch together, and while they touch, the loop the alarm panel watches is whole. Open the door and the magnet swings away along its arc; the field at the blades falls, and at some distance their own springiness wins and they part. The loop breaks, and an armed panel sounds. Choose the switch, the magnet, the gap the installer left and how wide the door gets opened, then press Play to swing it and watch the contacts let go on the way out and take hold again, further in, on the way back.',
+  steps: [
+    {title: 'Hold the blades together', body: 'The magnet on the shut door leaves a field at the switch far stronger than the blades need, and they are pulled into contact and stay there.'},
+    {title: 'Watch the field fall away', body: 'As the door opens, the magnet swings along its arc and the distance to the switch grows, and the field at the blades falls steeply with it.'},
+    {title: 'Let the spring win', body: 'The blades are springs as well as conductors. Once the field has fallen far enough, their own springiness pulls them apart, and it takes a stronger field to close them again than the one they let go at.'},
+    {title: 'Break the loop', body: 'The contacts sit in a loop that runs out from the panel and back. While they touch, the loop is whole; when they part, the panel sees it broken.'},
+    {title: 'Sound, and keep sounding', body: 'An armed panel treats the broken loop as the door opening and sets the sounder going, and it keeps it going after the door has been shut again.'},
+  ],
+  parts: [
+    {name: 'Magnetic burglar alarm, the whole installation', role: 'The door, the magnet, the switch, the loop and the panel together.'},
+    {name: 'The door and its frame, from above', role: 'The magnet swinging away from the switch along its arc as the door opens.'},
+    {name: 'The magnet and the reed switch, close up', role: 'The blades inside the glass, touching or apart, and the field that decides which.'},
+    {name: 'The field at the switch', role: 'How the field falls with distance, and the two levels that close and open the contacts.'},
+    {name: 'The monitored loop', role: 'The circuit the panel watches, whole or broken, and the sounder at the end of it.'},
+    {name: 'The swing over time', role: 'The field at the switch and the state of the loop as the door swings out and shuts again.'},
+  ],
+  tryIt: [
+    chart('The two distances', 'Look at the field chart before pressing Play.', 'The magnet leaves 71.57 mT at the switch with the door shut, forty times what this switch needs. The green line is the 1.70 mT it pulls in at and the red line the 935 μT this model lets it fall to; they cross the curve at 25.6 mm and at 31.9 mm, so the contacts close at one distance and open at a longer one, 1.247 times as far.'),
+    chart('A stiffer switch', 'Choose the 3.10 mT switch.', 'A switch that needs more field has to be closer to get it: this one closes at 20.4 mm instead of 25.6 mm and lets go at 25.5 mm instead of 31.9 mm. On the door that is a trip at 1.69° instead of 2.12°, and it takes hold again at 1.33°.', {switch: 3}),
+    close('A smaller magnet', 'Choose the 4 by 2 by 3 mm magnet and look at the close up.', 'The small magnet leaves 17.72 mT at the shut door rather than 71.57 mT, and it works the same switch only out to 12.8 mm, letting go at 15.9 mm. That is a trip at 1.02° and a return at 0.79°. Its reach lands on the half inch gap George Risk sell a contact for, 0.08 mm from it.', {magnet: 2}),
+    swing('Open it just too little', 'Set the door to open 2.1 degrees and press Play.', 'Nothing happens. The contacts need the magnet 31.9 mm away before they part, and this swing carries it only far enough for 2.12°, which the door never reaches. The loop stays whole the whole way out and back.', {angle: 2.1}),
+    swing('Open it a touch more', 'Set the door to open 2.2 degrees and press Play.', 'A tenth of a degree further and the contacts part 3.32 s into the swing, just past 2.12°. The loop breaks, the panel latches, and the sounder is still going when the door is shut again.', {angle: 2.2}),
+    circuit('The gap the installer left', 'Choose the small magnet, the 3.10 mT switch and a 15 mm installed gap.', 'The loop never closes at all. With the door shut the magnet leaves only 1.10 mT at the switch, under the 3.10 mT this one needs, so the panel reads an open loop on a closed door and the fault looks exactly like an open door.', {magnet: 2, gap: 15, switch: 3}),
+    leaf('A wider door', 'Move the magnet 1.10 m from the hinge and press Play.', 'The magnet now travels further for every degree the door turns, so the same distances come sooner: the contacts part at 1.64° instead of 2.12° and take hold again at 1.31°, a span of 0.33° instead of 0.43°.', {width: 1.1}),
+  ],
+  deeper: [
+    {title: 'Why it does not let go where it took hold', body: 'A reed switch closes at one field and opens at a lower one, and Standex’s own guide shows it as distance rather than field: their MK03 switches pull in at 15.0, 13.0, 11.0 and 10.0 mm and drop out only at 17.5, 16.5, 14.5 and 13.5 mm, so the drop-out distance is 1.167 to 1.350 times the pull-in distance. Their glossary puts the same thing in electrical terms, calling hysteresis the difference between the operate and release values stated as a percentage of release over operate. The reason is in the blades: once they have touched, they are closer together than they were, so less field holds them, and the spring has to overcome a shorter magnetic gap. This model takes the release field as 55% of the operate field, which is a choice, and it lands the two distances 1.247 apart, inside the band those four rows span.'},
+    {title: 'What is inside the glass', body: 'Two ferromagnetic blades are sealed in a glass envelope filled with nitrogen, overlapping but not touching. A field along them magnetizes both, and the overlapping ends become opposite poles that pull together. The contact faces are plated with rhodium, ruthenium, iridium or tungsten so they survive being hit together, and because the envelope is sealed, the contacts never oxidize. Sensitivity is quoted in ampere turns, the current in a test coil times its turns, and commercial switches run from 10 to 60 AT, the lower number meaning the more sensitive switch. The same glossary counts operate time from the moment the coil is driven until the contacts have stopped bouncing, a delay this model leaves out.'},
+    {title: 'How a magnet’s field falls away', body: 'The field here is worked out by the pole model, treating the block as two faces of magnetic charge. Far away the shape stops mattering and any magnet looks like a single dipole, whose field falls off as the inverse cube of the distance; near one end of a long thin magnet it falls as the inverse square instead, because only the near pole counts. The 8 by 4 by 6 mm magnet has a moment of 0.199 A·m², and 60 mm out the pole model gives 159 μT against the 184 μT a dipole of that moment would leave, 15.8% apart and still closing. Wikipedia’s own bar magnet, 0.1 A·m² in a cubic centimeter, works out at 100,000 A/m of magnetization, which is the number this model’s remanence of 1.3 T stands for.'},
+    {title: 'Why contacts are sold by their gap', body: 'A door contact is sold as a pair, and what the installer buys is the gap it will bridge. George Risk list them at 1/2 inch, 3/4 inch, 1 inch, 1 1/2 inches, 2 inches and 3 inches. The three magnets here were sized to match: the largest works the most sensitive switch out to 25.6 mm, which is their 1 inch to within 0.16 mm, the middle one to 19.7 mm against their 3/4 inch, and the smallest to 12.8 mm against their 1/2 inch. Buy a narrow gap pair, mount it with a wide gap, and the loop never closes: the panel reads an open loop on a shut door, which is a fault the installer must find rather than an alarm.'},
+    {title: 'The loop the panel really watches', body: 'The panel does not watch the door and it does not watch the magnet. It watches a loop of wire that runs out to the switch and back, and the contacts sit in it. George Risk sell these as a closed loop with normally open contacts, which is not a contradiction: the contacts are open with no magnet near, and the installed magnet is what closes them, so the loop reads whole on a shut door. Their form A parts are rated 10 W, 160 VDC and 0.400 A with no more than 0.150 Ω of their own, and the normally closed and changeover parts are rated lower, 5 W, 175 VDC and 0.250 A. Because the panel watches the loop rather than the door, cutting the wire looks exactly like opening the door, which is the point of watching a closed loop instead of an open one.'},
+    {title: 'What the drawing leaves out', body: 'The spread this is built from shows a metal bar held by the magnet against a spring, with separate contacts that the spring pulls open. A reed switch does the same job with fewer parts: the blades are the bar, the contacts and the spring all at once. What is left out here is everything that makes a real installation awkward. The blades take time to move and bounce when they meet; steel in the door or the frame bends the field; the magnet is held exactly parallel to the switch all the way round the swing, which no hinge really does; and a real panel has an entry delay, a tamper circuit and a supervised loop with a resistor at its end, none of which are drawn.'},
+  ],
+  misconception: 'The magnet does not power the alarm and the switch does not hear the door. The magnet only holds two blades together; the panel watches whether a loop of wire is whole, and anything that breaks that loop, an opened door or a cut wire, reads the same to it.',
+  limits: reedAlarmLimits,
+  sources: [sources.reed, sources.alarm, sources.guide, sources.distances, sources.glossary, sources.whatIsReed, sources.magnet, sources.neodymium, sources.dipole, sources.relay, sources.permeability, sources.gri50, sources.gri700, sources.gri28, sources.gri400],
+  quiz: {
+    question: 'Why do the contacts take hold again at a smaller angle than the one they let go at, on the way back?',
+    options: [
+      'Because a reed switch needs a stronger field to close than the field it will hold closed at, so the magnet has to come back nearer than the distance it left at.',
+      'Because the door moves more slowly on the way back than on the way out.',
+      'Because the panel keeps the loop broken for a fixed time once it has sounded.',
+    ],
+    answer: 0,
+    explanation: 'The contacts part where the field has fallen to 935 μT, 31.9 mm away, and close only where it has risen back to 1.70 mT, 25.6 mm away. On a door 0.85 m from hinge to magnet that is 2.12° going out and 1.69° coming back, a span of 0.43°.',
+  },
+};

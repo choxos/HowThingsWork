@@ -1,0 +1,113 @@
+import {WASHER_DEFAULTS} from './dishwasher-physics.js';
+const trial=(part,view)=>(title,instruction,observe,values={})=>({title,instruction,observe,values:{...WASHER_DEFAULTS,...values},reset:true,part,isolate:false,view});
+const machineTrial=trial('system','front');
+const armTrial=(title,instruction,observe,values={})=>({title,instruction,observe,values:{pump:40,tilt:35,nozzle:2,bearing:0,...values},reset:true,part:'system',isolate:false,view:'front'});
+const washerLimits='Illustrative single-rack, single-arm dishwasher, not a calibrated product. Each 3 L fill takes 45 s at 4 L/min. A 1.8 kW heater warms perfectly mixed water and a 2.4 kg ceramic load with heat capacity 840 J/(kg·K); water uses 4186 J/(kg·K). Room loss is 8 W/K to 20 °C, inlet water is 15 °C. Wash and rinse last 15 and 5 minutes; rinse is 10 °C hotter, capped at 75 °C. Each drain takes one minute. A twelve-minute cooling phase represents time allowed for drying, without predicting evaporation or dryness. Heat retained by the load survives both drains. The pump follows a quadratic pressure-flow curve with 40 L/min zero-head flow and 40% efficiency. Ideal nozzle flow includes centrifugal pressure rise; friction, drag and arm inertia are teaching values. Cycle energy and recirculation use steady pump output, excluding startup hydraulic transients, drain motor, inlet valve and electronics. Pump heat is not fed into the lumped thermal balance. Pipe losses, water held in pipes or on dishes, detergent chemistry, resin regeneration, cleanliness and evaporation are omitted. Jet trails include moving outlets, gravity and first contact with a plate or cabinet; spray breakup, rack-wire impacts, splashes and return films are not resolved. The arm channel and pump casing are cut away. Cycle time runs 180× faster; arm dynamics use playback seconds. Pipe dots show direction at a schematic speed. Orange heater color means powered, not red-hot.';
+
+export const dishwasherLesson={
+  simple:'How can a small amount of water wash a whole load, and what makes the spray arm turn?',
+  overview:'Fresh water enters through a softener, collects in the sump and is heated with the dishes. A motor-driven pump sends filtered water into a hollow spray arm. Backward-leaning jets turn the arm by reaction; water returns to the base and is reused. A separate pump drains it before a fresh, hotter rinse. Follow water volume, arm motion and retained heat through the cycle.',
+  steps:[
+    {title:'Fill through the softener',body:'The inlet valve admits water through resin that exchanges hardness ions for sodium. The empty sump takes 45 seconds to collect 3 L. In this model that plays in a quarter of a second; Half a fill lets you inspect the level.'},
+    {title:'Heat water and dishes',body:'The heater is bonded below the sump floor. It heats both the water and the ceramic load. Detergent is normally added for washing; this model follows heat and motion, not detergent chemistry.'},
+    {title:'Feed the hollow arm',body:'The circulation pump draws returning water through the filter. Its impeller feeds the central hub and open cutaway channel. The pump has an electric motor; the arm has none.'},
+    {title:'Turn by reaction',body:'The two tip nozzles throw water backward relative to the turning arm. The outgoing water carries angular momentum, giving the arm an opposite torque. Upright jets also carry sideways motion from their moving outlets and resist rotation.'},
+    {title:'Reuse the same water',body:'Water striking the dishes or tub returns to the sump and passes through the filter again. Recirculated volume can greatly exceed the 3 L held in the base, because it is the same water making repeated trips.'},
+    {title:'Drain, refill and rinse',body:'The circulation pump stops and the arm coasts. A separate pump drains the dirty water. The inlet then admits 3 L of fresh water for a hotter rinse. The warm ceramic load retains heat during draining and gives some of it to the new water.'},
+    {title:'Retain heat for drying',body:'After the final drain, warm dishes cool during the drying phase. In real machines retained heat, rinse aid, condensation, ventilation or other drying systems help remove water. This model shows stored heat and cooling; it does not predict how dry a dish is.'},
+  ],
+  parts:[
+    {name:'Cabinet and sump',role:'Contain the spray and collect returning water.'},
+    {name:'Rack and dishes',role:'Keep eight vertical plates supported and separated.'},
+    {name:'Fresh-water inlet and valve',role:'Admit water only during the two fills.'},
+    {name:'Water softener',role:'Treat incoming hard water with ion-exchange resin.'},
+    {name:'Base heater',role:'Supply heat through the sump floor.'},
+    {name:'Return filter',role:'Keep scraps out of the circulation path.'},
+    {name:'Circulation pump',role:'Use an electric impeller to feed the spray arm.'},
+    {name:'Rotating spray arm',role:'Distribute water while tip-jet reaction turns it.'},
+    {name:'Driving tip nozzles',role:'Provide backward-directed flow and driving torque.'},
+    {name:'Upright cleaning nozzles',role:'Aim six jets upward from moving outlets.'},
+    {name:'Drain pump and hose',role:'Remove water between wash and rinse, and after rinsing.'},
+    {name:'Obstructing spoon',role:'Shows how an item hanging through the rack can block rotation.'},
+  ],
+  tryIt:[
+    machineTrial('Follow a full cycle','Play from the empty sump, or choose Finish the cycle.','The cycle lasts 48.0 minutes, admits and drains 6.00 L, and uses 0.482 kWh in the modeled heater and circulation pump. The empty sump ends with a load at 22.4 °C; dryness is not predicted.'),
+    machineTrial('Account for every fill','Choose Half a fill, Half a drain, then Fresh rinse fill.','Half a fill holds 1.50 L after 22.5 cycle seconds. Half a drain has admitted 3.00 L and drained 1.50 L. Halfway through the rinse fill, 4.50 L has entered and 3.00 L has drained: the sump again holds 1.50 L.'),
+    machineTrial('Reuse the same water','Choose Run the wash and watch the pump, filter and sump. Then finish.','The working pump sends about 9.7 L/min around the loop. The steady-flow cycle estimate is 313.8 L recirculated, while only 6.00 L of fresh water is admitted.'),
+    machineTrial('Wash cooler','Use 45 °C and compare First heating stage and Energy used.','First heating takes 4.1 minutes. The cycle uses 0.364 kWh, less than the 0.482 kWh default, because both target temperatures and holding losses fall.',{temperature:45}),
+    machineTrial('Wash hotter','Use 70 °C, then choose Hot rinse.','First heating takes 8.2 minutes, the rinse reaches 75.0 °C, and modeled cycle energy rises to 0.640 kWh.',{temperature:70}),
+    machineTrial('Weaken the pump','Use 20 kPa and choose Run the wash.','The arm settles near 48.0 rpm and working flow is 6.9 L/min. The pressure knob specifies shutoff pressure, not the lower pressure while water flows.',{pump:20}),
+    machineTrial('Strengthen the pump','Use 60 kPa and choose Run the wash.','The steady arm prediction rises to 110.6 rpm. The working pump supplies 54.9 kPa and 11.7 L/min.',{pump:60}),
+    machineTrial('Block the arm','Choose Blocked by a spoon, then Run the wash.','The spoon touches the arm and holds it at zero speed. Water still flows at 9.6 L/min: stopping rotation is different from stopping the pump.',{bearing:2}),
+    machineTrial('Remove the driving tilt','Use 0 degrees and choose Run the wash.','Starting jet torque is zero and the arm remains still, although the pump still supplies 9.6 L/min.',{tilt:0}),
+    machineTrial('Open wider tip bores','Use 3 mm bores and choose Run the wash. Inspect the nozzles.','Wider real openings give a steady prediction of 136.2 rpm and 13.7 L/min, while working pressure falls to 35.3 kPa.',{nozzle:3}),
+    machineTrial('Add bearing friction','Choose Stiff bearing and Run the wash.','A 20.0 N·mm friction torque lowers the steady prediction to 55.0 rpm. The same tip jets must supply the extra resisting torque.',{bearing:1}),
+    machineTrial('Keep heat after draining','Choose Half a drain, Fresh rinse fill, Hot rinse, then Finish the cycle.','The load stays warm when water leaves. New cold water lowers the shared temperature before reheating. After the final drain, only the load cools; an empty sump does not mean zero stored heat.'),
+  ],
+  deeper:[
+    {title:'Water accounting is different from circulation',body:'At every instant, admitted water minus drained water equals water stored in the sump. The circulation path is a closed loop. Adding its repeated throughput to fresh-water use would count the same water again and again. Small pipe and retained-film inventories are excluded here.'},
+    {title:'Heating the load matters',body:'The heat needed is heat capacity times temperature rise. Water and ceramic dishes both store heat. The model assumes they mix thermally at once, including during filling. Real dishes heat at different rates and can have temperature gradients.'},
+    {title:'Energy during heating and holding',body:'During heating, 1.8 kW supplies both stored heat and room losses. During washing and rinsing, an ideal thermostat supplies only the modeled loss needed to hold the target. The energy reading also counts steady circulation-pump electricity. It is not a complete appliance energy rating.'},
+    {title:'Why the arm reaches a steady speed',body:'Euler’s angular-momentum balance sums water mass flow times nozzle radius times outgoing tangential velocity. Tip jets drive rotation. Bearing friction, linear drag and sideways momentum carried by upright jets oppose it. The balance sets a steady speed; rotational inertia sets how quickly the arm approaches it.'},
+    {title:'Nozzle speed and room speed differ',body:'A tip nozzle moves forward while water leaves backward relative to it. The room-frame backward speed is the relative backward component minus the nozzle’s forward speed. The drawn trails use earlier nozzle positions, so already-emitted water does not rotate with the arm.'},
+    {title:'The pump and openings choose the operating point',body:'This illustrative pump loses pressure as flow increases. Each nozzle passes more water when pressure rises. Their common operating point satisfies both relations. Larger holes do not keep the old pressure while adding unlimited flow.'},
+    {title:'Softening and drying depend on the machine',body:'An ion-exchange softener reduces calcium and magnesium ions; salt regenerates its resin. Not every dishwasher has the same softener or drying system. The book’s water path is the basis of this cutaway, while the linked manufacturer manual illustrates real loading, filter and spray-arm care.'},
+  ],
+  misconception:'The pump motor drives the water, not the spray arm directly. A blocked arm can still spray; a stopped pump produces no new jets, while the free arm briefly coasts.',
+  limits:washerLimits,
+  sources:[
+    {title:'MIT 2.25: rotating sprinkler momentum and startup',url:'https://ocw.mit.edu/ans7870/2/2.25/assignments/sec5/5-26/index.html'},
+    {title:'OpenStax College Physics 2e: temperature change and heat capacity',url:'https://openstax.org/books/college-physics-2e/pages/14-2-temperature-change-and-heat-capacity'},
+    {title:'Bosch dishwasher manual: components, loading, softener and filters',url:'https://media3.bsh-group.com/Documents/9001913884_C.pdf'},
+  ],
+  quiz:{question:'The arm is blocked by a spoon but the circulation pump keeps running. What changes?',options:['The arm stops rotating, but water can still leave its nozzles.','All water flow stops because the arm drives the pump.','The machine immediately needs another full tank of water.'],answer:0,explanation:'The pump supplies pressure independently of arm rotation. The spoon resists the jet torque, leaving stationary jets instead of a rotating spray pattern.'},
+};
+
+export const rotatingSprayArmLesson = {
+  simple:'How can water turn a spray arm without a motor attached to the arm?',
+  overview:'An electric pump feeds water through the central hub into the hollow arm. Two backward-leaning tip jets give the water angular momentum and turn the arm the other way. Six upright jets and bearing resistance oppose that motion. Follow the first six seconds after the pump starts, then compare the final speed with the steady prediction.',
+  steps:[
+    {title:'Supply pressure at the hub',body:'The motor turns the pump impeller below the arm. Returning water enters the center of the pump from the dishwasher sump, omitted in this close-up. The curved feed tube carries the pump output into the arm’s central bore.'},
+    {title:'Accelerate water through real openings',body:'The cutaway channel feeds two tilted tip bores and six upright bores. Pump pressure and the rotating water’s centrifugal pressure rise set the relative exit speed. Wider tip openings change both flow and working pressure.'},
+    {title:'Drive the arm with the tip jets',body:'At startup the arm is still. The tip jets carry water backward around the pivot. Their opposite reaction produces forward torque. Blue arrows show each tip’s tangential driving contribution; they are diagram arrows, not parts.'},
+    {title:'Watch the upright jets brake',body:'Once the arm moves, even water leaving straight upward also carries the outlet’s forward speed. The arm supplied that sideways momentum. The six upright jets therefore exert a braking torque while still sending water upward.'},
+    {title:'Balance the torques',body:'Add the two tip contributions, then subtract upright-jet braking and bearing/drag resistance. The remaining torque accelerates the arm. At steady speed it approaches zero; the arm keeps turning rather than stopping.'},
+    {title:'Hold the result for inspection',body:'After six mechanical seconds, playback holds a pump-on snapshot. Compare current speed and steady prediction, inspect a real bore, or replay from rest. The frozen picture means the observation is paused, not that a running pump suddenly stopped the arm.'},
+  ],
+  parts:[
+    {name:'Circulation pump',role:'Its motor-driven impeller supplies water to the hollow arm through the curved tube.'},
+    {name:'Rotating spray arm',role:'A hollow channel and central hub rotate together on the water feed.'},
+    {name:'Driving tip nozzles',role:'Two open, backward-tilted bores provide the driving torque.'},
+    {name:'Upright cleaning nozzles',role:'Six open bores direct water upward while carrying sideways momentum away.'},
+    {name:'Obstructing spoon',role:'The blocked setting shows an object contacting the arm while water keeps flowing.'},
+    {name:'Water jets',role:'Blue trails show the first 35 milliseconds after emission from moving outlets.'},
+  ],
+  tryIt:[
+    armTrial('Spin the arm','Play from rest with 35 degree tip jets and a smooth bearing.','Starting tip torque is 51.6 N·mm. The steady prediction is 83.5 rpm, and startup reaches nine tenths of that speed in 1.16 s.'),
+    armTrial('No tilt, no turn','Play with the tip bores pointing straight up.','The arm stays at zero speed. Water still flows, but the jets provide no starting torque around the pivot.',{tilt:0}),
+    armTrial('A gentle tilt','Play with 15 degree tip tilt, then finish the trial.','Starting tip torque is 23.3 N·mm and the steady speed is 33.0 rpm.',{tilt:15}),
+    armTrial('A steep tilt','Play with 60 degree tip tilt. Compare the upward jet component.','The steady prediction rises to 135.0 rpm, while the tip jet’s upward component is only 4.5 m/s.',{tilt:60}),
+    armTrial('A stiff bearing','Play with the stiff bearing.','The 20.0 N·mm bearing friction lowers the steady speed to 55.0 rpm. Drag adds further resistance as the arm speeds up.',{bearing:1}),
+    armTrial('Hold the arm still','Play with Blocked by a spoon. Inspect the contact and the jet trails.','The arm stays still while each tip jet leaves about 5.0 m/s backward in the room. The spoon supplies the resisting torque; the pump keeps moving water.',{bearing:2}),
+    armTrial('Watch the jets leave','Choose Finish the trial, then compare relative jet speed, forward nozzle speed and room-frame components.','Water leaves a tip at 8.8 m/s relative to the nozzle. Its backward room component is only 3.4 m/s because the nozzle moves forward at 1.7 m/s. Blue trails keep moving from their earlier emission positions.'),
+    armTrial('Raise the pressure','Play with a 60 kPa pump shutoff pressure.','The steady arm speed is 110.6 rpm and reaching nine tenths of that speed takes 1.02 s. Working pressure is lower than the shutoff setting.',{pump:60}),
+    armTrial('Use smaller tip bores','Play with 1.5 mm tip bores, then inspect a nozzle.','The steady speed falls to 51.8 rpm and flow is 8.2 L/min. Working pressure rises to 38.3 kPa because the smaller openings pass less water.',{nozzle:1.5}),
+    armTrial('Use wider tip bores','Play with 3 mm tip bores and inspect the wider opening.','The steady speed rises to 136.2 rpm and flow is 13.7 L/min. Working pressure falls to 35.3 kPa.',{nozzle:3}),
+    armTrial('Weaken the pump','Play with a 20 kPa shutoff pressure.','The steady speed is 48.0 rpm, flow is 6.9 L/min, and reaching nine tenths of steady speed takes 1.40 s.',{pump:20}),
+    armTrial('Find the friction threshold','Play with 5 degree tilt and a stiff bearing.','The 7.85 N·mm starting torque is below the 20.0 N·mm friction limit. Static friction matches that smaller torque and the arm stays still, despite 9.6 L/min water flow.',{tilt:5,bearing:1}),
+  ],
+  deeper:[
+    {title:'Torque is an angular-momentum balance',body:'With negligible inlet angular momentum, each nozzle contributes mass flow times radius times its backward room-frame velocity. Adding the contributions gives the water’s torque on the arm. Dividing the net torque after friction and drag by rotational inertia gives angular acceleration.'},
+    {title:'Relative speed is not room speed',body:'At a tip, backward room speed equals relative jet speed times the sine of the tilt, minus arm angular speed times tip radius. The upward component is relative jet speed times the cosine of the tilt. Water already emitted follows its own path under gravity; it does not keep rotating with the arm.'},
+    {title:'Why the working pressure changes',body:'The pump curve and the combined nozzle flow must agree. In this model pressure equals shutoff pressure times one minus the square of flow divided by the zero-head flow. Opening the bores increases flow and reduces the operating pressure. Rotating-water pressure also depends on radius and speed.'},
+    {title:'Static friction is a limit, not a permanent torque',body:'A stationary bearing supplies the torque needed to oppose the jets, up to its friction limit. Below that limit, it does not apply an extra unmatched torque that spins the arm backward. A spoon obstruction instead supplies whatever resisting torque is required by this ideal blocked setting.'},
+    {title:'A sprinkler uses the same principle',body:'A reaction-driven garden sprinkler also changes the outgoing water’s angular momentum. Its nozzles, bearings and water supply determine the speed. This dishwasher model uses its own illustrative dimensions and pump curve, not a calibrated sprinkler or appliance.'},
+  ],
+  misconception:'The jets need not push against the dishes or surrounding air to turn the arm. The water and arm exchange momentum at the outlets. Zero net torque at steady speed means no further acceleration, not zero rotation.',
+  limits:'Focused startup observation using the same ideal arm and pump mechanics as Dishwasher. Two tip outlets are at 190 mm radius; six 1.6 mm upright bores are at paired 60, 120 and 170 mm radii. Pump zero-head flow is 40 L/min. Smooth/stiff bearing friction is 4/20 N·mm, linear drag is 0.002 N·m per rad/s, and arm-plus-water inertia is 0.0027 kg·m². These are illustrative values, not measured product specifications. Ideal nozzle flow includes centrifugal pressure rise but omits pipe losses, small elevation-head differences and hydraulic startup transients. Only arm rotation has resolved inertia. The motor/impeller and pipe dots show schematic motion, not measured shaft or water speed. The sump, cabinet and rack are omitted; the spoon represents a hanging obstruction whose rack support lies outside this close-up. Blue jet trails show only the first 35 ms of free flight, with moving outlets and gravity; they omit impact, breakup, splashing and cleaning effectiveness. Reaction-arrow lengths use 100 mm per newton. Playback observes six mechanical seconds then pauses at a pump-on snapshot. Temperature, filling, draining and pump-off coasting belong to the full Dishwasher lesson.',
+  sources:[
+    {title:'MIT 2.25: rotating sprinkler momentum and startup',url:'https://ocw.mit.edu/ans7870/2/2.25/assignments/sec5/5-26/index.html'},
+    {title:'OpenStax College Physics 2e: Newton’s third law',url:'https://openstax.org/books/college-physics-2e/pages/4-4-newtons-third-law-of-motion-symmetry-in-forces'},
+  ],
+  quiz:{question:'The arm starts from rest with all nozzles pointing straight up. What happens?',options:['Water flows, but the arm has no starting torque and stays still.','The arm spins faster because upward jets give the most torque.','The pump stops because the arm cannot turn.'],answer:0,explanation:'Straight-up jets have no backward component at rest, so they cannot start rotation. Pump pressure can still drive water through the open bores.'},
+};

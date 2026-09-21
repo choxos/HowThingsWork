@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createPrinterModel,planPrinterJob,printerBeltPoint,printerConstants as C} from './printer-model.js';
 import {printerLesson} from './printer-lesson.js';
+import {createPartExplosion} from './part-explosion.js';
 
 const close=(a,b,tolerance=1e-9,label='values')=>assert.ok(Math.abs(a-b)<=tolerance,`${label}: ${a} vs ${b}`),TAU=2*Math.PI,filamentArea=Math.PI*C.filamentDiameter**2/4,models=[];
 const create=values=>{const model=createPrinterModel();model.update(values);models.push(model);return model;};
@@ -33,4 +34,24 @@ const interrupted=create();interrupted.advance(12);const before=valid(interrupte
 const cooling=create();cooling.reset({partiallyPrinted:true});cooling.update({speed:10,temperature:160});const coolingBefore=valid(cooling);cooling.advance(100);const cold=valid(cooling);assert.ok(cold.blocked&&!cold.complete);assert.ok(cold.temperature<170);assert.ok(cold.extrudedVolume>coolingBefore.extrudedVolume,'a still-hot nozzle continues until it actually cools below the guard');const coldPosition={...cold.position},coldVolume=cold.extrudedVolume;cooling.update({temperature:200});assert.equal(cooling.getState().blocked,false);assert.deepEqual(cooling.getState().position,coldPosition);close(cooling.getState().extrudedVolume,coldVolume);cooling.advance(150);assert.ok(valid(cooling).complete);
 let reference;for(const fps of [30,60,144]){const model=create();model.advance(10);for(let frame=0;frame<fps;frame++)model.advance(1/fps);const s=valid(model);geometry(model);if(!reference)reference=s;else{for(const key of ['temperature','elapsed','depositedLength','filamentConsumed','segmentIndex','segmentDistance'])close(s[key],reference[key],1e-10,`${fps}Hz equal elapsed-time parity`);for(const axis of ['x','y','z'])close(s.position[axis],reference.position[axis],1e-10);}}
 const bounds=create();bounds.advance(10);const first=geometry(bounds).mesh.boundingBox.clone();bounds.advance(140);const finished=geometry(bounds).mesh.boundingBox;assert.ok(finished.max.y>first.max.y,'cached print bounds grow with deposited layers');assert.equal(bounds.resultPart.id,'print');assert.equal(bounds.resultPart.context,'bed');assert.equal(bounds.resultPart.available(),true);bounds.update({layerHeight:.4});assert.equal(bounds.getState().progress,0);assert.equal(bounds.getState().temperature,25);assert.equal(parts(bounds).print.children[0].count,0);assert.equal(bounds.getState().layerCount,6);assert.equal(bounds.resultPart.available(),false);bounds.update({speed:Infinity,temperature:NaN});assert.equal(bounds.getState().values.speed,20);assert.equal(bounds.getState().values.temperature,200);
+const layerAction=create(),finishLayer=layerAction.actions.find(action=>action.label==='Finish this layer');assert.ok(finishLayer,'parent offers exact layer completion');assert.equal(finishLayer.replay,false,'layer advance is not an initial-condition replay action');
+for(const layerHeight of [.2,.4]){
+ layerAction.reset();layerAction.update({layerHeight});const job=planPrinterJob(layerHeight);
+ for(let count=1;count<=job.layerCount;count++){
+  finishLayer.run();const s=valid(layerAction);geometry(layerAction);assert.equal(s.completedLayers,count);close(s.printedHeight,count*layerHeight,1e-7);assert.equal(s.segmentDistance,0);
+  close(s.extrudedVolume,job.segments.filter(segment=>segment.deposit&&segment.layer<=count).reduce((sum,segment)=>sum+segment.length*job.area,0),1e-7,'layer action stops before the next layer');
+ }
+ const completeState=valid(layerAction);finishLayer.run();assert.deepEqual(valid(layerAction),completeState,'finished action does not restart the print');
+}
+layerAction.reset({partiallyPrinted:true});const partialLayer=valid(layerAction);finishLayer.run();assert.equal(valid(layerAction).completedLayers,partialLayer.completedLayers+1);
+for(const values of [{loaded:0},{temperature:160}]){
+ layerAction.reset();layerAction.update(values);finishLayer.run();assert.ok(valid(layerAction).blocked);assert.equal(valid(layerAction).extrudedVolume,0);layerAction.update({loaded:1,temperature:200});finishLayer.run();assert.equal(valid(layerAction).completedLayers,1);
+}
+layerAction.reset();layerAction.playback.step();assert.equal(valid(layerAction).completedLayers,0,'short transport step remains available');close(valid(layerAction).elapsed,.4,1e-10);finishLayer.run();const boundary=valid(layerAction);layerAction.playback.step();const next=valid(layerAction);assert.ok(next.elapsed-boundary.elapsed<.401,'layer action discards its unused time');close(next.extrudedVolume,boundary.extrudedVolume,1e-10,'short step reveals nondepositing travel after the layer');
+const camera=new THREE.PerspectiveCamera(40,1.4,.1,100);camera.position.set(7,5,8);camera.lookAt(0,2,0);camera.updateMatrixWorld(true);
+for(const initialState of [undefined,{partiallyPrinted:true}]){
+ layerAction.reset(initialState);const saved=layerAction.getState();assert.equal(saved.readings.length,17);assert.ok(saved.readings.every(r=>r.hint?.length>15));assert.equal(layerAction.catalogParts.length,31);assert.equal(new Set(layerAction.catalogParts.map(p=>p.name)).size,31);layerAction.covers.forEach(o=>o.visible=false);
+ const inventory=createPartExplosion(layerAction,camera,1.4);inventory.update(1);for(const part of layerAction.catalogParts)assert.ok(!inventory.boundsFor(part.id).isEmpty(),part.id);if(initialState)assert.ok(!inventory.boundsFor('print').isEmpty(),'deposited result participates after it exists');assert.deepEqual(layerAction.getState(),saved);inventory.dispose();
+}
+console.log('PASS parent finish-layer action, exact fine/coarse boundaries, interlock recovery, retained small step, 17 reading hints and 31 named catalog parts.');
 for(const model of models)model.dispose();console.log(JSON.stringify({passed:true,outcomes,checks:'exact lesson presets; base fill and ordered paths; no cold or missing-filament deposition; first-order heatup and all target temperatures; all speeds and layer heights; pause and live correction preserve material; nominal volume and feed conservation; frame-rate parity; actual nozzle/bed coordinates; deposited instance volumes and refreshed bounds; closed timing belts; Z thread pitch; constant-length supply filament and reel consumption'},null,2));

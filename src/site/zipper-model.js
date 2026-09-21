@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 
-export function createZipperModel(){
+export function createZipperModel({sliderLesson=false}={}){
  const m=houseModel('Zipper'),{part,box,rod,ring,control,finish,covers}=m,rad=Math.PI/180;
  const garment=part('garment','Separating jacket front','Two separate garment panels are fastened by seating the bottom pin and closing the tooth chain.');
  const body=part('body','Separate garment panels','Each panel is sewn to its own zipper tape. No seam connects the two lower edges.',[0,0,0],garment);
  const fastening=part('zipper','Complete separating zipper','The slider stays on the box side when the insertion pin is withdrawn.',[0,0,0],garment);
  const tapes=part('tapes','Continuous fabric tapes','Each beaded inner edge carries a row of teeth; its outer edge is sewn to one garment panel.',[0,0,0],fastening);
  const teeth=part('teeth','Staggered nesting teeth','The projection of one tooth fits the recess of the next tooth on the opposite tape.',[0,0,0],fastening);
+ tapes.userData.explosionCategory=true;teeth.userData.explosionCategory=true;
  const sides=[-1,1],count=12,pitch=.24,start=.42,rootX=.31,curveRadius=.35,branchAngle=Math.PI/4,curveLength=curveRadius*branchAngle;
  function path(s,spread){
   if(s<=0)return {x:0,y:s,angle:0};
@@ -30,6 +31,7 @@ export function createZipperModel(){
  const rims=[headRim(false),headRim(true)],sectionPoints=Array.from({length:25},(_,i)=>new THREE.Vector2(.19+.24*i/24,.05+.14*Math.sin(Math.PI*i/24)**2));sectionPoints.push(...sectionPoints.map(p=>new THREE.Vector2(p.x,p.y-.1)).reverse());const sectionGeometry=new THREE.ShapeGeometry(new THREE.Shape(sectionPoints));
  for(const side of sides)for(let i=0;i<count;i++){
   const ordinal=2*i+(side===-1?1:2),tooth=part('tooth-'+ordinal,'Tooth '+ordinal,'This tooth stays attached to its tape while its head nests with the neighboring teeth.',[0,0,0],teeth),tone=side===-1?'gold':'cream';
+  tooth.userData.explosionRigid=true;
   tooth.scale.x=-side;
   const jaws=part('jaws-'+ordinal,'Tape jaws '+ordinal,'Two jaws grip the tape edge; the projecting neck connects them to the locking head.',[0,0,0],tooth);
   for(const z of [-.035,.035])box([.1,.1,.025],[-.025,0,z],tone,jaws);
@@ -40,9 +42,11 @@ export function createZipperModel(){
   const material=new THREE.MeshToonMaterial({color:side===-1?0xe3b45e:0xf0dfaf,side:THREE.DoubleSide});
   for(let half=0;half<2;half++){const top=new THREE.Mesh(upperHead[half],material),bottom=new THREE.Mesh(lowerHead[half],material),rim=new THREE.Mesh(rims[half],material);projection.add(top);recess.add(bottom);head.add(rim);if(half)covers.push(top,bottom,rim);}
   const section=part('head-section-'+ordinal,'Head cross-section '+ordinal,'Look inside removes the front half of the head. This cut face exposes the solid wall between the projection and receiving recess.',[0,0,0],head);section.add(new THREE.Mesh(sectionGeometry,new THREE.MeshToonMaterial({color:side===-1?0xe3b45e:0xf0dfaf,side:THREE.DoubleSide})));
+  for(const object of [tooth,jaws,head,projection,recess,section])object.userData.labelHidden=object!==head||![7,8].includes(ordinal);
   toothParts.push({tooth,ordinal,side,s:start+i*pitch+(side===1?pitch/2:0)});
  }
  const slider=part('slider','Y-channel slider','Upward travel toward the separated rows closes the chain behind this slider.',[0,0,0],fastening);
+ slider.userData.explosionCategory=true;
  function extrusion(points,z,depth,color,parent){const shape=new THREE.Shape();points.forEach(([x,y],i)=>i?shape.lineTo(x,y):shape.moveTo(x,y));shape.closePath();const mesh=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false}),new THREE.MeshToonMaterial({color,side:THREE.DoubleSide}));mesh.position.z=z;parent.add(mesh);return mesh;}
  const outline=[[-.46,-.25],[.46,-.25],[.46,.1],[.82,.68],[.18,.68],[0,.42],[-.18,.68],[-.82,.68],[-.46,.1]];
  const back=part('back-plate','Rear slider plate','Supports one face of the guided teeth.',[0,0,0],slider);extrusion(outline,-.13,.03,0xb4c5b0,back);
@@ -56,9 +60,10 @@ export function createZipperModel(){
  }
  const pullMount=part('pull-mount','Pull-tab hinge and bridge','Carries the pull from the tab to the connected slider body.',[0,0,0],slider);rod([0,.56,.12],[0,.24,.18],.035,'metal',pullMount);rod([-.12,.24,.18],[.12,.24,.18],.03,'metal',pullMount);
  const pull=part('pull','Hinged pull tab','Tilting the tab changes the handhold, not the amount of chain already joined.',[0,.24,.18],slider);
- for(const x of [-.1,.1])rod([x,0,0],[x,-.3,0],.03,'gold',pull);const bow=ring(.1,.03,[0,-.3,0],'gold',pull);bow.scale.y=1.25;covers.push(pullMount,pull);
+ for(const x of [-.1,.1])rod([x,0,0],[x,-.3,0],.03,'gold',pull);const bow=ring(.1,.03,[0,-.3,0],'gold',pull);bow.scale.y=1.25;
  const stops=part('stops','Travel stops','The retaining box stops downward travel. The upper stops limit closing travel.',[0,0,0],fastening);
  const bottom=part('bottom-connector','Bottom pin and retaining box','Lower the slider to the box, guide the free pin through its empty channel, and seat the pin before closing.',[0,0,0],fastening);
+ stops.userData.explosionCategory=true;bottom.userData.explosionCategory=true;
  const retainingBox=part('retaining-box','Retaining box','The box belongs to the left tape. Its open upper socket receives the removable insertion pin.',[0,0,0],bottom);
  box([.88,.04,.24],[0,-.1,0],'metal',retainingBox);
  for(const x of [-.42,.42])box([.04,.2,.24],[x,.02,0],'metal',retainingBox);
@@ -83,7 +88,7 @@ export function createZipperModel(){
  control('insertion','Seat the bottom pin',0,1,.01,0,'','Guide the pin down through the lowered slider into the box. Unzip fully before withdrawing it.');
  control('closure','Close the zipper',0,1,.01,0,'','Move upward to close the chain; downward to open it.');
  control('spread','Open tape spread',0,1,.05,.65,'','Changes the curve of the loose tapes outside the slider. Joined teeth remain nested.');
- control('pullAngle','Pull-tab angle',0,70,5,35,'°','Turn off Look inside to see the hinged handhold. Tilting it does not change closure.');
+ control('pullAngle','Pull-tab angle',0,70,5,35,'°','Tilt the visible hinged handhold. Its angle changes where you can grip it, not how much chain is joined.');
  let lastShape='',lastClock=0,progress=null,lastClosure=0,lastInsertion=0;
  const result=finish(v=>{
   if(v.closure>0&&(v.insertion<1||v.alignment<1)){if(lastClosure>0){v.insertion=1;v.alignment=1;}else v.closure=0;}
@@ -112,7 +117,18 @@ export function createZipperModel(){
   const seated=v.insertion===1&&v.alignment===1,joined=seated?Math.max(0,toothParts.filter(t=>t.s<=position).length-1):0,complete=v.operation===0?v.closure===1:v.closure===0&&v.insertion===0&&v.alignment===0;
   const status=v.closure===1?'Jacket fastened · chain closed':v.closure>0?'Jacket partly fastened':v.insertion===1?'Bottom pin seated · ready to zip':v.insertion>0?'Pin passing through slider · not seated':v.alignment===1?'Pin aligned above slider':'Jacket sides completely separated';
   const next=v.operation===0?(v.alignment<1?'Bring the free pin above the empty slider channel.':v.insertion<1?'Seat the pin fully so the first teeth line up.':v.closure<1?'Pull the slider upward to join the rows.':'Choose Separate the jacket to reverse the full sequence.'):(v.closure>0?'Lower the slider all the way to the retaining box.':v.insertion>0?'Withdraw the pin upward through the slider.':v.alignment>0?'Move the free garment side away.':'The slider and box stay with the left garment side.');
-  return {state:{closure:v.closure,insertion:v.insertion,alignment:v.alignment,joinedLinks:joined,totalLinks:2*count-1,complete,sliderPosition:position,pinSeated:seated},readings:[r('Your result',status),r('Bottom connector',seated?'Pin seated in retaining box':Math.round(v.insertion*100)+'% inserted'),r('Nested neighbor pairs',joined+' of '+(2*count-1)),r('Slider travel',Math.round(v.closure*100)+'%'),r('Next action',next)]};
+  return {state:{closure:v.closure,insertion:v.insertion,alignment:v.alignment,joinedLinks:joined,totalLinks:2*count-1,complete,sliderPosition:position,pinSeated:seated},readings:[
+   r('Your result',status,'The current connection of the jacket sides. Opening the tooth chain does not detach the bottom pin.'),
+   r('Bottom connector',seated?'Pin seated in retaining box':Math.round(v.insertion*100)+'% inserted','100% seats the free pin tip against the box floor and lines up the first teeth. The normal-use sequence keeps closing unavailable before seating.'),
+   r('Nested neighbor pairs',joined+' of '+(2*count-1),'Twenty-four alternating teeth have 23 neighboring connections. The count advances only behind the slider with the bottom pin seated.'),
+   r('Slider travel',Math.round(v.closure*100)+'%','0% puts the slider at the retaining box; 100% reaches the upper stops. Alignment and insertion happen before this closing travel.'),
+   r('Travel in tooth pitches',(3.23*v.closure/pitch).toFixed(2)+' pitches','Slider travel from its bottom position divided by spacing between teeth on one tape. The full stroke is about 13.46 pitches in this enlarged teaching geometry, not a manufactured dimension.'),
+   r('Free-side alignment',Math.round(v.alignment*100)+'%','100% brings the free pin above the empty slider channel. Sideways separation becomes available after full pin withdrawal.'),
+   r('Pull-tab angle',v.pullAngle+'°','The tab rotates about its hinge. Tilting changes the handhold without moving the slider or changing the joined chain.'),
+   r('Loose-tape spread',Math.round(v.spread*100)+'%','Changes the bend of the free tape outside the slider. Teeth in the already joined straight chain keep their nested positions.'),
+   ...(sliderLesson?[r('Tooth 7 side offset',((Math.abs(toothParts.find(t=>t.ordinal===7).tooth.position.x)-rootX)/pitch).toFixed(2)+' pitches','Sideways distance of tooth 7 at its tape attachment from the straight joined path, divided by the spacing of teeth on one tape. Zero means the attachment has reached the joined path; this is displacement, not force.'),r('Tooth 7 guide angle',(toothParts.find(t=>t.ordinal===7).tooth.rotation.z/rad).toFixed(1)+'°','Angle of tooth 7 relative to the straight joined chain. The tooth turns with its tape while the slider surfaces keep their shape.')]:[]),
+   r('Next action',next,'Follow alignment, seating and closing to fasten; reverse those stages to detach. These are teaching controls for normal use, not a simulated lock against misuse.')
+  ]};
  });
  result.controls.find(c=>c.key==='alignment').enabledWhen=v=>v.insertion===0&&v.closure===0;
  result.controls.find(c=>c.key==='insertion').enabledWhen=v=>v.alignment===1&&v.closure===0;
@@ -125,7 +141,7 @@ export function createZipperModel(){
   for(const [key,target,rate] of steps){const distance=Math.abs(target-progress[key]),duration=distance/rate;if(seconds>=duration){progress[key]=target;seconds-=duration;}else{progress[key]+=Math.sign(target-progress[key])*seconds*rate;break;}}
   return update(progress);
  }
- result.advance=advance;result.animate=clock=>{const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};result.reset=()=>{lastClock=0;progress=null;lastClosure=0;lastInsertion=0;update(result.defaults);};
+ result.advance=advance;result.animate=clock=>{if(!Number.isFinite(clock))return update();const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};result.reset=()=>{lastClock=0;progress=null;lastClosure=0;lastInsertion=0;update(result.defaults);};
  result.playback={label:'Run selected action',stepLabel:'Advance one step',description:'Fasten: align the sides, seat the pin, then zip upward. Separate: unzip fully, withdraw the pin, then move the sides apart.',advance,step:()=>advance(.25),complete:()=>result.getState().complete,blocked:()=>false};
  result.followParts=['insertion-pin','bottom-connector','slider','wedge','walls','front-plate','back-plate','pull-mount','pull',...toothParts.flatMap(({ordinal})=>['tooth','jaws','head','projection','recess','head-section'].map(prefix=>prefix+'-'+ordinal))];
  result.resultPart={id:'garment',context:'garment',focusOnComplete:true,label:'Inspect the jacket',available:()=>true};return result;

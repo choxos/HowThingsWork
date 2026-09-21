@@ -15,7 +15,7 @@ import process from 'node:process';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const siteDir = new URL('../src/site/', import.meta.url);
 const port = Number(process.env.CHECK_PORT || 5175);
-const base = `http://127.0.0.1:${port}/`;
+const base = process.env.SITE_URL || `http://127.0.0.1:${port}/`;
 const only = process.argv.slice(2);
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -32,6 +32,7 @@ async function serverIsUp() {
 let server;
 async function ensureServer() {
   if (await serverIsUp()) return true;
+  if (process.env.SITE_URL) return false;
   server?.kill();
   server = spawn('npx', ['vite', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
     cwd: root,
@@ -46,12 +47,6 @@ async function ensureServer() {
   return false;
 }
 
-if (!(await ensureServer())) {
-  console.error(`The dev server never answered on ${base}`);
-  process.exit(1);
-}
-console.log(server ? `Started the dev server on ${base}` : `Reusing the server already on ${base}`);
-
 const names = (await readdir(siteDir))
   .filter(name => name.startsWith('check-') && name.endsWith('.mjs'))
   // The `-model` checks are analytic and run without a browser, under test:models.
@@ -59,6 +54,16 @@ const names = (await readdir(siteDir))
   .map(name => name.slice(0, -4))
   .filter(name => only.length === 0 || only.includes(name))
   .sort();
+
+const unknown = only.filter(name => !names.includes(name));
+if (unknown.length) throw new Error('Unknown browser checks: ' + unknown.join(', '));
+if (!names.length) throw new Error('No browser checks selected');
+
+if (!(await ensureServer())) {
+  console.error(`The dev server never answered on ${base}`);
+  process.exit(1);
+}
+console.log(server ? `Started the dev server on ${base}` : `Reusing the server already on ${base}`);
 
 const run = name =>
   new Promise(resolve => {
@@ -78,12 +83,12 @@ const run = name =>
   });
 
 const failures = [];
-const flaky = [];
 for (const [index, name] of names.entries()) {
   // A server that has gone away turns every remaining check into a connection
   // refused, which reads as a wall of failures that say nothing about the site.
   if (!(await ensureServer())) {
     console.error(`The dev server stopped answering before ${name}`);
+    server?.kill();
     process.exit(1);
   }
   const started = Date.now();
@@ -94,25 +99,14 @@ for (const [index, name] of names.entries()) {
     console.log(`${label} PASS ${name} (${seconds}s)`);
     continue;
   }
-  // Several of these checks read a value the moment after they press Play, and
-  // under load the click has not landed yet. A second run on a quieter machine
-  // separates that from a real failure; a check that only passes on the retry
-  // is reported as flaky rather than as green.
-  const retry = await run(name);
-  if (retry.code === 0) {
-    console.log(`${label} FLAKY ${name} (failed once in ${seconds}s, passed on retry)`);
-    flaky.push(name);
-    continue;
-  }
   console.log(`${label} FAIL ${name} (${seconds}s)`);
-  console.log(retry.output.split('\n').slice(-25).join('\n'));
+  console.log(output.split('\n').slice(-25).join('\n'));
   failures.push(name);
 }
-if (flaky.length) console.log(`\n${flaky.length} checks needed a retry: ${flaky.join(', ')}`);
 
 server?.kill();
 if (failures.length) {
   console.error(`\n${failures.length} of ${names.length} browser checks failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log(`\nAll ${names.length} browser checks passed.`);
+console.log(`\nAll ${names.length} browser checks passed without retries.`);

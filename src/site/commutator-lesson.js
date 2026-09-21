@@ -13,7 +13,9 @@ export const commutatorLesson={
  ],
  parts:[
   {name:'Copper segment A and copper segment B',role:'Stay attached to separate winding ends and rotate together with the shaft.'},
-  {name:'Insulating gaps and sleeve',role:'Separate the copper halves from one another and from the metal shaft.'},
+  {name:'Two insulating gaps',role:'Interrupt brush contact between the copper halves. Each 8° gap is wider than a 1° brush face, so a brush cannot connect both halves at once.'},
+  {name:'Insulating commutator sleeve',role:'Fits around the shaft through a central bore and keeps both copper halves electrically separate from that metal shaft. Select the sleeve in Show labels and isolate it to inspect the bore.'},
+  {name:'Permanent winding-end connections',role:'One end of the continuous wire enters copper A; the other enters copper B. These connections rotate together and never exchange places. The fixed brushes are what change partners.'},
   {name:'Two fixed carbon brushes',role:'Supply opposite sides of the ring without rotating the external wires.'},
   {name:'Winding, shaft and magnetic poles',role:'Provide the current path, rotation and magnetic forces that give the switch a purpose.'},
   {name:'Fan and supported ribbon',role:'Make the parent motor’s useful output visible while commutation repeats.'},

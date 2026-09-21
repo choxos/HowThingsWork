@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createHornModel} from './horn-model.js';
+import {hornLesson} from './horn-lesson.js';
+let poses=0;
 
-function trial(settings={},step=.05){const model=createHornModel();model.update(settings);let closed=false,open=false;for(let i=0;i<2500&&!model.getState().complete;i++){model.advance(step);const s=model.getState();closed||=s.contactClosed;open||=!s.contactClosed;assert.ok(s.airGap>0,'bar must not hit fixed pole');assert.ok(s.current>=0&&Number.isFinite(s.current));model.root.updateMatrixWorld(true);model.root.traverse(o=>{assert.ok(o.matrixWorld.elements.every(Number.isFinite));if(o.geometry?.attributes.position)assert.ok(o.geometry.attributes.position.array.every(Number.isFinite));});
+function trial(settings={},step=.05){const model=createHornModel();model.update(settings);let closed=false,open=false;for(let i=0;i<2500&&!model.getState().complete;i++){model.advance(step);const s=model.getState();poses++;for(const [label,value] of [['Time since press',(s.elapsed*1000).toFixed(2)+' ms'],['Contact breaks',String(s.breaks)],['Pole air gap',(s.airGap*1000).toFixed(3)+' mm']])assert.equal(s.readings.find(r=>r.label===label).value,value);closed||=s.contactClosed;open||=!s.contactClosed;assert.ok(s.airGap>0,'bar must not hit fixed pole');assert.ok(s.current>=0&&Number.isFinite(s.current));model.root.updateMatrixWorld(true);model.root.traverse(o=>{assert.ok(o.matrixWorld.elements.every(Number.isFinite));if(o.geometry?.attributes.position)assert.ok(o.geometry.attributes.position.array.every(Number.isFinite));});
  const parts=Object.fromEntries(model.parts.map(p=>[p.id,p.object]));const mesh=parts.diaphragm.children.find(o=>o.isMesh),positions=mesh.geometry.attributes.position;
  // The entire clamped outer edge stays put while the inner boundary follows the bar.
  for(let layer=0;layer<2;layer++)for(let sector=0;sector<=64;sector++){const outer=(layer*25+24)*65+sector,inner=layer*25*65+sector;assert.ok(Math.abs(positions.getY(outer)-(.6+(layer?.009:-.009)))<1e-6);assert.ok(Math.abs(positions.getY(inner)-(.6+s.x*100+(layer?.009:-.009)))<1e-6);}
@@ -27,3 +29,17 @@ const max=trial({voltage:15,holdTime:.12});assert.ok(max.state.cycles>25);
 normal.model.reset();assert.equal(normal.model.getState().stage,'ready');assert.equal(normal.model.getState().cycles,0);assert.equal(normal.model.getState().current,0);normal.model.update({voltage:Infinity,holdTime:NaN,contact:9});assert.equal(normal.model.getState().values.voltage,12);assert.equal(normal.model.getState().values.holdTime,.04);assert.equal(normal.model.getState().values.contact,2);
 for(const entry of [normal,weak,held,bypass,slow,max])entry.model.dispose();
 console.log('Horn dynamics, face gaps, clamped diaphragm, frame independence, failure modes, completion and reset passed.');
+
+const expectedCycles=[9,0,0,0,30,10];
+for(const [i,preset] of hornLesson.tryIt.entries()){const entry=trial(preset.values,.1);assert.equal(entry.state.cycles,expectedCycles[i]);assert.equal(entry.state.producedTone,[0,4,5].includes(i));entry.model.dispose();}
+let settings=0;
+for(const voltage of [6,9,12,15])for(const holdTime of [.04,.06,.08,.1,.12])for(const contact of [0,1,2]){
+ const m=createHornModel();m.update({voltage,holdTime,contact});for(let i=0;i<30&&!m.getState().complete;i++){m.advance(1);const s=m.getState();assert.ok(Number.isFinite(s.x)&&Number.isFinite(s.current)&&s.airGap>0);}
+ const s=m.getState();assert.equal(s.complete,true);assert.equal(s.x,0);assert.equal(s.current,0);if(contact===1||voltage===6){assert.equal(s.producedTone,false);assert.equal(s.cycles,0);}if(contact===1)assert.equal(s.peak,0);m.dispose();settings++;
+}
+const measured=createHornModel();let crossings=[],last=0;
+for(let i=0;i<500&&!measured.getState().complete;i++){measured.advance(.01);const s=measured.getState();const y=measured.parts.find(p=>p.id==='moving-bar').object.position.y;if(last<=0&&y>0&&s.pressed)crossings.push(s.elapsed);last=y;}
+assert.ok(crossings.length>8);const observed=1/((crossings.at(-1)-crossings.at(-9))/8);assert.ok(Math.abs(observed-measured.getState().frequency)<3,'independently sampled actual bar crossings agree with reported frequency');measured.dispose();
+for(const time of [.0001,.0003,.0005]){const m=createHornModel();m.advance(time/.01);const s=m.getState();assert.equal(s.contactClosed,true);assert.ok(Math.abs(s.current-4*(1-Math.exp(-time/.001)))<.0013,'initial current matches analytic RL rise');m.dispose();}
+const clock=createHornModel();clock.animate(NaN);clock.animate(Infinity);assert.equal(clock.getState().elapsed,0);clock.animate(.1);assert.ok(clock.getState().elapsed>0);clock.dispose();
+console.log(`PASS ${poses} physical poses, ${settings} control combinations, six independent presets, sampled mesh frequency ${observed.toFixed(2)} Hz, three analytic current probes and invalid-clock recovery.`);

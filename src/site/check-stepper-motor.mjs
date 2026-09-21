@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-const evidence=new URL('../../documentation/audit/evidence/stepper-motor/',import.meta.url);await mkdir(evidence,{recursive:true});
+const evidence=new URL(process.env.STEPPER_MOTOR_EVIDENCE||'../../documentation/audit/evidence/stepper-motor/',import.meta.url);await mkdir(evidence,{recursive:true});
 page.on('pageerror',error=>errors.push(error.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label));

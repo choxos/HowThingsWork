@@ -4,7 +4,7 @@ export const motorRotorLesson={
  simple:'How can the rotor keep turning while its winding currents change? Follow one winding, then trace its turning force to the fan.',
  overview:'The rotor is the moving assembly inside this series-wound motor. Its laminated iron stack holds three winding branches, and the same shaft carries the commutator and fan. The brushes and surrounding field coils stay fixed. Rotation changes which copper segments touch each brush, so current in an individual rotor winding can reverse while the total turning effect continues to drive the shaft. This example uses a reduced wound rotor; other motor designs can use permanent-magnet rotors or induced currents instead.',
  steps:[
-  {title:'Find what turns together',body:'The iron stack, three winding branches, copper segments, shaft and fan form one rotating assembly. Compare them with the stationary poles, brush holders and bearing supports. The rotor cannot turn the fan without this mechanical connection.'},
+  {title:'Find what turns together',body:'The rear view brings the commutator and fixed brushes forward. The iron stack, three winding branches, copper segments, shaft and fan form one rotating assembly. Turn on Isolate selected part to inspect that assembly alone, then turn it off to restore the surrounding mechanism. Compare them with the stationary poles, brush holders and bearing supports. The rotor cannot turn the fan without this mechanical connection.'},
   {title:'Follow one connected winding',body:'Choose the first experiment and step forward. Branch 0 starts on segment S0 and ends on S1. Those connections turn with it and remain attached. The winding passes through opposite slots in the iron core and returns around the shaft.'},
   {title:'Compare winding current with shaft motion',body:'Keep stepping and read Armature branch currents. A positive value follows that branch from its numbered segment to the next; a negative value travels the other way. Brushes exchange segments as the rotor moves. The current arrows can reverse even while the shaft continues in the same direction.'},
   {title:'Inspect a current handover',body:'The overlap experiment starts with one brush spanning two neighboring segments. Advance one step. This shorts the winding between those segments while the other paths continue to supply torque. A shorted winding can carry a motion-induced current; it has not vanished or become detached.'},
@@ -13,8 +13,10 @@ export const motorRotorLesson={
  ],
  parts:[
   {name:'Laminated iron stack',role:'Carries six slots for the three winding branches and rotates with the shaft. Thin layers illustrate laminated construction.'},
-  {name:'Three connected winding branches',role:'Carry the individually solved currents that interact with the stationary field. Their end leads remain attached to their copper segments.'},
+  {name:'Three connected winding branches',role:'Carry the individually solved currents that interact with the stationary field. Each branch passes through opposite slots and returns around the shaft.'},
   {name:'Commutator on the rotor',role:'Turns with the windings and changes their brush connections while preserving their permanent segment connections.'},
+  {name:'Insulating commutator sleeve',role:'Fits around the shaft through a central bore and keeps all three copper segments electrically separate from the steel shaft. It turns with the commutator.'},
+  {name:'Permanent winding-end leads',role:'Join each branch to its two numbered copper segments. They turn with the rotor and stay attached throughout brush handover; branch 0 always joins S0 to S1.'},
   {name:'Fixed brushes and stator',role:'Supply the moving circuit and establish the field across it; they do not rotate with the rotor.'},
   {name:'Shaft, bearings and fan',role:'Keep the assembly supported and transfer its torque to a visible mechanical load.'},
  ],

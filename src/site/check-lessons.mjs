@@ -38,7 +38,7 @@ const slug = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^
 
 // The viewer resolves a view name against the buttons it renders in
 // `.daily-camera`; anything else is a click on nothing.
-const views = new Set(['front', 'side', 'back', 'top', 'bottom', 'in', 'out', 'reset']);
+const views = new Set(['iso', 'front', 'side', 'back', 'top', 'bottom', 'in', 'out', 'reset']);
 const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
 
@@ -125,9 +125,9 @@ for (const [name, lesson] of Object.entries(lessons)) {
  model.dispose();
 }
 
-// A component route reuses another machine's model and selects one part in it.
+// Match the viewer: a component may supply its own focused model.
 for (const [name, component] of Object.entries(houseComponents)) {
- const model = create(component.machine);
+ const model = component.createModel?.() || create(component.machine);
  check(model, `${name}: machine "${component.machine}" has no model`);
  if (!model) continue;
  const partIds = new Set(model.parts.map(part => part.id));

@@ -1,6 +1,6 @@
 export const stepperMotorLesson={
  simple:'Can a sequence of electrical commands place a carriage where you ask? Follow the changing poles, toothed rotor and screw, then try a load the motor cannot hold.',
- overview:'This hybrid-style stepper has a permanent magnet between two toothed rotor cups. One cup remains north and the other south; both turn with the same shaft. Two winding circuits magnetize eight stationary poles in a repeating sequence. Each change moves the preferred tooth alignment a little farther around. The shaft turns a lead screw through a nut on a guided carriage, converting rotation into controlled travel. The motor must supply enough torque for the carriage to follow its commands.',
+ overview:'Stepper motors position axes in machines such as 3D printers. This hybrid-style stepper has a permanent magnet between two toothed rotor cups. One cup remains north and the other south; both turn with the same shaft. Two winding circuits magnetize eight stationary poles in a repeating sequence. Each change moves the preferred tooth alignment a little farther around. The shaft turns a lead screw through a nut on a guided carriage, converting rotation into controlled travel. The motor must supply enough torque for the carriage to follow its commands.',
  steps:[
   {title:'Compare the two rotor cups',body:'Look closely at the north and south tooth sets. They share one shaft but their teeth are offset by half a tooth pitch. A stator tooth can line up with one cup while facing a gap in the other. Rotor and stator teeth do not mesh: a physical air gap separates them.'},
   {title:'Change the stationary field',body:'The driver supplies the two winding circuits, A and B. This demonstration uses one-phase wave drive: A positive, B positive, A negative, B negative. Reversing current reverses the stator poles, while the rotor cups keep their permanent polarities. The supply wires stay fixed.'},
@@ -39,7 +39,7 @@ export const stepperMotorLesson={
   {title:'Oriental Motor: hybrid stepper structure and operation',url:'https://www.orientalmotor.com/stepper-motors/technology/stepper-motor-basics.html'},
   {title:'Microchip: bipolar stepper motor drive sequences',url:'https://ww1.microchip.com/downloads/en/Appnotes/00002326A.pdf'},
   {title:'MathWorks: effective stepper torque and electrical model',url:'https://www.mathworks.com/help/sps/ref/steppermotor.html'},
-  {title:'Texas Instruments: stepper holding torque and power consumption',url:'https://www.ti.com/lit/an/slvafw1/slvafw1.pdf'},
+  {title:'Texas Instruments: stepper holding torque and power consumption',url:'https://www.ti.com/lit/pdf/slvafw1'},
  ],
  quiz:{question:'The driver counts twelve steps, but the carriage stops short under a heavy load. What does that show?',options:['The rotor did not successfully follow every commanded step.','The ruler must change to match the command count.','The permanent rotor poles have exchanged their identities.'],answer:0,explanation:'An open-loop controller counts commands. Actual movement still depends on torque, inertia and load, so lost position is possible.'},
 };

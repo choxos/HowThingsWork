@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 
-export function createCylinderModel({editableKey=false}={}){
+export function createCylinderModel({editableKey=false,camLesson=false,pinLesson=false,springLesson=false}={}){
  const m=houseModel(editableKey?'Keys':'Cylinder lock'),{part,box,cylinder,disk,ring,rod,spring,control,finish,covers}=m;
  const system=part('system','Door and cylinder lock','The matching key frees a plug whose cam retracts the latch. The door opens only after the latch clears the frame.');
  const frame=part('frame','Fixed door frame and strike','The extended latch enters the opening in this stationary frame.',[0,0,0],system);
@@ -49,6 +49,7 @@ export function createCylinderModel({editableKey=false}={}){
   return {lower,lowerGroup,driver,coil,winding,length};
  });
  const drive=part('latch-drive','Cam, follower and spring latch','The cam roller slides vertically in its follower while pulling the latch sideways.',[0,0,0],lock);
+ for(const group of [shell,plug,key,pins,drive])group.userData.explosionCategory=true;
  const cam=part('cam','Plug cam and roller','The roller runs inside a vertical slot. Its horizontal movement pulls the latch inward.',[0,0,-1.1],drive);
  rod([0,0,0],[0,.34,0],.055,'gold',cam);disk(.065,.16,[0,.34,-.04],'metal',cam);
  const latch=part('bolt','Sliding latch and slotted follower','The slot allows vertical roller travel while transferring its horizontal travel to the latch.',[0,0,0],drive);
@@ -63,23 +64,38 @@ export function createCylinderModel({editableKey=false}={}){
  control('operation','Run action',0,1,1,0,'','Run the selected sequence, or adjust each stage yourself.',[{value:0,label:'Unlock and open'},{value:1,label:'Close and relock'}]);
  if(editableKey){
   control('selectedPin','Cut to inspect',1,5,1,3,'','Count from the blade tip toward the bow. Withdraw before selecting a different cut.');
-  control('cutError','Change selected cut',-.2,.2,.02,0,'model units','Withdraw the key before editing. Positive values raise the cut; negative values lower it.');
+  control('cutError','Change selected cut',-.2,.2,.02,0,'model units','Withdraw the key before editing. Positive values raise the cut; negative values lower it. Compare the applied-change reading when the blade limit clips a request.');
  }else control('keyPattern','Key pattern',0,2,1,0,'','Withdraw the key before choosing another pattern.',[{value:0,label:'Matching key'},{value:1,label:'One incorrect cut'},{value:2,label:'Different key'}]);
  control('insertion','Key insertion',0,1,.01,0,'','The key can slide only when the plug is at its starting angle.');
- control('turn','Attempt to turn',0,80,1,0,'°','Aligned pins permit turning. The 80° stop keeps this cam away from dead center.');
+ control('turn','Attempt to turn',0,80,1,0,'°','Seat the key fully and align every pin joint before turning. A blocked turn is discarded; try again after seating. The 80° stop keeps this cam away from dead center.');
  control('door','Open the door',0,65,1,0,'°','Retract the latch past the frame first. Close the door with the latch retracted.');
  let lastDoor=0,lastTurn=0,lastInsertion=0,lastKey=0,lastClock=0,lastSelectedPin=3,lastCutError=0,progress={};
  const result=finish(v=>{
   if(lastTurn>0)v.insertion=lastInsertion;
   if(lastInsertion>0){if(editableKey){v.selectedPin=lastSelectedPin;v.cutError=lastCutError;}else v.keyPattern=lastKey;}
   setProfile(v.keyPattern,v.selectedPin,v.cutError);const shift=2*(1-v.insertion),offsets=positions.map((z,i)=>contact(z-shift)-heights[i]),ready=offsets.every(o=>Math.abs(o)<1e-6);
-  const turn=ready?v.turn:0,angle=turn*Math.PI/180,travel=.34*Math.sin(angle),clear=.93-travel<.7;
+  if(!ready||v.insertion<1)v.turn=0;
+  const turn=v.turn,angle=turn*Math.PI/180,travel=.34*Math.sin(angle),clear=.93-travel<.7;
   if(!clear&&v.door!==lastDoor)v.door=lastDoor;
   plug.rotation.z=angle;key.position.z=shift;cam.rotation.z=angle;latch.position.x=-travel;coil.userData.setLength(.42-travel);door.rotation.y=-v.door*Math.PI/180;
   pinParts.forEach(({lower,lowerGroup,driver,coil,winding,length},i)=>{const joint=.4+offsets[i];lowerGroup.rotation.z=angle;lower.position.y=joint-length/2;driver.position.y=turn>0?.4:joint;coil.position.y=driver.position.y+.45;winding.userData.setLength(1.2-coil.position.y);});
   lastDoor=v.door;lastTurn=turn;lastInsertion=v.insertion;lastKey=v.keyPattern;lastSelectedPin=v.selectedPin;lastCutError=v.cutError;
   const blocked=v.insertion===1&&!ready&&(v.operation===0||v.door>0),complete=v.operation===0?v.door===65:v.door===0&&turn===0&&v.insertion===0;
-  return {state:{unlocked:ready,turn,boltTravel:travel,boltClear:clear,pinOffsets:offsets,doorAngle:v.door,complete,blocked},readings:[r('Your result',v.operation===1&&complete?'Door secured · key removed':v.door>0?'Door open · passage clear':clear?'Latch clear · ready to open':'Door held closed by the latch'),r('Pin alignment',ready?'All five joints aligned':offsets.filter(o=>Math.abs(o)>=1e-6).length+' of 5 joints away from the shear line'),r('Actual plug turn',turn+'°'),r('Latch retraction',Math.round(travel/(.34*Math.sin(80*Math.PI/180))*100)+'%'),r('Door opening',v.door+'°'),r('Next action',v.operation===1&&complete?'Choose Unlock and open to start another cycle.':v.door>0?'Retract the latch before closing; return the key upright before withdrawing.':clear?'Open the door.':ready?'Turn the key to pull the latch clear.':blocked?'Return the turn control to zero, withdraw this key, then compare a different pattern.':'Insert the key and watch the five pin joints.')]};
+  const strikeGap=travel-.205,appliedCut=editableKey?contact(positions[v.selectedPin-1])-heights[v.selectedPin-1]:0;
+  return {state:{unlocked:ready,turn,boltTravel:travel,boltClear:clear,pinOffsets:offsets,doorAngle:v.door,complete,blocked},readings:[
+   r('Your result',v.operation===1&&complete?'Door secured · key removed':v.door>0?'Door open · passage clear':clear?'Latch clear · ready to open':'Door held closed by the latch','Pin alignment permits turning; latch clearance permits opening. These are separate conditions.'),
+   r('Pin alignment',ready?'All five joints aligned':offsets.filter(o=>Math.abs(o)>=1e-6).length+' of 5 joints away from the shear line','Each lower/upper pin joint must meet the plug boundary. A joint above or below it leaves solid pin material across that boundary.'),
+   ...(pinLesson?[r('Pin joint offsets',offsets.map((offset,index)=>(index+1)+': '+(Math.abs(offset)<1e-6?'0.000':(offset>0?'+':'')+offset.toFixed(3))).join(' · '),'Model units above (+) or below (−) the shear line, numbered from blade tip to bow. Positive offsets leave a lower pin across the boundary; negative offsets leave a driver across it. These are joint heights at the zero-angle reference, including while the plug is turned.')]:[]),
+   ...(editableKey?[r('Applied cut change',(Math.abs(appliedCut)<1e-6?'0.000':(appliedCut>0?'+':'')+appliedCut.toFixed(3))+' model units'+(Math.abs(appliedCut-v.cutError)>1e-6?' · blade limit':''),'Actual height change at the selected cut, relative to its matching height. The control requests a change; the blade limits absolute cut heights to 0.025–0.500 model units. This reading describes the key shape even while withdrawn.'),r('Selected pin joint','Cut '+v.selectedPin+': '+(Math.abs(offsets[v.selectedPin-1])<1e-6?'0.000':(offsets[v.selectedPin-1]>0?'+':'')+offsets[v.selectedPin-1].toFixed(3))+' model units','Joint height above (+) or below (−) the zero-angle shear-line reference. Positive leaves the lower pin across it; negative leaves the upper driver across it. At full seating this equals the applied cut change. During insertion the intervening slopes also affect the joint.')]:[]),
+   r('Key insertion',Math.round(v.insertion*100)+'%'+(ready&&v.insertion<1?' · finish seating':''),'Flat cuts can align just before full insertion. This teaching model also requires 100% seating before turning; the key can slide only at zero plug angle.'),
+   r('Actual plug turn',turn+'°','A rejected turn does not wait in memory: seat the key, then make a fresh turn.'),
+   r('Latch retraction',Math.round(travel/(.34*Math.sin(80*Math.PI/180))*100)+'%','Cam travel follows the sine of the plug angle; 100% is travel at the 80° stop. This model permits opening at 43°, including an extra clearance margin beyond the strike edge.'),
+   r('Strike clearance',Math.abs(strikeGap)<1e-7?'Level with strike edge':Math.abs(strikeGap).toFixed(3)+' model units '+(strikeGap<0?'overlap':'clear'),'Distance from the latch tip to the near strike edge at closed-door alignment. Opening requires another 0.025 model units of clearance, first reached at 43°. This is a clearance rule, not a collision solver.'),
+   ...(camLesson?[r('Latch travel',travel.toFixed(3)+' model units','Horizontal retraction from the fully extended position: 0.34 sin θ. Compare 0°, 30° and 60°; equal angle steps produce different travel.'),r('Roller drop',(.34*(1-Math.cos(angle))).toFixed(3)+' model units','Downward movement from the upright starting position: 0.34(1 − cos θ). The vertical slot accepts this motion while the guides keep the latch horizontal.')]:[]),
+   ...(springLesson?[r('Latch spring compression',travel.toFixed(3)+' model units','Additional shortening from the zero-turn position, equal to latch retraction. This is a length change, not stored energy or spring force; Play or Advance prescribes the return.'),r('Pin spring lengths',pinParts.map(({coil},index)=>(index+1)+': '+(1.2-coil.position.y).toFixed(3)).join(' · '),'End-to-end lengths in model units, numbered from blade tip to bow. Rising and falling key slopes can shorten or lengthen a spring during withdrawal. All five finish longer with the blade removed; stiffness and energy are not calculated.')]:[]),
+   r('Door opening',v.door+'°','Zero is closed; 65° is the demonstration’s open position. Keep the square latch retracted while moving the door.'),
+   r('Next action',v.operation===1&&complete?'Choose Unlock and open to start another cycle.':v.door>0?'Retract the latch before closing; return the key upright before withdrawing.':clear?'Open the door.':blocked?(editableKey?'Withdraw the key, then restore the selected cut to zero.':'Withdraw this key, then compare a different pattern.'):v.insertion<1?'Finish inserting the key, then make a fresh turn.':ready?'Turn the key to pull the latch clear.':'Insert the key and watch the five pin joints.','Play follows the selected opening or closing sequence; Advance moves one short step. Spring motion follows the prescribed geometry, not a force calculation.')
+  ]};
  },{animated:true});
  const update=result.update;result.update=next=>{progress={};return update(next);};
  function advance(seconds){
@@ -99,5 +115,7 @@ export function createCylinderModel({editableKey=false}={}){
  result.controls.find(c=>c.key==='insertion').enabledWhen=()=>result.getState().turn===0;
  for(const key of editableKey?['selectedPin','cutError']:['keyPattern'])result.controls.find(c=>c.key===key).enabledWhen=v=>v.insertion===0;
  result.playback={label:'Run selected action',stepLabel:'Advance the lock',description:'Opening inserts the key, turns the cam and opens the door. Relocking closes the door with the latch retracted, returns the cam, then withdraws the key.',advance,step:()=>advance(.15),complete:()=>result.getState().complete,blocked:()=>result.getState().blocked};
- result.resultPart={id:'system',context:'system',focusOnComplete:true,label:'Inspect the doorway',available:()=>true};return result;
+ result.resultPart={id:'system',context:'system',focusOnComplete:true,label:'Inspect the doorway',available:()=>true};
+ if(editableKey){result.initialPart='plug';result.initialView='side';result.parts.find(part=>part.id==='plug').framePadding=1.05;result.resultPart.focusOnComplete=false;result.followParts=result.parts.filter(part=>!['system','frame','door'].includes(part.id)).map(part=>part.id);}
+ return result;
 }

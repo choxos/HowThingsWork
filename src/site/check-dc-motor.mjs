@@ -4,7 +4,7 @@ import {chromium} from 'playwright';
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-const evidence=new URL('../../documentation/audit/evidence/dc-motor/',import.meta.url);
+const evidence=new URL(process.env.DC_MOTOR_EVIDENCE||'../../documentation/audit/evidence/dc-motor/',import.meta.url);
 await mkdir(evidence,{recursive:true});
 page.on('pageerror',error=>errors.push(error.message));
 const readings=()=>page.locator('.daily-readings').textContent();
@@ -18,10 +18,11 @@ async function preset(index){
  assert.match(await readings(),/Ready · rotor at starting angle/);
 }
 try{
- await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5175/'}#machine/direct-current-motor`);
+ await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5193/'}#machine/direct-current-motor`);
  await page.getByRole('heading',{name:'Direct-current motor',exact:true}).waitFor();
  await preset(0);await run();await finished('Running snapshot');
  const normalSpeed=await speed();assert.ok(normalSpeed>0);
+ assert.match(await readings(),/Copper contact/);assert.match(await readings(),/Conversion efficiency7\.1%/);
  const snapshot=await readings();await page.waitForTimeout(200);assert.equal(await readings(),snapshot,'Paused snapshot must preserve state');
  await page.screenshot({path:new URL('powered-desktop.png',evidence).pathname,fullPage:true});
  console.log('PASS normal powered result, positive speed and paused state',normalSpeed);
@@ -47,6 +48,7 @@ try{
  await page.screenshot({path:new URL('coasted-to-rest.png',evidence).pathname,fullPage:true});
  console.log('PASS disconnect removes current immediately and coasts to actual rest');
 
+ await preset(0);await page.locator('[data-control="voltage"]').fill('6');await page.locator('[data-control="voltage"]').dispatchEvent('input');await run();await finished('Running snapshot');assert.match(await readings(),/Copper contact/);assert.doesNotMatch(await readings(),/Both on insulation/);assert.ok(await speed()>600);await page.locator('canvas').screenshot({path:new URL('six-volt-contact.png',evidence).pathname});console.log('PASS 6 V snapshot now reaches copper contact');
  await page.getByRole('button',{name:'Reset experiment',exact:true}).click();assert.equal(await speed(),0);
  await page.getByRole('button',{name:'Advance one step',exact:true}).click();assert.ok(await speed()>0);
  await page.getByRole('button',{name:'Restart rotor at selected angle',exact:true}).click();assert.equal(await speed(),0);
@@ -55,11 +57,11 @@ try{
  await page.screenshot({path:new URL('mobile.png',evidence).pathname,fullPage:true});
  console.log('PASS reset, manual step, restart, quiz and mobile width');
 
- await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5175/'}#machine/universal-motor`);
+ await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5193/'}#machine/universal-motor`);
  await page.getByRole('heading',{name:'Universal motor',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Give the rotor a small push',exact:true}).count(),0,'Universal motor must not inherit the DC mechanism');
  await page.emulateMedia({reducedMotion:'reduce'});
- await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5175/'}#machine/direct-current-motor`);
+ await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:5193/'}#machine/direct-current-motor`);
  await page.getByRole('heading',{name:'Direct-current motor',exact:true}).waitFor();
  assert.equal(await speed(),0);assert.match(await readings(),/Ready/);
  await page.getByRole('button',{name:'Advance one step',exact:true}).click();assert.ok(await speed()>0,'Explicit stepping remains available with reduced motion');

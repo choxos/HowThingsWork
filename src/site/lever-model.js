@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 
-export function createLeverModel(){
+export function createLeverModel({springLesson=false,boltLesson=false}={}){
  const m=houseModel('Lever lock'),{part,box,cylinder,disk,ring,rod,tube,control,finish,covers}=m,rad=Math.PI/180;
  const system=part('system','Door and lever lock','The key must lift every gate before its drive shoulder can slide the deadbolt.');
  const frame=part('frame','Fixed frame and strike','The extended bolt crosses the door gap and enters this fixed strike.',[0,0,0],system);
@@ -28,6 +28,8 @@ export function createLeverModel(){
  const drive=part('key-drive','Key drive shoulder and roller','This rigid arm turns with the key and presses the sides of the bolt slot.',[0,0,.65],key);
  rod([0,0,0],[.6,0,0],.04,'gold',drive);disk(.035,.12,[.6,0,0],'gold',drive);
  const pack=part('lever-pack','Three spring-held levers','All three narrow gates must admit the same moving stump.',[0,0,0],lock);
+ for(const group of [housing,bolt,key,pack])group.userData.explosionCategory=true;
+ key.userData.explosionRigid=true;
  const target=[.06,.12,.18],pivot=new THREE.Vector2(-.8,.75),edge=-.32,halfGate=.057,stumpRadius=.035;
  const radii=target.map(a=>.8*Math.sin(a)+.75*Math.cos(a)+edge),cams=[],levers=[],springParts=[],pathGuides=[];
  function polygon(points){const s=new THREE.Shape();points.forEach(([x,y],i)=>i?s.lineTo(x,y):s.moveTo(x,y));s.closePath();return s;}
@@ -48,11 +50,12 @@ export function createLeverModel(){
  let pattern=-1;
  function setPattern(next){if(next===pattern)return;pattern=next;cams.forEach((cam,i)=>{const radius=radii[i]+(next===1&&i===1?.075:next===2?-.07:0),points=[[0,0]];for(let d=-90;d<=120;d+=2)points.push([radius*Math.cos(d*rad),radius*Math.sin(d*rad)]);if(cam.mesh){cam.mesh.geometry.dispose();cam.mesh.material.dispose();cam.parent.remove(cam.mesh);}cam.mesh=extrude(polygon(points),cam.parent,0xe3b45e,.08);cam.radius=radius;});}
  function angles(degrees){const phase=(degrees-90)*rad;return cams.map(cam=>{function gap(a){const normal=a+Math.PI/2,relative=normal-phase;let best=Math.max(Math.cos(relative+Math.PI/2),Math.cos(relative-2*Math.PI/3),0);for(let k=-1;k<=1;k++)if(relative+k*2*Math.PI>=-Math.PI/2&&relative+k*2*Math.PI<=2*Math.PI/3)best=1;return cam.radius*best-(.8*Math.sin(a)+.75*Math.cos(a)+edge);}if(gap(0)<=0)return 0;let lo=0,hi=.5;for(let j=0;j<28;j++){const a=(lo+hi)/2;if(gap(a)>0)lo=a;else hi=a;}return(lo+hi)/2;});}
- function clearGate(angles){return angles.every((a,i)=>{const delta=target[i]-a;return [.75,1.15].every(x=>Math.abs(x*Math.sin(delta)+.15*Math.cos(delta)-.15)+stumpRadius<halfGate);});}
+ function gateClear(a,i){const delta=target[i]-a;return [.75,1.15].every(x=>Math.abs(x*Math.sin(delta)+.15*Math.cos(delta)-.15)+stumpRadius<halfGate);}
+ function clearGate(angles){return angles.every(gateClear);}
  control('operation','Run action',0,1,1,0,'','Choose a full opening or closing sequence.',[{value:0,label:'Unlock and open'},{value:1,label:'Close and relock'}]);
  control('keyPattern','Key pattern',0,2,1,0,'','Withdraw the key before changing its shoulders.',[{value:0,label:'Matching key'},{value:1,label:'One shoulder too high'},{value:2,label:'Shoulders too low'}]);
  control('insertion','Key insertion',0,1,.01,0,'','Insert fully before turning; withdraw only after a full turn.');
- control('turn','Turn the key',0,360,.1,0,'°','A full turn lifts the levers, slides the bolt and lets the springs lower the levers. Reverse the turn to relock.');
+ control('turn','Turn the key',0,360,1,0,'°','A full turn lifts the levers, slides the bolt and lets the springs lower the levers. Reverse the turn to relock.');
  control('door','Open the door',0,65,1,0,'°','The deadbolt must clear the fixed frame before the door moves.');
  let lastTurn=0,lastInsertion=0,lastPattern=0,lastDoor=0,travel=0,blocked=false,lastClock=0,progress={};
  const result=finish(v=>{
@@ -61,10 +64,24 @@ export function createLeverModel(){
   for(let angle=lastTurn;Math.abs(requested-angle)>1e-8;){const direction=Math.sign(requested-angle),boundary=(direction>0?Math.floor(angle/90)+1:Math.ceil(angle/90)-1)*90,next=angle+direction*Math.min(1,Math.abs(requested-angle),Math.abs(boundary-angle)),phase=(next-90)*rad,x=.6*Math.cos(phase),y=.6*Math.sin(phase);let boltX=-travel;if(y>=-1e-9)boltX=Math.max(x-.6,Math.min(x,boltX));if(Math.abs(boltX+travel)>1e-8&&!clearGate(angles(next))){blocked=true;break;}travel=Math.max(0,Math.min(.6,-boltX));angle=next;lastTurn=next;}
   v.turn=lastTurn;const raised=v.insertion===1?angles(lastTurn):[0,0,0],ready=clearGate(raised),boltClear=1.475-travel<1.15;
   blocked ||= v.insertion===1&&Math.abs(lastTurn-180)<1e-8&&!ready;
-  if(!boltClear&&v.door!==lastDoor)v.door=lastDoor;door.rotation.y=-v.door*rad;bolt.position.x=-travel;key.rotation.z=(lastTurn-90)*rad;key.position.z=2*(1-v.insertion);
+  if(!boltClear&&v.door!==lastDoor)v.door=lastDoor;door.rotation.y=-v.door*rad;bolt.position.x=-travel;key.rotation.z=(lastTurn-90)*rad;key.position.z=.8*(1-v.insertion);
   levers.forEach((lever,i)=>{lever.rotation.z=raised[i];pathGuides[i].guide.rotation.z=-raised[i];pathGuides[i].marker.position.x=1.25-travel;const spring=springParts[i],x=pivot.x+.95*Math.cos(raised[i])-.34*Math.sin(raised[i]),y=pivot.y+.95*Math.sin(raised[i])+.34*Math.cos(raised[i]);const replacement=new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-.9,1.25,spring.z),new THREE.Vector3(-.3,1.42,spring.z),new THREE.Vector3(x,y,spring.z)]),32,.012,8,false);spring.mesh.geometry.dispose();spring.mesh.geometry=replacement;});
   lastInsertion=v.insertion;lastPattern=v.keyPattern;lastDoor=v.door;const complete=v.operation===0?v.door===65:v.door===0&&travel<1e-8&&v.insertion===0;
-  return {state:{turn:lastTurn,boltTravel:travel,boltClear,leverAngles:raised,gatesClear:ready,doorAngle:v.door,blocked,complete},readings:[r('Your result',complete&&v.operation===1?'Door secured · key removed':v.door>0?'Door open · passage clear':boltClear?'Deadbolt clear · ready to open':'Door held closed by the deadbolt'),r('Lever gates',ready?'All three passages clear':'At least one gate blocks bolt travel'),r('Bolt retraction',Math.round(travel/.6*100)+'%'),r('Key turn',lastTurn+'°'),r('Next action',blocked?'The key shoulder leaves a gate obstructed. Reverse to the starting position, withdraw and compare a matching key.':v.door>0?'Choose Close and relock.':boltClear?'Finish the turn, withdraw the key and open the door.':v.insertion<1?'Insert the key fully.':'Turn the key and watch its shoulders lift the levers.')]};
+  const obstructed=raised.map((angle,i)=>gateClear(angle,i)?null:i+1).filter(Boolean),strikeGap=travel-.3,gateStatus=ready?'All three passages clear':blocked?'Wrong key: gate obstructed · lever'+(obstructed.length>1?'s ':' ')+obstructed.join(', '):travel<1e-8?'End pockets hold the extended bolt':travel>.6-1e-8?'End pockets hold the retracted bolt':'Gate path not aligned';
+  const nextAction=blocked?'The key shoulder leaves a gate obstructed. Reverse to the starting position, withdraw and compare a matching key.':complete?(v.operation===1?'Door secured. Choose Unlock and open to compare the reverse sequence.':'Door open. Choose Close and relock.'):
+   v.operation===1?(v.door>0?(boltClear?'Close the door before extending the bolt.':'Retract the bolt before closing the door. Run Close and relock to do this in order.'):lastTurn===0&&travel<1e-8?'Withdraw the key to finish relocking.':v.insertion<1?'Insert the key fully, then reverse the turn.':'Reverse the turn to align the gates and extend the bolt.'):
+   lastTurn===360?(v.insertion>0?'Withdraw the key, then open the door.':'Open the door; the deadbolt is clear of the strike.'):v.insertion<1?'Insert the key fully.':boltClear?'Finish the turn, withdraw the key and open the door.':ready&&travel<1e-8?'Keep turning: the roller must reach the side of its slot before the bolt moves.':'Turn the key and watch its shoulders lift the levers.';
+  return {state:{turn:lastTurn,boltTravel:travel,boltClear,leverAngles:raised,gatesClear:ready,doorAngle:v.door,blocked,complete},readings:[
+   r('Your result',complete&&v.operation===1?'Door secured · key removed':v.door>0?'Door open · passage clear':boltClear?'Deadbolt clear · ready to open':'Door held closed by the deadbolt','The bolt must leave the fixed strike before the door can swing.'),
+   r('Lever gates',gateStatus,'Aligned narrow gates admit the stump. End pockets let the plates lower and hold the bolt at either end of its travel.'),
+   ...(springLesson?[r('Spring return',raised.every(a=>a<1e-7)?'All three plates at rest':'Key still supports raised plates','As the key shoulders move away, the springs lower the plates. Their drawn shape follows the contact; no spring force is calculated.')]:[]),
+   r('Lever angles',raised.map(a=>(a/rad).toFixed(1)+'°').join(' / '),'Plates 1, 2 and 3 rotate around one fixed pivot. Correct heights differ; raising every plate is not enough.'),
+   r('Bolt retraction',Math.round(travel/.6*100)+'%','0% is fully extended; 100% is fully retracted. This model permits opening just above 54%, including an extra clearance margin beyond the near strike edge.'),
+   ...(boltLesson?[r('Strike clearance',Math.abs(strikeGap)<1e-7?'Level with strike edge':Math.abs(strikeGap).toFixed(3)+' model units '+(strikeGap<0?'overlap':'clear'),'Distance from the bolt tip to the near strike edge at closed-door alignment, in this enlarged model’s units. Opening requires another 0.025 units of clearance, first reached at 213°. This is a clearance rule, not a collision solver.')]:[]),
+   r('Key insertion',Math.round(v.insertion*100)+'%','The key must be fully seated to turn. Withdrawal is possible at 0° or 360°.'),
+   r('Key turn',Math.round(lastTurn)+'°','Opening turns from 0° to 360°. Closing reverses that turn; the bolt moves only during the drive stage.'),
+   r('Next action',nextAction,'Play runs the selected action; Advance moves one short step. A wrong shoulder stops the drive.')
+  ]};
  });
  const update=result.update;result.update=next=>{progress={};return update(next);};
  function advance(seconds){if(!Number.isFinite(seconds)||seconds<=0)return update();let remaining=seconds;const closing=result.getState().values.operation===1,steps=closing?[...(lastDoor>0&&!result.getState().boltClear?[['insertion',1,.6],['turn',360,100]]:[]),['door',0,40],...(lastDoor>0||lastTurn>0||travel>1e-8?[['insertion',1,.6],['turn',0,100]]:[]),['insertion',0,.6]]:[...(lastTurn<360?[['insertion',1,.6],['turn',360,100]]:[]),['insertion',0,.6],['door',65,40]];for(const [key,end,rate] of steps){const state=result.getState(),start=progress[key]??state.values[key],duration=Math.abs(end-start)/rate,used=Math.min(remaining,duration);progress[key]=used===duration?end:start+Math.sign(end-start)*used*rate;update({[key]:progress[key]});remaining-=used;if(result.getState().blocked||remaining<=1e-9)break;}return result.getState().readings;}

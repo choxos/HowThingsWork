@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createIgnitionTrial,carIgnitionConstants as C} from './car-ignition-model.js';
 import {createSparkGapModel,sparkGapGeometry as G} from './spark-gap-model.js';
 import {sparkGapLesson} from './spark-gap-lesson.js';
+import {createPartExplosion} from './part-explosion.js';
 import {frameModel} from './machine-viewer.js';
 const near=(a,b,t=1e-8)=>assert.ok(Math.abs(a-b)<=t,`${a} != ${b} tol ${t}`),settings={width:1,voltage:12,rpm:600},trial=v=>createIgnitionTrial({...v,points:0,key:1},{plugAStrikeVoltage:250*v.width});
 for(const invalid of [NaN,Infinity,-Infinity,-1,0,39.9,40,'250',null])assert.throws(()=>createIgnitionTrial({voltage:12,rpm:600,points:0,key:1},{plugAStrikeVoltage:invalid}),RangeError);
@@ -20,5 +21,24 @@ for(const wire of [T.feedWires,T.returnWires]){let i=0;for(const path of wire.us
 m.reset();m.actions[3].run();assert.ok(m.getState().plugACurrent<0);assert.ok(m.getState().plugAPower>0);m.actions[4].run();assert.equal(m.getState().gapVoltage,null);assert.equal(m.getState().aConducting,false);assert.ok(m.getState().plugAEnergy>0);assert.ok(T.energyBar.visible);const copied=m.getState();copied.sampledPeakA.absoluteTerminalVoltage=-1;copied.events[0].energy=-1;assert.ok(m.getState().sampledPeakA.absoluteTerminalVoltage>=0);assert.ok(m.getState().events[0].energy>=0);m.update({width:4});near(m.getState().elapsed,0);assert.equal(m.getState().sampledPeakA,null);m.advance(8);assert.equal(m.playback.complete(),true);m.actions[0].run();assert.equal(m.playback.complete(),false);near(m.getState().elapsed,0);m.reset();assert.deepEqual(m.getState().values,settings);
 function visible(mesh,camera,meshes){const a=mesh.geometry.attributes.position,index=mesh.geometry.index;function hit(p){p.applyMatrix4(mesh.matrixWorld).project(camera);const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(p.x,p.y),camera);return Math.abs(p.x)<1&&Math.abs(p.y)<1&&ray.intersectObjects(meshes)[0]?.object===mesh;}for(let i=0;i<a.count;i++)if(hit(new THREE.Vector3().fromBufferAttribute(a,i)))return true;if(index)for(let i=0;i<index.count;i+=3){const p=new THREE.Vector3();for(let j=0;j<3;j++)p.add(new THREE.Vector3().fromBufferAttribute(a,index.getX(i+j)));if(hit(p.divideScalar(3)))return true;}return false;}
 let views=0;for(const aspect of [1,1.16])for(const inside of [true,false])for(const width of [.5,1,4])for(const stage of [1,2,3,4]){const model=createSparkGapModel();model.update({width});model.actions[stage].run();const T=model.topology,{camera}=frameModel(model,aspect);T.frontCover.visible=!inside;camera.zoom=1.15;camera.updateProjectionMatrix();model.root.updateMatrixWorld(true);camera.updateMatrixWorld(true);const meshes=[];model.root.traverse(o=>{if(!o.isMesh)return;for(let p=o;p;p=p.parent)if(!p.visible)return;meshes.push(o);});for(const mesh of [T.centerStem,T.groundTip,T.groundLeg,T.selectorBlade.children[0],T.voltageTrack,T.thresholdMarker,T.energyTrack,...(T.energyBar.visible?[T.energyBar]:[]),...(T.spark.visible?[T.spark]:[])])assert.ok(visible(mesh,camera,meshes),`visible ${mesh.parent.name}: ${aspect}/${inside}/${width}/${stage}`);let extent=0;for(const mesh of meshes){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const p=new THREE.Vector3().fromBufferAttribute(a,i).applyMatrix4(mesh.matrixWorld).project(camera);extent=Math.max(extent,Math.abs(p.x),Math.abs(p.y));}}assert.ok(extent<.98,`framed ${extent}`);model.dispose();views++;}
+
+assert.equal(sparkGapLesson.steps.length,6);assert.equal(sparkGapLesson.parts.length,7);assert.equal(sparkGapLesson.tryIt.length,6);
+assert.deepEqual(m.catalogParts.map(p=>p.id),['gap','center','ceramic','ground','boundary','selector','feed','return','reference','voltage-comparison','energy-record']);
+for(const stage of [0,1,2,3,4]){
+ m.reset();if(stage)m.actions[stage].run();
+ assert.ok(m.getState().readings.every(r=>r.hint?.length>20),'Every reading explains its meaning');
+ const guides=new Set();m.root.traverse(o=>{if(o.userData.explosionExcluded)o.traverse(child=>{if(child.geometry)guides.add(child.geometry);});});
+ assert.ok(guides.has(T.spark.geometry)&&guides.has(T.liveHalo.geometry));
+ const inventory=createPartExplosion(m,frameModel(m,1).camera);
+ assert.equal(inventory.categories.length,7);inventory.root.traverse(o=>{if(o.geometry)assert.ok(!guides.has(o.geometry),'Transient spark/current guide must not become an inventory piece');});
+ inventory.update(1);assert.equal(inventory.root.children.at(-1).visible,false,'No leader-line web at full separation');inventory.dispose();
+}
+const card=label=>m.getState().readings.find(r=>r.label===label).value;
+m.actions[1].run();assert.equal(card('Plug A gap voltage'),'-16.3 V');assert.equal(card('Plug A current'),'0 mA');
+m.actions[2].run();assert.equal(card('Plug A current'),'63 mA');assert.equal(card('Plug A power'),'39.7 W');assert.equal(card('Observation progress'),'17.5%');
+m.actions[3].run();assert.match(card('Plug A current'),/^-/);assert.match(card('Plug A gap voltage'),/^-/);assert.equal(card('Plug A power'),'6.79 W');
+m.update({width:3.5});assert.equal(card('Relative gap width'),'3.5×');assert.equal(card('Strike requirement'),'875 V');
+m.update({width:4});assert.equal(card('Strike requirement'),'1 kV');m.reset();m.advance(8);assert.equal(card('Plug A delivered energy'),'86.4 mJ');
+
 const geometries=new Set();m.root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);});let disposed=0;for(const g of geometries)g.addEventListener('dispose',()=>disposed++);m.dispose();assert.equal(disposed,geometries.size);
 console.log(JSON.stringify({grid,maxEnergyError,maxConnectedPeak,maxAEnergy,otherEvents,reverseEvents,nonzeroNoDischarge,refinement,presets,framePartitions:partitions.length*3,views,defaultA:defaultEnd.sparkEnergies[0],narrowA:narrow.sparkEnergies[0],wideA:wide.sparkEnergies[0]},null,2));

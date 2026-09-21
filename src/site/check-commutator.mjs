@@ -3,7 +3,7 @@ import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
 
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
-const evidence=new URL('../../documentation/audit/evidence/commutator/',import.meta.url);await mkdir(evidence,{recursive:true});
+const evidence=new URL(process.env.COMMUTATOR_EVIDENCE||'../../documentation/audit/evidence/commutator/',import.meta.url);await mkdir(evidence,{recursive:true});
 page.on('pageerror',error=>errors.push(error.message));
 const readings=()=>page.locator('.daily-readings').textContent();
 const speed=async()=>Number((await readings()).match(/Shaft speed(-?[\d.]+) rpm/)[1]);
@@ -38,6 +38,7 @@ try{
 
  await page.getByRole('button',{name:'Reset experiment',exact:true}).click();await focused();assert.equal(await speed(),0);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:new URL('mobile.png',evidence).pathname,fullPage:true});
+ await page.locator('[data-labels]').check();await page.locator('button[data-label-part="commutator-sleeve"]').click();await page.locator('[data-labels]').uncheck();await page.locator('[data-isolate]').check();assert.equal(await page.locator('.daily-part-detail h3').textContent(),'Insulating commutator sleeve');await page.locator('canvas').screenshot({path:new URL('isolated-sleeve.png',evidence).pathname});const held=await readings();await page.locator('h1').click();assert.equal(await page.locator('.daily-part-detail h3').count(),0);assert.equal(await readings(),held,'deselecting sleeve changes no physics');await page.locator('[data-labels]').check();await page.locator('button[data-label-part="commutator"]').click();await page.locator('[data-labels]').uncheck();await page.locator('[data-isolate]').uncheck();await focused();console.log('PASS selectable hollow sleeve and outside-click return to whole mechanism');
  await page.getByRole('link',{name:'Direct-current motor →',exact:true}).click();await page.getByRole('heading',{name:'Direct-current motor',exact:true}).waitFor();
  assert.deepEqual(errors,[]);console.log('PASS reset focus, mobile, parent navigation and no browser errors');
 }finally{await browser.close();}

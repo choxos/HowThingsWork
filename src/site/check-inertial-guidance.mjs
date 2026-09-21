@@ -1,0 +1,49 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {inertialGuidanceLesson as lesson} from './inertial-guidance-lesson.js';
+
+const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+page.setDefaultTimeout(10000);
+const evidence=new URL(process.env.INERTIAL_GUIDANCE_EVIDENCE||'../../documentation/audit/evidence/inertial-guidance/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
+const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
+const scalar=async label=>parseFloat(await reading(label));
+const vector=async label=>(await reading(label)).match(/[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?/gi).slice(0,3).map(Number);
+const control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
+const near=(actual,expected,tolerance=.000006)=>assert.ok(Number.isFinite(actual)&&Math.abs(actual-expected)<=tolerance,`${actual} differs from ${expected}`);
+const shown=n=>Math.abs(n)<1e-6?0:Number(n.toPrecision(3));
+const nearVector=(actual,expected)=>{assert.equal(actual.length,3);actual.forEach((n,i)=>near(n,shown(expected[i])));};
+const frames=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))));
+const shot=name=>page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true});
+const stageTimes=[0,2,6,10,12,20],stageNames=['Inspect the start (0 s)','Inspect the positive pulse (2 s)','Inspect coasting (6 s)','Inspect the negative pulse (10 s)','Inspect after the pulses (12 s)','Inspect the final estimate (20 s)'];
+const inspect=i=>page.getByRole('button',{name:stageNames[i],exact:true}).click();
+// Independent primitives for the declared two-pulse trajectory, not application imports.
+const H=s=>s<=0?0:s>=4?2:s/2-Math.sin(Math.PI*s/2)/Math.PI;
+const P=s=>s<=0?0:s>=4?2*s-4:s*s/4+2*(Math.cos(Math.PI*s/2)-1)/(Math.PI*Math.PI);
+function reference(v,t){
+ const shape=t<4?Math.sin(Math.PI*t/4)**2:t>=8&&t<12?-(Math.sin(Math.PI*(t-8)/4)**2):0;
+ const a=[0,0,0],velocity=[2,0,0],position=[2*t,0,0];a[v.axis]=v.amplitude*shape;velocity[v.axis]+=v.amplitude*(H(t)-H(t-8));position[v.axis]+=v.amplitude*(P(t)-P(t-8));
+ const ep=v.initialVelocityError*t+.5*v.bias*t*t,ev=v.initialVelocityError+v.bias*t;
+ return {a,velocity,position,ep,ev,measured:[a[0]+v.bias,a[1],a[2]+9.80665],estimatedAcceleration:[a[0]+v.bias,a[1],a[2]],estimatedVelocity:[velocity[0]+ev,velocity[1],velocity[2]],estimatedPosition:[position[0]+ep,position[1],position[2]]};
+}
+async function compare(v,t){
+ const r=reference(v,t);near(await scalar('Observation time'),t);near(await scalar('Observation progress'),5*t,.06);
+ for(const [label,expected] of [['Gravity correction',[0,0,-9.80665]],['Estimated acceleration',r.estimatedAcceleration],['True velocity',r.velocity],['Estimated velocity',r.estimatedVelocity],['True position',r.position],['Estimated position',r.estimatedPosition],['Position error',[r.ep,0,0]],['Velocity error',[r.ev,0,0]],['Entered initial velocity',[2+v.initialVelocityError,0,0]]])nearVector(await vector(label),expected);
+ for(const [i,label] of ['East specific force','North specific force','Up specific force'].entries())near(await scalar(label),shown(r.measured[i]));near(await scalar('East position error'),shown(r.ep));near(await scalar('East velocity error'),shown(r.ev));
+ return {time:t,truePosition:await reading('True position'),estimatedPosition:await reading('Estimated position'),estimatedVelocity:await reading('Estimated velocity'),eastPositionError:await scalar('East position error'),eastVelocityError:await scalar('East velocity error'),upSpecificForce:await scalar('Up specific force')};
+}
+async function preset(i){await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.getByRole('button',{name:'Set up this experiment',exact:true}).nth(i).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();for(const [key,value] of Object.entries(lesson.tryIt[i].values))assert.equal(Number(await control(key).inputValue()),value);await compare(lesson.tryIt[i].values,0);}
+try{
+ await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:4177/'}#machine/inertial-guidance`);await page.getByRole('heading',{name:'Inertial guidance',exact:true}).waitFor();assert.equal(await page.locator('[data-control]').count(),4);assert.equal(lesson.tryIt.length,11);await shot('initial');
+ const trials=[];for(let i=0;i<lesson.tryIt.length;i++){await preset(i);const rows=[];for(let j=0;j<stageTimes.length;j++){await inspect(j);rows.push(await compare(lesson.tryIt[i].values,stageTimes[j]));if([1,5,10].includes(i)&&[1,3,5].includes(j))await shot(`stage-${i}-${j}`);}trials.push(rows);await shot('experiment-'+i);console.log(`PASS experiment ${i+1}: ${lesson.tryIt[i].title}`);}
+ assert.equal(trials[10][3].eastPositionError,-5);near(trials[10][5].eastPositionError,0);near(trials[10][5].eastVelocityError,1);
+ const allControls=[];for(let axis=0;axis<3;axis++)for(const amplitude of [0,.5,1,1.5,2])for(const bias of [-.1,-.05,0,.05,.1])for(const initialVelocityError of [-1,-.5,0,.5,1]){const v={axis,amplitude,bias,initialVelocityError};await control('axis').selectOption(String(axis));for(const key of ['amplitude','bias','initialVelocityError'])await number(key).fill(String(v[key]));await compare(v,0);await inspect(5);allControls.push({values:v,...await compare(v,20)});if(allControls.length%75===0)console.log(`PASS control settings ${allControls.length}/375`);}
+ await preset(10);await page.locator('[data-step]').click();await compare(lesson.tryIt[10].values,.2);await page.locator('[data-play]').click();await frames();await page.locator('[data-play]').click();const held=await page.locator('.daily-readings').textContent();await frames();assert.equal(await page.locator('.daily-readings').textContent(),held);
+ await preset(10);await page.locator('[data-play]').click();await page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:60000});await compare(lesson.tryIt[10].values,20);await page.locator('[data-result]').click();await compare(lesson.tryIt[10].values,20);await shot('result');await page.locator('[data-play]').click();await frames();await page.locator('[data-play]').click();const replayTime=await scalar('Observation time');assert.ok(replayTime>0&&replayTime<2);assert.ok((await reading('Your result')).includes('Scheduled positive pulse'));
+ for(const [key,value] of Object.entries({axis:1,amplitude:.5,bias:-.05,initialVelocityError:.5})){await inspect(5);if(key==='axis')await control(key).selectOption(String(value));else await number(key).fill(String(value));near(await scalar('Observation time'),0);near(await scalar('East position error'),0);}
+ await page.getByRole('button',{name:'Reset experiment',exact:true}).click();for(const [key,value] of Object.entries(lesson.tryIt[0].values))assert.equal(Number(await control(key).inputValue()),value);await compare(lesson.tryIt[0].values,0);await number('amplitude').focus();await page.keyboard.press('ArrowDown');near(Number(await number('amplitude').inputValue()),.5);near(await scalar('Observation time'),0);
+ await preset(5);await inspect(1);const inspectionState=await page.locator('.daily-readings').textContent();for(const name of ['Inspect the sensor platform','Inspect the calculation chain','Inspect the force gauges','Inspect the gravity correction','Inspect the velocity integration','Inspect the position integration','Inspect the navigation tracks','Inspect the error record']){await page.getByRole('button',{name,exact:true}).click();assert.equal(await page.locator('.daily-readings').textContent(),inspectionState);await shot(name.toLowerCase().replaceAll(' ','-'));}
+ await page.getByRole('checkbox',{name:'Look inside',exact:true}).uncheck();assert.equal(await page.locator('.daily-readings').textContent(),inspectionState);await shot('exterior');await page.getByRole('checkbox',{name:'Look inside',exact:true}).check();assert.equal(await page.locator('.daily-readings').textContent(),inspectionState);await page.locator('[data-labels]').check();assert.ok(await page.locator('[data-label-part]').count()>3);await shot('labels');await page.locator('[data-labels]').uncheck();await page.getByRole('button',{name:lesson.quiz.options[lesson.quiz.answer],exact:true}).click();await page.getByText(/That’s right/).waitFor();
+ await page.setViewportSize({width:390,height:844});for(const i of [1,4,5,6,8,10]){await preset(i);await inspect(3);await compare(lesson.tryIt[i].values,10);await shot('mobile-middle-'+i);await page.getByRole('button',{name:'Inspect the error record',exact:true}).click();await compare(lesson.tryIt[i].values,10);await shot('mobile-error-'+i);await inspect(5);await compare(lesson.tryIt[i].values,20);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await shot('mobile-result-'+i);}
+ assert.deepEqual(errors,[]);const report={passed:true,trials,allControls,replayTime,checks:'eleven complete presets at six stages; all375 control settings fresh/final against independent kinematic reference; measured force/gravity/velocity/position/error; signed/cancellation cases; actual12s display /20s physical play, pause, step, edit, reset, replay and result; state-preserving part inspection and cutaway; labels, keyboard, quiz and phone'};await writeFile(new URL('browser-results.json',evidence),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({passed:true,experiments:11,controls:375,checks:report.checks},null,2));
+}finally{await browser.close();}
