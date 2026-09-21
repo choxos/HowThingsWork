@@ -21,11 +21,11 @@ function outlinePoints({teeth, module, pressureAngle, outer, inner, samples, off
   let top = outer;
   while (halfAt(top) < 0.02 / teeth && top > pitch) top -= module * 0.02;
   const flank = [];
-  const lowest = Math.min(inner, base);
+  const lowest = Math.max(inner, base);
   if (inner < base) flank.push([inner, halfAtBase]);
   for (let j = 0; j <= samples; j++) {
-    const r = Math.max(lowest, base) + (top - Math.max(lowest, base)) * j / samples;
-    if (r >= inner) flank.push([r, halfAt(r)]);
+    const r = lowest + (top - lowest) * j / samples;
+    flank.push([r, halfAt(r)]);
   }
   const points = [];
   for (let k = 0; k < teeth; k++) {

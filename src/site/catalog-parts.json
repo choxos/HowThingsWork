@@ -524,6 +524,33 @@
       "parentId": "system"
     }
   ],
+  "mechanical-clock": [
+    {
+      "id": "case",
+      "name": "Case and movement supports",
+      "parentId": "system"
+    },
+    {
+      "id": "movement",
+      "name": "Clock movement",
+      "parentId": "system"
+    },
+    {
+      "id": "pendulum",
+      "name": "Pendulum and rating nut",
+      "parentId": "system"
+    },
+    {
+      "id": "weight",
+      "name": "Driving weight and cord",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Temperature comparison",
+      "parentId": "system"
+    }
+  ],
   "rack-and-pinion-corkscrew": [
     {
       "id": "bottle",

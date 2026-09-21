@@ -113,14 +113,14 @@ export const publishedEntryIds = [
   "vacuum-flask",
   "toaster",
   "refrigerator",
-  "refrigerant-compressor"
+  "refrigerant-compressor",
+  "mechanical-clock"
 ];
 
 // Built but not yet published. Only a dev server started with
 // VITE_PREVIEW_UNPUBLISHED=1 routes them; production builds and the Node checks
 // never see that flag, so publishedEntryIds above stays the only public gate.
 export const previewEntryIds = [
-  "mechanical-clock",
   "anchor-escapement",
   "mechanical-watch",
   "lever-escapement",
