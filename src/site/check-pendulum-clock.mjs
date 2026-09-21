@@ -84,14 +84,27 @@ export async function checkPendulumClock(page, {base = process.env.SITE_URL || '
       assert.equal(await reading('Your result').innerText(), 'Loses 6.99 s/day');
       await tools.getByRole('button', {name:'Controls',exact:true}).click();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await checkVisibleTemperatureChart(page);
       await page.screenshot({path:output + '/phone-' + viewport.width + '.png'});
     }
     const interactions = await checkClockInteractions(page, output);
     assert.deepEqual(errors, []);
-    const report = {passed:true,base,presets,actions,pause:true,step:true,minuteCompletion:true,replay:true,zoomButtons:true,outsideDrag:true,wheelSeparation:true,mobileWidths:[390,320],interactions,errors};
+    const report = {passed:true,base,presets,actions,pause:true,step:true,minuteCompletion:true,replay:true,zoomButtons:true,outsideDrag:true,wheelSeparation:true,mobileWidths:[390,320],mobileTemperatureChart:true,interactions,errors};
     await writeFile(output + '/browser.json', JSON.stringify(report,null,2) + '\n');
     return report;
   } finally { page.off('pageerror', onError); }
+}
+
+export async function checkVisibleTemperatureChart(page) {
+  const canvas = page.locator('canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  // The warm-steel marker remains on the chart after the Controls shortcut clears selection.
+  await page.mouse.move(box.x + box.width * .84, box.y + box.height * .48);
+  const popup = page.locator('.daily-part-popup');
+  assert.equal(await popup.isVisible(),true,'Temperature chart remains drawn after changing tabs');
+  assert.equal(await popup.innerText(),'Temperature comparison');
+  await page.mouse.move(0,0);
 }
 
 export async function checkClockInteractions(page, output) {

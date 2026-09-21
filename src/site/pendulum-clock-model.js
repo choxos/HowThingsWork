@@ -134,7 +134,7 @@ export function createPendulumClockModel() {
   const cord = lineObject(51, 0x374736, weight);
 
   const chart = part('chart', 'Temperature comparison', 'Rate change relative to the same clock at 20 °C. Labeled axes show temperature and seconds gained or lost per day. This comparison panel is not a physical clock part.', [0, 0, 0], system);
-  chart.userData.explosionExcluded = true; chart.userData.inspectionOnly = 'chart';
+  chart.userData.explosionExcluded = true;
   function label(text, x, y, width, parent = chart, height = 13, color = '#394233') {
     const canvas = typeof document === 'undefined' ? null : document.createElement('canvas'); let texture, ctx;
     if (canvas) { canvas.width = 1024; canvas.height = Math.round(1024 * height / width); ctx = canvas.getContext('2d'); texture = new THREE.CanvasTexture(canvas); }
