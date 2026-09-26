@@ -41,7 +41,7 @@ export function createFeedbackMechanismModel(){
  const m=houseModel('Feedback mechanism'),{part,box,cylinder,sphere,ring,rod,control,finish}=m,U=C.unit,tankWidth=6.6,tankDepth=C.tankArea/(tankWidth*U*U),pivotX=1.5,longArm=5,shortArm=1.6,valveX=3.25,floatRadius=.32,floatOffset=.1;
  const system=part('system','Float feedback loop','Water level moves the float, rigid rocker and slotted follower; the needle changes inlet flow, which changes stored water.');
  const board=part('board','Demonstration base','Illustrative dimensions: one scene unit is 60 mm.',[0,0,0],system);box([10.6,.15,3.1],[0,-1.7,0],'wood',board);
- const tank=part('tank','Water storage tank','0.055 m² plan area, 300 mm rim, flat bottom. The downstream metering pump imposes withdrawal.',[0,0,0],system);
+ const tank=part('tank','Water storage tank',`${C.tankArea} m² plan area, ${C.rim*1000} mm rim, flat bottom. The downstream metering pump imposes withdrawal.`,[0,0,0],system);
  box([tankWidth+.12,.12,tankDepth+.12],[-.8,-.06,0],'cream',tank);box([tankWidth+.12,5,.08],[-.8,2.5,-tankDepth/2-.04],'cream',tank);for(const x of [-4.16,2.56])box([.12,5,tankDepth],[x,2.5,0],'cream',tank);
  for(const x of [-3.7,2.1])for(const z of [-.8,.8])rod([x,-.12,z],[x,-1.625,z],.07,'ink',tank);
  const cover=part('tank-front','Removable tank front','Look inside removes the opaque front wall and exposes the moving float and water.',[0,0,0],tank);box([tankWidth+.12,5,.08],[-.8,2.5,tankDepth/2+.04],'cream',cover);m.covers.push(cover);
@@ -91,7 +91,7 @@ export function createFeedbackMechanismModel(){
    r('Overflow now',`${fmt(s.overflowFlow*1000)} L/s`,'Surplus spills only at the 300 mm rim. Include this separate outgoing stream when comparing inflow with withdrawal.'),
    r('Unmet withdrawal',`${fmt(s.unmetFlow*1000)} L/s`,'Requested rate minus delivered rate. A positive value means the empty tank cannot supply the full request.'),
    r('Initial water',`${fmt(s.initialVolume*1000)} L`,'Starting storage, 60 mm below the chosen shutoff mark. Each control edit begins a fresh trial.'),
-   r('Stored water',`${fmt(s.storedVolume*1000)} L`,'Current volume equals the 0.055 m² tank area multiplied by water depth. The tank holds at most 16.5 L.'),
+   r('Stored water',`${fmt(s.storedVolume*1000)} L`,`Current volume equals the ${C.tankArea} m² tank area multiplied by water depth. The tank holds at most ${fmt(C.tankArea*C.rim*1000)} L.`),
    r('Admitted water',`${fmt(s.inletVolume*1000)} L`,'Total inlet water accumulated since the trial began, including water later delivered or spilled.'),
    r('Delivered water',`${fmt(s.withdrawnVolume*1000)} L`,'Total water supplied to the downstream request since withdrawal began at 120 seconds.'),
    r('Overflowed water',`${fmt(s.overflowVolume*1000)} L`,'Total surplus that crossed the rim. It remains in the accounting even after leaving the tank.'),
