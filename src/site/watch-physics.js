@@ -21,7 +21,7 @@ import {validateControls, validTime} from './physics-kit.js';
 // size: E changes by its thermoelastic coefficient a degree, and w, t and l all
 // grow by its expansion, so kappa gains three of them less one. The balance's
 // inertia gains two of its own. Carbon steel's modulus falls 240 millionths a
-// degree; Nivarox's rises 6 millionths, nearly cancelling the rest.
+// degree; Nivarox's rises 6 millionths, nearly canceling the rest.
 //
 // The mainspring. Fully wound, its barrel gives 0.012 N m, falling steadily to
 // 40% of that after 42 hours and to nothing two hours later, while the barrel

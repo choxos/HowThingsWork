@@ -37,8 +37,8 @@ import {validateControls, validTime, clamp} from './physics-kit.js';
 // tension, radiation from the sun, and the slow creep of glass after heating.
 
 export const LIQUIDS = Object.freeze([
-  Object.freeze({value: 0, label: 'Mercury', expansion: 1.81e-4, density: 13534, heat: 140, freezes: -38.83}),
-  Object.freeze({value: 1, label: 'Colored alcohol', expansion: 1.09e-3, density: 789, heat: 2440, freezes: -114}),
+  Object.freeze({value: 0, label: 'Mercury', expansion: 1.81e-4, density: 13534, heat: 140, freezes: -38.83, boils: 356.7}),
+  Object.freeze({value: 1, label: 'Colored alcohol', expansion: 1.09e-3, density: 789, heat: 2440, freezes: -114, boils: 78.4}),
 ]);
 export const MEDIA = Object.freeze([
   Object.freeze({value: 0, label: 'Still air', transfer: 10}),

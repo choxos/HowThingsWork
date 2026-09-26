@@ -9,7 +9,7 @@ const chartTrial = trial(QUARTZ_CLOCK_DEFAULTS, 'chart', 'front');
 const watchTrial = trial(KINETIC_DEFAULTS, 'system', 'front');
 const storeTrial = trial(KINETIC_DEFAULTS, 'chart', 'front');
 
-const clockLimits = 'Illustrative quartz clock: a quartz tuning fork of 0.25 mm tines cut to ring at 32,768 Hz at 25 °C, slowing by 0.034 parts per million for each degree squared away from it, with a quality factor of 60,000 and a trimming capacitor worth a few parts per million. Fifteen halvings, a stepping motor turning half a turn a pulse and gears of 30 to 1. The motor draws 3 mA for 32 ms each second and the circuit 10 µA from a 2,400 mAh AA cell. A quartz plate 1 cm square and 1 mm thick shows the piezoelectric effect at 2.31 pC a newton. Not modeled: aging, the drive level, the motor’s magnetics and the battery’s falling voltage. The clock runs in real time.';
+const clockLimits = 'Illustrative quartz clock: a quartz tuning fork of 0.25 mm tines cut to ring at 32,768 Hz at 25 °C, slowing by 0.034 parts per million for each degree squared away from it, with a quality factor of 60,000 and a trimming capacitor worth a few parts per million. Fifteen halvings, a stepping motor turning half a turn a pulse and gears of 30 to 1. The motor draws 3 mA for 32 ms each second and the circuit 10 µA from a 2,400 mAh AA cell. A quartz plate 1 cm square and 1 mm thick shows the piezoelectric effect at 2.31 pC a newton. Not modeled: aging, the drive level, the motor’s magnetics, the battery’s falling voltage, and the leakage that lets a squeezed plate’s charge drain away once the squeeze stops changing. The clock runs in real time.';
 const kineticLimits = 'Illustrative kinetic watch: the movement draws 0.3 mA for 5 ms each second and 0.1 µA more, at 1.5 V, from a 5 mAh rechargeable store. While worn it harvests 2 µW at a desk, 10 µW walking and 30 µW running, averaged over the day. The quartz slows by 0.034 parts per million for each degree squared from 25 °C. Not modeled: the rotor’s real motion, the generator’s gearing and losses, the store’s charging efficiency and self-discharge, and the hour-by-hour pattern of wear. Thirty days play a day a second.';
 const clockSources = [
   {title: 'OpenStax College Physics 2e: simple harmonic motion and resonance', url: 'https://openstax.org/books/college-physics-2e/pages/16-8-forced-oscillations-and-resonance'},
@@ -86,7 +86,7 @@ export const quartzOscillatorLesson = {
   ],
   deeper: [
     {title: 'A beam that rings', body: 'Each tine is a cantilever. Its first way of bending rings at a frequency that grows with its thickness and falls with the square of its length, so halving the length would quadruple the frequency.'},
-    {title: 'Quality factor', body: 'A ring dies away over Q divided by pi times the frequency: 0.583 s for this fork, though it swings 32,768 times each second. A mechanical watch’s balance, with a Q of a few hundred, loses its swing in seconds.'},
+    {title: 'Quality factor', body: 'A ring dies away over Q divided by pi times the frequency: 0.583 s for this fork, though it swings 32,768 times each second. A mechanical watch’s balance, with a Q of a few hundred, loses its swing within a minute.'},
   ],
   misconception: 'The electronics do not decide the frequency. They only keep the crystal ringing; the crystal’s shape and material decide the pace.',
   limits: clockLimits,

@@ -250,7 +250,7 @@ export const opticalReadoutLesson = {
   parts: [
     {name: 'Laser pickup, opened out', role: 'The laser, lenses, beam splitter and photodetector.'},
     {name: 'Spot on the track, close up', role: 'The focused spot and its dark rings over the tracks.'},
-    {name: 'A pit, cut open', role: 'Light off a pit and off the land, cancelling.'},
+    {name: 'A pit, cut open', role: 'Light off a pit and off the land, canceling.'},
     {name: 'Light sent back', role: 'What the photodetector measures as the pits pass.'},
   ],
   tryIt: [

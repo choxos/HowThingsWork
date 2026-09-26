@@ -99,7 +99,7 @@ export const anchorEscapementLesson = {
   ],
   deeper: [
     {title: 'Why this one does not recoil', body: 'This is a Graham deadbeat anchor. Its locking faces are concentric with the anchor pivot, so they hold the wheel still as the pendulum continues. A recoil anchor uses different faces and can push the wheel backward.'},
-    {title: 'Detached from the pendulum', body: 'The anchor touches the escape wheel all the time, so its friction and push disturb the pendulum a little. Better escapements such as the deadbeat, used in precision regulators, lock without recoil and push only briefly near the middle of the swing.'},
+    {title: 'Never quite free', body: 'Even a deadbeat anchor touches the escape wheel for most of each swing: a tooth rests on a locking face while the pendulum carries on, and that rubbing takes a little from the swing and disturbs its timing a little. The lever escapement of a watch goes further: it touches the balance only near the middle of each swing and leaves it free for the rest, which is why it is called detached.'},
     {title: 'Half a tooth per beat', body: 'With a pendulum beating seconds and a 30-tooth escape wheel, the wheel turns once a minute, which is why the seconds hand can sit straight on its arbor.'},
   ],
   misconception: 'The escapement does not keep time on its own. It only releases the wheels when the pendulum allows; lengthen the pendulum and the escapement simply follows.',

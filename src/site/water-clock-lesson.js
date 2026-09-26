@@ -33,7 +33,7 @@ export const waterClockLesson = {
   ],
   deeper: [
     {title: 'Torricelli’s law', body: 'Water falls out of a hole as fast as if it had dropped from the surface: from a full pot 400 mm deep, at 2.80 m/s. As the level drops, so does the speed, which is why a straight pot slows down.'},
-    {title: 'The Egyptian answer', body: 'If a round pot’s radius grows as the fourth root of the height, its area grows as the square root, exactly cancelling the square root in the outflow speed. Water clocks shaped like this survive from Karnak, over three thousand years old.'},
+    {title: 'The Egyptian answer', body: 'If a round pot’s radius grows as the fourth root of the height, its area grows as the square root, exactly canceling the square root in the outflow speed. The water clock from Karnak, over three thousand years old, flares upward with straight sloping sides, an approximation to that curve.'},
     {title: 'A constant head', body: 'Ctesibius kept his supply tank overflowing, so the depth pushing water through the tube never changed. That made the flow steady, and his clocks could drive pointers, bells and moving figures.'},
     {title: 'Why a narrow tube feels the cold', body: 'Smooth flow through a narrow tube goes as the fourth power of its width and inversely as the water’s viscosity. Water at 5 °C is about twice as thick as at 35 °C, so an inflow clock needed adjusting with the seasons.'},
   ],
