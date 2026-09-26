@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {neighborhoodCatalog} from './published-catalog.js';
+import {houseComponents} from './house-components.js';
 
 const base=process.env.SITE_URL||'http://127.0.0.1:5193/';
 const out=process.env.EVIDENCE_DIR||'documentation/audit/evidence/part-name-popups-20260919';
@@ -18,6 +19,8 @@ async function findPart(page,separated=false){
   }
  }
  for(const y of [.5,.35,.65,.2,.8,.1,.9])for(const x of [.5,.35,.65,.2,.8,.1,.9])points.push([box.x+box.width*x,box.y+box.height*y]);
+ // Thin parts (a clock's rod and dial ring seen at an angle) can slip between those points; then try a finer grid.
+ for(let j=1;j<32;j++)for(let i=1;i<32;i++)points.push([box.x+box.width*i/32,box.y+box.height*j/32]);
  for(const [x,y] of points){
   if(x<box.x||x>box.x+box.width||y<box.y||y>box.y+box.height)continue;
   if(!await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.tagName==='CANVAS',{x,y}))continue;
@@ -36,8 +39,10 @@ try{
  page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(15000);
  await page.goto(base+'#list');
  for(const entry of neighborhoodCatalog.entries){
-  await page.evaluate(id=>location.hash='machine/'+id,entry.id);
-  await page.waitForFunction(name=>document.querySelector('.daily-heading h1')?.textContent===name&&document.querySelector('.daily-part-popup'),entry.name);
+  // A few entries open their machine's page (redirectTo), sometimes the page just checked; wait for it to be drawn afresh.
+  const shown=neighborhoodCatalog.entries.find(item=>item.id===(houseComponents[entry.name]?.redirectTo||entry.id));
+  await page.evaluate(id=>{document.querySelector('.daily-heading h1')?.setAttribute('data-left','');location.hash='machine/'+id;},entry.id);
+  await page.waitForFunction(name=>{const heading=document.querySelector('.daily-heading h1');return heading?.textContent===name&&!heading.hasAttribute('data-left')&&document.querySelector('.daily-part-popup');},shown.name);
   const knownNames=new Set(await page.locator('.daily-model-label').allTextContents());
   for(const separated of [false,true]){
    await page.locator('[data-view="reset"]').click();

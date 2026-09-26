@@ -36,7 +36,7 @@ if(process.env.MODEL_ONLY!=='1'){
    const page=await browser.newPage({viewport:{width,height:width===390?844:1000},reducedMotion:'reduce'});page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'#machine/feed-dog');await page.locator('[data-play]').waitFor();
    const reading=label=>page.locator('.daily-readings>div').filter({has:page.locator('dt',{hasText:new RegExp('^'+label+'$')})}).locator('dd');
    const values=async()=>Object.fromEntries(await page.locator('[data-control]').evaluateAll(es=>es.map(e=>[e.dataset.control,Number(e.value)])));
-   const capture=async name=>{await page.mouse.move(0,0);await page.locator('canvas').evaluate(c=>c.scrollIntoView({block:'start',behavior:'instant'}));await page.waitForTimeout(150);return page.screenshot({path:`${out}/${name}-${width}.png`,clip:await page.locator('canvas').boundingBox()});};
+   const capture=async name=>{await page.mouse.move(0,0);await page.locator('canvas').evaluate(c=>{scrollTo({top:0,behavior:'instant'});c.scrollIntoView({block:'center',behavior:'instant'})});await page.waitForTimeout(150);return page.screenshot({path:`${out}/${name}-${width}.png`,clip:await page.locator('canvas').boundingBox()});};
    const setup=async index=>{await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.locator(`[data-experiment="${index}"]`).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();};
    assert.equal(await page.locator('.daily-part-path [data-parent]').last().getAttribute('data-parent'),'feed-bar');assert.equal(await page.locator('[data-isolate]').isChecked(),true);await capture('opening');await page.locator('[data-view="top"]').click();await capture('two-rows');
    for(const [index,preset] of lesson.tryIt.entries()){

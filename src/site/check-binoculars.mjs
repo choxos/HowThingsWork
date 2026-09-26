@@ -39,7 +39,9 @@ try{
  }
  await preset(6);await inspect(3);assert.equal(await page.locator('[data-result]').isDisabled(),true);
  await preset(0);await inspect(3);await page.locator('[data-result]').click();
- const imagePixels=await page.evaluate(()=>{const c=document.querySelector('canvas'),copy=new OffscreenCanvas(c.width,c.height),ctx=copy.getContext('2d');ctx.drawImage(c,0,0);const pixels=ctx.getImageData(0,0,c.width,c.height).data;let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>0&&pixels[i]>1.4*pixels[i+1]&&pixels[i+1]>1.3*pixels[i+2])count++;return count;});
+ // Count the cat in what the reader sees: the WebGL canvas keeps no drawing buffer, so reading it directly can return nothing.
+ const shown=(await page.locator('canvas').screenshot()).toString('base64');
+ const imagePixels=await page.evaluate(async png=>{const image=new Image();image.src='data:image/png;base64,'+png;await image.decode();const copy=new OffscreenCanvas(image.width,image.height),ctx=copy.getContext('2d');ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data;let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>0&&pixels[i]>1.4*pixels[i+1]&&pixels[i+1]>1.3*pixels[i+2])count++;return count;},shown);
  assert.ok(imagePixels>1500,'Real-image inspection must show a recognizable cat, not an edge-on speck: '+imagePixels);
  await sceneShot({path:new URL('image-closeup.png',evidence).pathname});
  await page.locator('[data-control="eyepiece"]').focus();await page.keyboard.press('ArrowRight');assert.equal(Number(await page.locator('[data-control="eyepiece"]').inputValue()),50);near((await read())['Paraxial magnification'],4);

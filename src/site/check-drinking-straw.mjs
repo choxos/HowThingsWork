@@ -50,8 +50,9 @@ export async function checkDrinkingStraw(page,{base,dir,prefix='local',widths=[1
  }
  if(playback)for(const i of [0,2,3,5]){
   await preset(page,i);const values=lesson.tryIt[i].values;await page.locator('[data-step]').click();compare(await readings(page),values,.01);
-  await page.locator('[data-play]').click();await page.waitForFunction(()=>parseFloat([...document.querySelectorAll('.daily-readings>div')].find(n=>n.querySelector('dt').textContent==='Run clock').querySelector('dd').textContent)>.04);
-  await page.locator('[data-play]').click();assert.equal(await page.locator('[data-play]').getAttribute('aria-pressed'),'false');const held=await readings(page);await page.waitForTimeout(200);assert.deepEqual(await readings(page),held);
+  // A thin sip is over in half a second, so pause from inside the page as soon as the run is under way.
+  await page.locator('[data-play]').click();await page.waitForFunction(()=>{const running=parseFloat([...document.querySelectorAll('.daily-readings>div')].find(n=>n.querySelector('dt').textContent==='Run clock').querySelector('dd').textContent)>.04;if(running)document.querySelector('[data-play]').click();return running;});
+  assert.equal(await page.locator('[data-play]').getAttribute('aria-pressed'),'false');const held=await readings(page);await page.waitForTimeout(200);assert.deepEqual(await readings(page),held);
   await page.locator('[data-play]').click();await page.waitForFunction(()=>document.querySelector('[data-play]').getAttribute('aria-pressed')==='false',null,{timeout:20000});const ended=await readings(page);compare(ended,values,12);await shot(`continuous-${i}`);
   await page.locator('[data-result]').click();await page.locator('[data-play]').click();await page.waitForFunction(()=>parseFloat([...document.querySelectorAll('.daily-readings>div')].find(n=>n.querySelector('dt').textContent==='Run clock').querySelector('dd').textContent)<.1);await page.locator('[data-play]').click();
   for(const [key,value]of Object.entries(values))assert.equal(Number(await page.locator(`[data-control="${key}"]`).inputValue()),value);

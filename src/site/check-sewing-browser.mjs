@@ -46,6 +46,8 @@ try{
  await page.getByRole('button',{name:'Top',exact:true}).click();
  await page.screenshot({path:'/tmp/howthingswork-sewing-corner.png',fullPage:true});
  await page.goto(`${base}#machine/lockstitch`);await page.getByRole('button',{name:'Next stitch stage',exact:true}).waitFor();
+ // The sewing machine page has the same button; wait for the lockstitch page itself before reading its overview.
+ await page.getByRole('heading',{name:'Lockstitch',level:1,exact:true}).waitFor();
  assert.match(await page.locator('.daily-overview').textContent(),/needle carries upper thread/);
  assert.equal(await page.locator('.daily-part-path [data-parent]').last().getAttribute('data-parent'),'stitch-formation');assert.equal(await page.getByRole('checkbox',{name:'Isolate selected part',exact:true}).isChecked(),true);
  for(let i=0;i<3;i++)await page.getByRole('button',{name:'Next stitch stage',exact:true}).click();

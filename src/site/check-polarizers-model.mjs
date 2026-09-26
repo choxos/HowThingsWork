@@ -298,8 +298,10 @@ for (const material of [0, 1]) {
       t.ok(pol.topology.glare.visible && !pol.topology.train.visible, 'the glare bench is the one drawn');
       t.ok(pol.topology.glasses.visible, 'the glasses are in the beam');
       const bars = pol.topology.glareBars;
-      near(bars[0].scale.x, Math.max(0.00001, optics.reflectedPower), 1e-9, 'the first bar is the whole reflection');
-      near(bars[1].scale.x, Math.max(0.00001, optics.glareOutput), 1e-9, 'the second is what the glasses pass');
+      // The reflection before the glasses is the meter's 100 % reference; the
+      // second bar is the share of it the glasses pass.
+      near(bars[0].scale.x, optics.reflectedPower > 0 ? 1 : 0.00001, 1e-9, 'the first bar is the whole reflection');
+      near(bars[1].scale.x, optics.reflectedPower > 0 ? Math.max(0.00001, optics.glareOutput / optics.reflectedPower) : 0.00001, 1e-9, 'the second is the share the glasses pass');
       t.ok(bars[1].scale.x <= bars[0].scale.x + 1e-9, 'and the second is never the longer');
       counts.rays++;
     }

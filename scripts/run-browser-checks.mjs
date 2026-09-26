@@ -22,7 +22,8 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function serverIsUp() {
   try {
-    const response = await fetch(base, {signal: AbortSignal.timeout(2000)});
+    // A loaded machine can take many seconds to answer; waiting only 2 s called a working server dead.
+    const response = await fetch(base, {signal: AbortSignal.timeout(30000)});
     return response.ok;
   } catch {
     return false;
@@ -75,7 +76,9 @@ const run = name =>
     let output = '';
     child.stdout.on('data', chunk => (output += chunk));
     child.stderr.on('data', chunk => (output += chunk));
-    const timer = setTimeout(() => child.kill('SIGKILL'), 300000);
+    // Five minutes a check unless CHECK_TIMEOUT_MS says otherwise: the longest
+    // checks walk every preset at two widths and need more on a loaded machine.
+    const timer = setTimeout(() => child.kill('SIGKILL'), Number(process.env.CHECK_TIMEOUT_MS || 300000));
     child.on('close', code => {
       clearTimeout(timer);
       resolve({code, output});
