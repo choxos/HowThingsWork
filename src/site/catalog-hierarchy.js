@@ -2,6 +2,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 
 // A catalog group can contain several whole machines. These entries identify
 // components, close-up studies or alternate names for a published machine.
+// Every one of them is listed beneath that machine and shown in its room.
 export const componentParentIds = {
   'refrigerant-compressor': 'refrigerator',
   'siphon': 'toilet-tank',
@@ -72,26 +73,11 @@ export function groupCatalogEntries(entries, matches = entries) {
   });
 }
 
-// Only complete mechanisms belong beneath catalog rows. Individual materials,
-// geometry, passive parts, study topics, and alternate names remain in lessons.
-const nestedMachineIds = new Set([
-  "refrigerant-compressor",
-  "siphon",
-  "rotating-spray-arm",
-  "cylinder-lock-cam-and-bolt",
-  "feed-dog-lift-and-advance-linkages",
-  "rotary-sewing-hook",
-  "thread-take-up-lever",
-  "window-shade-pawls-and-locking-disk",
-  "electric-bell-pushbutton-switch",
-  "commutator",
-  "heated-extrusion-nozzle",
-  "horizontal-seismograph-pendulum",
-  "vertical-seismograph-pendulum",
-  "seismograph-recording-pen-and-moving-paper",
-  "inertial-accelerometer-armature-spring-and-coils"
-]);
-export const catalogMachineComponents = components => components.filter(entry => nestedMachineIds.has(entry.id));
+// What a scene pictures for an item: its machine, close up on the item's own part.
+export const previewOf = (entry, components) => {
+  const component = components[entry.name];
+  return {id: entry.id, name: component?.machine || entry.name, part: component?.part === 'system' ? undefined : component?.part};
+};
 
 // Part links stay inside an existing published lesson; they do not create new lessons.
 export const partHref = (entryId, partId) => `#machine/${entryId}?part=${encodeURIComponent(partId)}`;

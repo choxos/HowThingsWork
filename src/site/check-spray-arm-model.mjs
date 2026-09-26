@@ -6,7 +6,7 @@ import {rotatingSprayArmLesson as lesson} from './dishwasher-lessons.js';
 import {sampleWasher,BEARINGS} from './dishwasher-physics.js';
 import {tally,checkControlsMove,checkFinite,checkDisposal} from './model-check-kit.mjs';
 import {createPartExplosion} from './part-explosion.js';
-import {componentParentIds,catalogMachineComponents,groupCatalogEntries} from './catalog-hierarchy.js';
+import {componentParentIds,groupCatalogEntries} from './catalog-hierarchy.js';
 const t=tally(),m=createDishwasherModel({sprayArmLesson:true}),p=m.topology;
 const dir=process.env.EVIDENCE_DIR||'documentation/audit/evidence/rotating-spray-arm-20260921';await mkdir(dir,{recursive:true});
 const seen=o=>{for(;o;o=o.parent)if(!o.visible)return false;return true;};
@@ -55,5 +55,5 @@ for(const fps of [15,60,144]){m.reset();for(let i=0;i<=6*fps;i++)m.advance(1/fps
 m.reset();m.playback.step();t.near(m.getState().elapsed,.1,0,'Step advances a tenth of a second');for(const dt of [-1,NaN,Infinity,0])m.advance(dt);t.near(m.getState().elapsed,.1,0,'Invalid deltas ignored');
 for(const action of m.actions.filter(a=>a.group==='Run')){action.run();assert.equal(m.getState().elapsed,{'Pump startup':0,'After half a second':.5,'After one second':1,'Finish the trial':6}[action.label]);}
 m.reset();m.update({bearing:2});m.advance(1);const camera=new THREE.PerspectiveCamera(40,1,.01,100);camera.position.set(0,2,8);camera.lookAt(0,1,0);camera.updateMatrixWorld();const explosion=createPartExplosion(m,camera,1.2);explosion.update(1);const categories=explosion.categories.map(x=>x.id);assert.deepEqual(new Set(categories),new Set(['pump','spray-arm','spoon']));explosion.dispose();
-assert.equal(componentParentIds['rotating-spray-arm'],'dishwasher');const entries=[{id:'dishwasher',name:'Dishwasher'},{id:'rotating-spray-arm',name:'Rotating spray arm'}],families=groupCatalogEntries(entries);assert.equal(families.length,1);assert.equal(catalogMachineComponents(families[0].components)[0].id,'rotating-spray-arm');
+assert.equal(componentParentIds['rotating-spray-arm'],'dishwasher');const entries=[{id:'dishwasher',name:'Dishwasher'},{id:'rotating-spray-arm',name:'Rotating spray arm'}],families=groupCatalogEntries(entries);assert.equal(families.length,1);assert.equal(families[0].components[0].id,'rotating-spray-arm');
 const resources=checkDisposal(m,t),report={result:'PASS',trials:lesson.tryIt.length,states,trajectoryPoints,checks:t.count,resources,categories,scope:'Focused pump-on startup. Parent checker independently verifies hydraulics, angular-impulse quadratures and every numeric preset claim.'};await writeFile(dir+'/model.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

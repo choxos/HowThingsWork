@@ -157,7 +157,7 @@ export async function checkCrashSensorProofSquareAndSensingStripsBrowser() {
     await page.goto(`${process.env.SITE_URL || 'http://127.0.0.1:4177/'}#list`);
     await page.locator('#catalog-search').fill(name);
     const nested=page.locator(`.catalog-components button[data-entry="${slug}"]`);
-    assert.equal(await nested.count(),0,'Passive sensing parts are not catalog machines');
+    assert.equal(await nested.count(),1,'Every part is listed beneath its machine');
     assert.equal(await page.locator('td>button[data-entry="crash-sensor"]').count(),1);
     assert.equal(await page.locator(`td>button[data-entry="${slug}"]`).count(),0,'Component stays below its whole item');
     await page.screenshot({path:new URL('browser-nested-catalog-entry.png',evidence).pathname});

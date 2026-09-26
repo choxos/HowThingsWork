@@ -3,7 +3,7 @@
 export const scenePageSize = 3;
 export const sceneSurfaces = {
   workshop: [[26,47,20,22],[51,45,24,24],[83,56,20,24]],
-  discovery: [[46,35,20,28],[69,40,20,26],[85,54,22,26]],
+  discovery: [[46,35,20,28],[69,40,20,26],[85,54,22,26],[17,23,18,20],[64,15,20,22]],
   studio: [[18,37,22,30],[57,26,22,30],[82,55,24,22]],
   park: [[57,67,20,20],[25,59,23,22],[83,31,23,21]],
   river: [[50,89,32,18],[46,36,22,20],[62,42,22,20]],
@@ -35,3 +35,19 @@ export const sceneLocations = {
   'polarized-light': [82, 55, 24, 22],
   'liquid-crystal-display': [57, 26, 22, 30],
 };
+
+// Where each item on one page of a scene stands: its reviewed spot when it
+// clashes with no earlier item on the page, otherwise the first painted surface
+// that clashes with none. Two spots clash when either center falls inside the
+// other's box, where it could not be clicked, or when their labels, which sit
+// along each box's bottom edge, would meet.
+const overlaps = (a, b) => {
+  const dx = Math.abs(a[0] - b[0]), dy = Math.abs(a[1] - b[1]);
+  return (dx < Math.max(a[2], b[2]) / 2 && dy < Math.max(a[3], b[3]) / 2) || (dx < (a[2] + b[2]) / 2 && Math.abs(a[1] + a[3] / 2 - b[1] - b[3] / 2) < 10);
+};
+export function sceneSpots(placeId, ids) {
+  const spots = [], surfaces = sceneSurfaces[placeId], taken = spot => spots.some(other => other && overlaps(other, spot));
+  ids.forEach((id, i) => { if (sceneLocations[id] && !taken(sceneLocations[id])) spots[i] = sceneLocations[id]; });
+  ids.forEach((id, i) => { if (!spots[i]) spots[i] = surfaces.find(spot => !taken(spot)) || surfaces[i % surfaces.length]; });
+  return spots;
+}

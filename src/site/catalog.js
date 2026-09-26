@@ -1,5 +1,5 @@
 import {neighborhoodCatalog} from './published-catalog.js';
-import {groupCatalogEntries, inspectableParts, catalogMachineComponents} from './catalog-hierarchy.js';
+import {groupCatalogEntries, inspectableParts} from './catalog-hierarchy.js';
 import {zoomMarkup, bindZoom, disposeZoom} from './zoom.js';
 document.querySelectorAll('[data-entry-count]').forEach(node=>node.textContent=neighborhoodCatalog.entries.length);
 document.querySelectorAll('[data-group-count]').forEach(node=>node.textContent=neighborhoodCatalog.groups.length);
@@ -120,12 +120,12 @@ function renderResults() {
   const entries = filteredEntries();
   const families = groupCatalogEntries(allEntries, entries);
   const onList = location.hash === '#list';
-  document.querySelector('#result-count').textContent = `Machines and ideas shown: ${families.length}. Smaller machines: ${families.reduce((total, family) => total + catalogMachineComponents(family.components).length, 0)}. Explore individual parts inside each item.`;
+  document.querySelector('#result-count').textContent = `Machines and ideas shown: ${families.length}. Smaller machines and parts: ${families.reduce((total, family) => total + family.components.length, 0)}. Explore individual parts inside each item.`;
   if (!entries.length) {
     container.innerHTML = '<p class="no-results">No entries match these filters. Try a shorter search or choose “All rooms” and “All principles.”</p>';
     return;
   }
-  const componentLinks = (_entry, components) => {const machines=catalogMachineComponents(components);return machines.length ? `<ul class="catalog-components" aria-label="Smaller machines">${machines.map(entry => `<li><button data-entry="${entry.id}">${escapeText(entry.name)}</button></li>`).join('')}</ul>` : '';};
+  const componentLinks = (_entry, components) => components.length ? `<ul class="catalog-components" aria-label="Smaller machines and parts">${components.map(entry => `<li><button data-entry="${entry.id}">${escapeText(entry.name)}</button></li>`).join('')}</ul>` : '';
   if (onList) {
     container.innerHTML = `<table class="catalog-table"><thead><tr><th scope="col">Machine or idea</th><th scope="col">Find it in</th><th scope="col">Principles</th></tr></thead><tbody>${families.map(({entry,components})=>`<tr><td><button data-entry="${entry.id}">${escapeText(entry.name)}</button>${componentLinks(entry,components)}</td><td><a href="#place/${entry.place}">${escapeText(placesById.get(entry.place).name)}</a><small>${escapeText(entry.room)}</small></td><td>${[...new Set([entry,...components].flatMap(item=>item.principles))].map(id=>escapeText(principlesById.get(id)?.name || '')).join(' · ')}</td></tr>`).join('')}</tbody></table>`;
   } else {

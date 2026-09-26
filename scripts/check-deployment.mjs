@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {neighborhoodCatalog} from '../src/site/published-catalog.js';
-import {groupCatalogEntries, catalogMachineComponents} from '../src/site/catalog-hierarchy.js';
+import {groupCatalogEntries} from '../src/site/catalog-hierarchy.js';
 
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = new URL(process.argv[2] || 'http://127.0.0.1:4175/');
@@ -63,7 +63,7 @@ try {
   await visit('/#/topic/levers');
   await page.waitForURL('**/#list');
   await page.locator('#catalog-search').waitFor();
-  const listed = groupCatalogEntries(neighborhoodCatalog.entries).flatMap(({entry, components}) => [entry, ...catalogMachineComponents(components)]);
+  const listed = groupCatalogEntries(neighborhoodCatalog.entries).flatMap(({entry, components}) => [entry, ...components]);
   assert.equal(await page.locator('[data-entry]').count(), listed.length);
   assert.equal(await page.locator('canvas').count(),0);
   for (const path of ['/studies.html','/experiments.html']) {

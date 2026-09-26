@@ -3,6 +3,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {neighborhoodCatalog as catalog} from './published-catalog.js';
 import {groupCatalogEntries} from './catalog-hierarchy.js';
+import {houseComponents} from './house-components.js';
 const base=process.env.SITE_URL||'http://127.0.0.1:4177/';
 const evidence=process.env.EVIDENCE_DIR;
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -16,7 +17,8 @@ try{
    const play=page.locator('[data-play]');if(await play.count()&&await play.getAttribute('aria-pressed')==='true')await play.click();
    const readings=await page.locator('.daily-readings').innerText();
    await page.locator('[data-view="out"]').click();
-   assert.equal(new URL(page.url()).hash,'#machine/'+entry.id,entry.name+' out stays in item');
+   // Three published ids redirect to the page that holds them; zooming out stays on that page.
+   assert.equal(new URL(page.url()).hash,'#machine/'+(houseComponents[entry.name]?.redirectTo||entry.id),entry.name+' out stays in item');
    assert.equal(await page.locator('[data-separation]').inputValue(),'0',entry.name+' minus only zooms');
    await page.locator('[data-view="in"]').click();
    assert.equal(await page.locator('[data-separation]').inputValue(),'0',entry.name+' plus only zooms');

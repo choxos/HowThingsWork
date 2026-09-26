@@ -7,9 +7,11 @@ export function lighting(scene) {
   const sun=new THREE.DirectionalLight(0xffffff,1.35);sun.position.set(-3,6,5);scene.add(sun);
 }
 
-export function frameModel(model,aspect) {
+// Frames the whole model, or only one part of it when a part object is given.
+export function frameModel(model,aspect,part) {
   model.root.updateMatrixWorld(true);
-  const bounds=new THREE.Box3().setFromObject(model.root);if(model.framingBounds)bounds.union(model.framingBounds);
+  let bounds=part?new THREE.Box3().setFromObject(part):null;
+  if(!bounds||bounds.isEmpty()){bounds=new THREE.Box3().setFromObject(model.root);if(model.framingBounds)bounds.union(model.framingBounds);}
   const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
   const radius=Math.max(size.x,size.y,size.z)*.7;
   model.root.position.sub(center);
@@ -34,23 +36,34 @@ export function bindObjectDragging(canvas,camera,root,controls){
 }
 
 const thumbnailCaches=new WeakMap();
+const shownInModel=object=>{for(let item=object;item;item=item.parent)if(!item.visible)return false;return true;};
 export function renderRoomMachines(container,entries,factory=createMachine) {
   if(!thumbnailCaches.has(factory))thumbnailCaches.set(factory,new Map());
   const thumbnails=thumbnailCaches.get(factory);
-  const pending=entries.filter(entry=>!thumbnails.has(entry.name));
+  // An entry may name one part of its machine; each machine is built once and pictured whole or close up on that part.
+  const key=entry=>entry.part?entry.name+'#'+entry.part:entry.name;
+  const pending=entries.filter(entry=>!thumbnails.has(key(entry)));
   if(pending.length) {
     let renderer;
     try{renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});}catch{return;}
     renderer.setSize(360,300);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
-    for(const entry of pending) {
-      const model=factory(entry.name);
-      if(!model){thumbnails.set(entry.name,null);continue;}
+    for(const name of new Set(pending.map(entry=>entry.name))) {
+      const model=factory(name),group=pending.filter(entry=>entry.name===name);
+      if(!model){for(const entry of group)thumbnails.set(key(entry),null);continue;}
       const scene=new THREE.Scene();lighting(scene);scene.add(model.root);
-      const omitted=(model.thumbnailOmit||[]).map(object=>[object,object.parent]);
+      const omitted=(model.thumbnailOmit||[]).map(object=>[object,object.parent]),origin=model.root.position.clone();
       try{
         for(const [object] of omitted)object.removeFromParent();
-        const {camera}=frameModel(model,1.2);renderer.render(scene,camera);
-        thumbnails.set(entry.name,renderer.domElement.toDataURL('image/png'));
+        for(const entry of group){
+          model.root.position.copy(origin);
+          // A part is pictured on its own: only its objects and the lights share the camera's layer.
+          const part=entry.part&&model.parts?.find(item=>item.id===entry.part)?.object,alone=part&&shownInModel(part)?part:null;
+          const {camera}=frameModel(model,1.2,alone);
+          if(alone){scene.traverse(object=>{if(object.isLight)object.layers.enable(1);});alone.traverse(object=>object.layers.enable(1));camera.layers.set(1);}
+          renderer.render(scene,camera);
+          if(alone)alone.traverse(object=>object.layers.disable(1));
+          thumbnails.set(key(entry),renderer.domElement.toDataURL('image/png'));
+        }
       }finally{
         for(const [object,parent] of omitted)parent?.add(object);
         model.dispose();
@@ -59,7 +72,7 @@ export function renderRoomMachines(container,entries,factory=createMachine) {
     renderer.dispose();renderer.forceContextLoss();
   }
   for(const entry of entries) {
-    const source=thumbnails.get(entry.name);
+    const source=thumbnails.get(key(entry));
     if(source)for(const button of container.querySelectorAll(`[data-machine="${entry.id}"]`)){const image=document.createElement('img');image.src=source;image.alt='';image.className='machine-thumbnail';button.querySelector('svg')?.replaceWith(image);}
   }
 }

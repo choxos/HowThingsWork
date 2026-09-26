@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {neighborhoodCatalog as catalog} from './published-catalog.js';
-import {componentParentIds, groupCatalogEntries, catalogMachineComponents, hasCatalogPart} from './catalog-hierarchy.js';
+import {componentParentIds, groupCatalogEntries, hasCatalogPart} from './catalog-hierarchy.js';
 
 const entries = catalog.entries;
 const families = groupCatalogEntries(entries);
@@ -46,10 +46,6 @@ const springResults = groupCatalogEntries(entries, entries.filter(entry => entry
 assert(springResults.some(family => family.entry.id === 'cylinder-lock' && family.components.some(entry => entry.id === 'lock-return-springs')));
 console.log(`Catalog principles: ${entries.length} valid tag sets, fuse/induction/heater/motor distinctions and grouped spring filtering pass.`);
 
-const shownMachines = families.flatMap(family => catalogMachineComponents(family.components));
-assert.deepEqual(shownMachines.map(entry => entry.id).sort(), ["cylinder-lock-cam-and-bolt","feed-dog-lift-and-advance-linkages","rotary-sewing-hook","thread-take-up-lever","window-shade-pawls-and-locking-disk","electric-bell-pushbutton-switch","commutator","heated-extrusion-nozzle","horizontal-seismograph-pendulum","vertical-seismograph-pendulum","seismograph-recording-pen-and-moving-paper","inertial-accelerometer-armature-spring-and-coils"].sort());
-assert.equal(shownMachines.length, 12);
-assert.deepEqual(catalogMachineComponents([{id: 'unknown-future-part'}]), []);
-for (const id of ['keys','lock-return-springs','bobbin-and-bobbin-thread','printer-filament-reel','motor-rotor','scale-calibrating-plate','electric-motor','microchip-deceleration-sensor']) assert(!shownMachines.some(entry => entry.id === id), id + ' stays out of the catalog nesting');
+// The list and the rooms show every lesson; the hierarchy only decides which machine each one sits beneath.
 assert(hasCatalogPart('3d-printer', 'frame'), 'Ordinary part bookmarks remain valid');
-console.log('Catalog visibility: 48 whole items, 12 smaller machines; passive parts, aliases and future unreviewed parts excluded.');
+console.log(`Catalog visibility: ${families.length} whole items with ${entries.length - families.length} smaller machines, parts and alternate names beneath them.`);

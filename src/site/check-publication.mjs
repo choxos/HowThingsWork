@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import {writeFile, mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {hasCatalogPart, groupCatalogEntries, catalogMachineComponents} from './catalog-hierarchy.js';
+import {hasCatalogPart, groupCatalogEntries} from './catalog-hierarchy.js';
 import {houseComponents} from './house-components.js';
 import {neighborhoodCatalog as drafts} from './catalog-data.js';
 import {neighborhoodCatalog as catalog, publishedEntryIds} from './published-catalog.js';
 
 const allowed = new Set(publishedEntryIds);
 const canonical = entry => catalog.entries.find(candidate => candidate.id === (houseComponents[entry.name]?.redirectTo || entry.id));
-const listed = new Set(groupCatalogEntries(catalog.entries).flatMap(({entry, components}) => [entry, ...catalogMachineComponents(components)]).map(entry => entry.id));
+const listed = new Set(groupCatalogEntries(catalog.entries).flatMap(({entry, components}) => [entry, ...components]).map(entry => entry.id));
 assert.equal(allowed.size, publishedEntryIds.length);
 assert.deepEqual(new Set(catalog.entries.map(entry => entry.id)), allowed);
 const names = new Set(catalog.entries.map(entry => entry.name));

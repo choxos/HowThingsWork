@@ -46,7 +46,9 @@ try{
  const setup=async i=>{await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.locator('[data-experiment]').nth(i).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();};
  await page.goto(base+'#place/river');await page.locator('[data-machine="raft"] img.machine-thumbnail').waitFor();await page.locator('[data-machine="raft"]').click();await page.getByRole('heading',{name:'Raft',exact:true}).waitFor();
  for(const [id,name] of [['timbers','Six buoyant timbers'],['bindings','Rope bindings'],['cargo','Steel cargo'],['water','Water and depth reference'],['forces','Force comparison']]){
-  await page.goto(base+'#list');await page.locator('#catalog-search').fill('Raft');assert.equal(await page.locator('a[href^="#machine/raft?part="]').count(),5);await page.locator(`a[href="#machine/raft?part=${id}"]`).click();await page.locator('.daily-part-detail h3').waitFor();assert.equal(await page.locator('.daily-part-detail h3').innerText(),name);await page.locator('.daily-heading h1').click();assert.equal(await page.locator('.daily-part-detail h3').count(),0);
+  // The list finds the raft but draws no part links; each part is reached by its bookmark.
+  await page.goto(base+'#list');await page.locator('#catalog-search').fill('Raft');assert.equal(await page.locator('[data-entry="raft"]').count(),1);assert.equal(await page.locator('a[href^="#machine/raft?part="]').count(),0);
+  await page.goto(base+`#machine/raft?part=${id}`);await page.locator('.daily-part-detail h3').waitFor();assert.equal(await page.locator('.daily-part-detail h3').innerText(),name);await page.locator('.daily-heading h1').click();assert.equal(await page.locator('.daily-part-detail h3').count(),0);
  }
 
  for(const width of [1440,390]){

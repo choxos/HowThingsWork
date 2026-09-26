@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {sceneLocations, scenePageSize} from './scene-locations.js';
+import {houseComponents} from './house-components.js';
 
 const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export async function checkScenePlacements(page, {base,dir,prefix='local',widths=[1440,390],navigation=true,catalog,families}) {
   const groups = new Map(catalog.groups.map(group => [group.id, group]));
   const external = families.map(family => family.entry).filter(entry => groups.get(entry.group).place !== 'home');
+  // Every item stands in its room's scene: whole items on reviewed spots, their parts on free painted surfaces.
+  const shown = families.flatMap(family => [family.entry, ...family.components]).filter(entry => groups.get(entry.group).place !== 'home');
+  const opens = id => '#machine/' + (houseComponents[catalog.entries.find(entry => entry.id === id).name]?.redirectTo || id);
   for (const entry of external) {
     assert.ok(sceneLocations[entry.id], entry.id + ': published object needs reviewed coordinates');
     const [x,y,w,h] = sceneLocations[entry.id];
@@ -25,6 +29,8 @@ export async function checkScenePlacements(page, {base,dir,prefix='local',widths
     await page.evaluate(()=>document.fonts.ready);
   };
   async function bounds(selector, sceneSelector) {
+    // The house and room scenes render after their module loads; wait for the scene being measured.
+    await page.locator(sceneSelector).first().waitFor();
     await page.evaluate(async sceneSelector=>{
       const scene=document.querySelector(sceneSelector);
       await Promise.all([...scene.querySelectorAll('img')].map(image=>image.decode()));
@@ -73,11 +79,13 @@ export async function checkScenePlacements(page, {base,dir,prefix='local',widths
         const targets=await bounds(selector,'.zoom-scene');
         assert.ok(targets.length>0&&targets.length<=scenePageSize);
         for(const item of targets){
-          assert.ok(external.some(entry=>entry.id===item.id),'Only whole items in scene: '+item.id);
+          assert.ok(shown.some(entry=>entry.id===item.id&&groups.get(entry.group).place===place.id),'Only this place\'s items in scene: '+item.id);
           assert.equal(item.painted,item.id==='binoculars','Only actual painted binoculars suppress the model preview');
           const wanted=sceneLocations[item.id];
+          if(wanted){
           assert.ok(Math.abs((item.box.x+item.box.w/2-item.scene.x)/item.scene.w*100-wanted[0])<.2,item.id+': stable horizontal anchor');
           assert.ok(Math.abs((item.box.y+item.box.h/2-item.scene.y)/item.scene.h*100-wanted[1])<.2,item.id+': stable vertical anchor');
+          }
           if(option.room){seen.add(item.id);assert.equal(groups.get(catalog.entries.find(entry=>entry.id===item.id).group).room,option.room);}
         }
         const name=place.id+'-'+option.index+'-'+width;
@@ -86,13 +94,13 @@ export async function checkScenePlacements(page, {base,dir,prefix='local',widths
         if(navigation){
           const entry=targets[0];
           await page.locator(selector+'[data-machine="'+entry.id+'"]').click();
-          await page.waitForURL('**#machine/'+entry.id);
+          await page.waitForURL('**'+opens(entry.id));
           await page.locator('.daily-return').click();
           await page.waitForURL('**#place/'+place.id);
           await page.locator('#zoom-room').waitFor();
         }
       }
-      assert.deepEqual(seen,new Set(external.filter(entry=>groups.get(entry.group).place===place.id).map(entry=>entry.id)),place.id+': every whole item has a room scene');
+      assert.deepEqual(seen,new Set(shown.filter(entry=>groups.get(entry.group).place===place.id).map(entry=>entry.id)),place.id+': every item has a room scene');
     }
     await visit('place/home');
     const homeTargets=await bounds('.house-room-pin','.house-map');
@@ -115,7 +123,8 @@ export async function checkScenePlacements(page, {base,dir,prefix='local',widths
         observations.push({width,route:'room/'+slug(room),spatial,targets});
       }
       const expected=families.filter(family=>groups.get(family.entry.group).room===room).flatMap(family=>[family.entry,...family.components]).map(entry=>'#machine/'+entry.id);
-      assert.deepEqual(new Set(await page.locator('.house-object a').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('href')))),new Set(expected),room+': directory only contains whole items and smaller machines');
+      assert.deepEqual(new Set(await page.locator('.house-object a').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('href')))),new Set(expected),room+': directory lists every item of the room');
+      assert.deepEqual(new Set(await page.locator('.house-zoom-scene a[href^="#machine/"]').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('href')))),new Set(expected),room+': every item stands in the room scene');
     }
     await visit('list');
     const rows=await page.locator('.catalog-table tbody tr').evaluateAll(nodes=>nodes.map(node=>({ids:[...node.querySelectorAll('[data-entry]')].map(button=>button.dataset.entry),place:node.children[1].querySelector('a').getAttribute('href'),room:node.children[1].querySelector('small').textContent})));
@@ -123,7 +132,7 @@ export async function checkScenePlacements(page, {base,dir,prefix='local',widths
     assert.equal(rows.length,families.length);
     if(navigation)for(const row of rows)for(const id of row.ids){
       await page.locator('[data-entry="'+id+'"]').click();
-      await page.waitForURL('**#machine/'+id);
+      await page.waitForURL('**'+opens(id));
       await page.locator('.daily-return').waitFor();
       await page.locator('.daily-return').click();
       const expected=row.place==='#place/home'?'#room/'+slug(row.room):row.place;
@@ -139,8 +148,8 @@ export async function checkScenePlacements(page, {base,dir,prefix='local',widths
 
 if(typeof process!=='undefined'&&process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const {neighborhoodCatalog:catalog}=await import('./published-catalog.js');
-  const {groupCatalogEntries,catalogMachineComponents}=await import('./catalog-hierarchy.js');
-  const families=groupCatalogEntries(catalog.entries).map(family=>({...family,components:catalogMachineComponents(family.components)}));
+  const {groupCatalogEntries}=await import('./catalog-hierarchy.js');
+  const families=groupCatalogEntries(catalog.entries);
   const {chromium}=await import('playwright');
   const browser=await chromium.launch({headless:true});
   try{

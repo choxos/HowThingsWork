@@ -31,8 +31,9 @@ export function bindHouseZoom(host,parentRoute,roomPreview=null){
    previewReady=image.decode().then(()=>{if(!disposed&&preview===next){next.dataset.ready='true';paint();if(depth>=1)enter();}}).catch(()=>{if(!disposed&&preview===next)status.textContent='The room image could not load. Choose another room to try again.';return false;});
   }
   selected=target;select.value=String(targets.indexOf(target));
+  // A shelf target shows its own page; a painted pin leaves the shelf on the page it shows.
   const page=target.closest('[data-spatial-page]');
-  scene.querySelectorAll('[data-spatial-page]').forEach(item=>item.hidden=item!==page);
+  if(page)scene.querySelectorAll('[data-spatial-page]').forEach(item=>item.hidden=item!==page);
   targets.forEach(item=>item.toggleAttribute('data-selected',item===target));
   status.textContent=`Zoom toward ${target.dataset.zoomTarget}`;
  }

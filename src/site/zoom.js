@@ -1,6 +1,6 @@
 import {neighborhoodCatalog} from './published-catalog.js';
-import {groupCatalogEntries} from './catalog-hierarchy.js';
-import {sceneLocations, scenePageSize, sceneSurfaces} from './scene-locations.js';
+import {groupCatalogEntries,previewOf} from './catalog-hierarchy.js';
+import {scenePageSize, sceneSpots} from './scene-locations.js';
 import {allEntries, entriesByName, placesById, escapeText, shortName, illustration, renderPlan} from './catalog.js';
 import {imageUrl} from './image-url.js';
 import {stopContinuousZoom} from './house-zoom.js';
@@ -17,7 +17,7 @@ function zoomMarkup() {
 let disposeZoom = () => {};
 let previewModules;
 function acceptedPreviews(){
-  return previewModules ||= Promise.all([import('./machine-viewer.js'),import('./house.js'),import('./house-components.js')]).then(([viewer,house,{houseComponents}])=>({render:viewer.renderRoomMachines,factory:name=>house.createHouseModel(houseComponents[name]?.machine||name)}));
+  return previewModules ||= Promise.all([import('./machine-viewer.js'),import('./house.js'),import('./house-components.js')]).then(([viewer,house,{houseComponents}])=>({render:(container,entries)=>viewer.renderRoomMachines(container,entries.map(entry=>previewOf(entry,houseComponents)),house.createHouseModel)}));
 }
 function houseIntroMarkup(place) {
   return `<span class="badge">Look around</span><h1 tabindex="-1">The house</h1><p class="intro">${escapeText(place.description)}</p><p class="intro">Point at a room and zoom closer. Then move toward an object to find the mechanism inside.</p><a class="primary" href="#list">All machines & ideas</a><p class="plan-note">Choose a room in the illustration, or browse the rooms below.</p>`;
@@ -40,27 +40,29 @@ function bindZoom(initialPlace,initialEntry) {
   let depth=initialEntry?2:initialPlace?1:0, place=initialPlace||neighborhoodCatalog.places[0], objects=[], chosen, lastStage='', frame=0;
   const pointers=new Map();
   let pinchDistance=0;
-  const wholeEntries=groupCatalogEntries(allEntries).map(family=>family.entry);
+  // Every item, each machine followed by its parts, so a room's pages show all of them.
+  const sceneEntries=groupCatalogEntries(allEntries).flatMap(({entry,components})=>[entry,...components]);
   function placeEntries(room='') {
-    return place.id==='home'?[]:room?wholeEntries.filter(entry=>entry.place===place.id&&entry.room===room):[...new Map(place.featured.map(name=>groupCatalogEntries(allEntries,[entriesByName.get(name)])[0]?.entry).filter(Boolean).map(entry=>[entry.id,entry])).values()];
+    return place.id==='home'?[]:room?sceneEntries.filter(entry=>entry.place===place.id&&entry.room===room):[...new Map(place.featured.map(name=>groupCatalogEntries(allEntries,[entriesByName.get(name)])[0]?.entry).filter(Boolean).map(entry=>[entry.id,entry])).values()];
   }
   function populate(room='') {
     const entries=placeEntries(room);
     const page=Number(select.selectedOptions[0]?.dataset.page||0);
-    objects=entries.slice(page*scenePageSize,(page+1)*scenePageSize).map((entry,i)=>{
-      const [x,y,w,h,painted=false]=sceneLocations[entry.id]||sceneSurfaces[place.id][i];
+    const shown=entries.slice(page*scenePageSize,(page+1)*scenePageSize),spots=sceneSpots(place.id,shown.map(entry=>entry.id));
+    objects=shown.map((entry,i)=>{
+      const [x,y,w,h,painted=false]=spots[i];
       return {...entry,x,y,w,h,painted};
     });
     interior.innerHTML=interiorDrawing(place)+objects.map(entry=>`<button class="zoom-object ${entry.painted?'painted-object':''}" data-machine="${entry.id}" style="left:${entry.x}%;top:${entry.y}%;width:${entry.w}%;height:${entry.h}%" aria-label="Zoom into ${escapeText(entry.name)}">${illustration(entry.name)}<span style="white-space:normal;min-width:4.5rem;max-width:100%;box-sizing:border-box">${escapeText(shortName(entry.name))}</span></button>`).join('');
     const background=interior.querySelector('img');
     background.addEventListener('load',()=>{if(!disposed&&background.isConnected)paint();},{once:true});
     const currentObjects=objects;
-    modulePromise.then(module=>{if(!disposed&&interior.isConnected&&objects===currentObjects)module.render(interior,currentObjects,module.factory);}).catch(()=>{});
+    modulePromise.then(module=>{if(!disposed&&interior.isConnected&&objects===currentObjects)module.render(interior,currentObjects);}).catch(()=>{});
     chosen=objects[0];
   }
   function setPlace(next) {
     place=next;
-    const rooms=[...new Set(wholeEntries.filter(e=>e.place===place.id).map(e=>e.room))];
+    const rooms=[...new Set(sceneEntries.filter(e=>e.place===place.id).map(e=>e.room))];
     select.innerHTML=['',...rooms].flatMap(room=>Array.from({length:Math.max(1,Math.ceil(placeEntries(room).length/scenePageSize))},(_,page)=>`<option value="${escapeText(room)}" data-page="${page}">${escapeText(room||'Featured machines')}${page?' · continued '+(page+1):''}</option>`)).join('');
     populate();
   }
@@ -135,7 +137,7 @@ function bindZoom(initialPlace,initialEntry) {
   select.addEventListener('change',()=>{populate(select.value);depth=1;paint();});
   setPlace(place);
   if(initialEntry){
-    const roomEntries=wholeEntries.filter(e=>e.place===place.id&&e.room===initialEntry.room);
+    const roomEntries=sceneEntries.filter(e=>e.place===place.id&&e.room===initialEntry.room);
     const page=Math.floor(roomEntries.findIndex(e=>e.id===initialEntry.id)/scenePageSize);
     select.selectedIndex=[...select.options].findIndex(option=>option.value===initialEntry.room&&Number(option.dataset.page)===page);
     populate(initialEntry.room);chosen=objects.find(e=>e.id===initialEntry.id)||initialEntry;
