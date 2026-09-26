@@ -168,12 +168,14 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     partPopup.style.left=within(x+12,8,Math.max(8,wrap.clientWidth-partPopup.offsetWidth-8))+'px';
     partPopup.style.top=within(y-partPopup.offsetHeight-12,8,Math.max(8,wrap.clientHeight-partPopup.offsetHeight-8))+'px';
   }
+  // A part's extent for framing and following: with frameVisibleOnly, only what is drawn, so a hidden or empty line does not stretch it.
+  function partBounds(root){const bounds=new THREE.Box3();if(!model.frameVisibleOnly)return bounds.setFromObject(root);root.traverse(object=>{if(shown(object)&&object.geometry){object.geometry.computeBoundingBox();bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));}});return bounds;}
   function draw(){
     if(disposed||!active||!renderer)return;
     model.root.updateMatrixWorld(true);
     const chosen=model.parts.find(part=>part.id===selected);
     if(!explosion&&orbit&&chosen&&model.followParts?.includes(selected)){
-      const bounds=new THREE.Box3().setFromObject(chosen.object),motionBounds=model.frameBoundsForPart?.(selected);
+      const bounds=partBounds(chosen.object),motionBounds=model.frameBoundsForPart?.(selected);
       if(motionBounds)bounds.union(motionBounds);
       const position=bounds.getCenter(new THREE.Vector3());
       if(followPosition){const delta=position.clone().sub(followPosition);camera.position.add(delta);orbit.target.add(delta);camera.updateMatrixWorld();}
@@ -290,7 +292,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     const children=model.parts.filter(candidate=>candidate.parentId===(part?.id||null)||(!part&&!candidate.parentId));
     host.querySelector('.daily-part-buttons').innerHTML=children.map(item=>`<button data-part="${text(item.id)}">${text(item.name)}</button>`).join('');
     host.querySelector('.daily-part-detail').innerHTML=part?`<h3>${text(part.name)}</h3><p>${text(part.description||'')}</p>${part.route?`<a class="primary" href="${text(part.route)}">Open ${text(part.name)}</a>`:''}`:'<p>Select a part to move closer. Follow the breadcrumbs to move back out.</p>';
-    if(focus&&part&&orbit){model.root.updateMatrixWorld(true);const bounds=new THREE.Box3();if(model.frameVisibleOnly){part.object.traverse(object=>{if(shown(object)&&object.geometry){object.geometry.computeBoundingBox();bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));}});}else bounds.setFromObject(part.object);const motionBounds=model.frameBoundsForPart?.(id);if(motionBounds)bounds.union(motionBounds);if(!bounds.isEmpty()){const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());const direction=camera.position.clone().sub(orbit.target);orbit.target.copy(center);camera.position.copy(center).add(direction);camera.zoom=within(radius/(Math.max(size.x,size.y,size.z)*(part.framePadding??model.framePadding??(model.frameVisibleOnly?.55:.75))),.55,part.maxZoom??12);overviewZoom=camera.zoom;orbit.minZoom=overviewZoom;orbit.maxZoom=Math.max(12,overviewZoom*3);camera.updateProjectionMatrix();orbit.update();}}else if(!part&&focus)resetView();
+    if(focus&&part&&orbit){model.root.updateMatrixWorld(true);const bounds=partBounds(part.object);const motionBounds=model.frameBoundsForPart?.(id);if(motionBounds)bounds.union(motionBounds);if(!bounds.isEmpty()){const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());const direction=camera.position.clone().sub(orbit.target);orbit.target.copy(center);camera.position.copy(center).add(direction);camera.zoom=within(radius/(Math.max(size.x,size.y,size.z)*(part.framePadding??model.framePadding??(model.frameVisibleOnly?.55:.75))),.55,part.maxZoom??12);overviewZoom=camera.zoom;orbit.minZoom=overviewZoom;orbit.maxZoom=Math.max(12,overviewZoom*3);camera.updateProjectionMatrix();orbit.update();}}else if(!part&&focus)resetView();
     if(explosion){syncControls();draw();}else update();
   }
   function clearSelection(){

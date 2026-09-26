@@ -1,5 +1,7 @@
 import {Box3,Vector3} from 'three';
 import {createSiphonModel} from './siphon-model.js';
+import {createPolarizedLightModel} from './polarized-light-model.js';
+import {createLCDModel} from './lcd-model.js';
 import {rotatingSprayArmLesson} from './dishwasher-lessons.js';
 import {createDishwasherModel} from './dishwasher-model.js';
 import {createRefrigerantCompressorModel} from './refrigerant-compressor-model.js';
@@ -86,7 +88,7 @@ export const houseComponents={
  'Lock pin stacks':{machine:'Cylinder lock',createModel:()=>{const model=createCylinderModel({pinLesson:true});model.resultPart.focusOnComplete=false;model.followParts=model.parts.filter(part=>!['system','frame','door'].includes(part.id)).map(part=>part.id);return model;},isolate:false,part:'pins',view:'side',lesson:cylinderComponentLessons['Lock pin stacks'],intro:cylinderComponentLessons['Lock pin stacks'].simple},
  'Cylinder-lock cam and bolt':{machine:'Cylinder lock',createModel:()=>{const model=createCylinderModel({camLesson:true});model.resultPart.focusOnComplete=false;model.followParts=model.parts.filter(part=>!['system','frame','door'].includes(part.id)).map(part=>part.id);return model;},isolate:false,part:'latch-drive',view:'back',values:{insertion:1},lesson:cylinderComponentLessons['Cylinder-lock cam and bolt'],intro:cylinderComponentLessons['Cylinder-lock cam and bolt'].simple},
  'Scale calibrating plate':{machine:'Bathroom scale',part:'calibration',view:'front',isolate:false,createModel:()=>createBathroomScaleModel({plateTeaching:true}),lesson:scaleCalibratingPlateLesson,intro:scaleCalibratingPlateLesson.simple},
- 'Anchor escapement':{machine:'Mechanical clock',part:'escapement',isolate:false,view:'front',lesson:anchorEscapementLesson,intro:anchorEscapementLesson.simple},
+ 'Anchor escapement':{machine:'Mechanical clock',part:'escapement',isolate:true,view:'front',lesson:anchorEscapementLesson,intro:anchorEscapementLesson.simple},
  'Lever escapement':{machine:'Mechanical watch',part:'escapement',isolate:false,view:'front',lesson:leverEscapementLesson,intro:leverEscapementLesson.simple},
 'Hairspring':{machine:'Mechanical watch',part:'hairspring',isolate:false,view:'front',lesson:hairspringLesson,intro:hairspringLesson.simple},
  'Lockstitch':{lesson:utilityComponentLessons.Lockstitch,machine:'Sewing machine',createModel:()=>{const model=createSewingModel();model.resultPart.focusOnComplete=false;model.followParts=[...model.followParts,'stitch-formation','needle','hook-assembly','hook','bobbin','take-up','take-up-rocker'];return model;},part:'stitch-formation',view:'side',isolate:true,intro:'A hook carries a loop of upper thread around the bobbin thread; the take-up then tightens their interlock.'},
@@ -114,8 +116,8 @@ export const houseComponents={
  'OLED display':{machine:'LCD screen',part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
  'Electrostatic precipitator':{machine:'Air cleaner',part:'collector',values:{mode:1},isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},
  'Ionizer':{machine:'Air cleaner',part:'charger',values:{mode:2},isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
- 'Quartz oscillator':{machine:'Quartz clock',part:'quartz',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
- 'Piezoelectricity':{machine:'Quartz clock',part:'quartz',isolate:false,view:'front',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
+ 'Quartz oscillator':{machine:'Quartz clock',part:'fork',isolate:true,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
+ 'Piezoelectricity':{machine:'Quartz clock',part:'plate',isolate:true,view:'front',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
  'Infrared signaling':{machine:'Remote control',part:'signal',view:'front',isolate:false,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
  'Diode':{machine:'Remote control',part:'junction',view:'front',isolate:false,lesson:diodeLesson,intro:diodeLesson.simple},
  'Light-emitting diode':{machine:'Remote control',part:'led',view:'front',isolate:false,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
@@ -127,8 +129,8 @@ export const houseComponents={
  'Video games console':{machine:'Games controller',part:'console',isolate:false,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
  'Phonemes':{machine:'Speech recognition',part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
  'Head tracking':{machine:'Virtual reality headset',part:'imu',isolate:false,view:'top',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
- 'Polarizing filter':{machine:'Polarized light',part:'first',isolate:false,view:'front',values:{mode:0,insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
- 'Liquid crystals':{machine:'Liquid crystal display',part:'molecules',isolate:false,view:'front',values:{mode:0,drive:0,battery:1},lesson:liquidCrystalsLesson,intro:liquidCrystalsLesson.simple},
+ 'Polarizing filter':{machine:'Polarized light',createModel:()=>{const model=createPolarizedLightModel();model.parts.find(part=>part.id==='first').framePadding=1.6;return model;},part:'first',isolate:false,view:'front',values:{mode:0,insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
+ 'Liquid crystals':{machine:'Liquid crystal display',createModel:()=>{const model=createLCDModel();model.parts.find(part=>part.id==='molecules').framePadding=1.6;return model;},part:'molecules',isolate:false,view:'front',values:{mode:0,drive:0,battery:1},lesson:liquidCrystalsLesson,intro:liquidCrystalsLesson.simple},
  'Polarizing sunglasses':{machine:'Polarized light',part:'glasses',isolate:false,view:'front',values:{mode:1,brewster:1,material:0,glasses:1,analyzer:0},lesson:polarizingSunglassesLesson,intro:polarizingSunglassesLesson.simple},
  'Binocular prisms':{machine:'Binoculars',part:'probe',isolate:false,view:'front',values:{mode:1,index:1.5,angle:0},lesson:binocularPrismsLesson,intro:binocularPrismsLesson.simple},
  'AC generator':{machine:'Electric generator',part:'output',isolate:false,view:'front',values:{output:0},lesson:acGeneratorLesson,intro:acGeneratorLesson.simple},

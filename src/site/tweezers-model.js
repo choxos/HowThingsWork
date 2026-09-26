@@ -73,6 +73,9 @@ export function createTweezersModel(){
  result.advance=advance;result.animate=clock=>{const dt=Math.max(0,clock-lastClock);lastClock=clock;return advance(dt);};result.reset=()=>{fresh();lastClock=0;update(result.defaults);};
  result.actions=[{label:'Return block to starting tray',part:'system',view:'front',run:fresh}];
  result.playback={label:'Run selected action',stepLabel:'Advance one step',description:'Grip and lift holds the block above the tray. Release opens the arms and lets the block fall. Pause freezes both the tool and the falling block.',advance,step:()=>advance(.2),complete:()=>result.getState().complete,blocked:()=>result.getState().blocked};
+ // Frame the whole run, not the moment: the tool and block at rest and fully
+ // lifted, so the joined end of the tweezers stays in view as they rise.
+ result.frameBoundsForPart=id=>{if(id!=='system')return null;const toolY=tool.position.y,blockY0=block.position.y,box=new THREE.Box3().setFromObject(system);for(const lift of [0,1]){tool.position.y=(length+2)*scale+restHeight+liftHeight*lift;block.position.y=restHeight+liftHeight*lift;system.updateMatrixWorld(true);box.union(new THREE.Box3().setFromObject(tool)).union(new THREE.Box3().setFromObject(block));}tool.position.y=toolY;block.position.y=blockY0;system.updateMatrixWorld(true);return box;};
  result.initialPart='system';
  result.followParts=['system','tool','joint','left-arm','right-arm','left-tip','right-tip','left-finger','right-finger','block','weight'];
  result.resultPart={id:'system',context:'system',view:'front',focusOnComplete:false,label:'Inspect the tool and block',available:()=>true};return result;
