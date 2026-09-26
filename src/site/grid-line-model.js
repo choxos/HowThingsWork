@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
-import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {fixed, significant} from './format.js';
+
+/** Megawatts to four figures below 100 MW, to a tenth above, so a loss reads 2,819.9 MW or 0.1172 MW. */
+const megawatts = watts => (Math.abs(watts) >= 100e6 ? fixed(watts / 1e6, 1) : significant(watts / 1e6, 4));
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {linePlan, lineAt, catenaryHeight, LINE_DEFAULTS, LINE_DOMAINS, LEVELS, LEVEL_OPTIONS, CONDUCTOR_OPTIONS, WEATHER_OPTIONS, CONDUCTORS, DISC, SITE, TOWER, CREEPAGE, AIR_STRENGTH, SUPPLY, FLASHOVER} from './grid-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -81,11 +84,23 @@ export function createLineModel() {
   const phaseCurves = COLORS.phase.map(color => lineObject(FLOW_SAMPLES, color, flow));
   const heatCurve = lineObject(FLOW_SAMPLES, COLORS.heat, flow);
   const flowCursor = segmentLines(2, COLORS.ink, flow);
+  // The charts' words.
+  const TEXT = 0.05, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(flow, (share, level) => [FLOW.x + share * FLOW.w, flowY(level), FLOW.z], {
+    title: 'One cycle of the current', size: TEXT,
+    x: {min: 0, max: 1, title: 'One cycle'},
+    // The phases fill the upper band about its middle, 0.42 of the chart's half height either way; the heat rises from the foot of the lower band.
+    y: {min: -1, max: 1, ticks: [[0.5 - 0.42, '−peak'], [0.5, '0'], [0.5 + 0.42, '+peak'], [-0.95, '0']]},
+  });
+  [...COLORS.phase.map((color, i) => [`Phase ${i + 1}`, color]), ['Heat', COLORS.heat]].forEach(([text, color], i) => textLabel(flow, text, {height: TEXT, align: 'left', color: css(color), position: [FLOW.x + FLOW.w + 0.05, FLOW.y + FLOW.h / 2 - 0.05 - 0.075 * i, 0.001]}));
 
   const ladder = part('ladder', 'The same power at five voltages', `What share of the power sent is lost in this same wire, at each of the five voltages, carrying the same power to the same place. Raise the voltage by ten and the current falls by ten, so the heat falls by a hundred. The marked bar is the voltage you have chosen.`, [0, 0, 0], system);
   const ladderFrame = lineObject(5, COLORS.ink, ladder);
   const ladderBars = LEVELS.map(() => flat(COLORS.bar, ladder));
   const ladderMark = segmentLines(4, COLORS.ink, ladder);
+  // Each voltage named at the right of its bar.
+  LEVELS.forEach((volts, k) => textLabel(ladder, `${fixed(volts / 1000, 0)} kV`, {height: TEXT, align: 'left', color: css(COLORS.ink), position: [LADDER.x + LADDER.w + 0.05, ladderY(k) + LADDER.bar / 2, 0.001]}));
+  textLabel(ladder, 'Share of the power lost', {height: TEXT, weight: '600', color: css(COLORS.ink), position: [LADDER.x + LADDER.w / 2, ladderY(LEVELS.length - 1) + LADDER.bar + LADDER.gap + 0.07, 0.001]});
 
   fillLine(flowFrame, [[FLOW.x, FLOW.y - FLOW.h / 2, FLOW.z], [FLOW.x + FLOW.w, FLOW.y - FLOW.h / 2, FLOW.z], [FLOW.x + FLOW.w, FLOW.y + FLOW.h / 2, FLOW.z], [FLOW.x, FLOW.y + FLOW.h / 2, FLOW.z], [FLOW.x, FLOW.y - FLOW.h / 2, FLOW.z]]);
   fillLine(flowZero, [[FLOW.x, FLOW.y, FLOW.z], [FLOW.x + FLOW.w, FLOW.y, FLOW.z]]);
@@ -183,7 +198,7 @@ export function createLineModel() {
       state: {...plan, now, clock, span, top},
       readings: [
         r('Your result', status),
-        r('Line loss', `${fixed(100 * plan.lossFraction, 2)} percent`, `${fixed(plan.delivered / 1e6, 0)} MW at ${fixed(plan.volts / 1000, 0)} kV needs ${fixed(plan.current, 0)} A in each of the three phases, because power is √3 times voltage times current. Three conductors of ${fixed(plan.resistance, 2)} Ω each then waste 3I²R, which is ${fixed(plan.loss / 1e6, 3)} MW, so ${fixed(plan.sent / 1e6, 2)} MW has to be sent for ${fixed(plan.delivered / 1e6, 0)} MW to arrive.`),
+        r('Line loss', `${fixed(100 * plan.lossFraction, 2)} percent`, `${fixed(plan.delivered / 1e6, 0)} MW at ${fixed(plan.volts / 1000, 0)} kV needs ${fixed(plan.current, 0)} A in each of the three phases, because power is √3 times voltage times current. Three conductors of ${fixed(plan.resistance, 2)} Ω each then waste 3I²R, which is ${megawatts(plan.loss)} MW, so ${megawatts(plan.sent)} MW has to be sent for ${fixed(plan.delivered / 1e6, 0)} MW to arrive.`),
         r('Current', `${fixed(plan.current, 0)} A`, `${fixed(100 * plan.ampacityShare, 0)} percent of the ${fixed(plan.wire.ampacity, 0)} A this ${plan.wire.name} conductor is rated for. ${plan.overRated ? 'Beyond that rating the aluminum runs hotter than the 75 °C at which it starts to soften, and a real line would not be run like this.' : 'Raise the voltage and the same power needs less current, which is the whole of the argument for high voltage.'}`),
         r('Resistance', `${fixed(plan.resistance, 2)} Ω`, `${plan.wire.name} is ${plan.wire.stranding} stranded with ${fixed(plan.wire.area * 1e6, 0)} mm² of aluminum, ${fixed(plan.wire.diameter * 1000, 1)} mm across, and its sheet gives ${fixed(plan.wire.ac * 1000, 5)} Ω/km at 75 °C. Over ${fixed(plan.length / 1000, 0)} km that is ${fixed(plan.resistance, 2)} Ω in each phase.`),
         r('Voltage drop', `${fixed(plan.drop / 1000, 2)} kV`, `The current through the line's own resistance leaves ${fixed(plan.drop / 1000, 2)} kV behind, so ${fixed(plan.sending / 1000, 1)} kV has to be sent for ${fixed(plan.volts / 1000, 0)} kV to arrive. That is ${fixed(100 * plan.drop / plan.volts, 2)} percent of the line voltage.`),

@@ -701,7 +701,7 @@ covered(TL.transmissionTransformerLesson.deeper[0].body, {
 covered(TL.transmissionTransformerLesson.deeper[1].body, {}, 'up deeper 2');
 covered(TL.transmissionTransformerLesson.deeper[2].body, {
   [`${f3(100 * P.PEI_MINIMUM['400'])} percent for a liquid immersed large power transformer of ${f0(100)} MVA or more`]: '99.770 percent for a liquid immersed large power transformer of 100 MVA or more',
-  [`at ${f0(upDef.rating / 1e6)} MVA it allows ${f2(upDef.place.noLoad / 1000)} kW of no load loss and ${f2(upDef.place.loadLoss / 1000)} kW of load loss, which sounds enormous until you set it against ${f3(upDef.output / 1e6)} MW`]: 'at 400 MVA it allows 158.73 kW of no load loss and 1,333.04 kW of load loss, which sounds enormous until you set it against 400.000 MW',
+  [`at ${f0(upDef.rating / 1e6)} MVA it allows ${f2(upDef.place.noLoad / 1000)} kW of no load loss and ${f2(upDef.place.loadLoss / 1000)} kW of load loss, which sounds enormous until you set it against ${f0(upDef.output / 1e6)} MW`]: 'at 400 MVA it allows 158.73 kW of no load loss and 1,333.04 kW of load loss, which sounds enormous until you set it against 400 MW',
 }, 'up deeper 3');
 covered(TL.transmissionTransformerLesson.deeper[3].body, {
   [`To stand ${f0(upDef.secondaryVolts / 1000)} kV at ${f0(P.SUPPLY.frequency)} Hz through ${f0(upDef.secondaryTurns)} real turns, the core has to carry ${f3(upDef.flux)} T through ${f1(upDef.area)} m² of iron. That is a block of laminated steel about ${f0(Math.sqrt(upDef.area) * 1000)} mm square`]: 'To stand 400 kV at 50 Hz through 1,200 real turns, the core has to carry 1.667 T through 0.9 m² of iron. That is a block of laminated steel about 949 mm square',

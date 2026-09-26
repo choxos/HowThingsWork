@@ -7,7 +7,7 @@ import {validateControls, validTime, clamp} from './physics-kit.js';
 //
 // Exact within the model: the refrigerant's boiling pressure from Clausius and
 // Clapeyron through the two points its property table gives, 1 atm at
-// −48.5 °C and 1.383 MPa at 21.1 °C, with the latent heat B R / M that fit
+// −48.5 °C and 1.383 MPa above the atmosphere at 21.1 °C, with the latent heat B R / M that fit
 // implies; the compressor's volumetric efficiency from its clearance and the
 // pressure ratio, its mass flow from the suction vapor taken as an ideal gas,
 // and its ideal work cp T ((Pc/Pe)^((γ−1)/γ) − 1), with γ from the table's gas
@@ -53,7 +53,10 @@ export const ATMOSPHERE = 101325;
 export const R410A = Object.freeze({
   name: 'R-410A', molar: 0.0726, melting: -155, boiling: -48.5,
   liquidDensity: 1040, liquidDensityAt: 30, vaporDensity: 3.0, vaporDensityAt: 30,
-  vaporPressure: 1.383e6, vaporPressureAt: 21.1,
+  // The table's 1.383 MPa at 21.1 °C is a gauge pressure, 201 psi above the
+  // atmosphere on the usual pressure-temperature charts; the boiling curve needs
+  // the absolute pressure.
+  vaporPressureGauge: 1.383e6, vaporPressure: 1.383e6 + 101325, vaporPressureAt: 21.1,
   criticalTemperature: 72.8, criticalPressure: 4.90e6,
   gasHeat: 840, liquidHeat: 1800, liquidHeatAt: 30,
 });

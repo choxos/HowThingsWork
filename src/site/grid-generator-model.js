@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
-import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow, surface} from './scene-kit.js';
+import {fixed, significant} from './format.js';
+
+/** Watts to three figures below 100 W, to a tenth above, so the winding's heat reads 545.2 W or 0.254 W, as the lessons quote it. */
+const heat = watts => (Math.abs(watts) >= 100 ? fixed(watts, 1) : significant(watts, 3));
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, surface, textLabel} from './scene-kit.js';
 import {generatorPlan, generatorAt, commutatedEmf, windingResistanceOf, COIL, COIL_AREA, BRIDGE, GENERATOR_DEFAULTS, GENERATOR_DOMAINS, GENERATOR_SAMPLES, OUTPUT_OPTIONS, SUPPLY, SYNCHRONOUS} from './grid-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -103,6 +106,14 @@ export function createGeneratorModel() {
   fillLine(frame, [[CHART.x, CHART.y - CHART.h / 2, CHART.z], [CHART.x + CHART.w, CHART.y - CHART.h / 2, CHART.z], [CHART.x + CHART.w, CHART.y + CHART.h / 2, CHART.z], [CHART.x, CHART.y + CHART.h / 2, CHART.z], [CHART.x, CHART.y - CHART.h / 2, CHART.z]]);
   fillLine(zeroLine, [[CHART.x, CHART.y, CHART.z], [CHART.x + CHART.w, CHART.y, CHART.z]]);
   fillLine(ticks, [1, 2, 3].flatMap(k => [[chartX(k * Math.PI / 2), CHART.y - CHART.h / 2, CHART.z], [chartX(k * Math.PI / 2), CHART.y - CHART.h / 2 - CHART.tick, CHART.z]]));
+  // The chart's words, with its key to its right.
+  const TEXT = 0.05, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(output, (degrees, volts) => [chartX(degrees * Math.PI / 180), chartY(volts), CHART.z], {
+    title: 'The two outputs, over one turn', size: TEXT,
+    x: {min: 0, max: 360, title: 'Turn of the coil', ticks: [0, 90, 180, 270, 360].map(degrees => [degrees, `${degrees}°`])},
+    y: {min: -CHART.volts, max: CHART.volts, title: 'Volts', ticks: [-CHART.volts, 0, CHART.volts].map(volts => [volts, `${volts < 0 ? '−' : ''}${Math.abs(volts)}`])},
+  });
+  [['Slip rings', COLORS.rings], ['Split ring', COLORS.bars]].forEach(([text, color], i) => textLabel(output, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h / 2 - 0.05 - 0.075 * i, 0.001]}));
 
   // The load.
   const load = part('load', 'The load and the switch', `A resistor across the brushes, with a switch in the line. Closed, the coil drives a current through it and the shaft has to work; open, the coil still makes its voltage but nothing flows and the shaft turns free. The bar below shows the power the resistor is taking, on a fixed scale of ${fixed(LOAD.watts, 0)} W.`, [LOAD.x, LOAD.y, LOAD.z], system);
@@ -195,11 +206,11 @@ export function createGeneratorModel() {
         r('Load', plan.closed ? `${fixed(plan.loadPower, 1)} W` : 'switch open', plan.closed
           ? `The loop's own winding is ${fixed(plan.winding, 4)} Ω: ${fixed(plan.turns, 0)} turns of ${fixed(COIL.wire * 1e6, 1)} mm² copper make ${fixed(plan.turns * 2 * (COIL.length + COIL.width), 1)} m of wire. With ${fixed(plan.load, 0)} Ω beyond it the current peaks at ${fixed(plan.currentPeak, 2)} A and the resistor takes ${fixed(plan.loadPower, 1)} W.`
           : `The coil still makes ${fixed(plan.peak, 2)} V at its peak, but with the switch open nothing flows, nothing is delivered, and the shaft costs no extra torque.`),
-        r('Winding heat', `${fixed(plan.windingPower, 3)} W`, alternating
+        r('Winding heat', `${heat(plan.windingPower)} W`, alternating
           ? `The same current runs through the winding's ${fixed(plan.winding, 4)} Ω on its way to the load, and heats it. This is the price of the wire, not of the load.`
           : `While a brush bridges both halves the coil is shorted through itself, whatever the switch is doing, and its own ${fixed(plan.winding, 4)} Ω takes ${fixed(plan.peak ** 2 * plan.bridgeShare / plan.winding, 3)} W of the ${fixed(plan.windingPower, 3)} W. That short is why a commutator sparks.`),
-        r('Shaft', turning ? `${fixed(plan.drivePower, 1)} W` : '0 W', `Whatever the coil delivers and whatever the winding wastes has to come in at the shaft: ${fixed(plan.loadPower, 1)} W plus ${fixed(plan.windingPower, 3)} W. Nothing comes from the magnet. The orange arrow is the effort the drive supplies.`),
-        r('Flux', `${fixed(plan.fluxPeak * 1000, 3)} mWb`, `Edge on to the field the loop holds ${fixed(plan.turns, 0)} turns times ${fixed(plan.field, 2)} T times ${fixed(COIL_AREA, 3)} m², which is ${fixed(plan.fluxPeak * 1000, 3)} mWb, and makes no voltage. A quarter turn later it holds none and makes its most. The voltage follows the rate the flux changes, not the flux.`),
+        r('Shaft', turning ? `${fixed(plan.drivePower, 1)} W` : '0 W', `Whatever the coil delivers and whatever the winding wastes has to come in at the shaft: ${fixed(plan.loadPower, 1)} W plus ${heat(plan.windingPower)} W. Nothing comes from the magnet. The orange arrow is the effort the drive supplies.`),
+        r('Flux', `${fixed(plan.fluxPeak * 1000, 1)} mWb`, `Edge on to the field the loop holds ${fixed(plan.turns, 0)} turns times ${fixed(plan.field, 2)} T times ${fixed(COIL_AREA, 3)} m², which is ${fixed(plan.fluxPeak * 1000, 1)} mWb, and makes no voltage. A quarter turn later it holds none and makes its most. The voltage follows the rate the flux changes, not the flux.`),
         r('Slowed', turning ? `${fixed(plan.slow, 0)} times` : 'not turning', `One turn takes ${fixed((plan.period ?? 0) * 1000, 2)} ms and is drawn in ${fixed(COIL.show, 0)} seconds. The machine itself is drawn at true size; the chart is on a fixed scale of ${fixed(CHART.volts, 0)} V up and down.`),
       ],
     };

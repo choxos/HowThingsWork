@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+
+// A rating as a reader would say it: 400 MVA, 31.5 MVA, 400 kVA.
+// A power to the few figures that tell output from input apart: 1,890.0 MW out of 1,946.5 MW in.
+const powerLabel = watts => (watts >= 1e8 ? `${fixed(watts / 1e6, 1)} MW` : watts >= 1e6 ? `${fixed(watts / 1e6, 3)} MW` : `${fixed(watts / 1e3, 2)} kW`);
+const ratingLabel = va => (va >= 1e6 ? `${Number((va / 1e6).toPrecision(3))} MVA` : `${Number((va / 1e3).toPrecision(3))} kVA`);
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {transformerPlan, transformerAt, TRANSFORMER_DEFAULTS, TRANSFORMER_DOMAINS, TRANSFORMER_SAMPLES, STAGE_OPTIONS, CORE_OPTIONS, WINDING_OPTIONS, STAGES, WINDING, CORE_STEEL, TIER_TWO, SUPPLY, kvLabel} from './grid-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -67,11 +72,22 @@ export function createTransformerModel() {
   const fluxCurve = lineObject(TRANSFORMER_SAMPLES, COLORS.flux, cycle);
   const magnetizingCurve = lineObject(TRANSFORMER_SAMPLES, COLORS.magnet, cycle);
   const cycleCursor = segmentLines(2, COLORS.ink, cycle);
+  // The cycle chart's words: each curve against its own peak, so its scale is named, not numbered.
+  const TEXT = 0.05, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(cycle, (share, level) => [CYCLE.x + share * CYCLE.w, cycleY(level), CYCLE.z], {
+    title: 'Two cycles, drawn out', size: TEXT,
+    x: {min: 0, max: 1, title: `${WINDING.cycles} cycles of the supply`},
+    y: {min: -1, max: 1, ticks: [[-1, '−peak'], [0, '0'], [1, '+peak']]},
+  });
+  [['Primary voltage', COLORS.primary], ['Flux in the core', COLORS.flux], ['Magnetizing current', COLORS.magnet]].forEach(([text, color], i) => textLabel(cycle, text, {height: TEXT, align: 'left', color: css(color), position: [CYCLE.x + CYCLE.w + 0.05, CYCLE.y + CYCLE.h / 2 - 0.05 - 0.075 * i, 0.001]}));
 
   const losses = part('losses', 'Where the power goes', `Three bars against what the machine is rated for: what reaches the load, what the copper wastes and what the core wastes. The two loss bars are drawn ${fixed(BARS.magnify, 0)} times larger than the output bar, or they would be too small to see at all, and that is the point. The copper's share follows the square of the load, so it is nothing at no load and worst at full load. The core's share does not care about the load: it is there whenever the machine is switched on. The upright mark is the load at which the machine is at its best.`, [0, 0, 0], system);
   const barFrame = lineObject(5, COLORS.ink, losses);
   const barMeshes = [flat(COLORS.output, losses), flat(COLORS.copperLoss, losses), flat(COLORS.coreLoss, losses)];
   const bestMark = segmentLines(1, COLORS.ink, losses);
+  // Each bar named at its right, and the mark named above the frame.
+  [['To the load', COLORS.output], [`Copper loss, ×${fixed(BARS.magnify, 0)}`, COLORS.copperLoss], [`Core loss, ×${fixed(BARS.magnify, 0)}`, COLORS.coreLoss]].forEach(([text, color], i) => textLabel(losses, text, {height: TEXT, align: 'left', color: css(color), position: [BARS.x + BARS.w + 0.05, BARS.y + i * (BARS.h + BARS.gap) + BARS.h / 2, 0.001]}));
+  textLabel(losses, 'Where the power goes, against the rating', {height: TEXT, weight: '600', color: css(COLORS.ink), position: [BARS.x + BARS.w / 2, BARS.y + 3 * BARS.h + 3 * BARS.gap + 0.07, 0.001]});
 
   const load = part('load', 'What the secondary supplies', `The secondary's circuit. The load is set as a share of what the machine is rated for, and the current that share asks for decides the copper loss. The arrows show the current in and out; the steel arrow is what the machine delivers and the orange one is what it draws.`, [LOADVIEW.x, LOADVIEW.y, LOADVIEW.z], system);
   const loadBoard = kit.box([LOADVIEW.width, 0.1, 0.5], [0, -LOADVIEW.height / 2 - 0.05, 0], 'wood', load);
@@ -88,7 +104,9 @@ export function createTransformerModel() {
   fillLine(cycleFrame, [[CYCLE.x, CYCLE.y - CYCLE.h / 2, CYCLE.z], [CYCLE.x + CYCLE.w, CYCLE.y - CYCLE.h / 2, CYCLE.z], [CYCLE.x + CYCLE.w, CYCLE.y + CYCLE.h / 2, CYCLE.z], [CYCLE.x, CYCLE.y + CYCLE.h / 2, CYCLE.z], [CYCLE.x, CYCLE.y - CYCLE.h / 2, CYCLE.z]]);
   fillLine(cycleZero, [[CYCLE.x, CYCLE.y, CYCLE.z], [CYCLE.x + CYCLE.w, CYCLE.y, CYCLE.z]]);
   fillLine(cycleTicks, Array.from({length: 4 * WINDING.cycles}, (_, k) => { const x = CYCLE.x + CYCLE.w * (k + 1) / (4 * WINDING.cycles); return [[x, CYCLE.y - CYCLE.h / 2, CYCLE.z], [x, CYCLE.y - CYCLE.h / 2 - CYCLE.tick, CYCLE.z]]; }).flat());
-  fillLine(barFrame, [[BARS.x, BARS.y - BARS.h, BARS.z], [BARS.x + BARS.w, BARS.y - BARS.h, BARS.z], [BARS.x + BARS.w, BARS.y + 2 * (BARS.h + BARS.gap), BARS.z], [BARS.x, BARS.y + 2 * (BARS.h + BARS.gap), BARS.z], [BARS.x, BARS.y - BARS.h, BARS.z]]);
+  // The frame holds the three bars with a gap's margin below the first and above the last.
+  const barsBottom = BARS.y - BARS.gap, barsTop = BARS.y + 3 * BARS.h + 3 * BARS.gap;
+  fillLine(barFrame, [[BARS.x, barsBottom, BARS.z], [BARS.x + BARS.w, barsBottom, BARS.z], [BARS.x + BARS.w, barsTop, BARS.z], [BARS.x, barsTop, BARS.z], [BARS.x, barsBottom, BARS.z]]);
 
   const d = TRANSFORMER_DEFAULTS;
   control('stage', 'Where on the way', ...TRANSFORMER_DOMAINS.stage, d.stage, '', 'The same machine stepping up at the station, down at the grid supply point, and down again before the house.', STAGE_OPTIONS);
@@ -164,7 +182,7 @@ export function createTransformerModel() {
       bar.visible = width > 1e-6;
     });
     const bestX = BARS.x + Math.max(0, Math.min(1, plan.bestShare)) * BARS.w;
-    fillLine(bestMark, [[bestX, BARS.y - BARS.h, BARS.z], [bestX, BARS.y + 2 * (BARS.h + BARS.gap), BARS.z]]);
+    fillLine(bestMark, [[bestX, barsBottom, BARS.z], [bestX, barsTop, BARS.z]]);
 
     // The load.
     loadBox.scale.x = Math.max(0.2, 0.2 + plan.share);
@@ -174,7 +192,7 @@ export function createTransformerModel() {
     const nominal = Math.abs(plan.secondaryVolts - plan.nominalSecondary) < 1e-6;
     const status = plan.share === 0
       ? `No load · the secondary supplies nothing, yet the core still takes ${fixed(plan.coreLoss / 1000, 2)} kW to stay magnetized`
-      : clock <= 0 ? `Ready · ${plan.place.name}, ${kvLabel(plan.primaryVolts)} in and ${kvLabel(plan.secondaryVolts)} out at ${fixed(plan.share * 100, 0)} percent of ${fixed(plan.rating / 1e6, 3)} MVA; press Play`
+      : clock <= 0 ? `Ready · ${plan.place.name}, ${kvLabel(plan.primaryVolts)} in and ${kvLabel(plan.secondaryVolts)} out at ${fixed(plan.share * 100, 0)} percent of ${ratingLabel(plan.rating)}; press Play`
       : !now.done ? `Running · ${kvLabel(plan.secondaryVolts)} out, ${fixed(100 * plan.efficiency, 3)} percent of what comes in`
       : `Two cycles done · ${fixed(plan.output / 1e6, 3)} MW delivered, ${fixed(plan.loss / 1000, 2)} kW wasted`;
 
@@ -182,17 +200,17 @@ export function createTransformerModel() {
       state: {...plan, now, clock, leg, nominal},
       readings: [
         r('Your result', status),
-        r('Turns ratio', `${fixed(plan.drawnSecondary, 0)} to ${fixed(plan.drawnPrimary, 0)}`, `${fixed(plan.drawnPrimary, 0)} turns drawn stand for ${fixed(plan.primaryTurns, 0)} real turns and ${fixed(plan.drawnSecondary, 0)} for ${fixed(plan.secondaryTurns, 0)}. The voltage follows that ratio exactly, ${fixed(plan.ratio, 5)}, and the current follows it upside down, so ampere turns balance on the two sides.`),
+        r('Turns ratio', `${fixed(plan.drawnSecondary, 0)} to ${fixed(plan.drawnPrimary, 0)}`, `${fixed(plan.drawnPrimary, 0)} ${plan.drawnPrimary === 1 ? 'turn drawn stands' : 'turns drawn stand'} for ${fixed(plan.primaryTurns, 0)} real turns and ${fixed(plan.drawnSecondary, 0)} for ${fixed(plan.secondaryTurns, 0)}. The voltage follows that ratio exactly, ${fixed(plan.ratio, 5)}, and the current follows it upside down, so ampere turns balance on the two sides.`),
         r('Out', kvLabel(plan.secondaryVolts), nominal
-          ? `${kvLabel(plan.primaryVolts)} in times ${fixed(plan.ratio, 5)} is ${kvLabel(plan.secondaryVolts)}, which is what this stage is for. ${plan.place.name === 'Home supply' ? 'That is the voltage between two of the three lines at the house; between one line and neutral it is 230 V.' : `A real ${plan.place.name.toLowerCase()} transformer is rated ${fixed(plan.rating / 1e6, 3)} MVA.`}`
+          ? `${kvLabel(plan.primaryVolts)} in times ${fixed(plan.ratio, 5)} is ${kvLabel(plan.secondaryVolts)}, which is what this stage is for. ${plan.place.name === 'Home supply' ? 'That is the voltage between two of the three lines at the house; between one line and neutral it is 230 V.' : `A real ${plan.place.name.toLowerCase()} transformer is rated ${ratingLabel(plan.rating)}.`}`
           : `${kvLabel(plan.primaryVolts)} in times ${fixed(plan.ratio, 5)} is ${kvLabel(plan.secondaryVolts)}, which is not what this stage is for: ${fixed(plan.place.primaryTurns, 0)} and ${fixed(plan.place.secondaryTurns, 0)} turns drawn would give ${kvLabel(plan.nominalSecondary)}.`),
-        r('Currents', `${fixed(plan.primaryCurrent, 1)} A in, ${fixed(plan.secondaryCurrent, 1)} A out`, `At ${fixed(plan.share * 100, 0)} percent of ${fixed(plan.rating / 1e6, 3)} MVA the secondary carries ${fixed(plan.secondaryCurrent, 1)} A. The primary carries that in the inverse ratio of the turns plus what the core itself takes, which is ${fixed(plan.noLoadCurrent, 2)} A at no load.`),
+        r('Currents', `${fixed(plan.primaryCurrent, 1)} A in, ${fixed(plan.secondaryCurrent, 1)} A out`, `At ${fixed(plan.share * 100, 0)} percent of ${ratingLabel(plan.rating)} the secondary carries ${fixed(plan.secondaryCurrent, 1)} A. The primary carries that in the inverse ratio of the turns plus what the core itself takes, which is ${fixed(plan.noLoadCurrent, 2)} A at no load.`),
         r('Flux density', `${fixed(plan.flux, 3)} T`, `The universal EMF equation, E = 2π f N A B over √2, ties the voltage to the turns, the core's ${fixed(plan.area, 2)} m² and the flux: ${fixed(plan.primaryTurns, 0)} real turns at ${fixed(SUPPLY.frequency, 0)} Hz leave ${fixed(plan.flux, 3)} T in the iron. Electrical steel's loss is quoted at ${fixed(CORE_STEEL.quoted, 1)} T. Fewer turns mean more flux, and the core loss follows its square.`),
         r('Core loss', `${fixed(plan.coreLoss / 1000, 2)} kW`, `Hysteresis and eddy currents in the iron, there whenever the machine is switched on and not caring what the load does. Eddy losses follow the square of the applied voltage, so here they follow the square of the flux the turns leave. ${v.core === 1 ? 'Amorphous metal cuts it to 30 percent of the silicon steel figure.' : 'Amorphous metal would cut it by up to 70 percent.'}`),
         r('Copper loss', `${fixed(plan.copperLoss / 1000, 2)} kW`, `Heat in the windings' own resistance, following the square of the load: ${fixed(plan.share * 100, 0)} percent of rating gives ${fixed(plan.share ** 2 * 100, 1)} percent of the full load figure of ${fixed(plan.place.loadLoss * plan.windingFactor / 1000, 2)} kW.${v.winding === 1 ? ' Aluminum of the same cross section wastes 1.68 times what copper does.' : ''}`),
         r('Efficiency', plan.efficiency === null ? 'nothing delivered' : `${fixed(100 * plan.efficiency, 3)} percent`, plan.efficiency === null
           ? `With nothing drawn there is nothing to be efficient with, and the core still takes ${fixed(plan.coreLoss / 1000, 2)} kW. A transformer switched on all year pays that bill all year.`
-          : `${fixed(plan.output / 1e6, 3)} MW out of ${fixed(plan.input / 1e6, 3)} MW in. The machine is at its best at ${fixed(100 * plan.bestShare, 1)} percent of rating, where the copper loss has grown to equal the core loss; the regulation asks this size for ${fixed(100 * plan.index, 3)} percent there. Typical distribution transformers run between 98 and 99 percent.`),
+          : `${powerLabel(plan.output)} out of ${powerLabel(plan.input)} in. The machine is at its best at ${fixed(100 * plan.bestShare, 1)} percent of rating, where the copper loss has grown to equal the core loss; the regulation asks this size for ${fixed(100 * plan.index, 3)} percent there. Typical distribution transformers run between 98 and 99 percent.`),
         r('Magnetizing current', `${fixed(plan.magnetizing, 2)} A`, `The current the core needs to hold its flux. It keeps step with the flux, a quarter cycle behind the voltage, so it carries no power; it is taken here as ${fixed(100 * WINDING.magnetizing, 1)} percent of rated current at rated flux, which is declared and not from a source. With the secondary open, this and the core loss current are the whole of what the machine draws.`),
         r('Reflected', plan.reflected === null ? 'nothing connected' : `${fixed(plan.reflected, 2)} Ω`, plan.reflected === null
           ? 'With no load there is nothing for the primary to see through the core.'

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {
   airconPlan, airconAt, roomAt, relativeHumidity, saturatedRatio, buckPressure, humidityRatio, waterLatent,
   AIRCON_DEFAULTS, AIRCON_DOMAINS, AIR, DECLARED, R410A, RATED, WATER, MOLAR_RATIO, CLAPEYRON, LATENT, GAMMA,
@@ -196,6 +196,26 @@ export function createAirConditionerModel() {
   const guideRoom = lineObject(DECLARED.samples, COLORS.faint, chartPart), guideHumidity = lineObject(DECLARED.samples, COLORS.faint, chartPart);
   const curveRoom = lineObject(DECLARED.samples + 1, COLORS.hot, chartPart), curveHumidity = lineObject(DECLARED.samples + 1, COLORS.cold, chartPart);
   const reachedMark = segmentLines(1, COLORS.set, chartPart), cursor = segmentLines(2, COLORS.chart, chartPart);
+
+  // The charts' words. Titles sit at the charts' left, clear of the leaders that meet their tops.
+  const TEXT = 0.042, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.chart), ...options});
+  const P = PSYCHRO, signedText = value => `${value < 0 ? '−' : ''}${Math.abs(value)}`;
+  chartText(psychro, (celsius, ratio) => [psychroX(celsius), psychroY(ratio), 0], {
+    size: TEXT,
+    x: {min: P.temperature[0], max: P.temperature[1], title: 'Air temperature, °C', ticks: [-10, 0, 10, 20, 30, 40].map(celsius => [celsius, signedText(celsius)])},
+    y: {min: P.ratio[0], max: P.ratio[1], title: 'Water, grams per kg of dry air', ticks: [0, 0.01, 0.02, 0.03].map(ratio => [ratio, fixed(ratio * 1000, 0)])},
+    legend: [['Saturation', COLORS.chart], ['Air in', COLORS.hot], ['At the coil', COLORS.cold], ['Air out', COLORS.liquid]], legendAt: [3, P.ratio[1]],
+  });
+  words(psychro, 'The air crossing the coil', P.x, P.y + P.h + 0.1, {align: 'left', weight: '600'});
+  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
+    size: TEXT,
+    x: {min: 0, max: 1, title: `Minutes, a tick every ${fixed(CHART.tickEvery / 60, 0)}`, ticks: [[0, '0']]},
+    y: {min: CHART.temperature[0], max: CHART.temperature[1], title: '°C', ticks: [15, 20, 25, 30, 35].map(celsius => [celsius, String(celsius)])},
+  });
+  words(chartPart, 'The room through the run', CHART.x, CHART.y + CHART.h + 0.1, {align: 'left', weight: '600'});
+  [0, 50, 100].forEach(percent => words(chartPart, `${percent}%`, CHART.x + CHART.w + 0.02, humidityY(percent), {align: 'left', color: css(COLORS.cold)}));
+  [['Room temperature', COLORS.hot], ['Humidity', COLORS.cold], ['Your setting', COLORS.set], ['Comfort range', COLORS.comfort]].forEach(([text, color], i) => words(chartPart, text, CHART.x + CHART.w + 0.2, CHART.y + CHART.h - 0.05 - 0.06 * i, {align: 'left', color: css(color)}));
   const leaders = segmentLines(2, COLORS.faint, system);
 
   const d = AIRCON_DEFAULTS, D = AIRCON_DOMAINS;

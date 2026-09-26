@@ -41,7 +41,7 @@ const SRC = {
   r410a: {
     name: 'R-410A', molar: 0.0726, melting: -155, boiling: -48.5,
     liquidDensity: 1040, liquidDensityAt: 30, vaporDensity: 3.0, vaporDensityAt: 30,
-    vaporPressure: 1.383e6, vaporPressureAt: 21.1,
+    vaporPressureGauge: 1.383e6, vaporPressure: 1.383e6 + 101325, vaporPressureAt: 21.1,
     criticalTemperature: 72.8, criticalPressure: 4.90e6,
     gasHeat: 840, liquidHeat: 1800, liquidHeatAt: 30,
   },
@@ -97,9 +97,12 @@ for (const pascals of [500, 1200, 2269, 4000]) {
     const slope = (Math.log(P.boilingPressure(1 / (1 / T + h) - K)) - Math.log(P.boilingPressure(1 / (1 / T - h) - K))) / (2 * h);
     t.ok(Math.abs(slope + P.CLAPEYRON) / P.CLAPEYRON < 1e-6, `at ${celsius} °C the curve's slope against 1/T is ${f0(-slope)} K, the fit's ${f0(P.CLAPEYRON)} K`);
   }
-  // Extrapolated to the critical temperature, the fit should land near the critical pressure the table gives.
+  // Extrapolated to the critical temperature, a fit with a constant latent heat
+  // must overshoot the critical pressure the table gives, because a real latent
+  // heat shrinks to nothing there; over the loop's own range it stays close.
   const critical = P.boilingPressure(SRC.r410a.criticalTemperature);
-  t.ok(Math.abs(critical - SRC.r410a.criticalPressure) / SRC.r410a.criticalPressure < 0.01, `extrapolated to ${SRC.r410a.criticalTemperature} °C the fit gives ${f2(critical / 1e6)} MPa against the table's ${f2(SRC.r410a.criticalPressure / 1e6)} MPa, within a percent`);
+  t.ok(critical > SRC.r410a.criticalPressure && (critical - SRC.r410a.criticalPressure) / SRC.r410a.criticalPressure < 0.15, `extrapolated to ${SRC.r410a.criticalTemperature} °C the fit gives ${f2(critical / 1e6)} MPa, above the table's ${f2(SRC.r410a.criticalPressure / 1e6)} MPa but within 15 percent`);
+  t.near(P.boilingPressure(SRC.r410a.vaporPressureAt) - SRC.atmosphere, SRC.r410a.vaporPressureGauge, 1e-3, 'the table’s 1.383 MPa at 21.1 °C is read as a gauge pressure');
   t.near(P.LATENT, P.CLAPEYRON * SRC.gas / SRC.r410a.molar, 1e-9, 'the latent heat the fit implies is B R over M');
   t.ok(P.LATENT > 200e3 && P.LATENT < 350e3, `and ${f0(P.LATENT / 1000)} kJ/kg is the size a refrigerant's latent heat should be`);
   t.near(P.GAMMA, SRC.r410a.gasHeat / (SRC.r410a.gasHeat - SRC.gas / SRC.r410a.molar), 1e-15, 'the ratio of heat capacities is cp over cp minus R/M');
@@ -505,13 +508,13 @@ for (const values of settings) {
 const run = values => P.airconPlan(values), def = P.airconPlan({});
 const minutes = plan => plan.reached / 60;
 checkTrialNumbers(L.airConditionerLesson, {
-  'Cool the room down': s => { t.ok(s.reaches && s.steady.air.condensate > 0, 'the default run arrives, taking water out on the way'); return {'3,904': s.steady.cooling, '2,217': s.steady.air.sensible, '1,687': s.steady.air.latent, '12.8': minutes(s)}; },
-  'Dry air': s => { t.ok(s.steady.air.condensate === 0 && s.steady.share === 1, 'dry air gives up nothing but heat'); return {'7.7': s.steady.evaporating, '3.0': s.startDew, '3,159': s.steady.cooling, '8.0': minutes(s)}; },
-  'Damp air': s => { t.ok(s.steady.air.latent > s.steady.air.sensible, 'damp air spends more of the coil on drying than on cooling'); return {'4.55': s.steady.air.condensate * 3600, '3,107': s.steady.air.latent, '4,578': s.steady.cooling, '21.0': minutes(s)}; },
-  'Starve it of air': s => { t.ok(s.steady.evaporating < def.steady.evaporating && s.steady.cooling < def.steady.cooling, 'less air drags the coil down and the capacity with it'); return {'2.3': s.steady.evaporating, '6.1': s.steady.air.leavingC, '2,584': s.steady.cooling, '26.0': minutes(s)}; },
-  'Open it up': s => { t.ok(s.steady.share > def.steady.share, 'more air spends more of the coil on cooling'); return {'17.6': s.steady.evaporating, 73: 100 * s.steady.share, 57: 100 * def.steady.share, '1.79': s.steady.air.condensate * 3600, '8.5': minutes(s)}; },
-  'A hot day': s => { t.ok(s.steady.compressor.work > def.steady.compressor.work && s.steady.cop < def.steady.cop, 'a hotter day costs more work for less cooling'); return {'55.7': s.steady.condensing, '1,204': s.steady.compressor.work, 949: def.steady.compressor.work, '4.11': def.steady.cop, '3.01': s.steady.cop}; },
-  'A bigger room': s => { t.ok(s.steady.cooling === def.steady.cooling && s.reached > def.reached, 'the same unit takes longer over a bigger room'); return {'3,904': s.steady.cooling, '25.3': minutes(s), '12.8': minutes(def)}; },
+  'Cool the room down': s => { t.ok(s.reaches && s.steady.air.condensate > 0, 'the default run arrives, taking water out on the way'); return {'4,161': s.steady.cooling, '2,317': s.steady.air.sensible, '1,844': s.steady.air.latent, '12.0': minutes(s)}; },
+  'Dry air': s => { t.ok(s.steady.air.condensate === 0 && s.steady.share === 1, 'dry air gives up nothing but heat'); return {'6.7': s.steady.evaporating, '3.0': s.startDew, '3,310': s.steady.cooling, '7.5': minutes(s)}; },
+  'Damp air': s => { t.ok(s.steady.air.latent > s.steady.air.sensible, 'damp air spends more of the coil on drying than on cooling'); return {'4.86': s.steady.air.condensate * 3600, '3,318': s.steady.air.latent, '4,891': s.steady.cooling, '19.0': minutes(s)}; },
+  'Starve it of air': s => { t.ok(s.steady.evaporating < def.steady.evaporating && s.steady.cooling < def.steady.cooling, 'less air drags the coil down and the capacity with it'); return {'1.2': s.steady.evaporating, '5.2': s.steady.air.leavingC, '2,684': s.steady.cooling, '24.3': minutes(s)}; },
+  'Open it up': s => { t.ok(s.steady.share > def.steady.share, 'more air spends more of the coil on cooling'); return {'17.3': s.steady.evaporating, '70': 100 * s.steady.share, '56': 100 * def.steady.share, '2.12': s.steady.air.condensate * 3600, '8.0': minutes(s)}; },
+  'A hot day': s => { t.ok(s.steady.compressor.work > def.steady.compressor.work && s.steady.cop < def.steady.cop, 'a hotter day costs more work for less cooling'); return {'56.6': s.steady.condensing, '1,339': s.steady.compressor.work, '1,066': def.steady.compressor.work, '3.90': def.steady.cop, '2.89': s.steady.cop}; },
+  'A bigger room': s => { t.ok(s.steady.cooling === def.steady.cooling && s.reached > def.reached, 'the same unit takes longer over a bigger room'); return {'4,161': s.steady.cooling, '23.8': minutes(s), '12.0': minutes(def)}; },
 }, run, t);
 
 // Free text: each snippet computed, and every number in the text inside a snippet.
@@ -545,42 +548,42 @@ covered(lesson.limits, {[`plays ${f0(P.DECLARED.slower)} times faster`]: 'plays 
 
 const standard = def.steady, waterAt = P.waterLatent(standard.evaporating);
 covered(lesson.deeper[0].body, {
-  [`puts at ${f0(waterAt / 1000)} J/g at this coil`]: 'puts at 2,469 J/g at this coil',
-  [`${f0(standard.air.sensible)} W of the ${f0(standard.cooling)} W is sensible and ${f0(standard.air.latent)} W is latent, so ${f0(100 * standard.share)}% of the work is cooling and ${f0(100 - 100 * standard.share)}% is drying`]: '2,217 W of the 3,904 W is sensible and 1,687 W is latent, so 57% of the work is cooling and 43% is drying',
+  [`puts at ${f0(waterAt / 1000)} J/g at this coil`]: 'puts at 2,470 J/g at this coil',
+  [`${f0(standard.air.sensible)} W of the ${f0(standard.cooling)} W is sensible and ${f0(standard.air.latent)} W is latent, so ${f0(100 * standard.share)}% of the work is cooling and ${f0(100 - 100 * standard.share)}% is drying`]: '2,317 W of the 4,161 W is sensible and 1,844 W is latent, so 56% of the work is cooling and 44% is drying',
 }, 'Air conditioner deeper 1');
 covered(lesson.deeper[1].body, {
   [`At ${f0(def.values.room)} °C and ${f0(def.values.humidity)}% the room’s air carries ${f2(1000 * def.startRatio)} g/kg and would be full at ${f1(def.startDew)} °C`]: 'At 28 °C and 60% the room’s air carries 14.25 g/kg and would be full at 19.5 °C',
-  [`coil at ${f1(standard.evaporating)} °C takes water out until the air leaving carries ${f2(1000 * standard.air.leavingRatio)} g/kg`]: 'coil at 13.7 °C takes water out until the air leaving carries 10.46 g/kg',
+  [`coil at ${f1(standard.evaporating)} °C takes water out until the air leaving carries ${f2(1000 * standard.air.leavingRatio)} g/kg`]: 'coil at 13.1 °C takes water out until the air leaving carries 10.11 g/kg',
   [`leaves this coil at ${f0(standard.air.leavingHumidity)}% while the room it came from was at ${f0(def.values.humidity)}%`]: 'leaves this coil at 93% while the room it came from was at 60%',
   [`ends the run at ${f0(P.relativeHumidity(def.settled.celsius, def.settled.ratio))}%`]: 'ends the run at 67%',
 }, 'Air conditioner deeper 2');
 covered(lesson.deeper[2].body, {
   [P.R410A.name]: 'R-410A',
-  [`boils at ${f1(-P.R410A.boiling)} °C below zero under one atmosphere and needs ${f3(P.R410A.vaporPressure / 1e6)} MPa to stay liquid at ${f1(P.R410A.vaporPressureAt)} °C`]: 'boils at 48.5 °C below zero under one atmosphere and needs 1.383 MPa to stay liquid at 21.1 °C',
-  [`give ${f0(P.CLAPEYRON)} K`]: 'give 2,482 K',
-  [`extrapolates to ${f2(P.boilingPressure(P.R410A.criticalTemperature) / 1e6)} MPa at the critical point the table gives as ${f2(P.R410A.criticalPressure / 1e6)} MPa`]: 'extrapolates to 4.88 MPa at the critical point the table gives as 4.90 MPa',
-  [`latent heat of ${f0(P.LATENT / 1000)} kJ/kg`]: 'latent heat of 284 kJ/kg',
-  [`boil at ${f2(standard.compressor.low / 1e5)} bar and the coil sits at ${f1(standard.evaporating)} °C`]: 'boil at 11.14 bar and the coil sits at 13.7 °C',
+  [`boils at ${f1(-P.R410A.boiling)} °C below zero under one atmosphere and needs ${f3(P.R410A.vaporPressureGauge / 1e6)} MPa above the atmosphere, ${f3(P.R410A.vaporPressure / 1e6)} MPa in all, to stay liquid at ${f1(P.R410A.vaporPressureAt)} °C`]: 'boils at 48.5 °C below zero under one atmosphere and needs 1.383 MPa above the atmosphere, 1.484 MPa in all, to stay liquid at 21.1 °C',
+  [`give ${f0(P.CLAPEYRON)} K`]: 'give 2,550 K',
+  [`the line reaches ${f2(P.boilingPressure(P.R410A.criticalTemperature) / 1e6)} MPa, above the ${f2(P.R410A.criticalPressure / 1e6)} MPa the table gives`]: 'the line reaches 5.42 MPa, above the 4.90 MPa the table gives',
+  [`latent heat of ${f0(P.LATENT / 1000)} kJ/kg`]: 'latent heat of 292 kJ/kg',
+  [`boil at ${f2(standard.compressor.low / 1e5)} bar and the coil sits at ${f1(standard.evaporating)} °C`]: 'boil at 11.65 bar and the coil sits at 13.1 °C',
 }, 'Air conditioner deeper 3');
 covered(lesson.deeper[3].body, {
-  [`swallows vapor at ${f2(standard.compressor.low / 1e5)} bar and pushes it out at ${f2(standard.compressor.high / 1e5)} bar, a pressure ratio of ${f2(standard.compressor.ratio)}`]: 'swallows vapor at 11.14 bar and pushes it out at 26.57 bar, a pressure ratio of 2.39',
-  [`an ${f0(1e6 * P.DECLARED.displacement)} cm³ swept volume turning ${P.DECLARED.rpm.toLocaleString('en-US')} times a minute fills ${f1(100 * standard.compressor.volumetric)}% of the way and moves ${f2(1000 * standard.compressor.mass)} g`]: 'an 11 cm³ swept volume turning 2,900 times a minute fills 95.5% of the way and moves 16.92 g',
+  [`swallows vapor at ${f2(standard.compressor.low / 1e5)} bar and pushes it out at ${f2(standard.compressor.high / 1e5)} bar, a pressure ratio of ${f2(standard.compressor.ratio)}`]: 'swallows vapor at 11.65 bar and pushes it out at 29.63 bar, a pressure ratio of 2.54',
+  [`an ${f0(1e6 * P.DECLARED.displacement)} cm³ swept volume turning ${P.DECLARED.rpm.toLocaleString('en-US')} times a minute fills ${f1(100 * standard.compressor.volumetric)}% of the way and moves ${f2(1000 * standard.compressor.mass)} g`]: 'an 11 cm³ swept volume turning 2,900 times a minute fills 95.0% of the way and moves 17.64 g',
 }, 'Air conditioner deeper 4');
 {
   const hot = P.airconPlan({outdoor: 45}).steady;
   covered(lesson.deeper[4].body, {
-    [`${f0(standard.cooling)} W and ${f0(standard.compressor.work)} W make ${f0(standard.outdoorHeat)} W`]: '3,904 W and 949 W make 4,854 W',
-    [`from ${f0(def.values.outdoor)} °C outdoors to ${f0(45)} °C the compressor goes from ${f0(standard.compressor.work)} W to ${f0(hot.compressor.work)} W while the cooling it delivers falls from ${f0(standard.cooling)} W to ${f0(hot.cooling)} W`]: 'from 35 °C outdoors to 45 °C the compressor goes from 949 W to 1,204 W while the cooling it delivers falls from 3,904 W to 3,623 W',
+    [`${f0(standard.cooling)} W and ${f0(standard.compressor.work)} W make ${f0(standard.outdoorHeat)} W`]: '4,161 W and 1,066 W make 5,226 W',
+    [`from ${f0(def.values.outdoor)} °C outdoors to ${f0(45)} °C the compressor goes from ${f0(standard.compressor.work)} W to ${f0(hot.compressor.work)} W while the cooling it delivers falls from ${f0(standard.cooling)} W to ${f0(hot.cooling)} W`]: 'from 35 °C outdoors to 45 °C the compressor goes from 1,066 W to 1,339 W while the cooling it delivers falls from 4,161 W to 3,869 W',
   }, 'Air conditioner deeper 5');
 }
 covered(lesson.deeper[5].body, {
-  [`this unit gives ${f2(standard.cop)}`]: 'this unit gives 4.11',
+  [`this unit gives ${f2(standard.cop)}`]: 'this unit gives 3.90',
   [`gives most air conditioners ${f1(P.RATED.cop[0])} to ${f0(P.RATED.cop[1])}`]: 'gives most air conditioners 3.5 to 5',
-  [`across the same ${f1(standard.lift)} °C would reach ${f1(standard.carnot)}, so this one is ${f0(100 * standard.cop / standard.carnot)}% of the best`]: 'across the same 32.1 °C would reach 8.9, so this one is 46% of the best',
-  [`Its capacity, ${f0(standard.cooling)} W, is ${f2(standard.tons)} tons of refrigeration, a ton being exactly ${P.RATED.btu.toLocaleString('en-US')} BTU an hour, and the Air conditioning page puts residential systems at ${f0(P.RATED.tons[0])} to ${f0(P.RATED.tons[1])} tons`]: 'Its capacity, 3,904 W, is 1.11 tons of refrigeration, a ton being exactly 12,000 BTU an hour, and the Air conditioning page puts residential systems at 1 to 5 tons',
+  [`across the same ${f1(standard.lift)} °C would reach ${f1(standard.carnot)}, so this one is ${f0(100 * standard.cop / standard.carnot)}% of the best`]: 'across the same 33.5 °C would reach 8.5, so this one is 46% of the best',
+  [`Its capacity, ${f0(standard.cooling)} W, is ${f2(standard.tons)} tons of refrigeration, a ton being exactly ${P.RATED.btu.toLocaleString('en-US')} BTU an hour, and the Air conditioning page puts residential systems at ${f0(P.RATED.tons[0])} to ${f0(P.RATED.tons[1])} tons`]: 'Its capacity, 4,161 W, is 1.18 tons of refrigeration, a ton being exactly 12,000 BTU an hour, and the Air conditioning page puts residential systems at 1 to 5 tons',
 }, 'Air conditioner deeper 6');
 covered(lesson.quiz.explanation, {
-  [`loses ${f0(standard.cooling)} W and the compressor adds ${f0(standard.compressor.work)} W, so ${f0(standard.outdoorHeat)} W`]: 'loses 3,904 W and the compressor adds 949 W, so 4,854 W',
+  [`loses ${f0(standard.cooling)} W and the compressor adds ${f0(standard.compressor.work)} W, so ${f0(standard.outdoorHeat)} W`]: 'loses 4,161 W and the compressor adds 1,066 W, so 5,226 W',
 }, 'Air conditioner quiz');
 
 // The model's own words.
@@ -618,28 +621,28 @@ for (const id of ['fan', 'drain', 'outdoor-fan', 'compressor', 'expansion']) cov
   t.ok(find('Sped up').value === `${f0(P.DECLARED.slower)} times faster`, 'and the clock');
   covered(find('Cooling').hint, {
     [`exactly ${P.RATED.btu.toLocaleString('en-US')} BTU an hour, ${f0(P.RATED.ton)} W, and the Air conditioning page puts residential systems at ${f0(P.RATED.tons[0])} to ${f0(P.RATED.tons[1])} tons`]: 'exactly 12,000 BTU an hour, 3,517 W, and the Air conditioning page puts residential systems at 1 to 5 tons',
-    [`Of the ${f0(standard.cooling)} W, ${f0(standard.air.sensible)} W is sensible, the part that lowers the air’s temperature, and ${f0(standard.air.latent)} W is latent, the part that condenses its water; ${f0(100 * standard.share)}% of the work is cooling and ${f0(100 - 100 * standard.share)}% is drying.`]: 'Of the 3,904 W, 2,217 W is sensible, the part that lowers the air’s temperature, and 1,687 W is latent, the part that condenses its water; 57% of the work is cooling and 43% is drying.',
+    [`Of the ${f0(standard.cooling)} W, ${f0(standard.air.sensible)} W is sensible, the part that lowers the air’s temperature, and ${f0(standard.air.latent)} W is latent, the part that condenses its water; ${f0(100 * standard.share)}% of the work is cooling and ${f0(100 - 100 * standard.share)}% is drying.`]: 'Of the 4,161 W, 2,317 W is sensible, the part that lowers the air’s temperature, and 1,844 W is latent, the part that condenses its water; 56% of the work is cooling and 44% is drying.',
   }, 'Cooling hint');
   covered(find('Air across the coil').hint, {
-    [`sits at the ${f1(standard.evaporating)} °C the refrigerant boils at, and ${f0(100 * P.DECLARED.contact)}% of the air is brought to it`]: 'sits at the 13.7 °C the refrigerant boils at, and 85% of the air is brought to it',
-    [`leaves at ${f1(standard.air.leavingC)} °C and ${f0(standard.air.leavingHumidity)}% relative humidity`]: 'leaves at 15.9 °C and 93% relative humidity',
+    [`sits at the ${f1(standard.evaporating)} °C the refrigerant boils at, and ${f0(100 * P.DECLARED.contact)}% of the air is brought to it`]: 'sits at the 13.1 °C the refrigerant boils at, and 85% of the air is brought to it',
+    [`leaves at ${f1(standard.air.leavingC)} °C and ${f0(standard.air.leavingHumidity)}% relative humidity`]: 'leaves at 15.3 °C and 93% relative humidity',
   }, 'Air hint');
   covered(find('Water taken out').hint, {
     [`carrying ${f2(1000 * def.startRatio)} g of water for each kilogram of dry air, a dew point of ${f1(def.startDew)} °C`]: 'carrying 14.25 g of water for each kilogram of dry air, a dew point of 19.5 °C',
-    [`it leaves with ${f2(1000 * standard.air.leavingRatio)} g/kg and the rest, ${f2(standard.air.condensate * 3600)} kg an hour`]: 'it leaves with 10.46 g/kg and the rest, 2.46 kg an hour',
+    [`it leaves with ${f2(1000 * standard.air.leavingRatio)} g/kg and the rest, ${f2(standard.air.condensate * 3600)} kg an hour`]: 'it leaves with 10.11 g/kg and the rest, 2.69 kg an hour',
   }, 'Water hint');
   covered(find('Compressor').hint, {
-    [`vapor at ${f2(standard.compressor.low / 1e5)} bar and pushes it out at ${f2(standard.compressor.high / 1e5)} bar, a pressure ratio of ${f2(standard.compressor.ratio)}`]: 'vapor at 11.14 bar and pushes it out at 26.57 bar, a pressure ratio of 2.39',
-    [`Its ${f0(1e6 * P.DECLARED.displacement)} cm³ swept ${P.DECLARED.rpm.toLocaleString('en-US')} times a minute fills only ${f1(100 * standard.compressor.volumetric)}% of the way`]: 'Its 11 cm³ swept 2,900 times a minute fills only 95.5% of the way',
-    [`moves ${f2(1000 * standard.compressor.mass)} g of refrigerant a second`]: 'moves 16.92 g of refrigerant a second',
+    [`vapor at ${f2(standard.compressor.low / 1e5)} bar and pushes it out at ${f2(standard.compressor.high / 1e5)} bar, a pressure ratio of ${f2(standard.compressor.ratio)}`]: 'vapor at 11.65 bar and pushes it out at 29.63 bar, a pressure ratio of 2.54',
+    [`Its ${f0(1e6 * P.DECLARED.displacement)} cm³ swept ${P.DECLARED.rpm.toLocaleString('en-US')} times a minute fills only ${f1(100 * standard.compressor.volumetric)}% of the way`]: 'Its 11 cm³ swept 2,900 times a minute fills only 95.0% of the way',
+    [`moves ${f2(1000 * standard.compressor.mass)} g of refrigerant a second`]: 'moves 17.64 g of refrigerant a second',
   }, 'Compressor hint');
   covered(find('Coefficient of performance').hint, {
-    [`${f0(standard.cooling)} W for ${f0(standard.compressor.work)} W`]: '3,904 W for 949 W',
+    [`${f0(standard.cooling)} W for ${f0(standard.compressor.work)} W`]: '4,161 W for 1,066 W',
     [`gives most air conditioners ${f1(P.RATED.cop[0])} to ${f0(P.RATED.cop[1])}`]: 'gives most air conditioners 3.5 to 5',
-    [`across the same ${f1(standard.lift)} °C would reach ${f1(standard.carnot)}, so this one is ${f0(100 * standard.cop / standard.carnot)}%`]: 'across the same 32.1 °C would reach 8.9, so this one is 46%',
+    [`across the same ${f1(standard.lift)} °C would reach ${f1(standard.carnot)}, so this one is ${f0(100 * standard.cop / standard.carnot)}%`]: 'across the same 33.5 °C would reach 8.5, so this one is 46%',
   }, 'Coefficient hint');
   covered(find('Sped up').hint, {
-    [`plays ${f0(P.DECLARED.slower)} times faster than the real thing: this one takes ${f1(def.duration / 60)} min and plays in ${f0(def.duration / P.DECLARED.slower)} s`]: 'plays 60 times faster than the real thing: this one takes 12.8 min and plays in 13 s',
+    [`plays ${f0(P.DECLARED.slower)} times faster than the real thing: this one takes ${f1(def.duration / 60)} min and plays in ${f0(def.duration / P.DECLARED.slower)} s`]: 'plays 60 times faster than the real thing: this one takes 12.0 min and plays in 12 s',
   }, 'Sped up hint');
   model.update({humidity: 20});
   t.ok(model.getState().readings.find(item => item.label === 'Water taken out').value === 'none', 'dry air takes no water out, and the reading says so');

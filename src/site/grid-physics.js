@@ -143,7 +143,11 @@ export function generatorAt(plan, time) {
   const bridged = !plan.alternating && Math.abs(Math.asin(Math.sin(theta))) <= BRIDGE;
   const terminal = plan.alternating ? coilEmf : bridged ? 0 : Math.abs(coilEmf);
   const current = plan.circuit === null ? 0 : bridged ? 0 : terminal / plan.circuit;
-  const coilCurrent = plan.circuit === null ? 0 : bridged ? coilEmf / plan.winding : (plan.alternating ? 1 : Math.sign(Math.sin(theta))) * Math.abs(current);
+  // Slip rings hand the load the coil's own current, so it reverses with the
+  // voltage; the commutator reverses the coil's connection instead. Either way
+  // the coil current follows its voltage and the shaft always works against it.
+  // A bridged commutator shorts the coil whether or not the load switch is closed.
+  const coilCurrent = bridged ? coilEmf / plan.winding : plan.circuit === null ? 0 : plan.alternating ? current : Math.sign(Math.sin(theta)) * Math.abs(current);
   return {
     time, t, theta, coilEmf, terminal, current, coilCurrent, bridged,
     flux: plan.fluxPeak * Math.cos(theta),
@@ -195,7 +199,7 @@ export const WINDING_OPTIONS = Object.freeze([{value: 0, label: 'Copper'}, {valu
 
 /** A voltage as kV or V, for a label. */
 export function kvLabel(volts) {
-  return volts >= 1000 ? `${Number((volts / 1000).toFixed(3))} kV` : `${Number(volts.toFixed(3))} V`;
+  return volts >= 1000 ? `${Number((volts / 1000).toFixed(3))} kV` : `${Number(volts.toPrecision(4))} V`;
 }
 
 export const TRANSFORMER_DEFAULTS = Object.freeze({stage: 1, primaryTurns: 60, secondaryTurns: 5, load: 100, core: 0, winding: 0});

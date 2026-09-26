@@ -27,172 +27,147 @@ const ok = (condition, message) => {
 };
 
 // ---------------------------------------------------------------------------
-// The transformer. V2/V1 = N2/N1, N1 I1 = N2 I2, and an ideal transformer
-// passes every watt it takes. The flux is the integral of the primary voltage
-// over the primary turns, so it lags that voltage by a quarter cycle.
+// The transformer. V2/V1 = N2/N1, the primary pays for everything the
+// secondary delivers plus the copper and the core, and the flux is the integral
+// of the primary voltage over the primary turns, so it lags that voltage by a
+// quarter cycle and its peak is the universal EMF equation's.
 // ---------------------------------------------------------------------------
 {
-  const {transformerElectrical, transformerConstants} = await import(new URL('transformer-model.js', root));
-  const omega = transformerConstants.omega;
-  for (const primaryTurns of [8, 12, 20]) {
-    for (const secondaryTurns of [4, 12, 36]) {
-      for (const voltage of [6, 12, 24]) {
-        for (const resistance of [4, 30]) {
-          const values = {primaryTurns, secondaryTurns, voltage, resistance, connected: 1, startPhase: 0};
-          const turnsRatio = secondaryTurns / primaryTurns;
-          const state = transformerElectrical(values, 0.003);
-
-          close(state.secondaryRms / state.primaryRms, turnsRatio, 1e-9, 'secondary volts follow the turns');
-          close(
-            state.secondaryVoltage / state.primaryVoltage,
-            turnsRatio,
-            1e-9,
-            'the instantaneous voltages follow the turns as well',
-          );
-          // Ampere turns balance: what the secondary draws, the primary supplies
-          // in the inverse proportion of the turns.
-          close(
-            primaryTurns * state.primaryCurrent,
-            secondaryTurns * state.secondaryCurrent,
-            1e-9,
-            'ampere turns balance',
-          );
-          close(state.inputPower, state.loadPower, 1e-9, 'an ideal transformer passes every watt');
-
-          // Faraday, the other way round: differentiate the flux the model
-          // reports and it must be the primary voltage divided by the turns.
+  const {transformerPlan, transformerAt, STAGES, WINDING} = await import(new URL('grid-physics.js', root));
+  for (const stage of [0, 1, 2]) {
+    for (const primaryTurns of [3, 30, 60, 72]) {
+      for (const secondaryTurns of [1, 5, 36, 72]) {
+        for (const load of [0, 50, 120]) {
+          const plan = transformerPlan({stage, primaryTurns, secondaryTurns, load, core: 0, winding: 0});
+          const place = STAGES[stage];
+          const N1 = primaryTurns * WINDING.per, N2 = secondaryTurns * WINDING.per;
+          close(plan.secondaryVolts / plan.primaryVolts, N2 / N1, 1e-12, 'secondary volts follow the turns');
+          close(plan.primaryVolts, place.primary, 1e-12, 'the primary stands the voltage of the place it is installed');
+          close(plan.input, plan.output + plan.coreLoss + plan.copperLoss, 1e-9, 'the primary pays for the output, the copper and the core');
+          close(plan.activeCurrent * plan.primaryVolts, plan.input, 1e-9, 'the in-phase primary current carries that power');
+          ok(plan.activeCurrent * N1 >= plan.secondaryCurrent * N2 * (1 - 1e-12), 'the primary ampere turns at least balance the secondary ones');
+          ok(plan.primaryCurrent >= plan.activeCurrent, 'the magnetizing current only adds to the primary current');
+          if (plan.output > 0) ok(plan.efficiency < 1 && plan.efficiency > 0, 'no transformer passes more than it takes');
           const h = 1e-7;
-          const before = transformerElectrical(values, 0.003 - h).flux;
-          const after = transformerElectrical(values, 0.003 + h).flux;
-          close(
-            (after - before) / (2 * h),
-            state.primaryVoltage / primaryTurns,
-            1e-4,
-            'the flux is the primary voltage integrated over the primary turns',
-          );
-
-          // The flux amplitude is set by volts, frequency and turns, and by
-          // nothing on the secondary side.
-          const peak = Math.SQRT2 * voltage / (omega * primaryTurns);
-          const quarter = transformerElectrical(values, Math.PI / 2 / omega).flux;
-          close(Math.abs(quarter), peak, 1e-9, 'the flux reaches the amplitude volts and turns set');
+          for (const time of [0.0013, 0.0071, 0.0152]) {
+            const at = transformerAt(plan, time);
+            close(at.secondaryVoltage / at.primaryVoltage, N2 / N1, 1e-9, 'the instantaneous voltages follow the turns as well');
+            const slope = (transformerAt(plan, time + h).core - transformerAt(plan, time - h).core) / (2 * h);
+            close(slope, at.primaryVoltage / N1, 1e-4, 'the flux is the primary voltage integrated over the primary turns');
+          }
+          const quarter = transformerAt(plan, Math.PI / 2 / plan.omega);
+          const peak = Math.SQRT2 * plan.primaryVolts / (2 * Math.PI * 50 * N1 * place.area);
+          close(quarter.density, peak, 1e-9, 'the flux density reaches the universal EMF equation a quarter cycle on');
+          close(transformerAt(plan, 0).density, 0, 1e-12, 'and is zero while the voltage is at its peak');
         }
       }
     }
+    // Doubling the turns halves the flux and so quarters the eddy current loss.
+    const fewer = transformerPlan({stage, primaryTurns: 30, secondaryTurns: 5, load: 50, core: 0, winding: 0});
+    const more = transformerPlan({stage, primaryTurns: 60, secondaryTurns: 10, load: 50, core: 0, winding: 0});
+    close(more.flux, fewer.flux / 2, 1e-12, 'twice the turns, half the flux');
+    close(more.coreLoss, fewer.coreLoss / 4, 1e-9, 'and a quarter of the core loss');
+    // Copper loss goes as the square of the load, so efficiency peaks where it equals the core loss.
+    const nominal = {stage, primaryTurns: STAGES[stage].primaryTurns, secondaryTurns: STAGES[stage].secondaryTurns, core: 0, winding: 0};
+    const unloaded = transformerPlan({...nominal, load: 0});
+    close(unloaded.copperLoss, 0, 1e-12, 'no load, no copper loss');
+    const half = transformerPlan({...nominal, load: 50}), full = transformerPlan({...nominal, load: 100});
+    close(full.copperLoss, 4 * half.copperLoss, 1e-9, 'copper loss goes as the square of the load');
+    const efficiencies = Array.from({length: 24}, (_, i) => transformerPlan({...nominal, load: 5 * (i + 1)}));
+    const best = efficiencies.reduce((a, b) => (b.efficiency > a.efficiency ? b : a));
+    ok(Math.abs(best.share - unloaded.bestShare) <= 0.05 + 1e-9, 'efficiency peaks where the copper loss has grown to the core loss');
   }
-  // An open secondary draws nothing and takes nothing.
-  const open = transformerElectrical(
-    {primaryTurns: 12, secondaryTurns: 24, voltage: 12, resistance: 8, connected: 0, startPhase: 0},
-    0.004,
-  );
-  close(open.secondaryCurrent, 0, 1e-12, 'an open secondary carries no current');
-  close(open.inputPower, 0, 1e-12, 'and the primary of an ideal transformer then takes no power');
-  ok(Math.abs(open.secondaryVoltage) > 0, 'though the open secondary still shows its voltage');
 }
 
 // ---------------------------------------------------------------------------
-// The generator. The flux through a loop turning in a steady field is B A cos,
-// the induced voltage is minus its rate of change, and the torque needed to
-// keep turning is exactly the electrical power divided by the speed.
+// The generator. The flux linking a loop of N turns turning in a steady field
+// is N B A cos, the induced voltage is minus its rate of change, and the shaft
+// has to supply exactly the electrical power the coil delivers.
 // ---------------------------------------------------------------------------
 {
-  const {generatorElectrical, electricGeneratorConstants} = await import(
-    new URL('electric-generator-model.js', root)
-  );
-  const area = electricGeneratorConstants.area;
-  const winding = electricGeneratorConstants.windingResistance;
-  for (const field of [0.4, 1.2]) {
-    for (const omega of [3, 11]) {
-      for (const resistance of [1, 6, 40]) {
-        for (const theta of [0.3, 1.1, 2.4, 4.0, 5.5]) {
-          const values = {field, resistance, connected: 1};
-          const state = generatorElectrical(values, theta, omega, true);
-
-          close(state.flux, field * area * Math.cos(theta), 1e-12, 'flux through the turning loop');
-          // Faraday and Lenz, from the flux alone: e = -dPhi/dt, dt taken along
-          // the rotation the model is being driven through.
-          const h = 1e-6;
-          const fluxBefore = generatorElectrical(values, theta - omega * h, omega, true).flux;
-          const fluxAfter = generatorElectrical(values, theta + omega * h, omega, true).flux;
-          close(state.coilEmf, -(fluxAfter - fluxBefore) / (2 * h), 1e-5, 'the induced voltage is minus the rate of change of flux');
-
-          close(
-            state.current,
-            state.coilEmf / (winding + resistance),
-            1e-12,
-            'the loop current is its voltage over the whole loop resistance',
-          );
-          // Energy: the shaft pays for the heat in both resistances.
-          close(
-            state.drivePower,
-            state.loadPower + state.windingPower,
-            1e-9,
-            'the driving torque accounts for every watt dissipated',
-          );
-          ok(state.loadPower >= 0 && state.windingPower >= 0, 'neither resistance generates power');
-
-          // Commutated, the same machine must deliver a voltage that never
-          // reverses, while the coil itself still carries alternating current.
-          const commutated = generatorElectrical(values, theta, omega, false);
-          if (commutated.contact) {
-            ok(commutated.externalEmf * Math.sign(omega) >= -1e-12, 'a commutator never sends the voltage backwards');
-            close(
-              commutated.drivePower,
-              commutated.loadPower + commutated.windingPower,
-              1e-9,
-              'the commutated machine balances its energy too',
-            );
+  const {generatorPlan, generatorAt, COIL_AREA, windingResistanceOf} = await import(new URL('grid-physics.js', root));
+  for (const output of [0, 1]) {
+    for (const field of [0.4, 1.2]) {
+      for (const speed of [600, 3000, 3600]) {
+        for (const turns of [2, 20, 40]) {
+          for (const load of [1, 10, 50]) {
+            const values = {output, speed, field, turns, load, closed: 1};
+            const plan = generatorPlan(values);
+            const omega = 2 * Math.PI * speed / 60;
+            close(plan.peak, turns * field * COIL_AREA * omega, 1e-9, 'the peak is N B A omega');
+            close(plan.frequency, speed * 2 / 120, 1e-12, 'a two pole machine makes one cycle a turn');
+            for (const fraction of [0.07, 0.19, 0.31, 0.55, 0.83]) {
+              const time = fraction * plan.period, at = generatorAt(plan, time);
+              close(at.flux, turns * field * COIL_AREA * Math.cos(omega * time), 1e-12, 'flux linking the turning loop');
+              const h = plan.period * 1e-6;
+              const slope = (generatorAt(plan, time + h).flux - generatorAt(plan, time - h).flux) / (2 * h);
+              close(at.coilEmf, -slope, 1e-5, 'the induced voltage is minus the rate of change of flux');
+              const winding = windingResistanceOf(turns);
+              if (!at.bridged) close(at.current, at.terminal / (winding + load), 1e-12, 'the loop current is its voltage over the whole loop resistance');
+              // Energy, instant by instant: the shaft's torque times its speed is
+              // the coil's voltage times the current through it.
+              close(at.torque * omega, at.coilEmf * at.coilCurrent, 1e-9, 'the driving torque accounts for every watt the coil delivers');
+              close(at.coilEmf * at.coilCurrent, at.coilCurrent ** 2 * (at.bridged ? winding : winding + load), 1e-9, 'and every one of those watts is heat in the loop');
+              if (output === 1) ok(at.terminal >= -1e-12, 'a commutator never sends the voltage backwards');
+            }
+            close(plan.drivePower, plan.loadPower + plan.windingPower, 1e-9, 'on average too, the shaft pays for both resistances');
           }
         }
-        // Disconnect the load and the shaft turns freely.
-        const free = generatorElectrical({field, resistance, connected: 0}, 1.0, omega, true);
-        close(free.current, 0, 1e-12, 'an open circuit carries no current');
-        close(free.driveTorque, 0, 1e-12, 'and so costs no torque');
-        ok(Math.abs(free.coilEmf) > 0, 'while the coil still shows its open circuit voltage');
+        const open = generatorPlan({output, speed, field, turns: 20, load: 10, closed: 0});
+        const at = generatorAt(open, open.period * 0.2);
+        if (output === 0) {
+          close(at.current, 0, 1e-12, 'an open circuit carries no current');
+          close(at.torque, 0, 1e-12, 'and so costs no torque');
+        }
+        ok(Math.abs(at.coilEmf) > 0, 'while the coil still shows its open circuit voltage');
       }
     }
   }
-  // Standing still, a generator generates nothing.
-  const still = generatorElectrical({field: 1, resistance: 5, connected: 1}, 0.9, 0, true);
-  close(still.coilEmf, 0, 1e-12, 'a stationary loop induces nothing');
-  close(still.current, 0, 1e-12, 'and drives no current');
+  const still = generatorPlan({output: 0, speed: 0, field: 1, turns: 20, load: 10, closed: 1});
+  close(generatorAt(still, 3).coilEmf, 0, 1e-12, 'a stationary loop induces nothing');
+  close(generatorAt(still, 3).current, 0, 1e-12, 'and drives no current');
 }
 
 // ---------------------------------------------------------------------------
-// The transmission line. The reason to send power at high voltage is that the
-// loss in the line is set by the current, so the loss fraction has to fall as
-// the square of the ratio the line is stepped up by.
+// The transmission line. The loss in the line is set by the current, so for
+// the same power delivered it falls as the square of the voltage, and three
+// balanced phases heat the line at a steady rate through the whole cycle.
 // ---------------------------------------------------------------------------
 {
-  const {transmissionElectrical} = await import(new URL('electricity-transmission-model.js', root));
-  for (const lineResistance of [0.5, 2, 6]) {
-    for (const loadResistance of [1, 5, 20]) {
-      let previousFraction = Infinity;
-      for (const ratio of [1, 2, 4, 8, 16]) {
-        const state = transmissionElectrical({ratio, lineResistance, loadResistance, connected: 1}, 0.004);
-        close(
-          state.meanSourcePower,
-          state.meanLineLoss + state.meanLoadPower,
-          1e-9,
-          'the source pays for the line loss and the load together',
-        );
-        // The far transformer makes the load look a ratio squared bigger to the
-        // line, which is the whole of the argument for high voltage.
-        const expected = lineResistance / (lineResistance + ratio * ratio * loadResistance);
-        const fraction = state.meanLineLoss / state.meanSourcePower;
-        close(fraction, expected, 1e-9, 'the share lost in the line');
-        ok(fraction < previousFraction, 'stepping the line up further wastes less of it');
-        previousFraction = fraction;
-        close(
-          state.meanLineLoss,
-          state.lineRmsCurrent ** 2 * lineResistance,
-          1e-9,
-          'the line loss is its own current squared through its own resistance',
-        );
+  const {linePlan, lineAt, catenaryOf, LEVELS, CONDUCTORS} = await import(new URL('grid-physics.js', root));
+  for (const conductor of [0, 1, 2]) {
+    for (const length of [10, 100, 300]) {
+      for (const power of [5, 200, 600]) {
+        let previous = Infinity;
+        for (const voltage of [0, 1, 2, 3, 4]) {
+          const plan = linePlan({voltage, conductor, length, power, span: 400, tension: 20, weather: 0});
+          const V = LEVELS[voltage], R = CONDUCTORS[conductor].ac * length * 1000, I = power * 1e6 / (Math.sqrt(3) * V);
+          close(plan.current, I, 1e-12, 'three phase line current is P over root three V');
+          close(plan.loss, 3 * I * I * R, 1e-9, 'each conductor wastes its own current squared through its own resistance');
+          close(plan.sent, plan.delivered + plan.loss, 1e-9, 'the source pays for the load and the line together');
+          close(plan.drop, Math.sqrt(3) * I * R, 1e-9, 'the line voltage drop');
+          ok(plan.lossFraction < previous, 'stepping the line up further wastes less of it');
+          previous = plan.lossFraction;
+          close(plan.loss * V * V, plan.ladder[0].loss * LEVELS[0] ** 2, 1e-9, 'for the same power, loss goes as one over the voltage squared');
+          for (const time of [0, 0.003, 0.011, 0.017]) {
+            const at = lineAt(plan, time);
+            close(at.phases.reduce((a, b) => a + b, 0), 0, 1e-9 * I, 'three balanced phases sum to nothing, so no return conductor is needed');
+            close(at.heat, plan.loss, 1e-9, 'and heat the line at the same rate at every instant');
+          }
+        }
       }
-      const open = transmissionElectrical({ratio: 4, lineResistance, loadResistance, connected: 0}, 0.004);
-      close(open.lineRmsCurrent, 0, 1e-12, 'a disconnected line carries nothing');
-      close(open.meanLineLoss, 0, 1e-12, 'and wastes nothing');
+    }
+  }
+  // The catenary: a = H/w, and the support has to carry the horizontal
+  // tension and half the conductor's weight.
+  for (const conductor of CONDUCTORS) {
+    for (const tension of [20e3, 40e3]) {
+      for (const span of [200, 500]) {
+        const hang = catenaryOf(conductor.weight, tension, span);
+        close(hang.endTension ** 2, hang.horizontal ** 2 + hang.vertical ** 2, 1e-9, 'the end tension is the sum of its horizontal and vertical parts');
+        close(hang.vertical, conductor.weight * hang.arc / 2, 1e-9, 'each support carries half the weight of the conductor it holds');
+        ok(hang.arc > span, 'the conductor is longer than the span');
+      }
     }
   }
 }
@@ -340,4 +315,4 @@ const ok = (condition, message) => {
   for (const model of made) model.dispose?.();
 }
 
-console.log(`PASS ${checks} textbook invariants over transformer, generator, transmission, stepper, ignition coil and direct current motor.`);
+console.log(`PASS ${checks} textbook invariants over transformer, generator, transmission line, catenary, stepper, ignition coil and direct current motor.`);
