@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
+import {elapsedTime} from './format.js';
 
 export function createEarthModel(){
  const m=houseModel('Protective earth wire'),{part,box,cylinder,disk,sphere,rod,control,finish,covers}=m;
@@ -60,7 +61,7 @@ export function createEarthModel(){
    r('Lamp supply voltage',s.bus.toFixed(3)+' V','Both parallel branches share this voltage after the source-lead drop.'),
    r('Fault-loop resistance',Number.isFinite(loopResistance)?loopResistance.toFixed(2)+' Ω':'Open circuit','Closed loop: 0.2 Ω source lead + 0.2 Ω fault + selected protective path. The lamp also loads the shared source lead.'),
    r('Trip delay',tripped?'Contact already open':Number.isFinite(timeToTrip)?timeToTrip.toFixed(2)+' s remaining':'No trip at this setting','Remaining uninterrupted time above 1.5 A; this is an illustrative delay, not a device rating.'),
-   r('Observed time',elapsed.toFixed(2)+' / 3 s'),
+   r('Observed time',elapsedTime(elapsed)+' / 3 s'),
    r('Trip progress',tripped?'Latched open':(exposure/.5*100).toFixed(0)+'%','Above 1.5 A continuously for 0.5 teaching seconds. Lower current clears progress immediately.')
   ]};
  },{animated:true});

@@ -9,7 +9,9 @@ page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label));
 const control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
-const near=(a,b,tolerance=.0001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`);
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(a,b,tolerance=.0001)=>assert.ok(Math.abs(a-b)<=tolerance+shown(a)+shown(b),`${a} differs from ${b}`);
 const play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const shot=name=>page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true});
@@ -22,10 +24,10 @@ async function preset(i){
 }
 async function budget(){
  const e={};for(const label of ['Ignition battery work','Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'])e[label]=await value(label);
- near(e['Ignition battery work'],e['Stored magnetic energy']+e['Stored capacitor energy']+e['Winding heat']+e['Points heat']+e['Delivered spark energy'],.001);
- let total=0,episodes=0;for(const id of ['A','B','C','D']){total+=await value(`Plug ${id} energy`);episodes+=await value(`Plug ${id} episodes`);}
- near(total,e['Delivered spark energy'],.0003);assert.equal(episodes,await value('Spark events'));
- near(await value('Secondary winding current'),await value('Selected plug current')+await value('Secondary capacitor current'),.000003);return e;
+ const parts=['Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'];near(e['Ignition battery work'],parts.reduce((sum,label)=>sum+e[label],0),.001+parts.reduce((sum,label)=>sum+shown(e[label]),0));
+ let total=0,slack=0,episodes=0;for(const id of ['A','B','C','D']){const plug=await value(`Plug ${id} energy`);total+=plug;slack+=shown(plug);episodes+=await value(`Plug ${id} episodes`);}
+ near(total,e['Delivered spark energy'],.0003+slack);assert.equal(episodes,await value('Spark events'));
+ const plug=await value('Selected plug current'),capacitor=await value('Secondary capacitor current');near(await value('Secondary winding current'),plug+capacitor,.000003+shown(plug)+shown(capacitor));return e;
 }
 try{
  await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:4177/'}#machine/distributor`);await page.getByRole('heading',{name:'Distributor',exact:true}).waitFor();await page.locator('.daily-readings').waitFor();
@@ -48,9 +50,11 @@ try{
   const energies=[];for(const id of ['A','B','C','D'])energies.push(await value(`Plug ${id} energy`));
   outcomes.push({episodes:await value('Spark events'),sequence:await reading('Spark sequence'),energies,budget:await budget()});await shot('experiment-'+i);console.log(`PASS experiment ${i+1}: ${lesson.tryIt[i].title}`);
  }
- assert.deepEqual(outcomes.map(x=>x.episodes),[8,4,5,0]);assert.equal(outcomes[0].sequence,'A → A → B → B → C → C → D → D');assert.equal(outcomes[1].sequence,'A → B → C → D');assert.equal(outcomes[2].sequence,'A → A → B → C → D');assert.equal(outcomes[3].sequence,'None');
- near(outcomes[0].budget['Delivered spark energy'],319.8598,.0002);near(outcomes[1].budget['Delivered spark energy'],139.7497,.0002);near(outcomes[2].budget['Delivered spark energy'],67.9013,.0002);near(outcomes[3].budget['Delivered spark energy'],0);
- for(let j=0;j<4;j++){assert.ok(outcomes[1].energies[j]<outcomes[0].energies[j]);assert.ok(outcomes[2].energies[j]<outcomes[0].energies[j]);near(outcomes[3].energies[j],0);}
+ assert.deepEqual(outcomes.map(x=>x.episodes),[8,4,5,0,12,0,4]);assert.equal(outcomes[0].sequence,'A → A → B → B → C → C → D → D');assert.equal(outcomes[1].sequence,'A → B → C → D');assert.equal(outcomes[2].sequence,'A → A → B → C → D');assert.equal(outcomes[3].sequence,'None');
+ // The last three trials: a long window strikes three times per plug, 3 V never strikes, 9 V strikes weaker once per plug.
+ assert.equal(outcomes[4].sequence,'A → A → A → B → B → B → C → C → C → D → D → D');assert.equal(outcomes[5].sequence,'None');assert.equal(outcomes[6].sequence,'A → B → C → D');
+ near(outcomes[0].budget['Delivered spark energy'],319.8598,.0002);near(outcomes[1].budget['Delivered spark energy'],139.7497,.0002);near(outcomes[2].budget['Delivered spark energy'],67.9013,.0002);near(outcomes[3].budget['Delivered spark energy'],0);near(outcomes[4].budget['Delivered spark energy'],552);near(outcomes[5].budget['Delivered spark energy'],0);near(outcomes[6].budget['Delivered spark energy'],78.5);
+ for(let j=0;j<4;j++){assert.ok(outcomes[1].energies[j]<outcomes[0].energies[j]);assert.ok(outcomes[2].energies[j]<outcomes[0].energies[j]);near(outcomes[3].energies[j],0);assert.ok(outcomes[4].energies[j]>outcomes[0].energies[j]);near(outcomes[5].energies[j],0);assert.ok(outcomes[6].energies[j]<outcomes[1].energies[j]);}
  await preset(0);await inspect(3);await play();await finished();await page.locator('[data-result]').click();await shot('result');
  await play();await page.waitForTimeout(150);await play();assert.ok(await value('Observation progress')<16);assert.equal(await value('Spark events'),0);near(await value('Delivered spark energy'),0);
  for(const [key,next] of [['voltage','9'],['rpm','120']]){await inspect(2);await number(key).fill(next);assert.equal(await value('Observation progress'),0);assert.equal(await value('Spark events'),0);near(await value('Ignition battery work'),0);}

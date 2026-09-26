@@ -1,3 +1,4 @@
+import {energyResidual} from './format.js';
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 import {createIgnitionTrial,carIgnitionConstants as C} from './car-ignition-model.js';
@@ -51,7 +52,7 @@ r('Stored capacitor energy',fmt(s.capacitorEnergy*1000)+' mJ','Energy currently 
 r('Winding heat',fmt(s.windingHeat*1000)+' mJ','Accumulated resistive energy loss in the primary and secondary coil windings.'),
 r('Points heat',fmt(s.pointsHeat*1000)+' mJ','Accumulated resistive energy loss through the closed contact-breaker points.'),
 r('Delivered spark energy',fmt(s.sparkEnergy*1000)+' mJ','Total energy received by all four spark gaps, including A and the other three branches.'),
-r('Energy balance error',s.energyError.toExponential(2)+' J','Unrounded battery work minus stored energies, winding heat, points heat and all spark energy. Displayed cards use three significant figures and can have a larger rounding difference.'),
+r('Energy balance error',energyResidual(s.energyError),'Unrounded battery work minus stored energies, winding heat, points heat and all spark energy. Displayed cards use three significant figures and can have a larger rounding difference.'),
 r('Shaft angle',fmt(s.phaseDegrees)+'°','Current prescribed distributor-shaft angle. One full observation covers one revolution.'),
 r('Observation progress',fmt(displayElapsed/8*100)+'%','Fraction of the one-revolution observation completed. Playback expands that revolution to eight display seconds.'),
 r('Observation time',fmt(s.elapsed*1000)+' ms','Elapsed circuit time, distinct from display time. Faster distributor rotation shortens one observed revolution.'),

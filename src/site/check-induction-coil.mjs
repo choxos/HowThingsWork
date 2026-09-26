@@ -9,7 +9,9 @@ page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label));
 const control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
-const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`);
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance+shown(a)+shown(b),`${a} differs from ${b}`);
 const play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const shot=name=>page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true});
@@ -21,12 +23,12 @@ async function preset(i){
  near(await value('Observation progress'),0);near(await value('Common magnetic flux'),0);near(await value('Ignition battery work'),0);assert.equal(await reading('Sampled peak |terminal voltage|'),'No integration sample yet');
 }
 async function equations(){
- near(await value('Secondary common-flux EMF'),-30*await value('Flux change rate'),.000002);
- near(await value('Secondary terminal voltage'),await value('Secondary total induced EMF')-300*await value('Secondary current'),.00016);
+ const rate=await value('Flux change rate');near(await value('Secondary common-flux EMF'),-30*rate,.000002+30*shown(rate));
+ const induced=await value('Secondary total induced EMF'),current=await value('Secondary current');near(await value('Secondary terminal voltage'),induced-300*current,.00016+shown(induced)+300*shown(current));
  const e={};for(const label of ['Ignition battery work','Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'])e[label]=await value(label);
- near(e['Ignition battery work'],e['Stored magnetic energy']+e['Stored capacitor energy']+e['Winding heat']+e['Points heat']+e['Delivered spark energy'],.000004);
+ const parts=['Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'];near(e['Ignition battery work'],parts.reduce((sum,label)=>sum+e[label],0),.000004+parts.reduce((sum,label)=>sum+shown(e[label]),0));
  assert.ok(await value('Sampled peak |terminal voltage|')+.000001>=Math.abs(await value('Secondary terminal voltage')));
- near(await value('Common-flux EMF at sampled peak'),-30*await value('Flux change rate at sampled peak'),.000002);
+ const peakRate=await value('Flux change rate at sampled peak');near(await value('Common-flux EMF at sampled peak'),-30*peakRate,.000002+30*shown(peakRate));
  return e;
 }
 try{

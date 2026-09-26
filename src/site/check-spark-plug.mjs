@@ -7,7 +7,9 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 const evidence=new URL('../../documentation/audit/evidence/spark-plug/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label)),control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
-const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance+shown(a)+shown(b),`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const progressed=minimum=>page.waitForFunction(min=>{const row=Array.from(document.querySelectorAll('.daily-readings > div')).find(e=>e.querySelector('dt')?.textContent==='Observation progress');return parseFloat(row?.querySelector('dd')?.textContent)>min;},minimum);
 const nextFrames=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))));
@@ -20,11 +22,11 @@ async function preset(i){
 }
 async function circuit(){
  const current=await value('Plug A current'),power=await value('Plug A power'),gap=await reading('Plug A gap voltage'),gapVoltage=parseFloat(gap);
- if(Number.isFinite(gapVoltage)){near(power,gapVoltage*current,.001);if(Math.abs(current)>1e-7)near(gapVoltage,10000*current,.011);}else{assert.match(gap,/Disconnected/i);assert.match(gap,/not modeled/i);near(current,0);near(power,0);}
+ if(Number.isFinite(gapVoltage)){near(power,gapVoltage*current,.001+Math.abs(current)*shown(gapVoltage)+Math.abs(gapVoltage)*shown(current));if(Math.abs(current)>1e-7)near(gapVoltage,10000*current,.011+10000*shown(current));}else{assert.match(gap,/Disconnected/i);assert.match(gap,/not modeled/i);near(current,0);near(power,0);}
  assert.ok(power>=0);const energy=await value('Plug A delivered energy'),other=await value('Other plugs delivered energy');
- near(energy+other,await value('Delivered spark energy'),.00001);
+ near(energy+other,await value('Delivered spark energy'),.00001+shown(energy)+shown(other));
  const budget={};for(const label of ['Ignition battery work','Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'])budget[label]=await value(label);
- near(budget['Ignition battery work'],budget['Stored magnetic energy']+budget['Stored capacitor energy']+budget['Winding heat']+budget['Points heat']+budget['Delivered spark energy'],.00001);
+ const parts=['Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'];near(budget['Ignition battery work'],parts.reduce((sum,label)=>sum+budget[label],0),.00001+parts.reduce((sum,label)=>sum+shown(budget[label]),0));
  return {current,power,gap,energy,other,episodes:await value('Plug A spark episodes'),budget};
 }
 try{

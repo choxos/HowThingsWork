@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 
 export const seismographConstants=Object.freeze({duration:16,driveDuration:8,displayDuration:12,dt:1/2048,displacementScale:25,paperSpeed:.5,traceStep:1/128});
-const C=seismographConstants,fmt=(n,d)=>d===undefined?Number(n.toPrecision(3)).toString():Number(n.toFixed(d)).toString();
+const C=seismographConstants,fmt=(n,d)=>d===undefined?(Math.abs(n)<1e-6?'0':Number(n.toPrecision(3)).toString()):Number(n.toFixed(d)).toString();
 let cached;
 function ground(values,t){
  if(t<=0||t>=8)return {position:0,velocity:0,acceleration:0};

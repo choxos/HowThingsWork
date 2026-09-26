@@ -8,7 +8,8 @@ const evidence=new URL(process.env.VERTICAL_SPRING_EVIDENCE||'../../documentatio
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 // Display rounding only; independent model reference tolerances remain unchanged.
 const rounding=n=>n===0?0:.5*10**(Math.floor(Math.log10(Math.abs(n)))-2);
-const value=async label=>{const text=await reading(label);return text==='< 1 nJ'?0:parseFloat(text);},control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
+// Energies below a millijoule are shown in microjoules; compare everything in joules.
+const value=async label=>{const text=await reading(label);return text==='< 1 nJ'?0:text.endsWith(' µJ')?parseFloat(text)*1e-6:parseFloat(text);},control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
 const near=(a,b,tolerance=.0000011)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b} (tolerance ${tolerance})`);
 const play=()=>page.locator('[data-play]').click(),frames=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))));
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:60000});

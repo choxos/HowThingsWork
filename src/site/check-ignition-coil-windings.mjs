@@ -7,7 +7,9 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 const evidence=new URL('../../documentation/audit/evidence/ignition-coil-windings/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label)),control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
-const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance+shown(a)+shown(b),`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const shot=name=>page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true}),stages=[['charging',45],['opening',63],['later',90]];
 const inspect=i=>page.getByRole('button',{name:`Inspect ${stages[i][0]} stage (${stages[i][1]}°)`,exact:true}).click();
@@ -17,14 +19,14 @@ async function preset(i){
  near(await value('Observation progress'),0);near(await value('Ignition battery work'),0);assert.equal(await reading('Saved sample time'),'No saved sample yet');
 }
 async function equations(){
- const p=await value('Primary common-flux EMF'),s=await value('Secondary common-flux EMF');near(p,-3*await value('Flux change rate'),.000001);near(s,10*p,.000006);
- near(await value('Primary EMF per turn'),await value('Secondary EMF per turn'),.000000002);near(await value('Primary EMF per turn'),p/3,.00000018);
- near(await value('Primary terminal drop'),3*await value('Primary current')-await value('Primary total induced EMF'),.000003);
- near(await value('Secondary terminal voltage'),await value('Secondary total induced EMF')-300*await value('Secondary current'),.00016);
- const savedP=await value('Primary common-flux EMF at saved sample'),savedS=await value('Secondary common-flux EMF at saved sample');near(savedS,10*savedP,.000006);
- near(await value('Primary EMF per turn at saved sample'),await value('Secondary EMF per turn at saved sample'),.000000002);near(await value('Primary EMF per turn at saved sample'),savedP/3,.00000018);
+ const p=await value('Primary common-flux EMF'),s=await value('Secondary common-flux EMF');const rate=await value('Flux change rate');near(p,-3*rate,.000001+3*shown(rate));near(s,10*p,.000006+10*shown(p));
+ near(await value('Primary EMF per turn'),await value('Secondary EMF per turn'),.000000002);near(await value('Primary EMF per turn'),p/3,.00000018+shown(p)/3);
+ const primaryCurrent=await value('Primary current'),primaryInduced=await value('Primary total induced EMF');near(await value('Primary terminal drop'),3*primaryCurrent-primaryInduced,.000003+3*shown(primaryCurrent)+shown(primaryInduced));
+ const secondaryInduced=await value('Secondary total induced EMF'),secondaryCurrent=await value('Secondary current');near(await value('Secondary terminal voltage'),secondaryInduced-300*secondaryCurrent,.00016+shown(secondaryInduced)+300*shown(secondaryCurrent));
+ const savedP=await value('Primary common-flux EMF at saved sample'),savedS=await value('Secondary common-flux EMF at saved sample');near(savedS,10*savedP,.000006+10*shown(savedP));
+ near(await value('Primary EMF per turn at saved sample'),await value('Secondary EMF per turn at saved sample'),.000000002);near(await value('Primary EMF per turn at saved sample'),savedP/3,.00000018+shown(savedP)/3);
  const e={};for(const label of ['Ignition battery work','Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'])e[label]=await value(label);
- near(e['Ignition battery work'],e['Stored magnetic energy']+e['Stored capacitor energy']+e['Winding heat']+e['Points heat']+e['Delivered spark energy'],.000004);return e;
+ const parts=['Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'];near(e['Ignition battery work'],parts.reduce((sum,label)=>sum+e[label],0),.000004+parts.reduce((sum,label)=>sum+shown(e[label]),0));return e;
 }
 try{
  await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:4177/'}#machine/ignition-coil-primary-and-secondary-windings`);await page.getByRole('heading',{name:'Ignition-coil primary and secondary windings',exact:true}).waitFor();await page.locator('.daily-readings').waitFor();

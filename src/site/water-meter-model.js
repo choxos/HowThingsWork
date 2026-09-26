@@ -170,7 +170,7 @@ export function createWaterMeterModel(){
       r('Movement marker',s.starWheel?'Turning with the impeller':'Still with the impeller',`Chosen starting flow: ${fixed(s.starting,3)} L/min. A still indicator cannot rule out every leak.`),
       r('Drive speeds',`${fixed(s.impellerTurnsPerMinute,2)} impeller · ${fixed(s.pointerTurnsPerMinute,3)} pointer rev/min`,'40 impeller turns = 2 first-wheel turns = 1 pointer turn = 0.1 lowest-roller turn per registered liter.'),
       r('Illustrative pressure loss',`${fixed(s.drop,4)} bar`,`${fixed(s.dropAtQ3,2)} bar at Q3, scaled with flow squared. This chosen curve is not the standard’s 0.63 bar maximum.`),
-      r('At this flow for one day',`${fixed(s.dayDelivered,3)} L delivered · ${fixed(s.dayRegistered,3)} L registered`,'A projection at unchanged settings, not extra volume included in this trial.'),
+      r('At this flow for one day',`${fixed(s.dayDelivered,0)} L delivered · ${fixed(s.dayRegistered,0)} L registered`,'A projection at unchanged settings, not extra volume included in this trial.'),
       r('Register rollovers',String(s.rollovers),'After 9999.999 m³, the seven-place register wraps. Keep track of rollover when comparing two readings.'),
       r('Model limit','Illustrative direct mechanical drive','Chosen starting flows, smooth low-flow response and 40 turns/L; prescribed flow and ideal gear motion. No turbine torque solver, wear, air, magnetic coupling or calibration certificate.'),
     ]};

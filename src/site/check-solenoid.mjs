@@ -7,7 +7,9 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 const evidence=new URL('../../documentation/audit/evidence/solenoid/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label)),control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
-const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<=tolerance+shown(a)+shown(b),`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const progressed=minimum=>page.waitForFunction(min=>{const row=Array.from(document.querySelectorAll('.daily-readings > div')).find(e=>e.querySelector('dt')?.textContent==='Observation progress');return parseFloat(row?.querySelector('dd')?.textContent)>min;},minimum);
 const nextFrames=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))));
@@ -20,13 +22,13 @@ async function preset(i){
 }
 async function circuit(){
  const voltage=Number(await control('voltage').inputValue()),preload=Number(await control('preload').inputValue()),current=await value('Coil current'),supply=await value('Control supply current'),shunt=await value('Discharge resistor current'),node=await value('Coil terminal voltage'),key=await reading('Key state'),contact=await reading('Main contact'),main=await value('Main current'),travel=await value('Plunger travel'),gap=await value('Main-contact gap'),energy=await value('Main-load energy');
- near(current+shunt,supply,.000002);near(node,96*shunt,.00006);near(await value('Open-key voltage'),voltage-node,.000002);
- if(key==='Start')near(node,voltage);else{near(supply,0);near(node,-96*current,.00006);}
- near(await value('Magnetic force'),50*current*current,.00003);near(await value('Return spring force'),preload+.4*travel,.000002);near(travel+gap,6,.000002);
+ near(current+shunt,supply,.000002+shown(current)+shown(shunt));near(node,96*shunt,.00006+96*shown(shunt));near(await value('Open-key voltage'),voltage-node,.000002+shown(node));
+ if(key==='Start')near(node,voltage);else{near(supply,0);near(node,-96*current,.00006+96*shown(current));}
+ near(await value('Magnetic force'),50*current*current,.00003+100*Math.abs(current)*shown(current));near(await value('Return spring force'),preload+.4*travel,.000002+.4*shown(travel));near(travel+gap,6,.000002+shown(travel)+shown(gap));
  near(main,contact==='Closed'?voltage/.3:0);if(contact==='Closed')near(gap,0);assert.ok(travel>=0&&travel<=6&&gap>=0);
- near(await value('Magnetic energy'),.5*(.6+.1*travel)*current*current,.000002);
- const labels=['Magnetic energy','Spring energy','Kinetic energy','Coil heat','Discharge resistor heat','Damping heat','Stop-impact heat'];let budget=energy;for(const label of labels)budget+=await value(label);near(await value('Total battery work'),budget,.000006);near(await value('Total battery work'),await value('Control battery work')+energy,.000002);
- const close=await value('First closure'),open=await value('First reopening'),time=await value('Observation time'),closedTime=await value('Main-contact closed time');near(energy,voltage*voltage/.3*closedTime/1000,.000002);if(Number.isFinite(close))near(energy,voltage*voltage/.3*((Number.isFinite(open)?open:time)-close)/1000,.000002);else near(energy,0);
+ near(await value('Magnetic energy'),.5*(.6+.1*travel)*current*current,.000002+(.6+.1*travel)*Math.abs(current)*shown(current)+.05*current*current*shown(travel));
+ const labels=['Magnetic energy','Spring energy','Kinetic energy','Coil heat','Discharge resistor heat','Damping heat','Stop-impact heat'];let budget=energy,slack=shown(energy);for(const label of labels){const term=await value(label);budget+=term;slack+=shown(term);}near(await value('Total battery work'),budget,.000006+slack);const controlWork=await value('Control battery work');near(await value('Total battery work'),controlWork+energy,.000002+shown(controlWork)+shown(energy));
+ const close=await value('First closure'),open=await value('First reopening'),time=await value('Observation time'),closedTime=await value('Main-contact closed time');near(energy,voltage*voltage/.3*closedTime/1000,.000002+voltage*voltage/.3*shown(closedTime)/1000);if(Number.isFinite(close)){const end=Number.isFinite(open)?open:time;near(energy,voltage*voltage/.3*(end-close)/1000,.000002+voltage*voltage/.3*(shown(end)+shown(close))/1000);}else near(energy,0);
  return {key,contact,current,supply,shunt,node,main,travel,gap,energy,close,open,time};
 }
 try{

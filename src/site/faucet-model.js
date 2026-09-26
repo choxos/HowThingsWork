@@ -125,7 +125,7 @@ export function createFaucetModel(){
       r('Flow now',`${fixed(s.litersPerMinute,3)} L/min`,'Quasi-steady flow at the current opening. Completion holds the final state; a damaged washer still has a nonzero leak.'),
       r('Water collected',`${fixed(liters,4)} L · ${fixed(liters*1000,2)} mL`,'All discharge is integrated, including while closing and during the seal check.'),
       r('Collected while closing',`${fixed(s.closureCollected,2)} mL`),
-      r('Effective opening',`${fixed(s.openArea*1e6,4)} mm² · ${s.limitedBy}`,'The smaller of the washer-gap curtain and the seat bore, with a nonzero floor for a damaged seal.'),
+      r('Effective opening',`${fixed(s.openArea*1e6,1)} mm² · ${s.limitedBy}`,'The smaller of the washer-gap curtain and the seat bore, with a nonzero floor for a damaged seal.'),
       r('Pipe / spout speed',`${fixed(s.pipeSpeed,3)} / ${fixed(s.spoutSpeed,3)} m/s`,'The 15 mm supply pipe and 12 mm spout have different speeds for the same flow.'),
       r('Pressure budget',`${fixed(s.seatDrop,3)} seat + ${fixed(s.pipeDrop,3)} pipe + ${fixed(s.aeratorDrop,3)} screen + ${fixed(s.outletHead,3)} exit = ${fixed(values.pressure,3)} bar`,'The exit term is kinetic-energy head. With a sound closed seal, the supply pressure stands across the seat.'),
       r('Leak with handle shut',`${fixed(s.shut.flow*60*1e6,3)} mL/min · ${fixed(s.dripsPerMinute,1)} drops/min`,'Each illustrative drop is 0.05 mL. Very small leak openings are equivalent hydraulic areas, not resolved cracks.'),

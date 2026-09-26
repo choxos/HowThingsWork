@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 
 export const verticalSeismographPendulumConstants=Object.freeze({mass:1,radius:.5,anchorHeight:.6,gravity:9.80665,duration:32,driveDuration:16,displayDuration:12,dt:1/1024,traceStep:1/64,sceneScale:10,recordScale:7.5});
-const C=verticalSeismographPendulumConstants,rad=Math.PI/180,fmt=(n,d)=>d===undefined?Number(n.toPrecision(3)).toString():Number(n.toFixed(d)).toString(),equilibriumLength=Math.hypot(C.radius,C.anchorHeight);
+const C=verticalSeismographPendulumConstants,rad=Math.PI/180,fmt=(n,d)=>d===undefined?(Math.abs(n)<1e-6?'0':Number(n.toPrecision(3)).toString()):Number(n.toFixed(d)).toString(),equilibriumLength=Math.hypot(C.radius,C.anchorHeight);
 let cached;
 function parameters(values){
  for(const [key,min,max] of [['amplitude',0,20],['frequency',.125,1],['naturalFrequency',.125,.5],['damping',0,1]])if(!Number.isFinite(values[key])||values[key]<min||values[key]>max)throw new RangeError(`Invalid ${key}`);

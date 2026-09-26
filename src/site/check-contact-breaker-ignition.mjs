@@ -9,7 +9,9 @@ page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 const value=async label=>parseFloat(await reading(label));
 const control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
-const near=(a,b,tolerance=.0001)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`);
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(a,b,tolerance=.0001)=>assert.ok(Math.abs(a-b)<=tolerance+shown(a)+shown(b),`${a} differs from ${b}`);
 const play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const shot=name=>page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true});
@@ -22,7 +24,7 @@ async function preset(i){
 }
 async function budget(){
  const e={};for(const label of ['Ignition battery work','Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'])e[label]=await energy(label);
- near(e['Ignition battery work'],e['Stored magnetic energy']+e['Stored capacitor energy']+e['Winding heat']+e['Points heat']+e['Delivered spark energy'],.000005);return e;
+ const parts=['Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'];near(e['Ignition battery work'],parts.reduce((sum,label)=>sum+e[label],0),.000005+parts.reduce((sum,label)=>sum+shown(e[label]),0));return e;
 }
 try{
  await page.goto(`${process.env.SITE_URL||'http://127.0.0.1:4177/'}#machine/contact-breaker-ignition`);await page.getByRole('heading',{name:'Contact-breaker ignition',exact:true}).waitFor();await page.locator('.daily-readings').waitFor();
@@ -38,7 +40,7 @@ try{
   for(const [key,n] of Object.entries(lesson.tryIt[i].values))assert.equal(Number(await control(key).inputValue()),n);
   const normal=lesson.tryIt[i].values.points===0;
   assert.equal(await value('Contact openings'),normal?1:0);
-  near(await value('Primary current'),await value('Points current')+await value('Points capacitor current'),.00003);
+  {const points=await value('Points current'),capacitor=await value('Points capacitor current');near(await value('Primary current'),points+capacitor,.00003+shown(points)+shown(capacitor));}
   if(normal){
    assert.match(await reading('Points state'),/^Open$/);near(await value('Points current'),0);near(await value('First opening time'),10000/lesson.tryIt[i].values.rpm,.001);
    if(lesson.tryIt[i].values.voltage>0){assert.ok(await value('High-voltage node')>250);assert.ok(await energy('Delivered spark energy')>0);}else{near(await value('High-voltage node'),0);near(await energy('Delivered spark energy'),0);}
@@ -51,7 +53,7 @@ try{
  }
  near(outcomes[0].current,2.938164703855441,.00002);near(outcomes[0].magnetic,.1295721405163802,.000002);
  near(outcomes[1].current,2.129430832726253,.00002);near(outcomes[1].magnetic,.06817380409782964,.000002);
- near(outcomes[2].current,outcomes[0].current/2,.00002);near(outcomes[2].magnetic,outcomes[0].magnetic/4,.000002);
+ near(outcomes[2].current,outcomes[0].current/2,.00002+shown(outcomes[0].current)/2);near(outcomes[2].magnetic,outcomes[0].magnetic/4,.000002+shown(outcomes[0].magnetic)/4);
  assert.ok(outcomes[1].magnetic<outcomes[0].magnetic);assert.equal(outcomes[0].sparks,8);assert.equal(outcomes[1].sparks,4);assert.equal(outcomes[2].sparks,5);
  for(const i of [3,4,5]){assert.equal(outcomes[i].sparks,0);near(outcomes[i].energy['Delivered spark energy'],0);}
  assert.ok(outcomes[3].energy['Stored magnetic energy']>.17);assert.ok(outcomes[4].energy['Stored capacitor energy']>0);near(outcomes[5].energy['Ignition battery work'],0);near(outcomes[5].magnetic,0);near(outcomes[5].current,0);

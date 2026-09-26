@@ -7,7 +7,7 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 const evidence=new URL(process.env.VERTICAL_PENDULUM_EVIDENCE||'../../documentation/audit/evidence/vertical-seismograph-pendulum/',import.meta.url);await mkdir(evidence,{recursive:true});page.on('pageerror',e=>errors.push(e.message));
 const reading=label=>page.locator('.daily-readings > div').filter({has:page.getByText(label,{exact:true})}).locator('dd').textContent();
 // Display rounding only; independent physical model tolerances remain unchanged.
-const rounding=n=>n===0?0:.5*10**(Math.floor(Math.log10(Math.abs(n)))-2);
+const rounding=n=>n===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(n)))-2);
 const value=async label=>{const text=await reading(label);return text==='< 1 nJ/kg'?0:parseFloat(text);},control=key=>page.locator(`[data-control="${key}"]`),number=key=>page.locator(`[data-number="${key}"]`);
 const near=(a,b,tolerance=.000003)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`),play=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:60000});

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 import {solidArrow,surface} from './scene-kit.js';
-import {fixed} from './format.js';
+import {elapsedTime,fixed} from './format.js';
 import {RAFT,RAFT_DEFAULTS,raftStart,raftForces,raftEquilibrium,advanceRaft} from './raft-physics.js';
 
 export function createRaftModel(){
@@ -52,7 +52,7 @@ export function createRaftModel(){
     const grounded=f.support>1e-6,settled=Math.abs(state.velocity)<.003&&Math.abs(f.net)<8;
     const status=grounded?'Resting on the bottom':!settled?'Moving '+(state.velocity>.003?'up':state.velocity<-.003?'down':f.net<0?'down':'up'):freeboard>.0005?'Floating · deck above water':freeboard>=-.0005?'Floating · deck awash':'Floating · cargo partly submerged';
     return {state:{...state,...f,freeboard,equilibrium:eq,complete:state.elapsed>=RAFT.duration,started,status},readings:[
-      r('Your result',status),r('Observation',state.elapsed.toFixed(2)+' / 12 s','Play follows the vertical motion; pause or step to compare forces.'),
+      r('Your result',status),r('Observation',elapsedTime(state.elapsed)+' / 12 s','Play follows the vertical motion; pause or step to compare forces.'),
       r('Total mass',f.mass.toFixed(1)+' kg','Timber '+(RAFT.volume*values.wood).toFixed(1)+' kg + cargo '+values.cargo+' kg.'),
       r('Displaced water',(f.displaced*1000).toFixed(1)+' L',(values.water*f.displaced).toFixed(1)+' kg of displaced water.'),
       r('Deck above water',fixed(freeboard*100,1)+' cm','A negative value means the deck is below the surface.'),

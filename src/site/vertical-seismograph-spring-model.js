@@ -4,7 +4,7 @@ import {houseModel,reading as r} from './house-model-kit.js';
 export const verticalSeismographSpringConstants=Object.freeze({radius:.5,anchorHeight:.6,gravity:9.80665,referenceMass:1,duration:12,displayDuration:18,dt:1/1024,traceStep:1/64,sceneScale:10,plotMinX:2.8,plotWidth:7,plotCenterY:5,plotHalfHeight:2.25,plotMaxDegrees:35,turns:6,seatThickness:.05,wireRadius:.0168,coilSegments:192,coilSides:6});
 const C=verticalSeismographSpringConstants,R=C.radius,H=C.anchorHeight,L=Math.hypot(R,H),rad=Math.PI/180,Pref=C.referenceMass*C.gravity*L/H;
 const fmt=(n,d)=>d!==undefined?Number(n.toFixed(d)).toString():Math.abs(n)<1e-6?'0':Number(n.toPrecision(3)).toString();
-const energyText=n=>n===0?'0 J':n<1e-9?'< 1 nJ':`${Number(n.toPrecision(3))} J`;
+const energyText=n=>n===0?'0 J':n<1e-9?'< 1 nJ':n<1e-3?`${Number((n*1e6).toPrecision(3))} µJ`:`${Number(n.toPrecision(3))} J`;
 let cached;
 function parameters(values){
  for(const [key,min,max] of [['k',35,45],['preload',95,105],['mass',.95,1.05],['release',-5,5],['damping',0,1]])if(!Number.isFinite(values[key])||values[key]<min||values[key]>max)throw new RangeError(`Invalid ${key}`);

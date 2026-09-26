@@ -10,7 +10,9 @@ const reading=label=>page.locator('.daily-readings > div').filter({has:page.getB
 const value=async label=>parseFloat(await reading(label));
 const control=key=>page.locator(`[data-control="${key}"]`);
 const number=key=>page.locator(`[data-number="${key}"]`);
-const near=(actual,expected,tolerance=.02)=>assert.ok(Math.abs(actual-expected)<=tolerance,`${actual} differs from ${expected}`);
+// Readings show three significant figures and 0 below a millionth, so a shown value is good to half a unit in its third figure.
+const shown=x=>x===0?1e-6:.5*10**(Math.floor(Math.log10(Math.abs(x)))-2);
+const near=(actual,expected,tolerance=.02)=>assert.ok(Math.abs(actual-expected)<=tolerance+shown(actual)+shown(expected),`${actual} differs from ${expected}`);
 const run=()=>page.locator('[data-play]').click();
 const finished=()=>page.waitForFunction(()=>document.querySelector('[data-play]')?.getAttribute('aria-pressed')==='false',null,{timeout:90000});
 const shot=name=>page.screenshot({path:new URL(name+'.png',evidence).pathname,fullPage:true});
@@ -23,9 +25,11 @@ async function preset(i){
 async function outcome(){
  const e={};for(const label of ['Stored magnetic energy','Stored capacitor energy','Ignition battery work','Winding heat','Points heat','Delivered spark energy','Solenoid energy','Starter energy','Total battery work'])e[label]=await energy(label);
  const plugs=[];for(const label of ['A','B','C','D'])plugs.push(await energy(`Plug ${label} energy`));
- near(plugs.reduce((a,b)=>a+b,0),e['Delivered spark energy'],.00002);
- near(e['Ignition battery work'],e['Stored magnetic energy']+e['Stored capacitor energy']+e['Winding heat']+e['Points heat']+e['Delivered spark energy'],.00005);
- near(e['Total battery work'],e['Ignition battery work']+e['Solenoid energy']+e['Starter energy'],.00005);
+ near(plugs.reduce((a,b)=>a+b,0),e['Delivered spark energy'],.00002+plugs.reduce((a,b)=>a+shown(b),0));
+ const sum=labels=>labels.reduce((a,label)=>a+e[label],0),slack=labels=>labels.reduce((a,label)=>a+shown(e[label]),0);
+ const ignition=['Stored magnetic energy','Stored capacitor energy','Winding heat','Points heat','Delivered spark energy'],total=['Ignition battery work','Solenoid energy','Starter energy'];
+ near(e['Ignition battery work'],sum(ignition),.00005+slack(ignition));
+ near(e['Total battery work'],sum(total),.00005+slack(total));
  near(await value('Observation progress'),100);
  return {energy:e,plugs,events:await value('Spark events'),sequence:await reading('Spark sequence'),angle:await value('Shaft angle'),control:await value('Solenoid current'),starter:await value('Starter current')};
 }
