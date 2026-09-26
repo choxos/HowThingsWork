@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {panel, wireColor, glowOpacity} from './element-scene.js';
 import {
   heaterPlan, heaterAt, resistanceAt, specificAt, HEATER_DEFAULTS, HEATER_DOMAINS, HEATER_DIAMETER, REFLECTORS,
@@ -97,6 +97,16 @@ export function createElectricHeatingModel() {
   const guideCurve = lineObject(DECLARED.samples, COLORS.faint, chartPart);
   const curve = lineObject(DECLARED.samples + 1, COLORS.beam, chartPart);
   const cursor = segmentLines(1, COLORS.chart, chartPart);
+  // The chart's words: its scale at the left, the run's length under its right end, and its name and key to its right, clear of the leader that meets its top.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
+    size: TEXT,
+    x: {min: 0, max: 1, title: `Seconds, a tick every ${fixed(CHART.tickEvery, 0)}`, ticks: [[0, '0']]},
+    y: {min: CHART.temperature[0], max: CHART.temperature[1], ticks: [0, 400, 800, 1200].map(celsius => [celsius, `${fixed(celsius, 0)} °C`])},
+  });
+  const endWord = textLabel(chartPart, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
+  textLabel(chartPart, 'The element warming up', {height: TEXT, align: 'left', weight: '600', color: css(COLORS.chart), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.03, 0.001]});
+  [['Element', COLORS.beam], ['Starts to glow', COLORS.draper], ['Datasheet limit', COLORS.limit]].forEach(([text, color], i) => textLabel(chartPart, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.11 - 0.065 * i, 0.001]}));
   const leader = segmentLines(1, COLORS.faint, system);
 
   const d = HEATER_DEFAULTS, D = HEATER_DOMAINS;
@@ -157,6 +167,7 @@ export function createElectricHeatingModel() {
     fillLine(draperLine, [[CHART.x, chartY(DRAPER.celsius), 0], [CHART.x + CHART.w, chartY(DRAPER.celsius), 0]]);
     fillLine(limitLine, [[CHART.x, chartY(NIKROTHAL.continuous), 0], [CHART.x + CHART.w, chartY(NIKROTHAL.continuous), 0]]);
     const tickCount = Math.max(0, Math.ceil(plan.duration / CHART.tickEvery) - 1);
+    endWord.userData.setText(`${fixed(plan.duration, 0)}`);
     fillLine(ticks, Array.from({length: tickCount}, (_, i) => {
       const x = chartX(plan, (i + 1) * CHART.tickEvery);
       return [[x, CHART.y, 0], [x, CHART.y - CHART.tick, 0]];
@@ -179,7 +190,7 @@ export function createElectricHeatingModel() {
         r('Element power', `${fixed(now.power, 0)} W`, `Joule's law: the power is the voltage squared over the resistance, ${fixed(values.volts, 0)} V across ${fixed(now.resistance, 1)} Ω. The wire's resistance rises as it warms, by the factor its datasheet tabulates, so the power settles ${fixed(100 * (1 - plan.drift), 1)}% below the ${fixed(plan.coldPower, 0)} W it draws cold.`),
         r('Element temperature', `${fixed(now.celsius, 0)} °C`, `The wire warms until what it loses matches what it takes. It holds ${fixed(1000 * plan.wire.mass, 1)} g of wire, and the datasheet's specific heat makes that ${fixed(plan.wire.mass * specificAt(values.room), 1)} J for each degree near room temperature, which is why so little metal comes up to temperature so fast. The Draper point is ${fixed(DRAPER.celsius, 0)} °C and the datasheet allows ${fixed(NIKROTHAL.continuous, 0)} °C continuously.`),
         r('Current', `${fixed(now.current, 2)} A`, `The voltage over the resistance. The element is ${fixed(values.length, 1)} m of ${fixed(1000 * HEATER_DIAMETER, 1)} mm wire, which at the datasheet's ${fixed(1e6 * NIKROTHAL.resistivity, 2)} Ω·mm²/m is ${fixed(resistanceAt(plan.wire, values.room), 1)} Ω cold.`),
-        r('Radiated', `${fixed(now.radiated, 0)} W`, `Stefan and Boltzmann: a surface gives out its emissivity times ${SIGMA.toExponential(3)} W/(m²·K⁴) times its area times the fourth power of its temperature, less what the room sends back. The datasheet gives fully oxidized wire an emissivity of ${fixed(NIKROTHAL.emissivity, 2)}, and this coil has ${fixed(1e4 * plan.wire.surface, 0)} cm² of surface. The fourth power is why the radiated share climbs so steeply as the element heats.`),
+        r('Radiated', `${fixed(now.radiated, 0)} W`, `Stefan and Boltzmann: a surface gives out its emissivity times ${fixed(SIGMA * 1e8, 3)} × 10⁻⁸ W/(m²·K⁴) times its area times the fourth power of its temperature, less what the room sends back. The datasheet gives fully oxidized wire an emissivity of ${fixed(NIKROTHAL.emissivity, 2)}, and this coil has ${fixed(1e4 * plan.wire.surface, 0)} cm² of surface. The fourth power is why the radiated share climbs so steeply as the element heats.`),
         r('Carried off by the air', `${fixed(now.convected, 0)} W`, `Still air next to the wire warms and rises, carrying heat with it. The model takes that as ${fixed(DECLARED.still, 0)} W from each square meter for each degree the wire stands above the room, which is a stated figure, not a measured one. At the settled temperature it is ${fixed(100 * (1 - plan.radiantShare), 0)}% of the element's output, and radiation is the other ${fixed(100 * plan.radiantShare, 0)}%.`),
         r('Sent into the room', `${fixed(now.forward, 0)} W`, `${values.reflector ? `With the reflector fitted, ${fixed(100 * DECLARED.reflected, 0)}% of the radiation goes forward instead of ${fixed(100 * DECLARED.bare, 0)}%. That is a stated share, not a measured one, and it moves heat about rather than making any.` : `Without a reflector only ${fixed(100 * DECLARED.bare, 0)}% of the radiation heads into the room; the rest warms the wall behind. Fitting one would send ${fixed(100 * DECLARED.reflected, 0)}% forward, ${fixed(plan.settled.radiated * (DECLARED.reflected - DECLARED.bare), 0)} W more, for no more electricity at all.`}`),
         r('Where the electricity goes', '100% into the room', `Every watt the element takes becomes heat in the room, radiated or carried by the air, which is what the Electric heating page means when it says electric space heating is 100% efficient for the customer. It also says a heat pump moves ${fixed(1.5, 1)} to ${fixed(6, 0)} times as much heat as the electricity it uses, which no resistance wire can do.`),

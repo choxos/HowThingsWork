@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {panel, wireColor, glowOpacity} from './element-scene.js';
 import {
   dryerPlan, dryerAt, DRYER_DEFAULTS, DRYER_DOMAINS, DRYER_WIRE, BLOCKED,
@@ -111,6 +111,16 @@ export function createHairDryerModel() {
   const guideWire = lineObject(DECLARED.samples, COLORS.faint, chartPart), guideOutlet = lineObject(DECLARED.samples, COLORS.faint, chartPart);
   const curveWire = lineObject(DECLARED.samples + 1, COLORS.warm, chartPart), curveOutlet = lineObject(DECLARED.samples + 1, COLORS.chart, chartPart);
   const openMark = segmentLines(1, COLORS.open, chartPart), cursor = segmentLines(2, COLORS.chart, chartPart);
+  // The chart's words: its scale at the left, the run's length under its right end, and its name and key to its right, clear of the leader that meets its top.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
+    size: TEXT,
+    x: {min: 0, max: 1, title: `Seconds, a tick every ${fixed(CHART.tickEvery, 0)}`, ticks: [[0, '0']]},
+    y: {min: CHART.temperature[0], max: CHART.temperature[1], ticks: [0, 100, 200].map(celsius => [celsius, `${fixed(celsius, 0)} °C`])},
+  });
+  const endWord = textLabel(chartPart, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
+  textLabel(chartPart, 'The run', {height: TEXT, align: 'left', weight: '600', color: css(COLORS.chart), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.03, 0.001]});
+  [['Element', COLORS.warm], ['Air at the nozzle', COLORS.chart], ['Cutout opens', COLORS.limit], ['Closes again', COLORS.faint]].forEach(([text, color], i) => textLabel(chartPart, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.11 - 0.065 * i, 0.001]}));
   const leader = segmentLines(1, COLORS.faint, system);
 
   const d = DRYER_DEFAULTS, D = DRYER_DOMAINS;
@@ -164,6 +174,7 @@ export function createHairDryerModel() {
     fillLine(openLine, [[CHART.x, chartY(DECLARED.dryerOpen), 0], [CHART.x + CHART.w, chartY(DECLARED.dryerOpen), 0]]);
     fillLine(closeLine, [[CHART.x, chartY(DECLARED.dryerClose), 0], [CHART.x + CHART.w, chartY(DECLARED.dryerClose), 0]]);
     const tickCount = Math.max(0, Math.ceil(plan.duration / CHART.tickEvery) - 1);
+    endWord.userData.setText(`${fixed(plan.duration, 0)}`);
     fillLine(ticks, Array.from({length: tickCount}, (_, i) => {
       const x = chartX(plan, (i + 1) * CHART.tickEvery);
       return [[x, CHART.y, 0], [x, CHART.y - CHART.tick, 0]];

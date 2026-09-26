@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow, stripGeometry} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, stripGeometry, textLabel} from './scene-kit.js';
 import {
   reedAlarmPlan, reedAlarmAt, fieldOf, separationOf, RUN, SLOWER,
   CONTACT, DECLARED, MAGNET, REED, RATIO_BAND,
@@ -186,6 +186,24 @@ export function createReedAlarmModel() {
       fillLine(tickLines, ticks.flat());
     }
   }
+
+  // The charts' words. Both share the field scale; the run's times sit under the loop's band.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.frame), ...options});
+  const teslas = (y, h) => [1e-5, 1e-4, 1e-3, 1e-2, 1e-1].map(field => [y + h * logShare(field, CHART.field.low, CHART.field.high), field < 1e-4 ? `${fixed(field * 1e6, 0)} μT` : `${field < 1e-3 ? fixed(field * 1e3, 1) : fixed(field * 1e3, 0)} mT`]);
+  const F = CHART.field, U = CHART.run, reachMm = DECLARED.reach * 1000;
+  chartText(chart, (mm, y) => [fieldX(mm / 1000), y, 0], {
+    title: 'The field at the switch', size: TEXT,
+    x: {min: 0, max: reachMm, title: 'Magnet to switch, mm', ticks: [0, reachMm / 3, 2 * reachMm / 3, reachMm].map(mm => [mm, fixed(mm, 0)])},
+    y: {min: F.y, max: F.y + F.h, title: 'Field, log scale', ticks: teslas(F.y, F.h)},
+  });
+  [['Field', COLORS.field], ['Pulls in', COLORS.operate], ['Lets go', COLORS.release], ['One dipole', COLORS.faint]].forEach(([text, color], i) => words(chart, text, CHART.x + CHART.w + 0.04, F.y + F.h - 0.04 - 0.06 * i, {align: 'left', color: css(color)}));
+  chartText(runPart, (seconds, y) => [runX(seconds), y, 0], {
+    title: 'The swing over time', size: TEXT,
+    x: {min: 0, max: RUN, title: 'Seconds of the swing', ticks: [0, RUN / 2, RUN].map(t => [t, fixed(t, 0)])},
+    y: {min: U.y - CHART.tick * 2 - 0.06, max: U.y + U.h, title: 'Field, log scale', ticks: teslas(U.y, U.h)},
+  });
+  words(runPart, 'Loop', CHART.x - 0.03, U.y - CHART.tick * 2 - 0.03, {align: 'right'});
 
   const d = REED_ALARM_DEFAULTS, domain = key => REED_ALARM_DOMAINS[key];
   control('angle', 'Door open', ...domain('angle'), d.angle, '°', 'How far the door stands open. The contacts let go before it has moved a finger’s width, so this slider works in tenths of a degree.');

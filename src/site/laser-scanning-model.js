@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {
   scanPlan, scanAt, traceSample, depthResolution, imageOf, heightAt,
   SCAN, SCANNER, PIXELS, SUBPIXELS, SCAN_DEFAULTS, SCAN_DOMAINS,
@@ -95,6 +95,15 @@ export function createLaserScanningModel() {
   const resolutionCurve = lineObject(CHART.samples, COLORS.wave, chart);
   const catalogLine = segmentLines(1, COLORS.gap, chart);
   const chartCursor = segmentLines(2, COLORS.grid, chart);
+  // The chart's words: its height is scaled to the curve's own top, so depth is named, not numbered.
+  const TEXT = 0.035, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const key = (parent, entries) => entries.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.035 - 0.05 * i, 0.001]}));
+  chartText(chart, (z, v) => [chartX(z), CHART.y + v * CHART.h, CHART.z], {
+    title: 'What one pixel is worth', size: TEXT,
+    x: {min: SCANNER.start, max: SCANNER.end, title: 'Distance from the scanner, mm', ticks: [SCANNER.start, SCANNER.middle, SCANNER.end].map(z => [z, fixed(z, 1)])},
+    y: {min: 0, max: 1, title: 'Depth per sensor cell'},
+  });
+  key(chart, [['Depth per cell', COLORS.wave], ['Datasheet linearity', COLORS.gap]]);
 
   const d = SCAN_DEFAULTS;
   control('standoff', 'Standoff', ...SCAN_DOMAINS.standoff, d.standoff, 'mm', 'How far the scanner stands from the surface. Its measuring range runs from 53.5 mm to 78.5 mm, and one pixel is worth more depth at the far end than at the near one.');

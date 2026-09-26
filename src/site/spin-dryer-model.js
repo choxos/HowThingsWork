@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject} from './scene-kit.js';
+import {lineObject, chartText} from './scene-kit.js';
 import {sampleSpin, spinPlan, shaking, omegaOf, SPIN, SPIN_DEFAULTS, SPIN_DOMAINS} from './spin-dryer-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -122,6 +122,18 @@ export function createSpinDryerModel() {
   axis(shakePoint(0, 0), shakePoint(0, 0.005));
   const moistureLine = lineObject(Math.round(END / SPIN.every) + 1, 0x2f6690, charts), allowedLine = lineObject(Math.round(END / SPIN.every) + 1, 0x9aa7ad, charts);
   const shakeLine = lineObject(61, 0xc14f39, charts), moistureCursor = lineObject(2, 0x374736, charts), shakeDot = kit.sphere(6 * MM, [0, 0, 0], 'red', charts);
+  chartText(charts, moisturePoint, {
+    title: 'Water left in the laundry', size: 12 * MM,
+    x: {min: 0, max: END, title: 'Seconds of spinning', ticks: [[0, '0'], [Math.round(END / 2), String(Math.round(END / 2))], [END, String(END)]]},
+    y: {min: 0, max: 1.6, title: 'Water for each kg of cotton', ticks: [[0, '0'], [0.8, '0.8 kg'], [1.6, '1.6 kg']]},
+    legend: [['Left in the laundry', 0x2f6690], ['Driest the speed allows', 0x7a8b83]], legendAt: [END, 1.45],
+  });
+  chartText(charts, shakePoint, {
+    title: 'Cabinet shaking against drum speed', size: 12 * MM,
+    x: {min: 0, max: 3000, title: 'Drum speed (rpm)', ticks: [[0, '0'], [1500, '1,500'], [3000, '3,000']]},
+    y: {min: 0, max: 0.005, title: 'Swing (mm)', ticks: [[0, '0'], [0.0025, '2.5'], [0.005, '5']]},
+    legend: [['Steady swing', 0xc14f39]],
+  });
 
   const specs = {
     rpm: ['Drum speed', 'rpm', null, 'The top speed the drum reaches after its 20 s run-up.'],

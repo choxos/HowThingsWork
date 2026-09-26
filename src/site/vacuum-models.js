@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject} from './scene-kit.js';
+import {lineObject, chartText} from './scene-kit.js';
 import {sampleVacuum, losses, fanPressure, CREVICE, NOZZLE_OPTIONS, DEBRIS, PATHS, VACUUM_DEFAULTS, VACUUM_DOMAINS} from './vacuum-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -134,6 +134,18 @@ function buildCleaner(spec) {
   axis(profilePoint(profileChart, 0, CHART.low), profilePoint(profileChart, 0, CHART.high));
   axis(profilePoint(profileChart, 0, 0), profilePoint(profileChart, CHART.stations, 0));
   const fanLine = lineObject(51, 0xc14f39, charts), pathLine = lineObject(51, 0x2f6690, charts), profileLine = lineObject(12, 0xe3b45e, charts);
+  chartText(charts, (Q, p) => flowPoint(fanChart, Q, p), {
+    title: 'Fan against the air path', size: 18 * MM,
+    x: {min: 0, max: CHART.flow, title: 'Air flow (L/s)', ticks: [[0, '0'], [0.025, '25'], [0.05, '50']]},
+    y: {min: 0, max: CHART.top, title: 'Pressure (kPa)', ticks: [[0, '0'], [11000, '11'], [22000, '22']]},
+    legend: [['Fan', 0xc14f39], ['Air path', 0x2f6690]],
+  });
+  const pieces = spec.kind === 'upright' ? ['Room', 'Nozzle', 'Fan', 'Duct', 'Bag', 'Cloth'] : ['Room', 'Nozzle', 'Hose', 'Bag', 'Filter', 'Fan'];
+  chartText(charts, (station, p) => profilePoint(profileChart, station, p), {
+    title: 'Pressure along the way', size: 18 * MM,
+    x: {min: 0, max: CHART.stations, title: '', ticks: pieces.map((name, k) => [k + 0.5, name])},
+    y: {min: CHART.low, max: CHART.high, title: 'Pressure against the room (kPa)', ticks: [[-20000, '−20'], [0, '0'], [10000, '+10']]},
+  });
   const point = kit.sphere(8 * MM, [0, 0, 0], 'red', charts);
   for (let i = 0; i <= 50; i++) fanLine.geometry.attributes.position.array.set(flowPoint(fanChart, path.fan.maxFlow * i / 50, fanPressure(path.fan, path.fan.maxFlow * i / 50)), i * 3);
   fanLine.geometry.computeBoundingSphere();
@@ -418,8 +430,8 @@ export function createUprightVacuumModel() {
     filterLabel: 'Cloth cover',
     filterHelp: 'The cloth outer bag the air leaves through.',
     floor: {x: -120, width: 620, grains: -230},
-    fanChart: {left: 600, bottom: 780},
-    profileChart: {left: 600, bottom: 420},
+    fanChart: {left: 600, bottom: 800},
+    profileChart: {left: 600, bottom: 360},
     actions: [{label: 'Inspect: the brush roll and fan', part: 'base'}, {label: 'Inspect: the swollen bag', part: 'duct'}],
     draw: drawUpright,
   });

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {
   intruderPlan, intruderAt, coverOf, AREA,
   LENS, DECLARED, OPTEX, EMITTER, RECEIVER, PAPIRS, PYRO, MURATA, SKIN, WALKING,
@@ -157,6 +157,27 @@ export function createIntruderModel() {
   const singleCurve = lineObject(DECLARED.samples, COLORS.single, zonePanel);
   const zoneCursor = segmentLines(2, COLORS.chart, zonePanel);
 
+  // The panels' words: titles, axes, and keys to the right.
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.chart), ...options});
+  const seconds = watch => [0, watch / 2, watch].map(t => [t, fixed(t, 0)]);
+  const B = BEAMCHART;
+  chartText(beamPanel, (t, level) => [beamX(t), beamY(level), B.z], {
+    title: 'Power at the receiver', size: TEXT,
+    x: {min: 0, max: DECLARED.beamWatch, ticks: seconds(DECLARED.beamWatch)},
+    y: {min: 10 ** B.low, max: 10 ** B.high, title: 'Times the threshold', ticks: Array.from({length: B.high - B.low + 1}, (_, i) => 10 ** (B.low + i)).map(level => [level, level < 1 ? String(level) : fixed(level, 0)])},
+  });
+  words(beamPanel, 'Seconds', B.x + B.w / 2, B.strip.y - 0.05);
+  words(beamPanel, `Flashes, ${fixed(B.strip.window * 1000, 0)} ms around now`, B.x - 0.03, B.strip.y + B.strip.h / 2, {align: 'right', height: 0.034});
+  words(beamPanel, 'Threshold', B.x + B.w + 0.03, beamY(1), {align: 'left', color: css(COLORS.alarm)});
+  chartText(zonePanel, (t, v) => [zoneX(OUTPUT, t), OUTPUT.y + v * OUTPUT.h, OUTPUT.z], {x: {min: 0, max: DECLARED.zoneWatch, title: 'Seconds', ticks: seconds(DECLARED.zoneWatch)}, y: {min: 0, max: 1}, size: TEXT});
+  words(zonePanel, 'Power on each element', POWER.x, POWER.y + POWER.h + 0.05, {align: 'left', weight: '600'});
+  words(zonePanel, 'What the pair gives, against the threshold', OUTPUT.x, OUTPUT.y + OUTPUT.h + 0.05, {align: 'left', height: 0.034});
+  words(zonePanel, 'Plus element', POWER.x + POWER.w + 0.03, POWER.y + POWER.h - 0.04, {align: 'left', color: css(COLORS.plus)});
+  words(zonePanel, 'Minus element', POWER.x + POWER.w + 0.03, POWER.y + POWER.h - 0.09, {align: 'left', color: css(COLORS.minus)});
+  words(zonePanel, 'Threshold', OUTPUT.x + OUTPUT.w + 0.03, OUTPUT.y + OUTPUT.h - 0.04, {align: 'left', color: css(COLORS.alarm)});
+  const singleWord = words(zonePanel, 'One element alone', OUTPUT.x + OUTPUT.w + 0.03, OUTPUT.y + OUTPUT.h - 0.09, {align: 'left', color: css(COLORS.single)});
+
   const d = INTRUDER_DEFAULTS, domain = key => INTRUDER_DOMAINS[key];
   const only = key => values => CONTROL_MODES[key] === null || values.mode === CONTROL_MODES[key];
   control('mode', 'Method', ...domain('mode'), d.mode, '', 'An active barrier sends a beam of its own across a path; a passive detector sends nothing and watches the infrared the room already gives off.', MODE_OPTIONS);
@@ -302,6 +323,7 @@ export function createIntruderModel() {
       const shownSamples = clock > 0 ? z.chart.filter(sample => sample.t < now.t) : [];
       fillLine(outputCurve, clock > 0 ? [...shownSamples.map(sample => [zoneX(OUTPUT, sample.t), outputY(sample.output, outputTop), OUTPUT.z]), [zoneX(OUTPUT, now.t), outputY(now.output, outputTop), OUTPUT.z]] : []);
       fillLine(singleCurve, v.warming > 0 ? z.chart.map(sample => [zoneX(OUTPUT, sample.t), outputY(sample.single, outputTop), OUTPUT.z]) : []);
+      singleWord.visible = v.warming > 0;
       fillLine(zeroLine, [[OUTPUT.x, outputY(0, outputTop), OUTPUT.z], [OUTPUT.x + OUTPUT.w, outputY(0, outputTop), OUTPUT.z]]);
       fillLine(thresholdLines, [DECLARED.threshold, -DECLARED.threshold].flatMap(level => [[OUTPUT.x, outputY(level, outputTop), OUTPUT.z], [OUTPUT.x + OUTPUT.w, outputY(level, outputTop), OUTPUT.z]]));
       const zx = zoneX(OUTPUT, now.t), zy = outputY(now.output, outputTop);

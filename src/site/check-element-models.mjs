@@ -707,6 +707,9 @@ const released = [
   checkDisposal((() => { const fresh = KM.createElectricKettleModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = DM.createHairDryerModel(); fresh.advance(3); return fresh; })(), t),
 ].reduce((sum, value) => sum + value, 0);
+// A kettle switched on dry draws no water: fillLine shows any line it fills, so the order matters.
+kettle.update({...kettle.getState().values, filled: 0}); t.ok(!KT.surface.visible && !KT.pool.visible, 'a dry kettle draws no water surface');
+kettle.update({...kettle.getState().values, filled: 1}); t.ok(KT.surface.visible && KT.pool.visible, 'a filled kettle draws its water surface');
 for (const model of [heater, kettle, dryer]) model.dispose();
 
 console.log(`PASS resistance elements: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 3 lessons, ${released} resources released exactly once.`);

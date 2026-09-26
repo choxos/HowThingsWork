@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject} from './scene-kit.js';
+import {lineObject, chartText, textLabel} from './scene-kit.js';
 import {sampleThermometer, sampleSix, LIQUIDS, MEDIA, BULB, SIX, THERMOMETER_DEFAULTS, THERMOMETER_DOMAINS, SIX_DEFAULTS, SIX_DOMAINS} from './thermometer-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -34,7 +34,7 @@ const TICKS = 11;
 const GLASS_CHART = {left: 40, bottom: 20, width: 220, height: 200};
 const ARM = {left: -15, right: 15, bottom: -215, top: 195};
 const SIX_TICKS = 17;
-const SIX_CHART = {left: 50, bottom: -200, width: 220, height: 380};
+const SIX_CHART = {left: 95, bottom: -200, width: 220, height: 380};
 
 export const tempColor = T => COLD.clone().lerp(HOT, Math.max(0, Math.min(1, (T + 50) / 100)));
 /** Where on the stem a temperature falls, in millimeters, before clamping to the stem. */
@@ -73,6 +73,7 @@ export function createLiquidThermometerModel() {
   ticks.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TICKS * 6), 3));
   ticks.frustumCulled = false;
   scale.add(ticks);
+  const scaleNumbers = Array.from({length: TICKS}, (_, i) => textLabel(scale, String(-50 + 10 * i).replace('-', '−'), {height: 5 * MM, align: 'left'}));
 
   const surroundings = part('surroundings', 'Surroundings', 'Still air, a breeze, or a beaker of stirred water around the bulb. Water carries heat fifty times better than still air.', [0, 0, 0], system);
   const beaker = glassTube(kit, 22, 50, 22, surroundings, 0.3);
@@ -83,6 +84,12 @@ export function createLiquidThermometerModel() {
   kit.rod(glassChartPoint(0, -50), glassChartPoint(BULB.duration, -50), 0.6 * MM, 'ink', chart);
   kit.rod(glassChartPoint(0, -50), glassChartPoint(0, 50), 0.6 * MM, 'ink', chart);
   const trace = lineObject(121, 0xd23b1f, chart), target = lineObject(2, 0x7a8b83, chart), cursor = lineObject(2, 0x374736, chart);
+  chartText(chart, glassChartPoint, {
+    title: 'Reading over time', size: 11 * MM,
+    x: {min: 0, max: BULB.duration, title: 'Seconds after it is moved', ticks: [[0, '0'], [600, '600'], [1200, '1,200']]},
+    y: {min: -50, max: 50, title: 'Temperature (°C)', ticks: [[-50, '−50'], [0, '0'], [50, '50']]},
+    legend: [['Reading', 0xd23b1f], ['Surroundings', 0x7a8b83]],
+  });
 
   const specs = {
     liquid: ['Liquid', '', LIQUIDS.map(({value, label}) => ({value, label})), 'Alcohol grows six times as much as mercury for each degree.'],
@@ -117,6 +124,7 @@ export function createLiquidThermometerModel() {
       for (let i = 0; i < TICKS; i++) {
         const y = columnAt(s.rise, -50 + 10 * i), on = y >= STEM.bottom && y <= STEM.top, length = i === 5 ? 8 : 4;
         marks.set(on ? [0, y * MM, 0, length * MM, y * MM, 0] : [0, 0, 0, 0, 0, 0], i * 6);
+        scaleNumbers[i].visible = on; scaleNumbers[i].userData.place((length + 2) * MM, y * MM, 0);
       }
       ticks.geometry.attributes.position.needsUpdate = true;
       ticks.geometry.computeBoundingSphere();
@@ -140,9 +148,9 @@ export function createLiquidThermometerModel() {
         r('Bulb', `${fixed(s.bulb, 2)} °C`, `Heading for ${values.surroundings} °C.`),
         r('Column', `${fixed(s.rise * 1000, 3)} mm for each degree`, 'The bulb’s volume times the growth the glass does not match, over the bore’s area.'),
         r('Readable to', `${fixed(s.resolution, 3)} °C`, 'A fifth of a millimeter by eye.'),
-        r('Scale covers', `${fixed(low, 1)} to ${fixed(high, 1)} °C`),
+        r('Scale covers', `${fixed(low, 1)} to ${fixed(high, 1)} °C`, high > LIQUIDS[values.liquid].boils ? `The stem is long enough for ${fixed(high, 1)} °C, but ${LIQUIDS[values.liquid].label.toLowerCase()} boils at ${LIQUIDS[values.liquid].boils} °C, so the marks above that are never used.` : undefined),
         r('Response', `time constant ${fixed(s.tau, 1)} s`, s.settle > 0 ? `Within 0.5 °C of the surroundings after ${fixed(s.settle, 1)} s.` : 'Already within 0.5 °C.'),
-        r('Liquid', `${LIQUIDS[values.liquid].label}, freezing at ${fixed(s.freezes, 2)} °C`),
+        r('Liquid', `${LIQUIDS[values.liquid].label}, freezing at ${Number(s.freezes.toFixed(2))} °C and boiling at ${LIQUIDS[values.liquid].boils} °C`),
       ],
     };
   });
@@ -217,11 +225,19 @@ export function createSixThermometerModel() {
   scaleLines.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SIX_TICKS * 12), 3));
   scaleLines.frustumCulled = false;
   scales.add(scaleLines);
+  // Numbers every 10 degrees: up the maximum arm, and down the minimum arm, where cold pushes the mercury up.
+  const sixNumbers = Array.from({length: 9}, (_, i) => [textLabel(scales, String(-30 + 10 * i).replace('-', '−'), {height: 7 * MM, align: 'left'}), textLabel(scales, String(-30 + 10 * i).replace('-', '−'), {height: 7 * MM, align: 'right'})]);
 
   const chart = part('chart', 'The day', 'Air in gold and the bulb in red over the 24 hours from the 9 am reset, -30 to 50 °C up; the gray lines are the indices’ readings so far. Not to the thermometer’s scale.', [0, 0, 0], system);
   kit.rod(sixChartPoint(0, -30), sixChartPoint(24, -30), 0.6 * MM, 'ink', chart);
   kit.rod(sixChartPoint(0, -30), sixChartPoint(0, 50), 0.6 * MM, 'ink', chart);
   const airLine = lineObject(97, 0xe3b45e, chart), bulbLine = lineObject(97, 0xd23b1f, chart), highLine = lineObject(2, 0x7a8b83, chart), lowLine = lineObject(2, 0x7a8b83, chart), cursor = lineObject(2, 0x374736, chart);
+  chartText(chart, sixChartPoint, {
+    title: 'The day', size: 16 * MM,
+    x: {min: 0, max: 24, title: 'From the 9 am reset', ticks: [[0, '9 am'], [6, '3 pm'], [18, '3 am'], [24, '9 am']]},
+    y: {min: -30, max: 50, title: 'Temperature (°C)', ticks: [[-30, '−30'], [0, '0'], [50, '50']]},
+    legend: [['Air', 0xb8862f], ['Bulb', 0xd23b1f], ['Indices', 0x7a8b83]],
+  });
 
   const specs = {
     mean: ['Day’s average', '°C', null, 'The middle of the day’s swing.'],
@@ -249,6 +265,7 @@ export function createSixThermometerModel() {
       for (let i = 0; i < SIX_TICKS; i++) {
         const T = -30 + 5 * i, up = s.rise * 1000 * (T - SIX.reference);
         marks.set([(ARM.right + 3) * MM, up * MM, 0, (ARM.right + 7) * MM, up * MM, 0, (ARM.left - 3) * MM, -up * MM, 0, (ARM.left - 7) * MM, -up * MM, 0], i * 12);
+        if (i % 2 === 0) { const [right, left] = sixNumbers[i / 2]; right.userData.place((ARM.right + 9) * MM, up * MM, 0); left.userData.place((ARM.left - 9) * MM, -up * MM, 0); }
       }
       scaleLines.geometry.attributes.position.needsUpdate = true;
       scaleLines.geometry.computeBoundingSphere();

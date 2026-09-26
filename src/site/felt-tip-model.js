@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, surface} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, surface, textLabel} from './scene-kit.js';
 import {feltTipPlan, feltTipAt, paceRatio, FELT, FELT_DEFAULTS, FELT_DOMAINS, INK_OPTIONS, INKS} from './pens-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -128,6 +128,15 @@ export function createFeltTipModel() {
   });
   const dwellMark = segmentLines(1, COLORS.faint, chart);
   const cursor = segmentLines(2, COLORS.chart, chart);
+  // The chart's words, with each ink named to its right in its own color.
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(chart, chartPoint, {
+    title: 'Soaking in over time', size: TEXT,
+    x: {min: 0, max: CHART.time, title: 'Seconds on the paper', ticks: Array.from({length: CHART.time / CHART.timeTick + 1}, (_, i) => [i * CHART.timeTick, fixed(i * CHART.timeTick, 0)])},
+    y: {min: 0, max: CHART.soak, title: 'mm soaked in', ticks: [0, CHART.soak / 2, CHART.soak].map(soak => [soak, fixed(soak, 1)])},
+  });
+  // Each ink's name twice, in its color and faint, shown as its curve is drawn.
+  const inkWords = ['Water-based ink', 'Alcohol-based ink'].map((text, i) => [COLORS.inks[i], COLORS.faint].map(color => { const [x, y] = chartPoint(CHART.time, CHART.soak); return textLabel(chart, text, {height: TEXT, align: 'left', color: css(color), position: [x + 0.04, y - 0.04 - 0.06 * i, 0.001]}); }));
 
   control('ink', 'Ink', ...FELT_DOMAINS.ink, FELT_DEFAULTS.ink, '', 'What the ink is made on. Water stands in for a water-based ink and ethanol for an alcohol-based one.', INK_OPTIONS.map(option => ({...option})));
   control('speed', 'Writing speed', ...FELT_DOMAINS.speed, FELT_DEFAULTS.speed, 'mm/s', 'How fast the tip moves along the line.');
@@ -153,6 +162,7 @@ export function createFeltTipModel() {
 
     // The chart: the ink in the pen in its color, how long a spot is under the tip, and the spot under the tip now.
     curves.forEach((curve, i) => curve.material.color.set(i === v.ink ? COLORS.inks[i] : COLORS.faint));
+    inkWords.forEach(([own, faint], i) => { own.visible = i === v.ink; faint.visible = i !== v.ink; });
     fillLine(dwellMark, [chartPoint(plan.dwell, 0), chartPoint(plan.dwell, CHART.soak)]);
     const soakTime = now.rest > 0 ? plan.dwell + now.rest : Math.min(plan.dwell, clock), soaked = plan.pace * Math.sqrt(soakTime), point = chartPoint(soakTime, soaked);
     fillLine(cursor, [[point[0] - CHART.cursor, point[1], CHART.z], [point[0] + CHART.cursor, point[1], CHART.z], [point[0], point[1] - CHART.cursor, CHART.z], [point[0], point[1] + CHART.cursor, CHART.z]]);

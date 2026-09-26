@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, surface} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, surface, textLabel} from './scene-kit.js';
 import {readPlan, readAt, layoutOf, spinRate, FORMATS, READ, FORMAT_OPTIONS, DEPTH_OPTIONS, READ_DEFAULTS, READ_DOMAINS} from './optical-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -204,6 +204,12 @@ export function createBluRayModel() {
   const signalCurve = lineObject(signalRoom, COLORS.wave, signal);
   const edgeTicks = segmentLines(edgeRoom, COLORS.chart, signal);
   const signalCursor = segmentLines(2, COLORS.chart, signal);
+  const TEXT = 0.035, ink = `#${COLORS.chart.toString(16).padStart(6, '0')}`;
+  chartText(signal, (share, light) => [SIGNAL.x + share * SIGNAL.w, signalY(light), SIGNAL.z], {
+    title: 'Light sent back', size: TEXT,
+    x: {min: 0, max: 1, title: 'Along the ladder, the shortest runs first'},
+    y: {min: 0, max: 1, ticks: [[0, 'None'], [1, 'Land']]},
+  });
 
   // A pit cut open, 100,000 times larger.
   const cutaway = part('pit', 'A pit, cut open', 'A pit and the land beside it cut open and drawn 100,000 times larger, the disc\'s plastic below and its metal above. Seen from the laser the pit is a bump. Two waves of the laser\'s light climb through the plastic, one to the land and one to the bump, and come back down. Below, the two returning waves side by side and their average, whose swing is how much light comes back.', CUTAWAY.origin, system);
@@ -229,6 +235,13 @@ export function createBluRayModel() {
     return curve;
   });
   const spinCursor = segmentLines(2, COLORS.chart, spin);
+  chartText(spin, (radius, rpm) => [spinX(radius), spinY(rpm), SPIN.z], {
+    title: 'Spin speed across the disc', size: TEXT,
+    x: {min: SPIN.radii[0], max: SPIN.radii[1], title: 'Radius, mm', ticks: Array.from({length: (SPIN.radii[1] - SPIN.radii[0]) / SPIN.radiusTick + 1}, (_, i) => SPIN.radii[0] + i * SPIN.radiusTick).map(radius => [radius, String(radius)])},
+    y: {min: SPIN.rpm[0], max: SPIN.rpm[1], title: 'rpm', ticks: [0, 1000, 2000].map(rpm => [rpm, fixed(rpm, 0)])},
+  });
+  // Each disc named where its curve ends, at the outer edge of its data.
+  FORMATS.forEach(format => textLabel(spin, format.name, {height: TEXT, align: 'left', color: ink, position: [SPIN.x + SPIN.w + 0.03, spinY(spinRate(format, format.outer)), 0.001]}));
 
   // The pickup, opened out as a diagram.
   const pickup = part('pickup', 'Laser pickup, opened out', 'The pickup as a diagram: a laser diode, a collimating lens, a polarizing beam splitter, a quarter-wave plate and the objective lens focusing the light into the disc. The light coming back turns aside at the beam splitter to a lens and a photodetector in four parts. The cone of light and the disc\'s plastic above the lens are drawn 40 times larger, at their true angles and thicknesses.', PICKUP.origin, system);

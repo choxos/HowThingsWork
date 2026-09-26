@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface} from './scene-kit.js';
+import {lineObject, surface, chartText, textLabel} from './scene-kit.js';
 import {sampleWasher, tumble, shake, omegaOf, DRUM, WASHER_DEFAULTS, WASHER_DOMAINS} from './washing-machine-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -165,6 +165,22 @@ export function createWashingMachineModel() {
   axis(scaled([SHAKE_CHART.left, SHAKE_CHART.bottom, 0]), scaled([SHAKE_CHART.left, SHAKE_CHART.bottom + SHAKE_CHART.height, 0]));
   const rpmLine = lineObject(5000, 0xc14f39, charts), temperatureLine = lineObject(5000, 0xe3b45e, charts), cursor = lineObject(2, 0x374736, charts);
   const shakeLine = lineObject(141, 0x2f6690, charts), shakeDot = kit.sphere(6 * MM, [0, 0, 0], 'red', charts);
+  // The program's length changes with its settings, so the time axis ends in a number redrawn with them.
+  const programPoint = (share, frac) => scaled([TIME_CHART.left + share * TIME_CHART.width, TIME_CHART.bottom + frac * TIME_CHART.height, 0]);
+  chartText(charts, programPoint, {
+    title: 'The program', size: 14 * MM,
+    x: {min: 0, max: 1, title: 'Minutes into the program', ticks: [[0, '0']]},
+    y: {min: 0, max: 1, title: 'Drum speed (rpm)', ticks: [[0, '0'], [0.5, '700'], [1, '1,400']]},
+    legend: [['Drum speed', 0xc14f39], ['Water temperature', 0xb8862f]], legendAt: [0.97, 0.97],
+  });
+  for (const celsius of [10, 40, 70]) textLabel(charts, `${celsius} °C`, {height: 14 * MM, align: 'left', color: '#b8862f', position: scaled([TIME_CHART.left + TIME_CHART.width + 7, TIME_CHART.bottom + (celsius - TIME_CHART.low) / (TIME_CHART.high - TIME_CHART.low) * TIME_CHART.height, 0.3])});
+  const programEnd = textLabel(charts, '', {height: 14 * MM, width: 60 * MM, position: scaled([TIME_CHART.left + TIME_CHART.width, TIME_CHART.bottom - 15.4, 0.3])});
+  chartText(charts, shakePoint, {
+    title: 'Shaking against drum speed', size: 14 * MM,
+    x: {min: 0, max: SHAKE_CHART.rpm, title: 'Drum speed (rpm)', ticks: [[0, '0'], [700, '700'], [1400, '1,400']]},
+    y: {min: 0, max: SHAKE_CHART.mm / 1000, title: 'Tub swing (mm)', ticks: [[0, '0'], [0.005, '5'], [0.01, '10']]},
+    legend: [['Steady swing', 0x2f6690], ['Now', 0xc14f39]],
+  });
 
   const specs = {
     temperature: ['Temperature', '°C', 'How warm the heater makes the wash; 15 °C is the cold supply.'],
@@ -185,6 +201,7 @@ export function createWashingMachineModel() {
     if (key !== chartKey) {
       chartKey = key;
       angles = drawnAngles(s.samples);
+      programEnd.userData.setText(`${fixed(s.duration / 60, 0)}`);
       const rpms = rpmLine.geometry.attributes.position.array, temps = temperatureLine.geometry.attributes.position.array, count = Math.min(5000, s.samples.length);
       for (let i = 0; i < count; i++) {
         const sample = s.samples[Math.floor(i * s.samples.length / count)];

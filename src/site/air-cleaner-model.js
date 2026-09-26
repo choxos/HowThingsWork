@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, stripGeometry, surface} from './scene-kit.js';
+import {lineObject, stripGeometry, surface, chartText} from './scene-kit.js';
 import {sampleAirCleaner, SIZES, FLOWS, METHOD_OPTIONS, FILTER, PRECIPITATOR, ROOM, AIR_CLEANER_DEFAULTS, AIR_CLEANER_DOMAINS} from './air-cleaner-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -136,6 +136,18 @@ export function createAirCleanerModel() {
   axis(roomPoint(0, 0), roomPoint(0, 1));
   const throughLine = lineObject(61, 0xc14f39, charts), sizeDot = kit.sphere(6 * MM, [0, 0, 0], 'red', charts);
   const roomLine = lineObject(61, 0xc14f39, charts), bareLine = lineObject(61, 0x9aa7ad, charts), nowDot = kit.sphere(6 * MM, [0, 0, 0], 'red', charts);
+  chartText(charts, throughPoint, {
+    title: 'Share let through, by size', size: 13 * MM,
+    x: {min: 1e-8, max: 1e-5, title: 'Particle size (µm)', ticks: [[1e-8, '0.01'], [1e-7, '0.1'], [1e-6, '1'], [1e-5, '10']]},
+    y: {min: 1e-6, max: 1, title: 'Let through', ticks: [[1e-5, '0.001%'], [1e-3, '0.1%'], [1, '100%']]},
+    legend: [['This cleaner', 0xc14f39]],
+  });
+  chartText(charts, roomPoint, {
+    title: 'Particles left in the room', size: 13 * MM,
+    x: {min: 0, max: END, title: 'Minutes', ticks: [[0, '0'], [END / 2, String(END / 120)], [END, String(END / 60)]]},
+    y: {min: 0, max: 1, title: 'Left in the air', ticks: [[0, '0%'], [0.5, '50%'], [1, '100%']]},
+    legend: [['With the cleaner', 0xc14f39], ['Fresh air alone', 0x7a8b83]],
+  });
 
   const specs = {
     mode: ['How it catches particles', METHOD_OPTIONS.map(({value, label}) => ({value, label})), '', 'A fibrous filter, charged plates, or charging alone.'],
@@ -173,7 +185,7 @@ export function createAirCleanerModel() {
     nowDot.position.set(...roomPoint(clock, s.remaining));
 
     const size = specs.size[1][values.size].label, percent = (x, digits) => `${fixed(x * 100, digits)}%`;
-    const caught = mode === 2 ? 'The ionizer itself catches none' : `${mode === 0 ? 'The filter catches' : 'The plates catch'} ${percent(s.efficiency, 3)}`;
+    const caught = mode === 2 ? 'The ionizer itself catches none' : `${mode === 0 ? 'The filter catches' : 'The plates catch'} ${s.efficiency < 1 && s.efficiency >= 0.999995 ? 'more than 99.999%' : percent(s.efficiency, 3)}`;
     const how = mode === 0
       ? r('How the fibers catch them', `diffusion ${percent(s.capture.diffusion, 1)}, interception ${percent(s.capture.interception, 1)}, impaction ${percent(s.capture.impaction, 1)}`, 'What one fiber catches of the particles heading for it. Small particles wander into fibers; large ones cannot follow the air around them.')
       : r('Charge they carry', `${fixed(s.charge.total, s.charge.total < 10 ? 2 : 1)} charges on average`, mode === 1 ? `Field charging gives ${fixed(s.charge.field, 1)} and diffusion charging ${fixed(s.charge.diffusion, 1)}; they drift across to the plates at ${fixed(s.plateDrift * 100, 2)} cm/s.` : `With no plates, they drift toward the walls at only ${fixed(s.roomDrift * 1e6, 2)} µm/s.`);

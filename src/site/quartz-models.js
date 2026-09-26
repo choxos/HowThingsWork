@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, solidArrow} from './scene-kit.js';
+import {lineObject, solidArrow, chartText} from './scene-kit.js';
 import {sampleQuartzClock, quartzClockPlan, sampleKinetic, kineticPlan, crystalFrequency, dailyRate, tineLength, ACTIVITIES, QUARTZ, QUARTZ_CLOCK_DEFAULTS, QUARTZ_CLOCK_DOMAINS, KINETIC_DEFAULTS, KINETIC_DOMAINS} from './quartz-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -47,23 +47,23 @@ export function createQuartzClockModel() {
   kit.cylinder(2.5 * MM, 1.5 * MM, [0, 25.7 * MM, 0], 'metal', battery);
 
   const quartz = part('quartz', 'Quartz crystal', 'A tuning fork of quartz 2.59 mm long in a sealed can, beside a quartz plate squeezed in a clamp to show the piezoelectric effect: squeezing quartz frees electric charge, and a voltage makes it bend. The chip’s oscillator circuit uses both to keep the fork ringing.', [CLOCK.fork[0] * MM, CLOCK.fork[1] * MM, CLOCK.fork[2] * MM], system);
-  const can = kit.cylinder(1.5 * MM, 8 * MM, [0, 2.5 * MM, 0], 'metal', quartz);
+  // The fork and the squeezed plate are parts of their own, so each close-up can frame its subject.
+  const fork = part('fork', 'Quartz tuning fork', 'Two tines of quartz 2.59 mm long in a sealed can. The circuit bends them with a voltage and feels them ring 32,768 times a second.', [0, 0, 0], quartz);
+  const can = kit.cylinder(1.5 * MM, 8 * MM, [0, 2.5 * MM, 0], 'metal', fork);
   can.material = can.material.clone();
   can.material.transparent = true;
   can.material.opacity = 0.25;
   const L = tineLength() * 1000;
-  kit.box([1.2 * MM, 0.8 * MM, 0.35 * MM], [0, -0.4 * MM, 0], 'cream', quartz);
+  kit.box([1.2 * MM, 0.8 * MM, 0.35 * MM], [0, -0.4 * MM, 0], 'cream', fork);
   const tines = [-1, 1].map(side => {
     const pivot = new THREE.Group();
     pivot.position.set(side * 0.4 * MM, 0, 0);
-    quartz.add(pivot);
+    fork.add(pivot);
     kit.box([0.25 * MM, L * MM, 0.35 * MM], [0, L / 2 * MM, 0], 'cream', pivot);
     pivot.userData.side = side;
     return pivot;
   });
-  const plateGroup = new THREE.Group();
-  plateGroup.position.set((CLOCK.plate[0] - CLOCK.fork[0]) * MM, (CLOCK.plate[1] - CLOCK.fork[1]) * MM, 0);
-  quartz.add(plateGroup);
+  const plateGroup = part('plate', 'Squeezed quartz plate', 'A quartz plate 1 cm square and 1 mm thick in a clamp. Squeezing it frees 2.31 pC of charge for each newton, which the meter reads as a voltage.', [(CLOCK.plate[0] - CLOCK.fork[0]) * MM, (CLOCK.plate[1] - CLOCK.fork[1]) * MM, 0], quartz);
   kit.box([10 * MM, 1 * MM, 10 * MM], [0, 0, 0], 'cream', plateGroup);
   for (const side of [-1, 1]) kit.box([12 * MM, 1.5 * MM, 12 * MM], [0, side * 1.3 * MM, 0], 'metal', plateGroup);
   const squeeze = solidArrow(kit, 0xd9822b, plateGroup, 0.4 * MM);
@@ -104,6 +104,12 @@ export function createQuartzClockModel() {
   kit.rod(clockChartPoint(-10, -5), clockChartPoint(-10, 5), 0.5 * MM, 'ink', chart);
   kit.rod(clockChartPoint(-10, 0), clockChartPoint(50, 0), 0.25 * MM, 'ink', chart);
   const curve = lineObject(61, 0x2f6690, chart), dot = kit.sphere(2 * MM, [0, 0, 0], 'red', chart);
+  chartText(chart, clockChartPoint, {
+    title: 'Rate against temperature', size: 7 * MM,
+    x: {min: -10, max: 50, title: 'Room temperature (°C)', ticks: [[-10, '−10'], [25, '25'], [50, '50']]},
+    y: {min: -5, max: 5, title: 'Seconds a day, gained or lost', ticks: [[-5, '−5'], [0, '0'], [5, '+5']]},
+    legend: [['This crystal', 0x2f6690], ['Now', 0xc14f39]], legendAt: [50, 5],
+  });
 
   const specs = {
     temperature: ['Room', '°C', null, 'Quartz is cut to ring fastest at 25 °C and slows either side.'],
@@ -148,13 +154,16 @@ export function createQuartzClockModel() {
         r('Divider', `${s.steps} pulses so far`, 'After fifteen halvings the crystal’s ringing is one pulse a second.'),
         r('Stepping motor', `rotor at ${fixed((s.rotor % TAU) * 180 / Math.PI, 0)} degrees`, 'Half a turn each pulse.'),
         r('Battery', `${fixed(s.current * 1e6, 1)} µA on average`, `An AA cell lasts about ${fixed(s.life, 2)} years.`),
-        r('Quartz plate', `${fixed(s.charge * 1e12, 2)} pC, ${fixed(s.voltage, 2)} V`, `From a squeeze of ${values.squeeze} N on a 1 cm square plate 1 mm thick.`),
+        r('Quartz plate', `${fixed(s.charge * 1e12, 2)} pC, ${fixed(s.voltage, 2)} V`, `From a squeeze of ${values.squeeze} N on a 1 cm square plate 1 mm thick, drawn with no leakage: a real plate’s voltage drains away once the squeeze stops changing.`),
       ],
     };
   });
 
   const render = result.update;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) time = Math.min(60, time + dt); return render(); };
+  // A minute of the clock's own time: sixty pulses of the divider, which a slow
+  // crystal takes a few microseconds more than sixty real seconds to count.
+  const clockMinute = () => { const v = result.getState().values; return 60 * QUARTZ.nominal / crystalFrequency(v.temperature, v.trim); };
+  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) time = Math.min(clockMinute(), time + dt); return render(); };
   result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
   result.reset = () => { time = lastClock = 0; return render(result.defaults); };
   result.actions = [
@@ -164,11 +173,11 @@ export function createQuartzClockModel() {
   ];
   result.playback = {
     label: 'Run a minute',
-    description: 'One minute in real time: sixty pulses, sixty steps of the seconds hand.',
+    description: 'One minute of the clock’s time, played in real time: sixty pulses, sixty steps of the seconds hand.',
     stepLabel: 'Advance a second',
     advance: result.advance,
     step: () => result.advance(1),
-    complete: () => time >= 60,
+    complete: () => time >= clockMinute(),
     blocked: () => false,
   };
 
@@ -233,6 +242,11 @@ export function createKineticWatchModel() {
   kit.rod(kineticChartPoint(0, 0), kineticChartPoint(30, 0), 0.15 * MM, 'ink', chart);
   kit.rod(kineticChartPoint(0, 0), kineticChartPoint(0, 1), 0.15 * MM, 'ink', chart);
   const levelLine = lineObject(31, 0x2f6690, chart), cursor = lineObject(2, 0x374736, chart);
+  chartText(chart, kineticChartPoint, {
+    title: 'Stored energy', size: 2.2 * MM,
+    x: {min: 0, max: 30, title: 'Days', ticks: [[0, '0'], [15, '15'], [30, '30']]},
+    y: {min: 0, max: 1, title: 'Store full', ticks: [[0, '0%'], [0.5, '50%'], [1, '100%']]},
+  });
 
   const specs = {
     activity: ['While worn', '', ACTIVITIES.map(({value, label}) => ({value, label})), 'How lively the wrist is.'],

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {
   designPlan, designAt, polygonPerimeter, chordError, stlBytes, STL, SLICING, MARLIN,
   DESIGN, DESIGN_DEFAULTS, DESIGN_DOMAINS,
@@ -110,6 +110,18 @@ export function createCADDesignModel() {
   const errorCurve = lineObject(CHART.samples, COLORS.chord, chart);
   const nozzleLine = segmentLines(1, COLORS.error, chart);
   const chartCursor = segmentLines(2, COLORS.grid, chart);
+  // The chart's words.
+  const TEXT = 0.035, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const key = (parent, entries) => entries.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.035 - 0.05 * i, 0.001]}));
+  const [low, high] = DESIGN_DOMAINS.facets;
+  // Heights by the error's logarithm, as chartY places them but without its clamp, so the frame's top is reachable.
+  const [lo, hi] = CHART.decades, logY = decade => CHART.y + (decade - lo) / (hi - lo) * CHART.top * CHART.h;
+  chartText(chart, (facets, decade) => [chartX(facets), logY(decade), CHART.z], {
+    title: 'What facets cost', size: TEXT,
+    x: {min: low, max: high, title: 'Facets around the circle', ticks: [low, (low + high) / 2, high].map(facets => [facets, fixed(facets, 0)])},
+    y: {min: lo, max: lo + (hi - lo) / CHART.top, title: 'Error, mm, log scale', ticks: [-2, -1, 0].map(decade => [decade, String(10 ** decade)])},
+  });
+  key(chart, [['Facet error', COLORS.chord], ['Layer height', COLORS.error]]);
 
   const d = DESIGN_DEFAULTS;
   control('radius', 'Outer radius', ...DESIGN_DOMAINS.radius, d.radius, 'mm', 'How wide the cup is. A larger circle drawn with the same number of facets falls further from the curve, because the error grows with the radius.');

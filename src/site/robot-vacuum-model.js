@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface} from './scene-kit.js';
+import {lineObject, surface, chartText} from './scene-kit.js';
 import {robotPlan, sampleRobot, ROBOT, ROOM, FURNITURE, START, STRATEGY_OPTIONS, ROOM_OPTIONS, ROBOT_DEFAULTS, ROBOT_DOMAINS, SPIN_RATE, RUN_WATTS, GRID} from './robot-vacuum-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -109,6 +109,12 @@ export function createRobotVacuumModel() {
   kit.rod(chartPoint(0, 0), chartPoint(END, 0), meters(0.01), 'ink', charts);
   kit.rod(chartPoint(0, 0), chartPoint(0, 1), meters(0.01), 'ink', charts);
   const curves = [0x9aa7ad, 0xe3b45e, 0xc14f39].map(color => lineObject(121, color, charts));
+  chartText(charts, chartPoint, {
+    title: 'Coverage race', size: meters(0.12),
+    x: {min: 0, max: END, title: 'Minutes', ticks: [[0, '0'], [END / 2, String(END / 120)], [END, String(END / 60)]]},
+    y: {min: 0, max: 1, title: 'Reachable floor swept', ticks: [[0, '0%'], [0.5, '50%'], [1, '100%']]},
+    legend: [['Random bounce', 0x7a8b83], ['Spiral first', 0xb8862f], ['Rows, then edges', 0xc14f39]], legendAt: [END, 0.45],
+  });
   const dot = kit.sphere(meters(0.03), [0, 0, 0], 'red', charts);
 
   control('strategy', 'How it cleans', ...ROBOT_DOMAINS.strategy, ROBOT_DEFAULTS.strategy, '', 'Bounce at random, spiral out first, or sweep rows and then the edges.', STRATEGY_OPTIONS.map(({value, label}) => ({value, label})));

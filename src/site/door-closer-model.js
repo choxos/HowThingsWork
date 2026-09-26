@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {
   doorPlan, doorAt, springMoment, pistonArea,
   SIZE3, CLOSER, ORIFICES, ANGLES, GRADES, ADA, CLOCK, LATCH_FORCE, FRICTION, RADIAN,
@@ -136,6 +136,16 @@ export function createDoorCloserModel() {
   const traceGuide = lineObject(CHART.samples, COLORS.faint, trace), traceCurve = lineObject(CHART.samples + 1, COLORS.angle, trace);
   const tracePressure = lineObject(CHART.samples + 1, COLORS.pressure, trace);
   const traceTicks = segmentLines(Math.ceil(CLOCK.limit) + 1, COLORS.chart, trace), traceCursor = segmentLines(2, COLORS.chart, trace);
+  // The chart's words: the swing's length under its right end changes with the settings.
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const key = (parent, entries) => entries.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.035 - 0.05 * i, 0.001]}));
+  chartText(trace, (share, degrees) => [CHART.x + share * CHART.w, traceY(degrees), CHART.z], {
+    title: 'The angle, through the swing', size: TEXT,
+    x: {min: 0, max: 1, title: 'Seconds, a tick for each', ticks: [[0, '0']]},
+    y: {min: 0, max: ANGLES.stop, ticks: [0, ANGLES.stop / 2, ANGLES.stop].map(degrees => [degrees, `${fixed(degrees, 0)}°`])},
+  });
+  const traceEnd = textLabel(trace, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
+  key(trace, [['Door angle', COLORS.angle], ['Oil pressure', COLORS.pressure], ['Back check', COLORS.checkBand], ['Latch zone', COLORS.latchBand]]);
 
   const d = DOOR_DEFAULTS;
   control('door', 'Door', ...DOOR_DOMAINS.door, d.door, '', 'The seven test doors of BS EN 1154 table 1, each with the leaf width and the mass the standard tabulates against a power size.', DOOR_OPTIONS);
@@ -259,6 +269,7 @@ export function createDoorCloserModel() {
       const ticks = [];
       for (let t = 1; t < plan.duration; t += 1) ticks.push([traceX(plan, t), CHART.y, CHART.z], [traceX(plan, t), CHART.y - CHART.tick, CHART.z]);
       fillLine(traceTicks, ticks);
+      traceEnd.userData.setText(fixed(plan.duration, 1));
     }
     const shown = [];
     const shownPressure = [];

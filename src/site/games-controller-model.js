@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface} from './scene-kit.js';
+import {chartText, lineObject, surface, textLabel} from './scene-kit.js';
 import {padPlan, padAt, gatePoint, tiltOf, wiper, adcCode, toReport, contactClosed, STICK, SPRING, FRICTION, CLOCKS, BOUNCE, GAME, HISTOGRAM, RELEASE_OPTIONS, GATE_OPTIONS, BITS_OPTIONS, POLL_OPTIONS, PAD_DEFAULTS, PAD_DOMAINS} from './games-controller-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -48,11 +48,11 @@ export const CONSOLE_AT = Object.freeze({x: 110, z: 20, size: [275, 60, 215]});
 export const MONITOR_AT = Object.freeze({x: 110, z: -30, bottom: 26, display: [531, 299], meter: 500, start: [-40, -10]});
 export const CHARTS = Object.freeze({
   z: -70,
-  timeline: Object.freeze({x: -160, y: 175, w: 200, h: 70, v0: -1, v1: 1.5}),
-  map: Object.freeze({x: 60, y: 175, w: 70, h: 70, range: 1.5}),
-  adc: Object.freeze({x: -160, y: 90, w: 70, h: 70, half: DEG}),
-  bounce: Object.freeze({x: -75, y: 90, w: 120, h: 70, t0: -0.001, t1: 0.014}),
-  latency: Object.freeze({x: 60, y: 90, w: 100, h: 70, t1: 0.16, scale: 250}),
+  timeline: Object.freeze({x: -146, y: 179, w: 186, h: 60, v0: -1, v1: 1.5}),
+  map: Object.freeze({x: 60, y: 179, w: 60, h: 60, range: 1.5}),
+  adc: Object.freeze({x: -154, y: 88, w: 64, h: 70, half: DEG}),
+  bounce: Object.freeze({x: -75, y: 88, w: 120, h: 70, t0: -0.001, t1: 0.014}),
+  latency: Object.freeze({x: 60, y: 88, w: 80, h: 70, t1: 0.16, scale: 250}),
 });
 export const COLORS = Object.freeze({stick: 0x2f6690, report: 0xc14f39, gate: 0xe3b45e, zone: 0xce825f, axis: 0x374736, faint: 0x9aa39a, lit: 0x5ed17a, led: 0xff3b2f, dark: 0x3a2a28, frameLit: 0xffd35a, display: 0x1d2a33, grid: 0x3c5664});
 export const SHARE_COLORS = Object.freeze([0xe3b45e, 0xc14f39, 0x2f6690, 0x91aa7e, 0xce825f]);
@@ -295,6 +295,43 @@ export function createGamesControllerModel() {
   const bars = [58, 48].map(y => SHARE_COLORS.map(color => own(kit.box([1, mm(6), mm(1)], P(L.x, L.y + y), 'cream', latency), color)));
   const histogramLine = lineObject(2 * HISTOGRAM.bins + 2, COLORS.stick, latency), meanLine = lineObject(2, COLORS.report, latency), latencyCursor = lineObject(2, COLORS.axis, latency);
 
+  // The charts' words: titles, axes, and a key beside or inside each chart.
+  const TEXT = mm(3.5), css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [mm(x), mm(y), mm(Z + 0.4)], ...options});
+  const key = (parent, x, top, entries) => entries.forEach(([text, color], i) => words(parent, text, x, top - 4 * i, {align: 'left', color: css(color)}));
+  const percent = [[-1, '−100%'], [0, '0'], [1, '100%']];
+  chartText(timeline, (t, v) => P(tx(t), ty(v)), {
+    title: 'Stick over time', size: TEXT,
+    x: {min: CLOCKS.start, max: CLOCKS.duration, title: 'ms after letting go', ticks: [[0, '0'], [0.1, '100'], [0.2, '200'], [0.3, '300']]},
+    y: {min: T.v0, max: T.v1, title: 'Tilt, share of full travel', ticks: percent},
+    legend: [['True tilt', COLORS.stick], ['Reports', COLORS.report], ['What the game reads', COLORS.axis], ['Dead zone', COLORS.zone]],
+  });
+  chartText(map, (a, b) => P(mx(a), my(b)), {
+    title: 'Stick map', size: TEXT,
+    x: {min: -M.range, max: M.range, title: 'X report', ticks: percent},
+    y: {min: -M.range, max: M.range, title: 'Y report', ticks: percent},
+  });
+  key(map, M.x + M.w + 3, M.y + M.h - 2, [['Gate sweep', COLORS.gate], ['Full magnitude', COLORS.faint], ['Dead zone', COLORS.zone], ['Reports this run', COLORS.stick], ['Report now', COLORS.report], ['Ring: true stick', COLORS.stick]]);
+  chartText(adc, (u, v) => P(A.x + u * A.w, A.y + v * A.h), {
+    title: 'ADC close up', size: TEXT,
+    x: {min: 0, max: 1, title: 'X yoke angle', ticks: [[0, '−1°'], [0.5, 'rest'], [1, '+1°']]},
+    y: {min: 0, max: 1, title: 'X report'},
+    legend: [['Perfect', COLORS.stick], ['ADC steps', COLORS.report]], legendAt: [0.5, 1],
+  });
+  chartText(bounce, (tau, v) => P(bx(tau), B.y + v * B.h), {
+    title: 'Press close up', size: TEXT,
+    x: {min: B.t0, max: B.t1, title: 'ms after first touch', ticks: [[0, '0'], [0.005, '5'], [0.01, '10']]},
+    y: {min: 0, max: 1},
+  });
+  for (const [row, text, color] of [['contact', 'Contacts', COLORS.gate], ['scans', 'Scans', COLORS.axis], ['firmware', 'Firmware', COLORS.report], ['console', 'Console', COLORS.stick]]) words(bounce, text, B.x + 2, ROWS[row][1] + 3, {align: 'left', height: mm(3), color: css(color)});
+  chartText(latency, (seconds, v) => P(lx(seconds), L.y + v * L.h), {
+    title: 'Where the time goes', size: TEXT,
+    x: {min: 0, max: L.t1, title: 'ms from first touch to screen', ticks: [0, 40, 80, 120, 160].map(n => [n / 1000, String(n)])},
+    y: {min: 0, max: 1},
+  });
+  words(latency, 'This press, then the average', L.x + 2, L.y + 65.5, {align: 'left', height: mm(3)});
+  key(latency, L.x + L.w + 3, L.y + L.h - 2, [['Debouncing', SHARE_COLORS[0]], ['Poll wait', SHARE_COLORS[1]], ['Frame wait', SHARE_COLORS[2]], ['Drawing', SHARE_COLORS[3]], ['Display lag', SHARE_COLORS[4]]]);
+
   control('release', 'Letting go', ...PAD_DOMAINS.release, PAD_DEFAULTS.release, '', 'Flick the stick to its gate and let go, or ease it back with the thumb.', RELEASE_OPTIONS.map(({value, label}) => ({value, label})));
   control('gate', 'Gate', ...PAD_DOMAINS.gate, PAD_DEFAULTS.gate, '', 'The shape of the opening that stops the lever.', GATE_OPTIONS.map(({value, label}) => ({value, label})));
   control('bits', 'ADC resolution', ...PAD_DOMAINS.bits, PAD_DEFAULTS.bits, '', 'How many bits the controller’s ADC gives each reading.', BITS_OPTIONS.map(({value, label}) => ({value, label})));
@@ -510,6 +547,8 @@ export function createGamesControllerModel() {
   result.initialView = 'front';
   result.frameVisibleOnly = true;
   result.framePadding = 0.62;
+  // The console alone is a plain box; framed with its monitor, it shows what it drives.
+  result.frameBoundsForPart = id => (id === 'console' ? new THREE.Box3().setFromObject(screen) : null);
   result.selectionOutline = false;
   result.transparentBackground = true;
   result.topology = {system, body, bottomShell, topShell, joystick, gates, lever, yokeA, yokeB, springGroup, springPlate, pots, potA, potB, wiperA, wiperB, button, cap, dome, pill, pads, padMaterial, electronics, led, cable, consolePart, frameLight, screen, display, grid, character, rings, displayY, dw, dh, timeline, zoneLines, trueLine, reportLine, frameDashes, frameTicks, timelineCursor, map, zoneCircle, gateLine, trail, reportDot, stickDot, adc, idealLine, stepLine, sampleDot, bounce, scanTicks, firmwareLine, pollTicks, consoleLine, bounceCursor, latency, bars, histogramLine, meanLine, latencyCursor, ROWS, tx, ty, mx, my, bx, lx, adcWindow: () => adcWindow, trailPolls: () => trailPolls, MM, SLOW};

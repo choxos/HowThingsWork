@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject} from './scene-kit.js';
+import {lineObject, chartText, textLabel} from './scene-kit.js';
 import {sampleLadder, diodesOf, LADDER, MULTIPLIER_DEFAULTS, MULTIPLIER_DOMAINS} from './voltage-multiplier-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -117,6 +117,21 @@ export function createVoltageMultiplierModel() {
   const pumpMaterial = bars[0].material, smoothMaterial = pumpMaterial.clone();
   smoothMaterial.color.set(0x2f6690);
   const outputLine = lineObject(LADDER.played * LADDER.kept + 1, 0xc14f39, charts), steadyLine = lineObject(2, 0x9aa7ad, charts), textbookLine = lineObject(2, 0x2f6690, charts), cursor = lineObject(2, 0x374736, charts);
+  // The scale's top is the ideal output, which the stages and the source set, so its number is redrawn with them.
+  const barPoint = (node, share) => scaled([BAR_CHART.left + BAR_CHART.gap * node, BAR_CHART.bottom + share * BAR_CHART.height, 0]);
+  chartText(charts, barPoint, {
+    title: 'Every node now', size: 9 * MM,
+    x: {min: 0, max: 2 * MOST, title: 'Nodes, from the source outward', ticks: []},
+    y: {min: 0, max: 1, title: 'Volts', ticks: [[0, '0']]},
+    legend: [['Pump capacitors', 0xb8862f], ['Smoothing capacitors', 0x2f6690]],
+  });
+  chartText(charts, (cycles, share) => scaled([OUTPUT_CHART.left + cycles / LADDER.played * OUTPUT_CHART.width, OUTPUT_CHART.bottom + share * OUTPUT_CHART.height, 0]), {
+    title: 'Output over the first 40 cycles', size: 9 * MM,
+    x: {min: 0, max: LADDER.played, title: 'Cycles of the source', ticks: [[0, '0'], [20, '20'], [40, '40']]},
+    y: {min: 0, max: 1, title: 'Volts', ticks: [[0, '0']]},
+    legend: [['Output', 0xc14f39], ['Where it settles', 0x7a8b83], ['Textbook estimate', 0x2f6690]], legendAt: [LADDER.played, 0.62],
+  });
+  const topLabels = [BAR_CHART.left - 6, OUTPUT_CHART.left].map(x => textLabel(charts, '', {height: 9 * MM, width: 40 * MM, align: 'right', position: scaled([x - 4, BAR_CHART.bottom + BAR_CHART.height, 0.3])}));
 
   const specs = {
     stages: ['Stages', '', 'Each stage is two capacitors and two diodes.'],
@@ -133,6 +148,7 @@ export function createVoltageMultiplierModel() {
   let cycles = 0, lastClock = 0, disposed = false, chartKey = '';
   const result = finish(values => {
     const s = sampleLadder(values, cycles), N = s.N, now = s.now, top = 2 * N * values.peak, size = capacitorSize(values.capacitance);
+    for (const label of topLabels) label.userData.setText(`${fixed(top, 0)} V`);
     boardMesh.scale.y = (BASE * 2 + PITCH * N) / (BASE * 2 + PITCH * MOST);
     boardMesh.position.y = (BASE + PITCH * N / 2) * MM;
     capacitors.forEach(({column, k, group, body}) => {

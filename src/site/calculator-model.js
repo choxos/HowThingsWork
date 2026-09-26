@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {calculatorPlan, calculatorAt, driveLevels, bcdText, bitsOf, byteOf, KEYS, CHIP, CELL, BATTERY, PATTERNS, ERROR_PATTERN, LETTERS, SCAN, ADDER, LAYOUT, SOURCE_OPTIONS, CALC_DEFAULTS, CALC_DOMAINS} from './calculator-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -235,6 +235,15 @@ export function createCalculatorModel() {
   const readDots = Array.from({length: slotCount}, () => flat(COLORS.trace, keypad));
   const countTicks = segmentLines(4, COLORS.count, keypad), scanCursor = segmentLines(1, COLORS.chart, keypad);
   const contactY = level => SC.y + SC.contact[level], takenY = level => SC.y + SC.taken[level];
+  // The press chart's words: each trace named at its right end, above its closed level, and the times under it.
+  const TEXT = 0.035, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.chart), ...options});
+  chartText(keypad, (ms, v) => [scanX(ms), SC.y + v * SC.h, 0], {
+    title: 'The first 20 ms of a press of =', size: TEXT,
+    x: {min: 0, max: SCAN.window * 1000, ticks: [0, SCAN.window * 500, SCAN.window * 1000].map(ms => [ms, `${fixed(ms, 0)} ms`])},
+    y: {min: 0, max: 1},
+  });
+  [['Contact', SC.contact[1], COLORS.trace], ['As the chip takes it', SC.taken[1], COLORS.taken], ['Reads of =', SC.slot[1], COLORS.count]].forEach(([text, y, color]) => words(keypad, text, SC.x + SC.w - 0.01, SC.y + y + 0.025, {align: 'right', height: 0.03, color: css(color)}));
 
   // The adder.
   const A = ADDERVIEW, adder = part('adder', 'Bit serial adder', `The adder, a diagram not to scale. Top row: the X register, holding the second number; bottom row: the Y register, holding the first; each is ${CHIP.digits} digits of 4 bits, the most significant digit on the left and each digit’s highest bit on its left, with a dark cell for a 1. The gold frames mark the digit being added and the bit being read; in a real chip the registers shift a bit at a time instead. The left full adder, two XOR gates, two AND gates and an OR gate, adds the X bit, the Y bit and the carry kept in the flip-flop below it, and puts the sum into the 4-bit buffer in the middle. Once a digit’s 4 bits are in, the box under the buffer lights if the sum passed 9 or carried, and the right full adder adds 0110 to the buffer a bit at a time, or 0000 if not. A lit wire carries a 1. The digit then goes into X and its carry into the next digit. The chip runs ${ADDER.slow} times slower here.`, A.origin, system);
@@ -271,6 +280,10 @@ export function createCalculatorModel() {
   const bars = Array.from({length: 7}, () => flat(COLORS.dark, drive, true)), barBase = segmentLines(1, COLORS.chart, drive);
   const barX = q => (q - 3) * DRIVE.bars.pitch;
   fillLine(barBase, [[barX(0) - DRIVE.bars.w, DRIVE.bars.y, 0], [barX(6) + DRIVE.bars.w, DRIVE.bars.y, 0]]);
+  // Each trace named at its left; the drive's name and the bars' meaning under the bars.
+  DRIVE.bases.forEach((base, n) => words(drive, n < CHIP.commons ? `Common ${n + 1}` : `Segment ${n - CHIP.commons + 1}`, DRIVE.x - 0.02, base + 0.03, {align: 'right', height: 0.03, color: css(n < CHIP.commons ? COLORS.chart : COLORS.trace)}));
+  words(drive, 'rms volts on segments a to g', barX(3), DRIVE.bars.y - 0.04, {height: 0.03});
+  words(drive, 'Display drive', barX(3), DRIVE.bars.y - 0.09, {weight: '600'});
 
   // The power chart.
   const PW = POWER, power = part('power', 'Power', `The power, on logarithmic scales: light from ${f0(PW.lux[0])} to ${f0(PW.lux[1])} lx across, current from ${fixed(uA(PW.amps[0]), 1)} to ${f0(uA(PW.amps[1]))} μA up, with a tick at every factor of ten. The rising line is the current Panasonic’s ${CELL.model} solar cell gives at ${f1(CELL.volts)} V, in proportion to the light. The flat lines are the ${f1(uA(CHIP.wait.current[0]))} μA the chip draws waiting and the ${f0(uA(CHIP.operate.current[0]))} μA it draws adding, with a tick where the cell’s line reaches each. The cross marks the room’s light; with the button cell chosen it turns gray.`, PW.origin, system);
@@ -284,6 +297,12 @@ export function createCalculatorModel() {
   const thresholdTicks = segmentLines(2, COLORS.faint, power);
   fillLine(thresholdTicks, [CHIP.wait.current[0], CHIP.operate.current[0]].flatMap(amps => { const x = luxX(CELL.lux * amps / CELL.current); return [[x, PW.y, 0], [x, ampY(amps), 0]]; }));
   const marker = segmentLines(2, COLORS.marker, power);
+  chartText(power, (lux, amps) => [luxX(lux), ampY(amps), 0], {
+    title: 'Power', size: TEXT,
+    x: {min: PW.lux[0], max: PW.lux[1], title: 'Light, lx', ticks: [1, 10, 100, 1000].map(lux => [lux, fixed(lux, 0)])},
+    y: {min: PW.amps[0], max: PW.amps[1], title: 'Current, μA', ticks: [0.1e-6, 1e-6, 10e-6, 100e-6].map(amps => [amps, amps < 1e-6 ? '0.1' : fixed(uA(amps), 0)])},
+  });
+  [['Solar cell', ampY(PW.amps[1]) - 0.03, COLORS.trace], ['Adding', ampY(CHIP.operate.current[0]), COLORS.chart], ['Waiting', ampY(CHIP.wait.current[0]), COLORS.chart]].forEach(([text, y, color]) => words(power, text, PW.x + PW.w + 0.03, y, {align: 'left', color: css(color)}));
 
   const d = CALC_DEFAULTS;
   control('first', 'First number', ...CALC_DOMAINS.first, d.first, '', 'The number entered first. Entering the second pushes it into the Y register.');

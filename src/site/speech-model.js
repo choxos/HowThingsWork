@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {speechPlan, speechAt, VOWELS, GROUPS, TABLE_II, KALDI, DECLARED, PAGES, MEASUREMENTS, VOWEL_OPTIONS, SPEAKER_OPTIONS, TEMPLATE_OPTIONS, RATE_OPTIONS, WINDOW_OPTIONS, SPEECH_DEFAULTS, SPEECH_DOMAINS, formantsOf} from './speech-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -197,6 +197,37 @@ export function createSpeechModel() {
     [[DX + DW + 0.02, DY + DH / 2], [TX - 0.02, TY + TH / 2]],
     [[PX + PW + 0.02, PY + PH / 2], [GX - 0.02, GY + GH / 2]],
   ];
+
+  // Each panel's name above its left corner, clear of the arrows at the
+  // panels' middles, and the ends of the frequency and formant axes.
+  const TEXT = 0.05, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.edge), ...options});
+  const title = (parent, [x, y, , h], text) => words(parent, text, x, y + h + 0.05, {align: 'left', weight: '600'});
+  title(voice, LAYOUT.voice, 'The voice');
+  title(frame, LAYOUT.samples, 'Samples, close up');
+  title(frame, LAYOUT.frame, 'One frame, windowed');
+  title(spectrum, LAYOUT.spectrum, 'Its spectrum');
+  title(features, LAYOUT.filters, 'Mel filters');
+  title(features, LAYOUT.ceps, 'Features');
+  title(recognizer, LAYOUT.distances, 'Distances');
+  title(spectrogram, LAYOUT.spectrogram, 'Spectrogram');
+  title(recognizer, LAYOUT.trace, 'Nearest vowel, frame by frame');
+  title(vowels, LAYOUT.vowels, 'Vowel chart');
+  const kHz = `${fixed(MAX_HZ / 1000, 0)} kHz`;
+  words(spectrum, '0', PX, PY - 0.055);
+  words(spectrum, kHz, PX + PW, PY - 0.055);
+  words(spectrogram, kHz, GX + GW + 0.03, GY + GH - 0.03, {align: 'left'});
+  words(spectrogram, '0', GX + GW + 0.03, GY + 0.03, {align: 'left'});
+  words(vowels, `F2 ${fixed(CHART.f2[0], 0)} Hz`, WX, WY - 0.055, {align: 'left'});
+  words(vowels, `${fixed(CHART.f2[1], 0)} Hz`, WX + WW, WY - 0.055, {align: 'right'});
+  words(vowels, `F1 ${fixed(CHART.f1[0], 0)} Hz`, WX - 0.03, WY + WH - 0.03, {align: 'right'});
+  words(vowels, `${fixed(CHART.f1[1], 0)} Hz`, WX - 0.03, WY + 0.03, {align: 'right'});
+  // The trace's rows, named at its right in the vowel chart's colors.
+  const rowWord = (row, text, color) => { const [y0, y1] = traceRow(row); words(recognizer, text, TX + TW + 0.03, (y0 + y1) / 2, {align: 'left', height: 0.042, color: css(color)}); };
+  VOWELS.forEach((vowel, v) => rowWord(v, `[${vowel.ipa}]`, COLORS.vowels[v]));
+  rowWord(VOWELS.length, 'silence', COLORS.silence);
+  rowWord('said', 'said', COLORS.edge);
+  rowWord('heard', 'heard', COLORS.edge);
 
   const d = SPEECH_DEFAULTS, domain = key => SPEECH_DOMAINS[key];
   control('first', 'First vowel', ...domain('first'), d.first, '', 'The vowel said first, named by the word Peterson and Barney’s speakers read it in.', VOWEL_OPTIONS);

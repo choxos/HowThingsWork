@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {
   stagePlan, stageAt, trapezoidAt, MOTORS, MICROSTEPS, MOTOR, BELT, LEADS, MARLIN, STAGE,
   STAGE_DEFAULTS, STAGE_DOMAINS, AXIS_OPTIONS, MOTOR_OPTIONS, MICRO_OPTIONS,
@@ -111,6 +111,15 @@ export function createThreeAxisModel() {
   const speedGuide = lineObject(CHART.samples, COLORS.faint, chart), speedCurve = lineObject(CHART.samples + 1, COLORS.wave, chart);
   const feedLine = segmentLines(1, COLORS.commanded, chart), legLine = segmentLines(1, COLORS.faint, chart);
   const chartCursor = segmentLines(2, COLORS.grid, chart);
+  // The chart's words: the move's length changes with the settings, so time is named, not numbered.
+  const TEXT = 0.035, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const key = (parent, entries) => entries.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.035 - 0.05 * i, 0.001]}));
+  chartText(chart, (share, speed) => [CHART.x + share * CHART.w, CHART.y + speed * CHART.top * CHART.h, CHART.z], {
+    title: 'Speed through the move', size: TEXT,
+    x: {min: 0, max: 1, title: 'Time through the move'},
+    y: {min: 0, max: 1 / CHART.top, ticks: [[0, '0'], [1, 'Feed']]},
+  });
+  key(chart, [['Speed', COLORS.wave], ['Feed rate', COLORS.commanded], ['The turn', COLORS.faint]]);
 
   const d = STAGE_DEFAULTS;
   control('axis', 'Axis', ...STAGE_DOMAINS.axis, d.axis, '', 'Which axis to drive. The two belt axes carry the pulley’s circumference in a turn; the screw axis carries its lead, so it takes far more steps a millimeter and runs far slower.', AXIS_OPTIONS);

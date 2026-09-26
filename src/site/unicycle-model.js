@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, solidArrow} from './scene-kit.js';
+import {chartText, lineObject, solidArrow, textLabel} from './scene-kit.js';
 import {unicyclePlan, unicycleAt, RIDER, WHEELS, RUN, RIDER_OPTIONS, SEAT_OPTIONS, WHEEL_OPTIONS, UNICYCLE_DEFAULTS, UNICYCLE_DOMAINS} from './unicycle-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -39,9 +39,9 @@ export const DRAW = Object.freeze({
 export const GROUND = Object.freeze({from: -1, to: 3.2, tick: 0.5, mark: 0.06});
 export const CHARTS = Object.freeze({
   z: -0.5, every: 20,
-  lean: Object.freeze({x: 1.3, y: 2, w: 1.8, h: 0.75, range: 20}),
-  speed: Object.freeze({x: 1.3, y: 1.1, w: 1.8, h: 0.75, v0: -1, v1: 3}),
-  torque: Object.freeze({x: 1.3, y: 0.2, w: 1.8, h: 0.75, range: 150}),
+  lean: Object.freeze({x: 1.3, y: 2, w: 1.8, h: 0.62, range: 20}),
+  speed: Object.freeze({x: 1.3, y: 1.1, w: 1.8, h: 0.62, v0: -1, v1: 3}),
+  torque: Object.freeze({x: 1.3, y: 0.2, w: 1.8, h: 0.62, range: 150}),
 });
 export const COLORS = Object.freeze({truth: 0x374736, sensed: 0x2f6690, goal: 0xe3b45e, cap: 0xce825f, faint: 0x9aa39a, push: 0xd9822b, steel: 0x5f7380, tire: 0x2b2f2c, skin: 0xdcc3a8, shirt: 0x6f9fae, trousers: 0x44525a});
 
@@ -186,6 +186,20 @@ export function createUnicycleModel() {
   frameBox(T, torqueChart);
   chartLine(lineObject(2, COLORS.faint, torqueChart), [[T.x, torqueY(0)], [T.x + T.w, torqueY(0)]]);
   const torqueLine = lineObject(samples, COLORS.truth, torqueChart), capLines = segments(2, COLORS.cap, torqueChart), torqueCursor = lineObject(2, COLORS.truth, torqueChart);
+
+  // The charts' words, with each chart's key to its right.
+  const TEXT = m(0.055), css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const seconds = [0, RUN.duration / 2, RUN.duration].map(t => [t, fixed(t, 0)]);
+  const words = (box, map, parent, {title, x, y, legend}) => {
+    chartText(parent, (t, v) => at(chartX(box, t), map(v), CHARTS.z), {title, size: TEXT, x: {min: 0, max: RUN.duration, ticks: seconds, ...x}, y});
+    legend.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: at(box.x + box.w + 0.04, box.y + box.h - 0.04 - 0.065 * i, CHARTS.z)}));
+  };
+  words(L, leanY, leanChart, {title: 'Lean over time', legend: [['Lean', COLORS.truth], ['Noticed', COLORS.sensed]],
+    y: {min: -L.range, max: L.range, title: 'Degrees, forward up', ticks: [-L.range, 0, L.range].map(v => [v, `${v < 0 ? '−' : ''}${fixed(Math.abs(v), 0)}°`])}});
+  words(S, speedY, speedChart, {title: 'Speed over time', legend: [['Speed', COLORS.truth], ['Wanted', COLORS.goal]],
+    y: {min: S.v0, max: S.v1, title: 'Meters a second, forward up', ticks: Array.from({length: S.v1 - S.v0 + 1}, (_, i) => S.v0 + i).map(v => [v, `${v < 0 ? '−' : ''}${fixed(Math.abs(v), 0)}`])}});
+  words(T, torqueY, torqueChart, {title: 'Pedal torque over time', x: {title: 'Seconds into the run'}, legend: [['Torque', COLORS.truth], ['Push limit', COLORS.cap]],
+    y: {min: -T.range, max: T.range, title: 'N·m on the wheel, forward up', ticks: [-T.range, 0, T.range].map(v => [v, `${v < 0 ? '−' : ''}${fixed(Math.abs(v), 0)}`])}});
 
   control('rider', 'Rider', ...UNICYCLE_DOMAINS.rider, UNICYCLE_DEFAULTS.rider, '', 'Whether the rider pedals to stay upright or holds the cranks still.', RIDER_OPTIONS.map(({value, label}) => ({value, label})));
   control('lean', 'Starting lean', ...UNICYCLE_DOMAINS.lean, UNICYCLE_DEFAULTS.lean, '°', 'How far forward the rider leans as the run starts, before they notice it.');

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {panel, wireColor, glowOpacity} from './element-scene.js';
 import {
   kettlePlan, kettleAt, resistanceAt, KETTLE_DEFAULTS, KETTLE_DOMAINS, KETTLE_WIRE, FILLED,
@@ -103,6 +103,16 @@ export function createElectricKettleModel() {
   const guideWater = lineObject(DECLARED.samples, COLORS.faint, chartPart), guideWire = lineObject(DECLARED.samples, COLORS.faint, chartPart);
   const curveWater = lineObject(DECLARED.samples + 1, COLORS.hot, chartPart), curveWire = lineObject(DECLARED.samples + 1, COLORS.wire, chartPart);
   const switchMark = segmentLines(1, COLORS.boil, chartPart), cursor = segmentLines(2, COLORS.chart, chartPart);
+  // The chart's words: its scale at the left, the run's length under its right end, and its name and key to its right, clear of the leader that meets its top.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
+    size: TEXT,
+    x: {min: 0, max: 1, title: `Seconds, a tick every ${fixed(CHART.tickEvery, 0)}`, ticks: [[0, '0']]},
+    y: {min: CHART.temperature[0], max: CHART.temperature[1], ticks: [0, 50, 100].map(celsius => [celsius, `${fixed(celsius, 0)} °C`])},
+  });
+  const endWord = textLabel(chartPart, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
+  textLabel(chartPart, 'The run', {height: TEXT, align: 'left', weight: '600', color: css(COLORS.chart), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.03, 0.001]});
+  [['Water', COLORS.hot], ['Element', COLORS.wire], ['Boiling', COLORS.boil]].forEach(([text, color], i) => textLabel(chartPart, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.11 - 0.065 * i, 0.001]}));
   const leader = segmentLines(1, COLORS.faint, system);
 
   const d = KETTLE_DEFAULTS, D = KETTLE_DOMAINS;
@@ -119,8 +129,9 @@ export function createElectricKettleModel() {
     millimeters(pool, bodyX0 + 6, bodyX1 - 6, bodyY0 + 6, depth, -0.006);
     pool.visible = plan.wet;
     pool.material.color.copy(waterColor(now.water));
-    surface.visible = plan.wet;
     fillLine(surface, [[(bodyX0 + 6) * MM, depth * MM, -0.005], [(bodyX1 - 6) * MM, depth * MM, -0.005]]);
+    // After fillLine, which shows any line it fills: a dry kettle has no surface.
+    surface.visible = plan.wet;
 
     // The element, drawn as the coil it is.
     const [ex0, ex1, ey] = KETTLE.element, color = wireColor(now.celsius);
@@ -154,6 +165,7 @@ export function createElectricKettleModel() {
     // The chart.
     fillLine(boilLine, [[CHART.x, chartY(WATER.boiling), 0], [CHART.x + CHART.w, chartY(WATER.boiling), 0]]);
     const tickCount = Math.max(0, Math.ceil(plan.duration / CHART.tickEvery) - 1);
+    endWord.userData.setText(`${fixed(plan.duration, 0)}`);
     fillLine(ticks, Array.from({length: tickCount}, (_, i) => {
       const x = chartX(plan, (i + 1) * CHART.tickEvery);
       return [[x, CHART.y, 0], [x, CHART.y - CHART.tick, 0]];

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {paperPlan, paperAt, wettingOf, layoutOf, INK, WETTING, PTFE, RADIUS, SCREENS, PAGES, INK_OPTIONS, TARGET_OPTIONS, SCREEN_OPTIONS, PAPER_DEFAULTS, PAPER_DOMAINS, pitchOf} from './epaper-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -149,6 +149,20 @@ export function createElectronicPaperModel() {
   const pulseBar = flat(COLORS.field, light);
   const lightGuide = lineObject(INK.samples, COLORS.faint, light), lightCurve = lineObject(INK.samples + 1, COLORS.wave, light), progressCurve = lineObject(INK.samples + 1, COLORS.faint, light);
   const lightTicks = segmentLines(Math.round(0.25 / CHART.tickEvery) + 1, COLORS.chart, light), lightCursor = segmentLines(2, COLORS.chart, light);
+  // The chart's words: the write's length under its right end changes with the settings.
+  const TEXT = 0.035, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const key = (parent, x, top, entries) => entries.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: [x, top - 0.035 - 0.05 * i, 0.001]}));
+  chartText(light, (share, level) => [CHART.x + share * CHART.w, CHART.y + level * CHART.top * CHART.h, CHART.z], {
+    title: 'Light sent back', size: TEXT,
+    x: {min: 0, max: 1, title: `ms, a tick every ${fixed(CHART.tickEvery * 1000, 0)}`, ticks: [[0, '0']]},
+    y: {min: 0, max: 1 / CHART.top, ticks: [[0, 'Dark'], [1, 'White']]},
+  });
+  const lightEnd = textLabel(light, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
+  // The light chart's key runs in a row under it; the ink's close up can reach down beside the chart.
+  [['Light', COLORS.wave], ['White particles', COLORS.faint], ['Pulse', COLORS.field]].reduce((x, [text, color]) => {
+    textLabel(light, text, {height: TEXT, align: 'left', color: css(color), position: [x, CHART.y - 3.4 * TEXT - CHART.gap - CHART.bar, 0.001]});
+    return x + TEXT * (0.56 * text.length + 0.6) + 0.05;
+  }, CHART.x);
 
   // The electrowetting pixel, 500 times larger.
   const wetting = part('wetting', 'Electrowetting pixel, cut open', `An electrowetting pixel cut open, drawn ${fixed(timesLarger(WET), 0)} times larger: colored oil on ${fixed(WETTING.thickness, 0)} μm of fluoropolymer over an electrode, under water, with a white surface beneath. With no voltage the oil lies flat over the pixel. The drive pulls the water down onto the fluoropolymer, and once a round drop of the oil fits inside the pixel the oil gathers into one, uncovering the white. The line at the drop's edge shows its contact angle. Below: how much of the pixel the oil covers at each voltage, up to ${fixed(PTFE.strength * WETTING.thickness * 1e-6, 0)} V, where the field reaches PTFE's dielectric strength.`, WETVIEW.origin, system);
@@ -175,6 +189,12 @@ export function createElectronicPaperModel() {
   fillLine(dropCurve, Array.from({length: WETCHART.samples}, (_, i) => { const volts = threshold + (breakdownVolts - threshold) * i / (WETCHART.samples - 1), wet = wettingOf(volts); return [wetX(volts), wetY(wet.film ? 1 : wet.coverage), WETCHART.z]; }));
   fillLine(breakdown, [[wetX(breakdownVolts), WETCHART.y, WETCHART.z], [wetX(breakdownVolts), WETCHART.y + WETCHART.h, WETCHART.z]]);
   const wetTicks = segmentLines((WETCHART.volts[1] - WETCHART.volts[0]) / WETCHART.tickEvery - 1, COLORS.faint, wetChart), wetCursor = segmentLines(2, COLORS.chart, wetChart);
+  chartText(wetChart, (volts, share) => [wetX(volts), WETCHART.y + share * WETCHART.top * WETCHART.h, WETCHART.z], {
+    title: 'Oil cover against voltage', size: TEXT,
+    x: {min: WETCHART.volts[0], max: WETCHART.volts[1], title: 'Volts', ticks: [0, 20, 40, 60].map(volts => [volts, String(volts)])},
+    y: {min: 0, max: 1 / WETCHART.top, ticks: [[0, '0%'], [1, '100%']]},
+  });
+  key(wetChart, WETCHART.x + WETCHART.w + 0.04, WETCHART.y + WETCHART.h, [['Oil cover', COLORS.wave], ['Breakdown', COLORS.breakdown]]);
   fillLine(wetTicks, Array.from({length: (WETCHART.volts[1] - WETCHART.volts[0]) / WETCHART.tickEvery - 1}, (_, i) => { const x = wetX((i + 1) * WETCHART.tickEvery); return [[x, WETCHART.y, WETCHART.z], [x, WETCHART.y - WETCHART.tick, WETCHART.z]]; }).flat());
 
   const d = PAPER_DEFAULTS, [inkDomain, gapDomain, voltDomain, pulseDomain, targetDomain, screenDomain, wetDomain] = ['ink', 'gap', 'voltage', 'pulse', 'target', 'screen', 'wetting'].map(key => PAPER_DOMAINS[key]);
@@ -262,6 +282,7 @@ export function createElectronicPaperModel() {
     const ticks = [];
     for (let t = CHART.tickEvery; t < plan.duration - 1e-9; t += CHART.tickEvery) ticks.push([chartX(plan, t), CHART.y, CHART.z], [chartX(plan, t), CHART.y - CHART.tick, CHART.z]);
     fillLine(lightTicks, ticks);
+    lightEnd.userData.setText(fixed(plan.duration * 1000, 0));
     const cx = chartX(plan, now.t), cy = chartY(now.light);
     fillLine(lightCursor, [[cx - CHART.cursor, cy, CHART.z], [cx + CHART.cursor, cy, CHART.z], [cx, cy - CHART.cursor, CHART.z], [cx, cy + CHART.cursor, CHART.z]]);
 

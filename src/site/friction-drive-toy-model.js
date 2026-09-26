@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface, solidArrow} from './scene-kit.js';
+import {lineObject, surface, solidArrow, chartText, textLabel} from './scene-kit.js';
 import {toyPlan, toyAt, TOY, FLOORS, RATIOS, GEARS, RATIO_OPTIONS, RELEASE_OPTIONS, TOY_DEFAULTS, TOY_DOMAINS} from './friction-drive-toy-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -148,6 +148,16 @@ export function createFrictionDriveToyModel() {
   kit.rod(at(CHART.left, CHART.bottom, CHART.z), at(CHART.left + CHART.width, CHART.bottom, CHART.z), mm(0.6), 'ink', charts);
   kit.rod(at(CHART.left, CHART.bottom, CHART.z), at(CHART.left, CHART.bottom + CHART.height, CHART.z), mm(0.6), 'ink', charts);
   const toyLine = lineObject(600, 0xc14f39, charts), flywheelLine = lineObject(600, 0xe3b45e, charts), cursor = lineObject(2, 0x374736, charts);
+  // The run's length follows the settings, so the time axis ends in a number redrawn with them.
+  chartText(charts, (share, speed) => at(CHART.left + share * CHART.width, CHART.bottom + speed / CHART.top * CHART.height, CHART.z), {
+    title: 'Speed over the run', size: mm(6),
+    x: {min: 0, max: 1, title: 'Seconds', ticks: [[0, '0']]},
+    y: {min: 0, max: CHART.top, title: 'm/s', ticks: [[0, '0'], [1.25, '1.25'], [2.5, '2.5']]},
+    legend: [['The toy', 0xc14f39], ['The flywheel, in toy terms', 0xb8862f]],
+  });
+  const runEnd = textLabel(charts, '', {height: mm(6), width: mm(24), position: at(CHART.left + CHART.width, CHART.bottom - 6.6, CHART.z + 0.6)});
+  textLabel(charts, 'Where the hand’s work has gone', {height: mm(6), align: 'left', position: at(CHART.left, CHART.bar + CHART.barHeight + 5, CHART.z + 0.6)});
+  ['In the flywheel', 'In the moving toy', 'Lost skidding', 'Lost in gears and bearings', 'Lost rolling'].forEach((text, k) => textLabel(charts, text, {height: mm(5), align: 'left', color: `#${SHARE_COLORS[k].toString(16).padStart(6, '0')}`, position: at(CHART.left + CHART.width + 6, CHART.bar + CHART.barHeight - 4 + (2 - k) * 6, CHART.z + 0.6)}));
   const shares = SHARE_COLORS.map(color => {
     const segment = kit.box([1, mm(CHART.barHeight), mm(2)], at(CHART.left, CHART.bar + CHART.barHeight / 2, CHART.z), 'cream', charts);
     segment.material = segment.material.clone();
@@ -168,6 +178,7 @@ export function createFrictionDriveToyModel() {
     const key = JSON.stringify(plan.values);
     if (key !== chartKey) {
       chartKey = key;
+      runEnd.userData.setText(fixed(plan.duration, 1));
       const toyPoints = toyLine.geometry.attributes.position.array, flywheelPoints = flywheelLine.geometry.attributes.position.array;
       for (let i = 0; i < 600; i++) {
         const sample = toyAt(plan, plan.duration * i / 599);

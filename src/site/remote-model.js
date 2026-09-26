@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {remotePlan, remoteAt, currentShare, photonEv, photocurrentOf, byteOf, REMOTE_DEFAULTS, REMOTE_DOMAINS, EMITTER_OPTIONS, PATH_OPTIONS, DECLARED, TSAL6200, TLHR5400, TSOP38438, BPW34, SPICE_1N4148, SHEET_1N4148, NEC, E92, LEDS, LED_CURVES, DIODE_CURVE, DIODE_TEST, PAGES, RESPONSIVITY, BAND, DARK_IRRADIANCE, INTENSITY_SLOPE, VT} from './remote-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -267,6 +267,34 @@ export function createRemoteControlModel() {
   const fixedDrop = segmentLines(1, COLORS.dark, diodeChart), sheetLimits = segmentLines(4, COLORS.threshold, diodeChart), diodeCursor = segmentLines(2, COLORS.chart, diodeChart);
   fillLine(fixedDrop, [[toJx(PAGES.threshold[1]), D.y, D.z], [toJx(PAGES.threshold[1]), D.y + D.h, D.z]]);
   fillLine(sheetLimits, [...cross(toJx(-P1.leakAt), toIy(P1.leak), D.cursor, D.z), ...cross(toJx(P1.vf), toIy(P1.at), D.cursor, D.z)]);
+
+  // The charts' words: titles, axes, row names, and keys beside the charts.
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.chart), ...options});
+  const decade = (value, unit) => [value, `1 ${unit}`];
+  words(signal, 'Signal, bit by bit', S.x, rowY(2) + S.row + 0.11, {align: 'left', weight: '600'});
+  [[2, 'LED current'], [1, 'Photodiode current, log scale'], [0, 'Receiver output']].forEach(([k, text]) => words(signal, text, S.x, rowY(k) + S.row + 0.025, {align: 'left', height: 0.032}));
+  words(signal, 'Bits decoded', S.x, S.y + S.bits + 0.025, {align: 'left', height: 0.032});
+  words(signal, `A tick every ${fixed(S.tickEvery * 1000, 0)} ms`, S.x + S.w / 2, S.y - S.tick - 0.035, {height: 0.032});
+  words(signal, 'One burst, close up', mx - 0.02, my + mh / 2, {align: 'right', height: 0.032});
+  chartText(ledChart, (volts, v) => [toVx(volts), C.y + v * C.h, C.z], {
+    title: 'LED current against voltage', size: TEXT,
+    x: {min: 0, max: C.volts, title: 'Volts', ticks: [0, 1, 2, 3].map(volts => [volts, String(volts)])},
+    y: {min: 0, max: 1, ticks: [decade(0, 'μA'), decade(0.5, 'mA'), decade(1, 'A')]},
+  });
+  ['Infrared', 'Red', 'Yellow'].forEach((text, i) => words(ledChart, text, C.x + C.w + 0.04, C.y + C.h - 0.03 - 0.05 * i, {align: 'left', color: css(LED_COLORS[i])}));
+  chartText(receiverChart, (meters, irradiance) => [toDx(meters), toEy(irradiance), R.z], {
+    title: 'Light against distance', size: TEXT,
+    x: {min: R.meters[0], max: R.meters[1], title: 'Meters', ticks: [R.meters[0], ...R.ticks, R.meters[1]].map(meters => [meters, String(meters)])},
+    y: {min: R.irradiance[0], max: R.irradiance[1], title: 'mW/m²', ticks: [0.1, 1, 10].map(irradiance => [irradiance, String(irradiance)])},
+  });
+  words(receiverChart, 'Threshold', R.x + R.w + 0.03, toEy(TSOP38438.nec), {align: 'left', color: css(COLORS.threshold)});
+  words(receiverChart, 'Dark current', R.x + R.w + 0.03, toEy(DARK_IRRADIANCE), {align: 'left', color: css(COLORS.dark)});
+  chartText(diodeChart, (volts, v) => [toJx(volts), D.y + v * D.h, D.z], {
+    title: '1N4148 current against voltage', size: TEXT,
+    x: {min: D.volts[0], max: D.volts[1], title: 'Volts', ticks: [[D.volts[0], `−${-D.volts[0]}`], [D.volts[0] / 2, `−${-D.volts[0] / 2}`], [-1e-9, '0'], [D.volts[1] / 2, String(D.volts[1] / 2)], [D.volts[1], String(D.volts[1])]]},
+    y: {min: 0, max: 1, ticks: [decade(0, 'pA'), decade(0.5, 'μA'), decade(1, 'A')]},
+  });
 
   // Controls.
   const d = REMOTE_DEFAULTS, dom = REMOTE_DOMAINS;

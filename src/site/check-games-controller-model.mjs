@@ -354,7 +354,8 @@ for (const values of SETTINGS) {
     if (Math.abs(ax1 - ax0) < 1e-6) {
       risers++;
       const angle = lo + (ax1 - AD.x) / AD.w * (hi - lo);
-      t.near(codeAt(angle + 2e-9) - codeAt(angle - 2e-9), 1, 0, `${name}: each riser where the code goes up by one`);
+      // The drawn points are float32, good to about 1e-8 rad here; a 12-bit step is 2.5e-4 rad.
+      t.near(codeAt(angle + 1e-7) - codeAt(angle - 1e-7), 1, 0, `${name}: each riser where the code goes up by one`);
     } else {
       t.near(ay1, ay0, 2e-3, `${name}: each tread level`);
       const middle = lo + ((ax0 + ax1) / 2 - AD.x) / AD.w * (hi - lo);

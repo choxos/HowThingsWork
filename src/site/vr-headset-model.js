@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface} from './scene-kit.js';
+import {chartText, lineObject, surface, textLabel} from './scene-kit.js';
 import {vrPlan, vrAt, rayThrough, CLOCKS, HEAD, LENS, GAINS, MOTION_OPTIONS, PREDICTION_OPTIONS, CORRECTION_OPTIONS, VR_DEFAULTS, VR_DOMAINS} from './vr-headset-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -40,9 +40,9 @@ export const IMU_AT = Object.freeze({x: 0, y: 54, z: 120, board: Object.freeze([
 export const CAMERA_AT = Object.freeze({x: 150, y: -10, z: 175, floor: -130, lit: 0.004});
 export const CHARTS = Object.freeze({
   z: -150,
-  timeline: Object.freeze({x: -190, y: 205, w: 120, h: 70, v0: -30, v1: 70}),
-  errors: Object.freeze({x: -60, y: 205, w: 120, h: 70, range: 12}),
-  frames: Object.freeze({x: 70, y: 205, w: 120, h: 70, window: 0.12}),
+  timeline: Object.freeze({x: -190, y: 212, w: 120, h: 70, v0: -30, v1: 70}),
+  errors: Object.freeze({x: -56, y: 212, w: 116, h: 70, range: 12}),
+  frames: Object.freeze({x: 70, y: 212, w: 120, h: 70, window: 0.12}),
   view: Object.freeze({x: -190, y: 120, w: 120, h: 70, span: 40}),
   optics: Object.freeze({x: -60, y: 120, w: 120, h: 70, lens: 40, axis: 35, point: 20, pupils: Object.freeze([-1.5, 0, 1.5])}),
   focus: Object.freeze({x: 70, y: 120, w: 120, h: 70, d1: 4}),
@@ -237,6 +237,49 @@ export function createVrHeadsetModel() {
   const focusMark = lineObject(2, COLORS.estimate, focus), aimMark = lineObject(2, COLORS.shown, focus), conflictLine = lineObject(2, COLORS.shown, focus);
   const focusRing = ring(COLORS.estimate, focus), aimRing = ring(COLORS.shown, focus);
 
+  // The charts' words: titles, axes, row names and a few labels that move with what they name.
+  const TEXT = mm(3.5), css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: mm(3), position: at(x, y, Z + 0.4), color: css(COLORS.truth), ...options});
+  const seconds = [0, 1, 2, 3].map(t => [t, String(t)]);
+  chartText(timeline, (t, v) => P(tx(t), ty(v)), {
+    title: 'Yaw over time', size: TEXT,
+    x: {min: 0, max: CLOCKS.duration, title: 'Seconds', ticks: seconds},
+    y: {min: T.v0, max: T.v1, title: 'Which way the head points', ticks: [[T.v0, `${-T.v0}° right`], [0, 'ahead'], [HEAD.turn, `${HEAD.turn}° left`]]},
+    legend: [['Head', COLORS.truth], ['Estimate', COLORS.estimate], ['Drawn for', COLORS.shown]], legendAt: [1, 54],
+  });
+  chartText(errors, (t, v) => P(ex(t), ey(v)), {
+    title: 'How far off', size: TEXT,
+    x: {min: 0, max: CLOCKS.duration, title: 'Seconds', ticks: seconds},
+    y: {min: -E.range, max: E.range, title: 'Degrees, left up', ticks: [[-E.range, `−${E.range}°`], [0, '0'], [E.range, `${E.range}°`]]},
+    legend: [['Drift', COLORS.estimate], ['Slip', COLORS.shown]],
+  });
+  chartText(frames, (tau, v) => P(F.x + (tau + F.window) / F.window * F.w, F.y + v * F.h), {
+    title: 'Frames close up', size: TEXT,
+    x: {min: -F.window, max: 0, title: 'ms before now', ticks: [[-F.window, `−${fixed(F.window * 1000, 0)}`], [-F.window / 2, `−${fixed(F.window * 500, 0)}`], [0, '0']]},
+    y: {min: 0, max: 1},
+  });
+  for (const [row, text, color] of [['gyro', 'Gyroscope', COLORS.estimate], ['camera', 'Camera', COLORS.camera], ['start', 'Frame starts', COLORS.truth], ['flash', 'Light', COLORS.truth]]) words(frames, text, F.x + 2, FRAME_ROWS[row][1] + 2, {align: 'left', color: css(color)});
+  chartText(view, (angle, v) => P(vx(angle), V.y + v * V.h), {
+    title: 'What the left eye sees', size: TEXT,
+    x: {min: V.span, max: -V.span, title: 'Across the view', ticks: [[V.span, `${V.span}° left`], [0, 'ahead'], [-V.span, `${V.span}° right`]]},
+    y: {min: 0, max: 1},
+  });
+  words(view, 'The room now', V.x + 2, VIEW_ROWS.truth[1] + 3, {align: 'left'});
+  words(view, 'On the display', V.x + 2, VIEW_ROWS.shown[1] + 3, {align: 'left'});
+  chartText(optics, (x, v) => P(O.x + x, O.y + v * O.h), {title: 'Lens, at true size', size: TEXT, x: {min: 0, max: O.w}, y: {min: 0, max: 1}});
+  words(optics, 'Eye', eyeAt + O.x, O.y + 8);
+  words(optics, 'Lens', O.lens + O.x, O.y + 8);
+  const screenWord = words(optics, 'Screen', O.x, O.y + 8, {align: 'left'});
+  chartText(focus, (d, v) => P(dx(d), D.y + v), {
+    title: 'Aim and focus', size: TEXT,
+    x: {min: 0, max: D.d1, title: 'Diopters: 1 over the distance in meters', ticks: Array.from({length: D.d1 + 1}, (_, d) => [d, String(d)])},
+    y: {min: 13, max: D.h},
+  });
+  const ringWord = (text, color) => ({label: words(focus, text, 0, 0, {align: 'left', color: css(color)}), width: 3 * (0.56 * text.length + 0.6)});
+  const focusWord = ringWord('Focus', COLORS.estimate), aimWord = ringWord('Aim', COLORS.shown);
+  // Beside its ring, on the side with room.
+  const placeWord = ({label, width}, d, y) => label.userData.place(...at(d > D.d1 * 0.7 ? dx(d) - 3 - width : dx(d) + 3, y, Z + 0.4));
+
   control('motion', 'Head motion', ...VR_DOMAINS.motion, VR_DEFAULTS.motion, '', 'How the wearer moves during the run.', MOTION_OPTIONS.map(({value, label}) => ({value, label})));
   control('latency', 'Latency', ...VR_DOMAINS.latency, VR_DEFAULTS.latency, 'ms', 'From the moment a frame starts, taking the tracker’s estimate, to the moment it lights.');
   control('prediction', 'Prediction', ...VR_DOMAINS.prediction, VR_DEFAULTS.prediction, '', 'Draw each frame for the yaw expected when it lights, or for the estimate when it starts.', PREDICTION_OPTIONS.map(({value, label}) => ({value, label})));
@@ -268,6 +311,7 @@ export function createVrHeadsetModel() {
 
     const X1 = O.lens + values.screen;
     setLine(screenLine, [oP(X1, 2), oP(X1, O.h - 2)]);
+    screenWord.userData.place(...at(...oP(X1 + 1.5, 8), Z + 0.4));
     screenPoint.position.set(...P(...oP(X1, O.axis + O.point)));
     O.pupils.forEach((pupil, i) => {
       const ray = rayThrough(values.screen, O.point, pupil), reach = Math.min(O.w - O.lens, (O.h - 2 - O.axis - ray.lens) / -ray.after);
@@ -282,6 +326,8 @@ export function createVrHeadsetModel() {
     setLine(aimMark, [[dx(eyes.aim), D.y + 14], [dx(eyes.aim), D.y + 58]]);
     focusRing.position.set(...P(dx(image.focus), D.y + 50.5));
     aimRing.position.set(...P(dx(eyes.aim), D.y + 60.5));
+    placeWord(focusWord, image.focus, D.y + 50.5);
+    placeWord(aimWord, eyes.aim, D.y + 60.5);
     setLine(conflictLine, [[dx(image.focus), D.y + 36], [dx(eyes.aim), D.y + 36]]);
     conflictLine.material.color.set(eyes.comfortable ? COLORS.camera : COLORS.shown);
 
@@ -432,6 +478,10 @@ export function createVrHeadsetModel() {
   result.initialView = 'front';
   result.frameVisibleOnly = true;
   result.framePadding = 0.62;
+  // The chip turns with the head; follow it, framed wide enough to show the
+  // headset around it.
+  result.followParts = ['imu'];
+  result.parts.find(item => item.id === 'imu').framePadding = 2;
   result.selectionOutline = false;
   result.transparentBackground = true;
   result.topology = {system, wearer, skull, neck, nose, headset, shell, lenses, glass, display, panel, panelBorders, panelTicks, panelAhead, panelObjects, imu, rateArc, camera, cameraLight, timeline, truthLine, estimateLine, shownLine, timelineCursor, errors, driftLine, slipLine, errorsCursor, frames, gyroTicks, cameraTicks, startTicks, pipes, flashBars, view, viewEdges, truthTicks, shownTicks, aheadMarks, truthObject, shownObject, optics, screenLine, screenPoint, rays, backRays, focus, comfortBar, focusMark, aimMark, conflictLine, focusRing, aimRing, tx, ty, ex, ey, vx, dx, oP, eyeAt, MM, SLOW};

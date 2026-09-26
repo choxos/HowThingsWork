@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {boilerPlan, boilerAt, tankAt, combustionOf, AIR, BOILER_DEFAULTS, BOILER_DOMAINS, DECLARED, EFFICIENCY, LAMBDA, AIR_MASS, VOGUE, WATER} from './boiler-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -220,6 +220,23 @@ export function createGasBoilerModel() {
   const curveTank = lineObject(DECLARED.samples + 1, COLORS.hot, chartPart), curveTap = lineObject(DECLARED.samples + 1, COLORS.cold, chartPart);
   const litMark = segmentLines(1, COLORS.flame, chartPart), hotMark = segmentLines(1, COLORS.chart, chartPart), cursor = segmentLines(2, COLORS.chart, chartPart);
 
+  // The words on the chart and the flue bar; the run's length and the gases' shares change with the settings.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.chart), ...options});
+  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), CHART.z], {
+    title: 'Temperatures through the run', size: TEXT,
+    x: {min: 0, max: 1, title: 'Seconds since the tap opened', ticks: [[0, '0']]},
+    y: {min: CHART.range[0], max: CHART.range[1], title: '°C', ticks: [0, 20, 40, 60].map(celsius => [celsius, String(celsius)])},
+  });
+  const endWord = words(chartPart, '', CHART.x + CHART.w, CHART.y - 1.1 * TEXT, {width: TEXT * 3.5});
+  [['Leaving the boiler', COLORS.hot], ['At the tap', COLORS.cold], ['Your setting', COLORS.set], ['Mains water', COLORS.faint]].forEach(([text, color], i) => words(chartPart, text, CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.05 - 0.065 * i, {align: 'left', color: css(color)}));
+  words(fluePart, 'What goes up the flue, by volume', 0, FLUEVIEW.bar[1] + 0.05, {align: 'left', weight: '600'});
+  const gasWords = GASES.map(name => ({label: words(fluePart, GAS_NAMES[name], 0, -0.05, {height: 0.04}), width: 0.04 * (0.56 * GAS_NAMES[name].length + 0.6)}));
+  // The scale's end values sit inside its ends, so the view keeps its left edge where the leader meets it.
+  [0, 30, 60, 90].forEach((celsius, i, list) => words(fluePart, `${celsius} °C`, scaleX(celsius), -axisDrop - 0.06, {height: 0.04, align: i === 0 ? 'left' : i === list.length - 1 ? 'right' : 'center'}));
+  const dewWord = words(fluePart, 'Dew point', 0, -axisDrop + 0.07, {height: 0.04, color: css(COLORS.dew)});
+  words(fluePart, 'Flue gas', scaleX(VOGUE.flueTemp), -axisDrop + 0.07, {height: 0.04, color: css(COLORS.flue)});
+
   const d = BOILER_DEFAULTS, [flowDomain, setDomain, inletDomain, pipeDomain] = ['flow', 'set', 'inlet', 'pipe'].map(key => BOILER_DOMAINS[key]);
   control('flow', 'Tap flow', ...flowDomain, d.flow, 'L/min', `How much water the hot tap draws. The sheet rates this boiler at ${fixed(VOGUE.flow, 1)} L/min at a ${fixed(VOGUE.rise, 0)} °C rise and says it runs down to ${fixed(VOGUE.minDraw, 0)} L/min.`);
   control('set', 'Hot water setting', ...setDomain, d.set, '°C', `What the hot water knob asks for. The sheet limits it to ${fixed(VOGUE.maxTemp, 0)} °C.`);
@@ -271,9 +288,13 @@ export function createGasBoilerModel() {
     GASES.forEach((name, i) => {
       const width = plan.flue.shares[name] * FLUEVIEW.bar[0];
       rect(bars[i], left, Math.max(left, left + width - FLUEVIEW.gap), 0, FLUEVIEW.bar[1], 0.001);
+      // Each gas named under its share, where the share is wide enough to hold its name.
+      gasWords[i].label.visible = width > gasWords[i].width + 0.02;
+      gasWords[i].label.userData.place(left + width / 2, -0.05, 0.001);
       left += width;
     });
     fillLine(dewMark, [[scaleX(plan.flue.dew), -axisDrop + axisTick, 0], [scaleX(plan.flue.dew), -axisDrop - axisTick, 0]]);
+    dewWord.userData.place(scaleX(plan.flue.dew), -axisDrop + 0.07, 0.001);
     fillLine(flueMark, [[scaleX(VOGUE.flueTemp), -axisDrop + axisTick, 0], [scaleX(VOGUE.flueTemp), -axisDrop - axisTick, 0]]);
 
     // The pipe to the tap, each piece at the temperature of the water in it.
@@ -296,6 +317,7 @@ export function createGasBoilerModel() {
     fillLine(setLine, [[CHART.x, chartY(values.set), CHART.z], [CHART.x + CHART.w, chartY(values.set), CHART.z]]);
     fillLine(inletLine, [[CHART.x, chartY(values.inlet), CHART.z], [CHART.x + CHART.w, chartY(values.inlet), CHART.z]]);
     const tickCount = Math.round(plan.duration / CHART.tickEvery) - 1;
+    endWord.userData.setText(`${fixed(plan.duration, 0)}`);
     fillLine(ticks, Array.from({length: tickCount}, (_, i) => { const x = chartX(plan, (i + 1) * CHART.tickEvery); return [[x, CHART.y, CHART.z], [x, CHART.y - CHART.tick, CHART.z]]; }).flat());
     fillLine(guideTank, plan.chart.map(sample => [chartX(plan, sample.t), chartY(sample.tank), CHART.z]));
     fillLine(guideTap, plan.drawing ? plan.chart.map(sample => [chartX(plan, sample.t), chartY(sample.tap), CHART.z]) : []);

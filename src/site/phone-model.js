@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow, stripGeometry} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, stripGeometry, textLabel} from './scene-kit.js';
 import {phonePlan, phoneAt, chartAt, columnAt, rowAt, ADXL335, AN2934, COIN, DECLARED, GRID, PITCH, WEIGHT, PHONE_DEFAULTS, PHONE_DOMAINS, FILTER_OPTIONS} from './phone-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ export const PHONE = Object.freeze({origin: Object.freeze([-2.1, 0, 0]), body: O
 /** The accelerometer's two cells, in each cell's own units with its sense axis along v: the spine's and fingers' reach, the fixed fingers' reach, the fingers' thickness and gap, the rows, the anchor bars and spring anchors, the springs' width, the substrate, and the sag arrow in units per g. */
 export const CELLS = Object.freeze({origin: Object.freeze([0.2, 0.72, 0]), offset: 0.53, spine: Object.freeze([0.05, 0.42]), finger: Object.freeze([0.05, 0.31]), fixed: Object.freeze([0.09, 0.38]), thickness: 0.04, gap: 0.08, rows: Object.freeze([-0.16, 0.16]), bar: Object.freeze([0.38, 0.44, 0.32]), anchor: Object.freeze([0.3, 0.36]), beam: 0.012, substrate: Object.freeze([0.47, 0.49]), segments: 16, arrowAt: Object.freeze([0, -0.57]), arrow: 0.12, arrowThickness: 0.009});
 
-export const CHART = Object.freeze({x: -0.85, y: -1.22, w: 3.45, h: 0.6, z: 0, range: 3, tickEvery: 0.01, tick: 0.02, cursor: 0.02});
+export const CHART = Object.freeze({x: -0.85, y: -1.36, w: 3.45, h: 0.6, z: 0, range: 3, tickEvery: 0.01, tick: 0.02, cursor: 0.02});
 
 /** The motor, mm: its housing, magnet ring, commutator, shaft, centroid dot, brushes, the coils' angles and radii, and the force arrow in units per N. */
 export const MOTORVIEW = Object.freeze({origin: Object.freeze([2.15, 0.72, 0]), housing: 5, magnet: Object.freeze([2.2, 4.2]), commutator: 1, shaft: 0.35, dot: 0.25, brush: Object.freeze([2.8, 0.5]), coils: Object.freeze([Object.freeze([115, 165]), Object.freeze([195, 245])]), coilRadii: Object.freeze([1.4, 3.9]), force: 0.6, arrow: 0.006});
@@ -221,6 +221,14 @@ export function createSmartphoneModel() {
   fillLine(ticks, Array.from({length: tickCount}, (_, i) => { const x = CHART.x + (i + 1) * CHART.tickEvery / DECLARED.buzz * CHART.w; return [[x, CHART.y, CHART.z], [x, CHART.y - CHART.tick, CHART.z]]; }).flat());
   const guideX = lineObject(DECLARED.samples, COLORS.xGuide, output), guideY = lineObject(DECLARED.samples, COLORS.yGuide, output);
   const curveX = lineObject(DECLARED.samples + 1, COLORS.x, output), curveY = lineObject(DECLARED.samples + 1, COLORS.y, output), cursors = segmentLines(4, COLORS.chart, output);
+  // The chart's words, with its key to the right.
+  const TEXT = 0.065, buzz = DECLARED.buzz * 1000;
+  chartText(output, (ms, g) => [CHART.x + ms / buzz * CHART.w, chartY(g), CHART.z], {
+    title: 'What the accelerometer reads', size: TEXT,
+    x: {min: 0, max: buzz, title: 'Milliseconds into the buzz', ticks: [0, buzz / 2, buzz].map(ms => [ms, fixed(ms, 0)])},
+    y: {min: -CHART.range, max: CHART.range, title: 'g', ticks: [[-CHART.range, `−${CHART.range}`], [0, '0'], [CHART.range, `+${CHART.range}`]]},
+  });
+  [['x output', COLORS.x], ['y output', COLORS.y]].forEach(([text, color], i) => textLabel(output, text, {height: TEXT, align: 'left', color: `#${color.toString(16).padStart(6, '0')}`, position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.05 - 0.085 * i, CHART.z]}));
 
   // The coin motor, 10 times larger.
   const motor = part('motor', 'Vibration motor, cut open', `The coin vibration motor cut open face on, drawn ${fixed(timesLarger(MOTOR_MM), 0)} times larger: ${fixed(COIN.diameter, 0)} mm across, with a half disk of tungsten carbide ${fixed(WEIGHT.radius * 1000, 2)} mm in radius turning on its shaft, the flat coils that turn with it, the magnet ring beneath and the brushes. The red dot marks the weight’s center of mass, and the red arrow the force the turning weight pulls the housing with, toward the weight. It turns ${DECLARED.slow} times slower than it does.`, MOTORVIEW.origin, system);

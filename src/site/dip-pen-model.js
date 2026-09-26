@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, stripGeometry, surface} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, stripGeometry, surface, textLabel} from './scene-kit.js';
 import {dipPenPlan, dipPenAt, clockTime, clockSeconds, riseAt, wedgeAt, wedgeLength, BENCH, CLOCK, NIB, LIQUID_OPTIONS, DIP_DEFAULTS, DIP_DOMAINS} from './pens-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -186,6 +186,17 @@ export function createDipPenModel() {
   fillLine(ticks, tickPoints);
   const tubeCurve = lineObject(CHART.points, COLORS.lines[0], chart), platesCurve = lineObject(CHART.points, COLORS.faint, chart);
   const tubeCursor = segmentLines(2, COLORS.chart, chart), platesCursor = segmentLines(2, COLORS.faint, chart);
+  // The chart's words, every second tenfold named across it, and its key to its right.
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const timeText = seconds => (seconds < 1 ? `${fixed(seconds * 1000, 0)} ms` : `${fixed(seconds, 0)} s`);
+  chartText(chart, (seconds, level) => [chartX(seconds), chartY(level), CHART.z], {
+    title: 'Rise over time', size: TEXT,
+    x: {min: 10 ** CHART.first, max: 10 ** (CHART.first + CHART.decades), title: 'Time since dipping, log scale', ticks: Array.from({length: CHART.decades / 2 + 1}, (_, i) => 10 ** (CHART.first + 2 * i)).map(seconds => [seconds, timeText(seconds)])},
+    y: {min: CHART.low, max: CHART.high, title: 'Level, mm', ticks: Array.from({length: CHART.high / CHART.levelTick + 1}, (_, i) => [i * CHART.levelTick, fixed(i * CHART.levelTick, 0)])},
+  });
+  // One 'Tube' word in each liquid's color; the one for the liquid chosen shows.
+  const tubeWords = COLORS.lines.map(color => textLabel(chart, 'Tube', {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.04, 0.001]}));
+  const wedgeWord = textLabel(chart, 'Wedge', {height: TEXT, align: 'left', color: css(COLORS.faint), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.1, 0.001]});
 
   control('press', 'Press on the nib', ...DIP_DOMAINS.press, DIP_DEFAULTS.press, 'N', 'How hard the nib is pressed on the paper, in the close up of its tip.');
   control('liquid', 'Liquid on the bench', ...DIP_DOMAINS.liquid, DIP_DEFAULTS.liquid, '', 'The liquid in the bench’s dish. The nib is always dipped in water-based ink.', LIQUID_OPTIONS.map(option => ({...option})));
@@ -225,6 +236,8 @@ export function createDipPenModel() {
     const times = chartTimes();
     fillLine(tubeCurve, plan.enters ? times.map(t => [chartX(t), chartY(1000 * riseAt(plan.tube, t) - BENCH.depth), CHART.z]) : []);
     fillLine(platesCurve, plan.enters ? times.map(t => [chartX(t), chartY(1000 * riseAt(plan.plates, t) - BENCH.depth), CHART.z]) : []);
+    tubeWords.forEach((word, i) => { word.visible = plan.enters && i === v.liquid; });
+    wedgeWord.visible = plan.enters;
   };
 
   let clock = 0, lastClock = 0, disposed = false;

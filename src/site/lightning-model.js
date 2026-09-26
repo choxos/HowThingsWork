@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow, stripGeometry} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, stripGeometry, textLabel} from './scene-kit.js';
 import {
   lightningPlan, lightningAt, timeOfClock, clockOfTime, RUN,
   ATMOSPHERE, CONDUCTOR, CORONA, DECLARED, DEHN, HEIDLER, IET, LEVELS, PAGES, WITHSTAND,
@@ -225,6 +225,30 @@ export function createLightningConductorModel() {
     for (let distance = 5; distance <= DECLARED.reach; distance += 5) ticks.push([[groundX(distance), EARTH.y, 0], [groundX(distance), EARTH.y - CHART.tick, 0]]);
     fillLine(earthTicks, ticks.flat());
   }
+
+  // The charts' words: the shared time axis under the voltages, each panel's scale, and keys to the right.
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.frame), ...options});
+  const key = (parent, top, entries) => entries.forEach(([text, color], i) => words(parent, text, CHART.x + CHART.w + 0.04, top - 0.04 - 0.055 * i, {align: 'left', color: css(color)}));
+  const voltTicks = (low, high, place) => { const out = []; for (let volts = low; volts <= high * 1.0000001; volts *= 10) out.push([place(volts), volts < 1e6 ? `${fixed(volts / 1e3, 0)} kV` : `${fixed(volts / 1e6, 0)} MV`]); return out; };
+  const tickText = t => (t < 1e-3 ? `${fixed(t * 1e6, t < 1e-6 ? 1 : 0)} μs` : `${fixed(t * 1e3, 0)} ms`);
+  const C = CHART.current, V = CHART.volts, clockTicks = [];
+  for (let t = DECLARED.clock.start; t <= DECLARED.clock.end * 1.0000001; t *= 10) clockTicks.push(t);
+  clockTicks.push(DECLARED.clock.end);
+  chartText(chart, (t, y) => [timeX(t), y, 0], {
+    title: 'The strike over time', size: TEXT,
+    x: {min: DECLARED.clock.start, max: DECLARED.clock.end, title: 'Time since the strike attached, log scale', ticks: clockTicks.map(t => [t, tickText(t)])},
+    y: {min: V.y, max: C.y + C.h, title: 'Current', ticks: [...Array.from({length: Math.floor(C.top / C.every) + 1}, (_, i) => [currentY(i * C.every), `${fixed(i * C.every / 1e3, 0)} kA`]), ...voltTicks(V.low, V.high, voltsY)]},
+  });
+  words(chart, 'Voltages, log scale', CHART.x, V.y + V.h + 0.05, {align: 'left'});
+  key(chart, C.y + C.h, [['Current', COLORS.current]]);
+  key(chart, V.y + V.h, [['Conductor to pipe', COLORS.volts], ['Earth rise', COLORS.earth], ['Gap withstands', COLORS.withstand]]);
+  chartText(earth, (distance, y) => [groundX(distance), y, 0], {
+    title: 'The ground around the rod', size: TEXT,
+    x: {min: 0, max: DECLARED.reach, title: 'Meters from the rod', ticks: Array.from({length: DECLARED.reach / 5 + 1}, (_, i) => [5 * i, String(5 * i)])},
+    y: {min: EARTH.y, max: EARTH.y + EARTH.h, ticks: voltTicks(EARTH.low, EARTH.high, groundY)},
+  });
+  [['At the peak', COLORS.faint], ['Now', COLORS.earth], ['Step voltage', COLORS.volts]].forEach(([text, color], i) => words(earth, text, EARTH.x + EARTH.w + 0.04, EARTH.y + EARTH.h - 0.04 - 0.055 * i, {align: 'left', color: css(color)}));
 
   const d = LIGHTNING_DEFAULTS, domain = key => LIGHTNING_DOMAINS[key];
   control('field', 'Storm field at the roof', ...domain('field'), d.field, 'kV/m', 'How strong the storm leaves the field at the roof, before the point gathers it. Measured surface fields under thunderstorms rarely pass 8 kV/m in Florida and are usually under 12 kV/m in New Mexico.');

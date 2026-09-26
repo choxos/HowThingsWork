@@ -83,3 +83,80 @@ export function solidArrow(kit, color, parent, thickness) {
   group.userData.setDirection = direction => group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
   return group;
 }
+
+/**
+ * A line of flat text drawn on a canvas and laid on a plane `height` scene units
+ * tall, facing +z in its parent. Its width follows the text unless given. The
+ * texture is freed when the kit disposes the plane's material, so a model need
+ * not track it. Outside a browser there is no canvas: the plane stays blank and
+ * the model still builds. `mesh.userData.setText(text)` redraws it.
+ */
+export function textLabel(parent, text, {height, width, position = [0, 0, 0], color = '#394233', align = 'center', weight = ''} = {}) {
+  const planeWidth = width ?? height * (0.56 * String(text).length + 0.6);
+  const canvas = typeof document === 'undefined' ? null : document.createElement('canvas');
+  let ctx = null, texture;
+  if (canvas) {
+    canvas.height = 96; canvas.width = Math.max(8, Math.ceil(96 * planeWidth / height));
+    ctx = canvas.getContext('2d'); texture = new THREE.CanvasTexture(canvas);
+  } else texture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.MeshBasicMaterial({map: texture, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide});
+  material.addEventListener('dispose', () => texture.dispose());
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeWidth, height), material);
+  // Anchor the plane at its left, middle or right edge, like the text inside it.
+  const shift = align === 'left' ? planeWidth / 2 : align === 'right' ? -planeWidth / 2 : 0;
+  mesh.position.set(position[0] + shift, position[1], position[2]);
+  mesh.userData.textLabel = true;
+  // Move the label, keeping it anchored at the same edge as its text.
+  mesh.userData.place = (x, y, z = position[2]) => mesh.position.set(x + shift, y, z);
+  mesh.userData.setText = value => {
+    if (mesh.userData.labelText === value) return;
+    mesh.userData.labelText = value;
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = `${weight ? weight + ' ' : ''}72px sans-serif`; ctx.fillStyle = color; ctx.textBaseline = 'middle';
+      ctx.textAlign = align;
+      const x = align === 'left' ? 2 : align === 'right' ? canvas.width - 2 : canvas.width / 2;
+      ctx.fillText(String(value), x, 50, canvas.width - 4);
+      texture.needsUpdate = true;
+    }
+  };
+  mesh.userData.setText(text);
+  parent.add(mesh);
+  return mesh;
+}
+
+/**
+ * The words a chart needs to be read: a title above it, the scale values along
+ * both axes, what each axis measures, and a key to its lines. Positions are in
+ * the chart's own data, through the same `toPoint(x, y)` the chart is drawn with.
+ * `spec`: {title, size, x: {min, max, title, ticks: [[value, text]]},
+ * y: {min, max, title, ticks: [[value, text]]}, legend: [[text, color]], legendAt: [x, y]}.
+ * The key is right-aligned and runs down, inside the plot, from `legendAt` or from
+ * the top right corner.
+ */
+export function chartText(parent, toPoint, {title, size, x, y, legend = [], legendAt}) {
+  const css = color => (typeof color === 'number' ? `#${color.toString(16).padStart(6, '0')}` : color);
+  const at = (px, py) => new THREE.Vector3(...toPoint(px, py));
+  const left = at(x.min, y.min), right = at(x.max, y.min), top = at(x.min, y.max);
+  // The chart's own directions, so a chart laid on a floor or tilted in the
+  // scene gets its words in its own plane.
+  const across = right.clone().sub(left).normalize(), up = top.clone().sub(left).normalize(), out = across.clone().cross(up).normalize();
+  const turn = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(across, up, out));
+  const lift = size * 0.1, labels = [];
+  const put = (text, point, dx, dy, align, options = {}) => {
+    const label = textLabel(parent, text, {height: size, align, ...options});
+    const shift = label.position.x;
+    label.position.copy(point).addScaledVector(across, dx + shift).addScaledVector(up, dy).addScaledVector(out, lift);
+    label.quaternion.copy(turn);
+    labels.push(label);
+  };
+  for (const [value, text] of x.ticks || []) put(text, at(value, y.min), 0, -1.1 * size, 'center');
+  for (const [value, text] of y.ticks || []) put(text, at(x.min, value), -0.5 * size, 0, 'right');
+  if (x.title) put(x.title, left.clone().lerp(right, 0.5), 0, -2.3 * size, 'center');
+  if (y.title) put(y.title, top, 0, 1.0 * size, 'left');
+  if (title) put(title, left.clone().lerp(right, 0.5).add(top.clone().sub(left)), 0, 2.4 * size, 'center', {weight: '600'});
+  const key = legendAt ? at(...legendAt) : at(x.max, y.max);
+  legend.forEach(([text, color], i) => put(text, key, 0, (-0.4 - 1.15 * i) * size, 'right', {color: css(color)}));
+  return labels;
+}

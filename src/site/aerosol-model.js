@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface} from './scene-kit.js';
+import {lineObject, surface, chartText} from './scene-kit.js';
 import {sampleAerosol, aerosolPlan, blendPressure, AEROSOL, LIQUEFIED, NITROGEN, PROPELLANT_OPTIONS, AEROSOL_DEFAULTS, AEROSOL_DOMAINS} from './aerosol-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -154,6 +154,18 @@ export function createAerosolCanModel() {
   axis(temperaturePoint(TEMPERATURE_CHART.low, 0), temperaturePoint(TEMPERATURE_CHART.low, TEMPERATURE_CHART.top));
   const pressureLine = lineObject(Math.round(END / AEROSOL.every) + 1, 0xc14f39, charts), cursor = lineObject(2, 0x374736, charts);
   const liquefiedLine = lineObject(61, 0xe3b45e, charts), nitrogenLine = lineObject(61, 0x2f6690, charts), dot = kit.sphere(4 * MM, [0, 0, 0], 'red', charts);
+  chartText(charts, pressurePoint, {
+    title: 'Pressure while spraying', size: 10 * MM,
+    x: {min: 0, max: PRESSURE_CHART.seconds, title: 'Seconds', ticks: [[0, '0'], [90, '90'], [180, '180']]},
+    y: {min: 0, max: PRESSURE_CHART.top, title: 'Bar above the room', ticks: [[0, '0'], [0.6e6, '6'], [1.2e6, '12']]},
+    legend: [['This can', 0xc14f39]],
+  });
+  chartText(charts, temperaturePoint, {
+    title: 'Pressure against temperature', size: 10 * MM,
+    x: {min: TEMPERATURE_CHART.low, max: TEMPERATURE_CHART.high, title: 'Can temperature (°C)', ticks: [[-10, '−10'], [20, '20'], [50, '50']]},
+    y: {min: 0, max: TEMPERATURE_CHART.top, title: 'Bar above the room', ticks: [[0, '0'], [0.6e6, '6'], [1.2e6, '12']]},
+    legend: [['Liquefied propellant', 0xb8862f], ['Nitrogen', 0x2f6690]], legendAt: [TEMPERATURE_CHART.low + 0.62 * (TEMPERATURE_CHART.high - TEMPERATURE_CHART.low), TEMPERATURE_CHART.top],
+  });
   const filledShare = aerosolPlan({propellant: 0, temperature: 20, orientation: 0}).startShare;
   for (let i = 0; i <= 60; i++) {
     const celsius = TEMPERATURE_CHART.low + i;

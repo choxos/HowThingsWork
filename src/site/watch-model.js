@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {surface, lineObject} from './scene-kit.js';
+import {surface, lineObject, chartText} from './scene-kit.js';
 import {sampleWatch, balance, ALLOYS, WATCH, SPRING_LENGTH, WATCH_DEFAULTS as D, WATCH_DOMAINS} from './watch-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -28,7 +28,7 @@ const BALANCE = [-2, -7, 2.4], ESCAPE = [8, -4, 1.4], LEVER = [5, -7, 1.9], BARR
 const SPIRAL = {inner: 0.8, outer: 3.2, turns: 12, stud: Math.PI / 2, points: 12 * 24 + 1};
 const MAINSPRING = {inner: 1.2, outer: 5, points: 400};
 const AMP = {left: 19, bottom: 2, width: 26, height: 12, max: 360};
-const RATE = {left: 19, bottom: -16, width: 26, height: 12, spread: 200};
+const RATE = {left: 19, bottom: -18, width: 26, height: 12, spread: 200};
 const ALLOY_COLORS = [0x2f3640, 0xb4c5b0];
 const DURATION = 2;
 
@@ -120,6 +120,18 @@ export function createWatchModel() {
   const ampLine = lineObject(47, 0x2f6690, charts);
   const rateLines = ALLOYS.map((_, i) => lineObject(41, ALLOY_COLORS[i], charts));
   const ampDot = kit.sphere(0.35 * MM, [0, 0, 0], 'red', charts), rateDot = kit.sphere(0.35 * MM, [0, 0, 0], 'red', charts);
+  chartText(charts, ampPoint, {
+    title: 'Swing as the mainspring runs down', size: 1.2 * MM,
+    x: {min: 0, max: 46, title: 'Hours since winding', ticks: [[0, '0'], [24, '24'], [46, '46']]},
+    y: {min: 0, max: 360, title: 'Swing each way (degrees)', ticks: [[0, '0'], [110, '110'], [360, '360']]},
+    legend: [['Swing', 0x2f6690], ['Below this the lever stops', 0xc14f39]],
+  });
+  chartText(charts, ratePoint, {
+    title: 'Rate against temperature', size: 1.2 * MM,
+    x: {min: 0, max: 40, title: 'Temperature (°C)', ticks: [[0, '0'], [20, '20'], [40, '40']]},
+    y: {min: -200, max: 200, title: 'Seconds a day, gained or lost', ticks: [[-200, '−200'], [0, '0'], [200, '+200']]},
+    legend: [['Carbon steel', 0x2f3640], ['Nivarox', 0x7d8f7a]],
+  });
 
   const specs = {
     index: ['Regulator', 'marks', null, 'Each mark toward fast shortens the hairspring’s working length by 0.02%.'],

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {
   smokePlan, smokeAt, trackOf, ionDensity, pairsPerMillimeter, airEnergyAfter, afterGold, airRange,
   SENSING, REFERENCE, CHAMBER, OPTICS, SMOKE, AMERICIUM, LINES, RATED, EMITTER, DIODE,
@@ -172,8 +172,15 @@ export function createSmokeDetectorModel() {
   source.add(braggGroup);
   for (const line of [braggFrame, braggCurve, braggMarks, braggTicks]) { source.remove(line); braggGroup.add(line); }
   frame(braggFrame, SOURCE.chart.x, SOURCE.chart.y, SOURCE.chart.w, SOURCE.chart.h);
+  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [x, y, 0.001], color: css(COLORS.ink), ...options});
   const braggX = millimeters => SOURCE.chart.x + Math.max(0, Math.min(1, millimeters / SOURCE.chart.far)) * SOURCE.chart.w;
   const braggY = pairs => SOURCE.chart.y + Math.max(0, Math.min(1, pairs / SOURCE.chart.top)) * SOURCE.chart.h;
+  chartText(braggGroup, (distance, v) => [braggX(distance), SOURCE.chart.y + v * SOURCE.chart.h, 0], {
+    title: 'Ion pairs per mm of air', size: TEXT,
+    x: {min: 0, max: SOURCE.chart.far, title: 'mm past the cover', ticks: Array.from({length: SOURCE.chart.far / SOURCE.chart.tick + 1}, (_, i) => [i * SOURCE.chart.tick, String(i * SOURCE.chart.tick)])},
+    y: {min: 0, max: 1},
+  });
   {
     const start = afterGold(LINES[0][0], CHAMBER.cover), range = airRange(start) * 10;
     fillLine(braggCurve, Array.from({length: SOURCE.chart.far * 4 + 1}, (_, i) => {
@@ -181,6 +188,7 @@ export function createSmokeDetectorModel() {
       return [braggX(distance), braggY(distance <= range ? pairsPerMillimeter(airEnergyAfter(start, distance)) : 0), 0];
     }));
     fillLine(braggMarks, [CHAMBER.sensing, CHAMBER.reference, range].flatMap(distance => [[braggX(distance), SOURCE.chart.y, 0], [braggX(distance), SOURCE.chart.y + SOURCE.chart.h, 0]]));
+    [[CHAMBER.sensing, 'Open'], [CHAMBER.reference, 'Closed'], [range, 'Range']].forEach(([distance, text]) => words(braggGroup, text, braggX(distance), SOURCE.chart.y + SOURCE.chart.h + 0.025, {height: 0.03}));
     fillLine(braggTicks, Array.from({length: Math.floor(SOURCE.chart.far / SOURCE.chart.tick)}, (_, i) => {
       const x = braggX((i + 1) * SOURCE.chart.tick);
       return [[x, SOURCE.chart.y, 0], [x, SOURCE.chart.y - SOURCE.chart.mark, 0]];
@@ -230,6 +238,7 @@ export function createSmokeDetectorModel() {
   const gaugeBars = [COLORS.ion, COLORS.ion, COLORS.photo, COLORS.ink].map(color => flat(color, circuit));
   const gaugeLines = Array.from({length: 4}, (_, i) => segmentLines(i === 1 ? 2 : 1, i === 3 ? COLORS.alarm : COLORS.limit, circuit));
   gaugeFrames.forEach((line, i) => frame(line, gaugeX(i) - GAUGE.width / 2, 0, GAUGE.width, GAUGE.height));
+  ['Current', 'Voltage', 'Light', 'Battery'].forEach((text, i) => words(circuit, text, gaugeX(i), -0.04, {height: 0.035}));
   const hornBody = disc(COLORS.horn, circuit, 32);
   put(hornBody, GAUGE.horn[0], GAUGE.horn[1], GAUGE.hornRadius, -0.002);
   const hornRing = disc(COLORS.rim, circuit, 24);
@@ -246,6 +255,12 @@ export function createSmokeDetectorModel() {
   const chirpMarks = segmentLines(Math.ceil(SMOKE.duration / IONIZATION_IC.batteryEvery) + 1, COLORS.alarm, chart);
   const chartTicks = segmentLines(Math.round(SMOKE.duration / CHART.tickEvery), COLORS.faint, chart), chartCursor = segmentLines(1, COLORS.chart, chart);
   fillLine(threshold, [[chartX(0), chartY(1), CHART.z], [chartX(SMOKE.duration), chartY(1), CHART.z]]);
+  chartText(chart, (time, share) => [chartX(time), chartY(share), CHART.z], {
+    title: 'Toward each alarm', size: TEXT,
+    x: {min: 0, max: SMOKE.duration, title: 'Minutes', ticks: [0, SMOKE.duration / 2, SMOKE.duration].map(time => [time, fixed(time / 60, 0)])},
+    y: {min: 0, max: CHART.top},
+  });
+  [['Alarm level', COLORS.limit, chartY(1)], ['Ionization', COLORS.ion, chartY(1) - 0.07], ['Optical', COLORS.photo, chartY(1) - 0.12]].forEach(([text, color, y]) => words(chart, text, CHART.x + CHART.w + 0.03, y, {align: 'left', color: css(color)}));
   fillLine(chartTicks, Array.from({length: Math.round(SMOKE.duration / CHART.tickEvery)}, (_, i) => {
     const x = chartX((i + 1) * CHART.tickEvery);
     return [[x, CHART.y, CHART.z], [x, CHART.y - CHART.tick, CHART.z]];

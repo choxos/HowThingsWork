@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow, stripGeometry} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, stripGeometry, textLabel} from './scene-kit.js';
 import {extinguisherPlan, extinguisherAt, cartridgeShape, levelOf, saturationAt, vacuumReach, dragLength, BODY, NOZZLE, DROP, DISCHARGE, RESIDUAL, FULL_AT, KANEX, IS940, IS4947, IS15683, DECLARED, BAR, KILOGRAM_FORCE, CO2, CARTRIDGE_OPTIONS, EXTINGUISHER_DEFAULTS, EXTINGUISHER_DOMAINS} from './extinguisher-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -287,6 +287,15 @@ export function createFireExtinguisherModel() {
   const gaugeGuide = lineObject(DECLARED.samples, COLORS.flowFaint, chart), shareGuide = lineObject(DECLARED.samples, COLORS.faint, chart);
   const gaugeCurve = lineObject(DECLARED.samples + 1, COLORS.flow, chart), shareCurve = lineObject(DECLARED.samples + 1, COLORS.shareDark, chart);
   const chartTicks = segmentLines(CHART.ticks, COLORS.chart, chart), cursor = segmentLines(2, COLORS.chart, chart);
+  // The chart's words: the two scales share its height, so their ends are named at its right.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(chart, (share, v) => [CHART.x + share * CHART.w, CHART.y + v * CHART.top * CHART.h, CHART.z], {
+    title: 'Through the run', size: TEXT,
+    x: {min: 0, max: 1, title: `Seconds from the squeeze, a tick every ${CHART.tickEvery}`, ticks: [[0, '0']]},
+    y: {min: 0, max: 1 / CHART.top},
+    legend: [['Gauge', COLORS.flow], ['Water left', COLORS.shareDark], ['Effective discharge', COLORS.gold]],
+  });
+  [[1, `${DECLARED.dial} bar, all the water`, COLORS.dark], [IS940.closed * 10 / DECLARED.dial, `${fixed(IS940.closed * 10, 0)} bar`, COLORS.limit], [0, '0', COLORS.dark]].forEach(([share, text, color]) => textLabel(chart, text, {height: 0.04, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.03, chartY(share), 0.001]}));
 
   // Leaders from the body to the close up, from the nozzle to the jet, and from the gauge to the cap.
   const leaders = segmentLines(4, COLORS.faint, system);

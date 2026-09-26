@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, solidArrow, surface} from './scene-kit.js';
+import {chartText, lineObject, solidArrow, surface, textLabel} from './scene-kit.js';
 import {staplerPlan, staplerAt, STAPLER, SHEET, LBF, PHASES, STAPLE_OPTIONS, ANVIL_OPTIONS, STAPLER_DEFAULTS, STAPLER_DOMAINS} from './stapler-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -212,6 +212,16 @@ export function createStaplerModel() {
   const stageMarks = segments(3, COLORS.faint, chart);
   const bladeLine = lineObject(20, COLORS.blade, chart), handLine = lineObject(20, COLORS.hand, chart);
   const bladeCursor = segments(2, COLORS.blade, chart), handCursor = segments(2, COLORS.hand, chart);
+  // The chart's words, with its key to its right.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const range = (top, step) => Array.from({length: Math.round(top / step) + 1}, (_, i) => [i * step, fixed(i * step, 0)]);
+  chartText(chart, chartPoint, {
+    title: 'Push over the press', size: TEXT,
+    // The last travel tick would sit behind the paper drawn in front of the chart.
+    x: {min: 0, max: CHART.travel, title: 'mm moved', ticks: range(CHART.travel, CHART.travelTick).slice(0, -1)},
+    y: {min: 0, max: CHART.force, title: 'Newtons', ticks: range(CHART.force, 2 * CHART.forceTick)},
+  });
+  [['Blade', COLORS.blade], ['Hand', COLORS.hand]].forEach(([text, color], i) => { const [x, y, z] = chartPoint(CHART.travel, CHART.force); textLabel(chart, text, {height: TEXT, align: 'left', color: css(color), position: [x + 0.04, y - 0.04 - 0.065 * i, z + 0.001]}); });
 
   control('sheets', 'Sheets of paper', ...STAPLER_DOMAINS.sheets, STAPLER_DEFAULTS.sheets, '', `How many sheets are stapled, at ${fixed(SHEET, 1)} mm each.`);
   control('staple', 'Staple', ...STAPLER_DOMAINS.staple, STAPLER_DEFAULTS.staple, '', 'The staple’s size: the wire’s gauge, then the legs’ length in millimeters.', STAPLE_OPTIONS.map(option => ({...option})));

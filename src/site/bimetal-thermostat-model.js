@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {fillLine, lineObject, segmentLines} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {panel} from './element-scene.js';
 import {
   bimetalPlan, bimetalAt, curvatureAt, stripTipAt, villarceauA,
@@ -83,6 +83,16 @@ export function createBimetalThermostatModel() {
   const guide = lineObject(DECLARED.samples, COLORS.faint, chartPart);
   const curve = lineObject(DECLARED.samples + 1, COLORS.live, chartPart);
   const cursor = segmentLines(1, COLORS.chart, chartPart);
+  // The chart's words: its scale at the left, the run's length under its right end, and its name and key to its right, clear of the leader that meets its top.
+  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
+  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
+    size: TEXT,
+    x: {min: 0, max: 1, title: `Minutes, a tick every ${fixed(CHART.tickEvery / 60, 0)}`, ticks: [[0, '0']]},
+    y: {min: CHART.temperature[0], max: CHART.temperature[1], ticks: [10, 20, 30].map(celsius => [celsius, `${fixed(celsius, 0)} °C`])},
+  });
+  const endWord = textLabel(chartPart, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
+  textLabel(chartPart, 'The room through the run', {height: TEXT, align: 'left', weight: '600', color: css(COLORS.chart), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.03, 0.001]});
+  [['Room', COLORS.live], ['Your setting', COLORS.set], ['Contacts parted', COLORS.band]].forEach(([text, color], i) => textLabel(chartPart, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.11 - 0.065 * i, 0.001]}));
   const leader = segmentLines(1, COLORS.faint, system);
 
   const d = BIMETAL_DEFAULTS, D = BIMETAL_DOMAINS;
@@ -143,6 +153,7 @@ export function createBimetalThermostatModel() {
     rect(bandBox, CHART.x, CHART.x + CHART.w, chartY(plan.closesAt), chartY(plan.opensAt), -0.001);
     fillLine(setLine, [[CHART.x, chartY(values.setting), 0], [CHART.x + CHART.w, chartY(values.setting), 0]]);
     const tickCount = Math.max(0, Math.ceil(plan.duration / CHART.tickEvery) - 1);
+    endWord.userData.setText(`${fixed(plan.duration / 60, 0)}`);
     fillLine(ticks, Array.from({length: tickCount}, (_, i) => {
       const x = chartX(plan, (i + 1) * CHART.tickEvery);
       return [[x, CHART.y, 0], [x, CHART.y - CHART.tick, 0]];

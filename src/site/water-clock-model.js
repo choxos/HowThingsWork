@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {surface, lineObject} from './scene-kit.js';
+import {surface, lineObject, chartText} from './scene-kit.js';
 import {sampleWaterClock, waterClockPlan, potRadius, DESIGNS, WATER, WATER_DEFAULTS, WATER_DOMAINS} from './water-clock-physics.js';
+
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh'];
 
 // ---------------------------------------------------------------------------
 // Water clock: an outflow pot, straight or flaring, and Ctesibius's inflow
@@ -82,6 +84,12 @@ export function createWaterClockModel() {
   kit.rod(chartPoint(0, 0), chartPoint(WATER.duration, 0), 1 * MM, 'ink', chart);
   kit.rod(chartPoint(0, 0), chartPoint(0, H), 1 * MM, 'ink', chart);
   const trace = lineObject(49, 0x2f6690, chart), even = lineObject(2, 0x9aa7ad, chart), cursor = lineObject(2, 0x374736, chart);
+  chartText(chart, chartPoint, {
+    title: 'Level over the night', size: 22 * MM,
+    x: {min: 0, max: WATER.duration, title: 'Hours', ticks: [[0, '0'], [6, '6'], [12, '12']]},
+    y: {min: 0, max: H, title: 'Water level or float height (mm)', ticks: [[0, '0'], [200, '200'], [400, '400']]},
+    legend: [['This clock', 0x2f6690], ['An even pace', 0x7a8b83]],
+  });
 
   const specs = {
     design: ['Clock', '', DESIGNS.map(({value, label}) => ({value, label})), 'Two ways to measure time with water.'],
@@ -145,10 +153,12 @@ export function createWaterClockModel() {
     cursor.geometry.attributes.position.array.set([...chartPoint(hours, 0), ...chartPoint(hours, H)]);
     cursor.geometry.attributes.position.needsUpdate = true;
 
+    // The eleventh hour, or the last full hour of a pot that empties sooner.
+    const lastHour = Math.min(10, Math.max(0, Math.floor(s.empties ?? 11) - 1));
     const readings = outflow ? [
       r('Your result', `${fixed(hours, 1)} h · level ${fixed(levelMM, 1)} mm`),
       r('Falling', `${fixed(s.fallRate * 1000, 1)} mm an hour now`, design === 1 ? 'The flared pot’s level falls at the same pace all the way down.' : 'The straight pot falls fastest when full, as the water’s weight pushes harder.'),
-      r('Hour marks', `${fixed((s.marks[0] - s.marks[1]) * 1000, 1)} mm apart at the top, ${fixed((s.marks[10] - s.marks[11]) * 1000, 1)} mm in the eleventh hour`),
+      r('Hour marks', `${fixed((s.marks[0] - s.marks[1]) * 1000, 1)} mm apart at the top, ${fixed((s.marks[lastHour] - s.marks[lastHour + 1]) * 1000, 1)} mm in the ${ORDINALS[lastHour]} hour`, s.empties < 11 ? `The pot is empty ${fixed(s.empties, 2)} h in, so its ${ORDINALS[lastHour]} hour is the last it marks in full.` : undefined),
       r('Empties after', `${fixed(s.empties, 2)} h`, `${fixed(s.volume * 1000, 2)} L through a ${fixed(values.bore, 1)} mm hole.`),
       r('Water temperature', `${values.temperature} °C`, 'A sharp hole’s flow barely depends on it.'),
     ] : [

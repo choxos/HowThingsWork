@@ -369,9 +369,9 @@ const poseBimetal = poseOf(bimetal), poseRod = poseOf(rod), poseWax = poseOf(wax
   }
   const lit = poseRod({}, 0), late = poseRod({}, P.DECLARED.ovenRun);
   t.ok(lit.now.open > late.now.open, 'the valve closes as the oven arrives');
-  t.ok(RT.bypassHole.visible, 'the bypass is drawn when it is fitted');
+  t.ok(RT.bypassHole.visible && RT.bypassLine.visible, 'the bypass and its gas are drawn when it is fitted');
   poseRod({bypass: 0}, 0);
-  t.ok(!RT.bypassHole.visible, 'and not drawn when it is not');
+  t.ok(!RT.bypassHole.visible && !RT.bypassLine.visible, 'and neither is drawn when it is not');
 }
 // --- The wax element, drawn at true size throughout ---------------------------
 {

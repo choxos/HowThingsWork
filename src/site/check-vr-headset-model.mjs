@@ -365,7 +365,9 @@ for (const settings of SETTINGS) {
       topo[id].traverse(object => {
         if (!object.geometry || !object.visible) return;
         const list = object.isLine ? points(object) : [[object.position.x / MM, object.position.y / MM]];
-        for (const [x, y] of list) t.ok(x >= box.x - 1e-3 && x <= box.x + box.w + 1e-3 && y >= box.y - 1e-3 && y <= box.y + box.h + 1e-3, `${id}: drawn inside its frame`);
+        // Words sit around the frame, titles above and axis words below and beside it; they stay near it.
+        const m = object.userData.setText ? 30 : 1e-3;
+        for (const [x, y] of list) t.ok(x >= box.x - m && x <= box.x + box.w + m && y >= box.y - m && y <= box.y + box.h + m, `${id}: drawn inside its frame`);
       });
     }
     moments++;

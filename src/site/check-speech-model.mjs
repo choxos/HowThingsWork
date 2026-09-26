@@ -533,13 +533,19 @@ for (const values of poses) {
   model.root.updateMatrixWorld(true);
   // Boxes in the system's own frame: the matrices are multiplied first, so the root's small tilt cancels exactly instead of inflating the box twice.
   const toSystem = new THREE.Matrix4().copy(T.system.matrixWorld).invert(), local = new THREE.Box3(), relative = new THREE.Matrix4();
-  const boxOf = object => { const box = new THREE.Box3(); object.traverse(child => { for (let node = child; node; node = node.parent) if (!node.visible) return; if (!child.geometry || child === T.arrowShafts || child === T.arrowHeads) return; child.geometry.computeBoundingBox(); local.copy(child.geometry.boundingBox); box.union(local.applyMatrix4(relative.multiplyMatrices(toSystem, child.matrixWorld))); }); return box; };
+  const boxOf = object => { const box = new THREE.Box3(); object.traverse(child => { for (let node = child; node; node = node.parent) if (!node.visible) return; if (!child.geometry || child === T.arrowShafts || child === T.arrowHeads || child.userData.setText) return; child.geometry.computeBoundingBox(); local.copy(child.geometry.boundingBox); box.union(local.applyMatrix4(relative.multiplyMatrices(toSystem, child.matrixWorld))); }); return box; };
   const panels = {voice: ['voice'], frame: ['samples', 'frame'], spectrum: ['spectrum'], features: ['filters', 'ceps'], spectrogram: ['spectrogram'], recognizer: ['distances', 'trace'], vowels: ['vowels']};
   const rects = Object.entries(M.LAYOUT);
   for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) { const [a, [ax, ay, aw, ah]] = rects[i], [b, [bx, by, bw, bh]] = rects[j]; t.ok(ax + aw + 0.15 <= bx || bx + bw + 0.15 <= ax || ay + ah + 0.15 <= by || by + bh + 0.15 <= ay, `the ${a} and ${b} charts at least 0.15 apart`); }
   for (const [id, names] of Object.entries(panels)) {
     const box = boxOf(model.parts.find(item => item.id === id).object), union = names.map(name => M.LAYOUT[name]).reduce((acc, [x, y, w, h]) => [Math.min(acc[0], x), Math.min(acc[1], y), Math.max(acc[2], x + w), Math.max(acc[3], y + h)], [Infinity, Infinity, -Infinity, -Infinity]);
     t.ok(!box.isEmpty() && box.min.x >= union[0] - 1e-6 && box.max.x <= union[2] + 1e-6 && box.min.y >= union[1] - 0.026 && box.max.y <= union[3] + (id === 'spectrum' ? 0.11 : 0.051), `${id}: every visible piece inside its charts, marks and ticks at their edges`);
+    // Words, the panels' names and axis ends, sit just around their panels.
+    model.parts.find(item => item.id === id).object.traverse(child => {
+      if (!child.userData.setText) return;
+      const {x, y} = child.getWorldPosition(new THREE.Vector3()).applyMatrix4(toSystem);
+      t.ok(x >= union[0] - 0.45 && x <= union[2] + 0.45 && y >= union[1] - 0.1 && y <= union[3] + 0.1, `${id}: its words beside its charts`);
+    });
   }
   const shafts = pointsOf(T.arrowShafts);
   t.ok(shafts.length === 20, 'ten arrow shafts');

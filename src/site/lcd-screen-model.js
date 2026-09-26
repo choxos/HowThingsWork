@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {fillLine, lineObject, segmentLines, solidArrow} from './scene-kit.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
 import {screenPlan, screenAt, rowStart, fieldsThrough, chromaticityXYZ, mixXYZ, drawnColor, SCREEN, TN, LCD_PANEL, OLED_PANEL, SRGB, EMITTERS, CHANNELS, BACKGROUND_OPTIONS, SCREEN_DEFAULTS, SCREEN_DOMAINS, PAGES} from './lcd-physics.js';
 
 // ---------------------------------------------------------------------------
@@ -233,6 +233,32 @@ export function createLcdScreenModel() {
   const triangle = (panelLike, lineColor) => { const line = lineObject(4, lineColor, color); fillLine(line, [panelLike.red, panelLike.green, panelLike.blue, panelLike.red].map(([x, y]) => [colorX(x), colorY(y), COLORCHART.z])); return line; };
   const srgbTriangle = triangle(SRGB, COLORS.srgb), lcdTriangle = triangle(LCD_PANEL, COLORS.chart), oledTriangle = triangle(OLED_PANEL, COLORS.oledLine);
   const lcdNowMark = segmentLines(2, COLORS.chart, color), lcdMark = segmentLines(2, COLORS.chart, color), oledMark = segmentLines(2, COLORS.oledLine, color);
+
+  // The charts' words.
+  const TEXT = 0.04;
+  const shade = [[0, 'Black'], [1, 'White']];
+  // Heights as curveY and framesY place them, without their clamp, so the frames' tops are reachable.
+  chartText(curves, (volts, share) => [curveX(volts), CURVES.y + share * CURVES.top * CURVES.h, CURVES.z], {
+    title: 'Light against voltage', size: TEXT,
+    x: {min: 0, max: TN.black, title: 'Volts', ticks: Array.from({length: TN.black + 1}, (_, volts) => [volts, String(volts)])},
+    y: {min: 0, max: 1 / CURVES.top, ticks: shade},
+  });
+  chartText(frames, (frame, share) => [FRAMES.x + frame / SCREEN.frames * FRAMES.w, FRAMES.y + share * FRAMES.top * FRAMES.h, FRAMES.z], {
+    size: TEXT,
+    x: {min: 0, max: SCREEN.frames, title: 'Frames. Full lines: the LCD; thin purple lines: the OLED', ticks: [0, SCREEN.frames / 2, SCREEN.frames].map(frame => [frame, String(frame)])},
+    // No words at its left, where thick cells' subpixels reach down; its scale is the curves' own.
+    y: {min: 0, max: 1 / FRAMES.top},
+  });
+  // The frames and the color chart are named under themselves: the views above reach down toward them.
+  const under = (parent, text, x, y) => textLabel(parent, text, {height: TEXT, weight: '600', color: `#${COLORS.chart.toString(16).padStart(6, '0')}`, position: [x, y - 3.6 * TEXT, 0.001]});
+  under(frames, 'Light through the frames', FRAMES.x + FRAMES.w / 2, FRAMES.y);
+  chartText(color, (x, y) => [colorX(x), colorY(y), COLORCHART.z], {
+    size: TEXT,
+    x: {min: 0, max: COLORCHART.xMax, title: 'CIE x', ticks: [0, 0.4, 0.8].map(x => [x, fixed(x, 1)])},
+    y: {min: 0, max: COLORCHART.yMax, ticks: [0, 0.4, 0.8].map(y => [y, fixed(y, 1)])},
+    legend: [['sRGB', COLORS.srgb], ['LCD', COLORS.chart], ['OLED', COLORS.oledLine]],
+  });
+  under(color, 'Color mixing chart, CIE y up', colorX(COLORCHART.xMax / 2), COLORCHART.y);
 
   const d = SCREEN_DEFAULTS, dom = SCREEN_DOMAINS;
   control('red', 'Red code', ...dom.red, d.red, '', 'The patch’s red value, 0 to 255, as a picture file stores it.');
