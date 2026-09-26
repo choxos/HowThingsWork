@@ -110,7 +110,10 @@ for (const motion of [0, 1, 2]) for (const offset of [-2, -0.5, 0, 0.5, 2]) for 
   }
   let worst = 0;
   for (let k = 0; k <= N; k++) if (Math.abs(own.estimate[k] - own.truth[k]) > Math.abs(worst)) worst = own.estimate[k] - own.truth[k];
-  t.near(plan.worstDrift.value, worst, 1e-9, 'worst drift');
+  // Equal and opposite extremes tie to the last bit, and engines round them differently (Node 22 picks
+  // the other sign); compare sizes, as for the worst frame below, then the plan's own stage.
+  t.near(Math.abs(plan.worstDrift.value), Math.abs(worst), 1e-9, 'worst drift');
+  t.near(plan.worstDrift.value, own.estimate[plan.worstDrift.stage] - own.truth[plan.worstDrift.stage], 1e-9, 'worst drift at its stage');
   t.near(plan.endDrift, own.estimate[N] - own.truth[N], 1e-9, 'drift at the end');
   trackRuns++;
 }
