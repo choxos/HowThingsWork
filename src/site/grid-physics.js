@@ -104,6 +104,9 @@ export function generatorPlan(input) {
   const meanSquareShare = alternating ? 0.5 : commutatedMeanSquare();
   const bridgeShare = alternating ? 0 : bridgedMeanSquare();
   const rms = peak / Math.SQRT2, mean = peak * meanShare;
+  const terminalFactor = circuit === null ? 1 : load / circuit;
+  const terminalPeak = peak * terminalFactor;
+  const terminalRms = terminalPeak * Math.sqrt(meanSquareShare), terminalMean = mean * terminalFactor;
   const currentPeak = circuit === null ? 0 : peak / circuit;
   const loadPower = circuit === null ? 0 : peak ** 2 * meanSquareShare / circuit ** 2 * load;
   // While the brush bridges both segments the coil is shorted through itself,
@@ -111,16 +114,16 @@ export function generatorPlan(input) {
   const windingPower = (circuit === null ? 0 : peak ** 2 * meanSquareShare / circuit ** 2 * winding) + peak ** 2 * bridgeShare / winding;
   const plan = {
     values, output, alternating, speed, field, turns, load, closed, omega, period, frequency: frequencyOf(speed),
-    area: COIL_AREA, winding, circuit, peak, rms, mean, meanShare, meanSquareShare, bridgeShare, currentPeak,
+    area: COIL_AREA, winding, circuit, peak, rms, mean, terminalFactor, terminalPeak, terminalRms, terminalMean, meanShare, meanSquareShare, bridgeShare, currentPeak,
     fluxPeak: turns * field * COIL_AREA, loadPower, windingPower, drivePower: loadPower + windingPower,
-    torquePeak: circuit === null ? 0 : turns * field * COIL_AREA * currentPeak,
+    torquePeak: turns * field * COIL_AREA * Math.max(currentPeak, alternating ? 0 : peak * Math.sin(BRIDGE) ** 2 / winding),
     slow: period === null ? null : COIL.show / period,
     turnEnergy: period === null ? null : (loadPower + windingPower) * period,
     synchronous: Object.freeze({fifty: SYNCHRONOUS.constant * SUPPLY.frequency / SYNCHRONOUS.poles, sixty: SYNCHRONOUS.constant * 60 / SYNCHRONOUS.poles}),
   };
   plan.chart = Object.freeze(Array.from({length: GENERATOR_SAMPLES}, (_, i) => {
     const theta = 2 * Math.PI * i / (GENERATOR_SAMPLES - 1);
-    return Object.freeze({theta, rings: peak * Math.sin(theta), commutator: commutatedEmf(peak, theta)});
+    return Object.freeze({theta, rings: terminalPeak * Math.sin(theta), commutator: commutatedEmf(terminalPeak, theta)});
   }));
   if (generatorPlans.size >= 64) generatorPlans.clear();
   generatorPlans.set(key, plan);
@@ -141,17 +144,21 @@ export function generatorAt(plan, time) {
   const t = plan.period === null ? 0 : Math.min(time, plan.period);
   const theta = plan.omega * t, coilEmf = plan.peak * Math.sin(theta);
   const bridged = !plan.alternating && Math.abs(Math.asin(Math.sin(theta))) <= BRIDGE;
-  const terminal = plan.alternating ? coilEmf : bridged ? 0 : Math.abs(coilEmf);
-  const current = plan.circuit === null ? 0 : bridged ? 0 : terminal / plan.circuit;
+  const externalEmf = plan.alternating ? coilEmf : bridged ? 0 : Math.abs(coilEmf);
+  const current = plan.circuit === null ? 0 : externalEmf / plan.circuit;
+  const terminal = externalEmf * plan.terminalFactor;
   // Slip rings hand the load the coil's own current, so it reverses with the
   // voltage; the commutator reverses the coil's connection instead. Either way
   // the coil current follows its voltage and the shaft always works against it.
   // A bridged commutator shorts the coil whether or not the load switch is closed.
   const coilCurrent = bridged ? coilEmf / plan.winding : plan.circuit === null ? 0 : plan.alternating ? current : Math.sign(Math.sin(theta)) * Math.abs(current);
   return {
-    time, t, theta, coilEmf, terminal, current, coilCurrent, bridged,
+    time, t, theta, coilEmf, externalEmf, terminal, current, coilCurrent, bridged,
     flux: plan.fluxPeak * Math.cos(theta),
+    loadVoltage: current * plan.load,
     loadPower: current ** 2 * plan.load,
+    windingPower: coilCurrent ** 2 * plan.winding,
+    drivePower: coilEmf * coilCurrent,
     torque: plan.turns * plan.field * COIL_AREA * coilCurrent * Math.sin(theta),
     done: plan.period === null ? false : time >= plan.period,
   };

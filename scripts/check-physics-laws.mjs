@@ -103,7 +103,8 @@ const ok = (condition, message) => {
               const slope = (generatorAt(plan, time + h).flux - generatorAt(plan, time - h).flux) / (2 * h);
               close(at.coilEmf, -slope, 1e-5, 'the induced voltage is minus the rate of change of flux');
               const winding = windingResistanceOf(turns);
-              if (!at.bridged) close(at.current, at.terminal / (winding + load), 1e-12, 'the loop current is its voltage over the whole loop resistance');
+              if (!at.bridged) close(at.current, at.externalEmf / (winding + load), 1e-12, 'generated EMF drives the whole loop resistance');
+              close(at.terminal, at.current * load, 1e-10, 'loaded brush voltage obeys the external resistor Ohm law');
               // Energy, instant by instant: the shaft's torque times its speed is
               // the coil's voltage times the current through it.
               close(at.torque * omega, at.coilEmf * at.coilCurrent, 1e-9, 'the driving torque accounts for every watt the coil delivers');

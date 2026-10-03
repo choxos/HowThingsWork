@@ -1,198 +1,107 @@
 import {GENERATOR_DEFAULTS} from './grid-physics.js';
 import {sources, generatorLimits} from './grid-sources.js';
 
-const trial = (defaults, part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
-
-const machineOutput = trial(GENERATOR_DEFAULTS, 'output'), machineCoil = trial(GENERATOR_DEFAULTS, 'coil'), machineLoad = trial(GENERATOR_DEFAULTS, 'load');
-
+const sourceList = [sources.generatorPhysics, sources.terminalVoltage, sources.magneticTorque, sources.conductorResistance, sources.unswGenerator];
+const trial = (part, defaults = {}) => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...GENERATOR_DEFAULTS, ...defaults, ...values}, reset: true, part, isolate: false, view: 'front'});
+const chart = trial('output'), coil = trial('coil'), load = trial('load');
+const parts = [
+  {name: 'North and south poles', role: 'Provide the field across the rotating winding.'},
+  {name: 'Connected rotating winding', role: 'Changes its magnetic flux as the shaft turns.'},
+  {name: 'Driven pulley and shaft', role: 'Carry mechanical work into the machine.'},
+  {name: 'Two slip rings and fixed brushes', role: 'Carry the alternating output across a rotating joint.'},
+  {name: 'Split ring and fixed brushes', role: 'Exchange the winding connections every half turn.'},
+  {name: 'Resistor and series switch', role: 'Dissipate electrical power or interrupt the load path.'},
+  {name: 'Brush voltage over one turn', role: 'Compare both contact arrangements at the same settings.'},
+];
+const deeper = [
+  {title: 'Flux and voltage peak at different angles', body: 'Flux is the field passing through the loop. It is largest when the loop plane is perpendicular to the field, and zero when the plane is parallel. For a uniform field, flux linkage is N B A cos θ, where θ measures the angle between the field and the loop normal. Faraday’s law gives coil EMF N B A ω sin θ. Voltage peaks when flux changes fastest, not when flux is largest.'},
+  {title: 'Generated voltage is not delivered voltage', body: 'The winding has resistance as well as induction. With a closed load, current is generated EMF divided by winding resistance plus load resistance. The brush voltage is current times load resistance. The missing voltage is dropped inside the winding. Opening the load switch removes that drop, so the brushes can retain a voltage even while the resistor receives none.'},
+  {title: 'RMS, mean and instantaneous readings', body: 'RMS voltage is the steady voltage that would heat the same resistor at the same average rate. For a sine it is peak voltage divided by the square root of two. Its signed mean is zero. A split ring turns the negative half cycles positive, so the mean becomes positive too. The short bridging intervals slightly reduce its RMS output. The graph and instantaneous readings follow the shaft phase; average power describes a whole turn.'},
+  {title: 'The load pushes back', body: 'Current in the active wire sides feels magnetic forces. Their combined torque opposes the imposed rotation. At every instant, required drive torque times angular speed equals resistor heating plus winding heating. The ideal driver supplies that work while holding speed. With slip rings and the load open, current and electromagnetic reaction vanish; real bearing and air resistance would remain.'},
+  {title: 'What the split ring changes', body: 'Each half is permanently joined to one winding end. When the internal voltage reverses, the brushes exchange halves, keeping one output polarity. The output still pulses. In this model the brushes briefly bridge both halves and short the winding, even if the load switch is open. That produces copper loss. Predicting sparks would require winding inductance and an arc model, which are omitted.'},
+  {title: 'What this bench leaves out', body: 'More turns increase induction and copper resistance. Faster rotation increases both voltage and frequency. Those relations assume a fixed uniform field and an ideal drive. Real generators also have magnetic saturation, winding inductance, heating, regulation and mechanical limits. Large alternators commonly rotate a magnetic field inside stationary three-phase output windings, rather than taking the full output through these brushes.'},
+];
 export const electricGeneratorLesson = {
-  simple: 'How does turning a coil make electricity?',
-  overview: 'A generator is a coil of wire turning between the poles of a magnet. As it turns, the amount of magnetic field passing through it rises and falls, and a changing field through a loop of wire makes a voltage around that loop. The faster it changes, the bigger the voltage. Two sliding contacts carry the voltage off the turning coil to a circuit that does not turn. Press Play to watch one whole turn, then change the speed, the field, the turns and the load.',
+  simple: 'How does turning a coil deliver electricity, and why does the load push back?',
+  overview: 'Turn the shaft and watch a connected winding rotate between magnetic poles. Its changing flux induces voltage. A closed circuit lets current flow through the external resistor, heating both the load and the copper winding. Compare slip rings with a split ring using the Contacts selector. The chart compares their brush voltages; the current arrows and installed contacts follow your selection.',
   steps: [
-    {title: 'Turn the shaft', body: 'A turbine, an engine or a hand turns the shaft the coil is fixed to.'},
-    {title: 'Change the flux through the loop', body: 'Edge on to the field the loop holds the most field; a quarter turn later it holds none.'},
-    {title: 'Induce a voltage', body: 'A loop whose field is changing has a voltage around it, and the more turns the loop has, the more voltage.'},
-    {title: 'Take it off the turning coil', body: 'Brushes rub on rings fixed to the shaft, so a circuit that does not turn can reach a coil that does.'},
-    {title: 'Pay for it at the shaft', body: 'The current in the coil feels the field and pushes back against the turning, so whoever turns the shaft pays for every watt delivered.'},
+    {title: 'Supply mechanical work', body: 'An ideal driver turns the pulley, shaft and winding together.'},
+    {title: 'Change the flux', body: 'The loop alternates between facing the magnetic field and lying parallel to it.'},
+    {title: 'Induce voltage', body: 'The changing flux produces a voltage around the winding. Faster change produces more voltage.'},
+    {title: 'Complete the circuit', body: 'Brushes contact the selected rings. With the switch closed, current flows through the resistor and returns to the other brush.'},
+    {title: 'Feel the reaction', body: 'Magnetic forces on that current oppose rotation. The shaft supplies every watt delivered and every watt lost in the winding.'},
   ],
-  parts: [
-    {name: 'The two poles and their field', role: 'The field the coil turns in.'},
-    {name: 'The turning coil', role: 'The loop whose field changes as it turns.'},
-    {name: 'Two slip rings', role: 'Contacts that hand the coil voltage out as it stands.'},
-    {name: 'The split ring', role: 'Contacts that hand out its size instead, so the output keeps one sign.'},
-    {name: 'The two outputs, over one turn', role: 'What each set of contacts delivers, drawn against each other.'},
-    {name: 'The load and the switch', role: 'What the machine is driving, and the way to disconnect it.'},
-  ],
+  parts,
   tryIt: [
-    machineOutput('Turn the shaft', 'Press Play and watch both curves.', 'The coil reaches 125.66 V at its peak, which is 88.86 V RMS, and it does it 50 times a second. The resistor takes 777.0 W and the shaft has to supply 783.3 W.'),
-    machineOutput('Turn half as fast', 'Set the shaft speed to 1500 rpm and press Play.', 'Half the speed is half the rate the field through the loop changes, so the peak falls to 62.83 V and the frequency to 25.00 Hz. The power falls by four, to 194.2 W, because the voltage and the current both halve.', {speed: 1500}),
-    machineCoil('Double the turns', 'Set the turns to 40 and press Play.', 'Twice the turns give twice the peak, 251.33 V, but they also give twice the winding resistance, 0.1613 Ω, out of twice the wire, 24.0 m of it. The resistor takes 3,058.8 W.', {turns: 40}),
-    machineCoil('Switch the field off', 'Set the field to 0 and press Play.', 'With nothing between the poles the loop holds 0.000 mWb and nothing changes, so the coil makes 0.00 V however fast the shaft turns.', {field: 0}),
-    machineLoad('Open the switch', 'Open the switch and press Play.', 'The coil still reaches 125.66 V, but nothing can flow: 0.00 A, 0.0 W at the resistor, and the shaft turns as freely as if the poles were not there.', {closed: 0}),
-    machineLoad('A heavier load', 'Set the load to 1 Ω and press Play.', 'A smaller resistor draws more: the current peaks at 116.29 A, the resistor takes 6,761.3 W, and the winding itself wastes 545.228 W on top. The shaft now has to supply 7,306.5 W.', {load: 1}),
-    machineCoil('Hold the shaft still', 'Set the shaft speed to 0 and press Play.', 'A strong field alone does nothing at all. The loop holds 400.000 mWb and holds it, so the coil makes 0.00 V and the resistor takes 0.0 W.', {speed: 0}),
+    chart('Turn the shaft', 'Press Play and compare the two traces.', 'The coil induces 125.66 V peak. Winding loss lowers the brush output to 124.66 V peak, or 88.15 V RMS. Frequency is 50.00 Hz. The resistor takes 777.0 W on average; the shaft supplies 783.3 W.'),
+    chart('Turn half as fast', 'Run the slower setting and compare voltage and power.', 'The generated peak falls to 62.83 V and the brush RMS voltage to 44.07 V. Frequency is 25.00 Hz. Average load power falls to 194.2 W, one quarter of the original value.', {speed: 1500}),
+    coil('Double the turns', 'Inspect the thicker connected winding, then run it.', 'The generated peak doubles to 251.33 V, while brush RMS output becomes 174.89 V. Winding resistance doubles to 0.1613 Ω, so load power is 3,058.8 W rather than exactly four times the original.', {turns: 40}),
+    coil('Switch the field off', 'Run the shaft with no magnetic field.', 'The shaft and winding still turn, but coil EMF, current, reaction forces and electrical power stay at zero.', {field: 0}),
+    load('Open the switch', 'Run with slip rings and the load disconnected.', 'Brush voltage rises to 88.86 V RMS because there is no winding drop. The resistor receives 0 V and 0 A. Both load power and electromagnetic shaft power are zero.', {closed: 0}),
+    load('A heavier load', 'Run with a smaller resistance and compare shaft power.', 'Current peaks at 116.29 A. Brush voltage peaks at 116.29 V, below the 125.66 V generated inside the coil. Average load power is 6,761.3 W, winding loss 545.2 W, and shaft input 7,306.5 W.', {load: 1}),
+    coil('Hold the shaft still', 'Inspect the stationary winding and its readings.', 'Playback is blocked. Flux linkage stays at 400.0 mWb·turn, while coil EMF, current and power are zero. A static field alone does not generate voltage.', {speed: 0}),
+    chart('Change to a split ring', 'Run and watch the contacts exchange winding ends.', 'The load current keeps one direction. Brush output averages 79.31 V and the resistor receives 777.0 W on average. Winding heating rises to 8.03 W because the brushes briefly bridge both halves.', {output: 1}),
+    load('Open the split-ring load', 'Run the split ring with its external switch open.', 'Load current stays zero, but the short bridge intervals still cause 1.77 W of average winding heating and shaft input. Opening the external circuit does not remove the internal short.', {output: 1, closed: 0}),
   ],
-  deeper: [
-    {title: 'The rate, not the amount', body: 'Faraday’s law says the voltage around a closed loop is the rate at which the magnetic flux through it changes, with a minus sign that says the current it drives opposes the change. Edge on to the field the loop holds the most flux, and at that instant it makes no voltage at all, because the flux is at a turning point. A quarter turn later the flux is zero and changing fastest, and that is where the voltage peaks. For a loop of N turns and area A turning at ω in a field B, that peak is N B A ω: 20 turns of 0.02 m² at 1 T and 314.2 rad/s give 125.66 V.'},
-    {title: 'Two ways to count one sine', body: 'A sine that peaks at 125.66 V is not 125.66 V of useful voltage. What heats a resistor is the square of the current averaged over the cycle, and for a sine that works out as the peak divided by the square root of two: 88.86 V. A commutated output, which is the same sine with its negative halves turned over, has the same square and so heats the resistor exactly as hard; what changes is its average, 2/π of the peak, which here is 79.95 V.'},
-    {title: 'The winding is part of the circuit', body: 'Every turn of the coil adds voltage, and every turn adds wire. At 20 turns the loop carries 12.0 m of 2.5 mm² copper, whose resistivity of 1.68 × 10⁻⁸ Ω·m makes 0.0806 Ω. That resistance is in series with the load, so it takes its share of the current and turns it into heat inside the machine: 6.266 W here, against 777.0 W delivered.'},
-    {title: 'Speed and frequency are the same thing', body: 'One pole pair gives one cycle a turn, so the frequency is the speed divided by 60. In general the speed follows N = 120 f / P, with P the number of poles: a machine with 2 poles has to turn at 3,000 rpm to make 50 Hz and 3,600 rpm to make 60 Hz, and one with four poles at half that. A generator on a grid is not free to choose its speed.'},
-    {title: 'Where the energy comes from', body: 'The current in the coil sits in the field, and a current in a field feels a force. Those forces push back against the turning, so the shaft has to work harder the more the machine delivers. At the bench settings 777.0 W goes to the resistor, 6.266 W heats the winding, and the shaft supplies 783.3 W: the magnet supplies none of it. Open the switch and the current stops, the pushback stops, and the shaft turns free.'},
-    {title: 'What a real machine does instead', body: 'A power station generator turns the field and keeps the windings still, so only the small direct current that makes the field has to cross sliding contacts, while the heavy output comes off fixed terminals. It has many coils in slots in iron rather than one loop in air, and three sets of them a third of a cycle apart. The bench here keeps one loop so that the flux, the voltage and the contacts can all be watched at once.'},
-  ],
-  misconception: 'The magnet is not the source of the energy. It supplies the field, and the field is not used up; every watt that leaves the terminals is a watt the shaft had to put in.',
+  deeper,
+  misconception: 'The magnet provides the field, not the output energy. The mechanical driver supplies the load power and winding losses.',
   limits: generatorLimits,
-  sources: [sources.induction, sources.faraday, sources.generator, sources.alternator, sources.commutator, sources.slipRing, sources.resistivity],
+  sources: sourceList,
   quiz: {
-    question: 'The shaft keeps turning at the same speed in the same field, but the switch is opened. What happens?',
-    options: ['The coil still makes its voltage, but no current flows and the shaft turns free.', 'The coil stops making a voltage, because there is nowhere for it to go.', 'The magnet runs down, because nothing is drawing from it.'],
+    question: 'With slip rings installed, what happens if the shaft keeps turning but the load switch opens?',
+    options: ['The brushes retain voltage, but load current and electromagnetic reaction vanish.', 'The coil stops inducing voltage because the circuit is open.', 'The magnet supplies the missing current by losing its field.'],
     answer: 0,
-    explanation: 'A voltage needs a changing flux, which the turning coil still has; a current needs a path, which the open switch has taken away. With no current there is no force on the coil, so the shaft costs nothing beyond friction.',
+    explanation: 'Rotation still changes flux, so the coil still induces voltage. The broken load path prevents current. With no winding current, there is no electromagnetic reaction torque in this ideal model; real friction would remain.',
   },
 };
 
-// ---------------------------------------------------------------------------
-// AC generator: the slip ring machine, seen at its output.
-// ---------------------------------------------------------------------------
-
-const AC_DEFAULTS = {...GENERATOR_DEFAULTS, output: 0};
-const ac = trial(AC_DEFAULTS, 'output'), acLoad = trial(AC_DEFAULTS, 'load');
-
+const ac = trial('output'), acLoad = trial('load');
 export const acGeneratorLesson = {
-  simple: 'Why does a generator deliver a current that keeps changing direction?',
-  overview: 'A coil turning steadily in a field passes the field one way for half a turn and the other way for the next half, so the voltage it makes rises, falls, and goes as far the other way. Two slip rings, one on each end of the coil, hand that out exactly as it is. What comes out is alternating current, and how often it changes direction is set by how fast the shaft turns. Watch the blue curve while you change the speed, the field and the load.',
-  steps: [
-    {title: 'Start edge on', body: 'With the loop edge on to the field it holds the most flux and makes no voltage.'},
-    {title: 'Sweep through the field', body: 'A quarter turn later the loop holds no flux at all, and the flux is changing fastest, so the voltage peaks.'},
-    {title: 'Pass the halfway point', body: 'Half a turn on, the loop is edge on again the other way round, and the voltage goes back through zero.'},
-    {title: 'Go the other way', body: 'Through the second half turn the flux changes the other way, so the voltage does too.'},
-    {title: 'Hand it out unchanged', body: 'Each slip ring keeps its own brush all the way round, so the sign of the voltage reaches the circuit intact.'},
-  ],
-  parts: [
-    {name: 'The two outputs, over one turn', role: 'The sine the slip rings deliver, drawn against what the split ring would.'},
-    {name: 'Two slip rings', role: 'The contacts that keep the sign.'},
-    {name: 'The turning coil', role: 'The loop whose flux rises and falls twice a turn.'},
-    {name: 'The load and the switch', role: 'The circuit the alternating current runs in.'},
-  ],
+  ...electricGeneratorLesson,
+  simple: 'Why does a generator’s current reverse while its resistor keeps heating?',
+  overview: 'Two continuous slip rings keep each winding end attached to the same fixed brush. The coil voltage changes sign every half turn, so a connected resistor receives alternating current. Voltage and current reverse together; their product remains nonnegative. Watch the blue trace and compare instantaneous current with average load power.',
   tryIt: [
-    ac('Watch one whole turn', 'Press Play and follow the blue curve.', 'The blue curve is a sine: it rises to 125.66 V, falls back through zero and goes as far the other way, once every turn. Its root mean square is 88.86 V, which is the peak divided by the square root of two, and at this speed the coil does it 50 times a second.'),
-    ac('Turn faster', 'Set the shaft speed to 3600 rpm and press Play.', 'Faster is both more voltage and more cycles: the peak rises to 150.80 V, the root mean square to 106.63 V and the frequency to 60.00 Hz.', {speed: 3600}),
-    ac('Turn slower', 'Set the shaft speed to 1500 rpm and press Play.', 'At half the speed the peak is 62.83 V and the frequency 25.00 Hz. A generator that has to hold a frequency has to hold a speed.', {speed: 1500}),
-    ac('Halve the field', 'Set the field to 0.5 T and press Play.', 'Half the field is half the flux, 200.000 mWb, so half the voltage, 62.83 V at the peak, and a quarter of the power, 194.2 W.', {field: 0.5}),
-    acLoad('A lighter load', 'Set the load to 50 Ω and press Play.', 'A bigger resistor draws less: the current peaks at 2.51 A and the resistor takes 157.4 W, while the winding wastes only 0.254 W.', {load: 50}),
-    acLoad('Open the switch', 'Open the switch and press Play.', 'The rings still carry the coil out to the brushes and the curve is unchanged at 125.66 V, but with the circuit open the current is 0.00 A and the resistor takes 0.0 W.', {closed: 0}),
+    ac('Watch one whole turn', 'Press Play and follow the blue trace.', 'Brush voltage reaches positive and negative peaks of 124.66 V. Its RMS value is 88.15 V and its frequency is 50.00 Hz. Average load power is 777.0 W.'),
+    ac('Turn faster', 'Run the faster shaft.', 'At 3600 rpm, brush output is 105.78 V RMS and frequency is 60.00 Hz.', {speed: 3600}),
+    ac('Turn slower', 'Run at half the original speed.', 'Brush output is 44.07 V RMS at 25.00 Hz. Load power falls to 194.2 W.', {speed: 1500}),
+    ac('Halve the field', 'Keep the speed but reduce the field.', 'Brush output is 44.07 V RMS. Frequency stays at 50.00 Hz, and average load power falls to 194.2 W.', {field: 0.5}),
+    acLoad('A lighter load', 'Increase the load resistance.', 'Peak current falls to 2.51 A and average load power to 157.4 W. Winding loss is 0.254 W.', {load: 50}),
+    acLoad('Open the switch', 'Disconnect the resistor while the coil turns.', 'Brush output rises to 88.86 V RMS. The resistor’s current, voltage and power are all zero.', {closed: 0}),
   ],
-  deeper: [
-    {title: 'Why a sine and not something else', body: 'The flux through the loop is the field times the area times the cosine of the angle it has turned through, because only the part of the area square on to the field counts. The voltage is the rate that changes at, and the rate a cosine changes at is a sine. So a coil turning steadily in a steady field makes a sine, and nothing else: the shape comes from the geometry, not from the wire.'},
-    {title: 'Speed sets the frequency', body: 'One pole pair gives one cycle a turn, so the frequency is the speed over 60, and the relation in general is N = 120 f / P. A machine with 2 poles turns at 3,000 rpm for 50 Hz, the frequency of the grid in Great Britain, and 3,600 rpm for the 60 Hz of North America. Every generator on a grid turns in step with every other.'},
-    {title: 'What the root mean square is for', body: 'A resistor does not care which way the current runs, only how big it is, and the heat follows the square. Averaging the square over a cycle and taking the root gives the steady current that would heat the resistor the same: for a sine it is the peak over the square root of two. That is why 88.86 V RMS here does the work of a steady 88.86 V, though the peak is 125.66 V.'},
-    {title: 'Speed changes two things at once', body: 'Turning faster raises the voltage and raises the frequency together, because both come from the same rate of change. That is why the power at a fixed resistor goes as the square of the speed: half the speed gave 194.2 W where full speed gave 777.0 W. A real machine holds its speed and changes its field instead when it wants to change its voltage.'},
-    {title: 'The sign survives the contacts', body: 'The slip ring page describes a stationary graphite or metal brush rubbing on the outside of a rotating ring: a joint that turns without breaking. Because each ring is a complete circle joined to one end of the coil, the brush on it is always on that same end, so the voltage arrives with its sign intact. Nothing about the rings rectifies anything.'},
-  ],
-  misconception: 'Alternating current is not current that goes nowhere. It delivers real power: the voltage and the current reverse together, so their product stays positive and the resistor heats up all the way through the cycle.',
-  limits: generatorLimits,
-  sources: [sources.alternator, sources.generator, sources.slipRing, sources.faraday, sources.mains, sources.nationalGrid],
-  quiz: {
-    question: 'What sets how often the current from an alternating generator changes direction?',
-    options: ['How fast the shaft turns, together with the number of poles.', 'How strong the field between the poles is.', 'How big a resistor is connected across the brushes.'],
-    answer: 0,
-    explanation: 'The coil passes one pole pair once a turn, so the speed and the poles fix the frequency. The field and the load change how much voltage and current there is, and not how often either reverses.',
-  },
+  misconception: 'An AC current with zero signed average can deliver positive average power. Heating depends on current squared.',
+  quiz: {question: 'Why does the resistor heat during both halves of an AC cycle?', options: ['Voltage and current reverse together, keeping their product nonnegative.', 'The resistor stores the negative current until it becomes positive.', 'The slip rings secretly rectify the current.'], answer: 0, explanation: 'For this resistive load, voltage equals current times positive resistance. Power is therefore current squared times resistance, regardless of current direction.'},
 };
 
-// ---------------------------------------------------------------------------
-// DC generator: the same machine with a split ring.
-// ---------------------------------------------------------------------------
-
-const DC_DEFAULTS = {...GENERATOR_DEFAULTS, output: 1};
-const dc = trial(DC_DEFAULTS, 'commutator'), dcOutput = trial(DC_DEFAULTS, 'output'), dcLoad = trial(DC_DEFAULTS, 'load');
-
+const dc = trial('output', {output: 1}), dcLoad = trial('load', {output: 1});
 export const dcGeneratorLesson = {
-  simple: 'How can a coil that keeps reversing deliver a current that does not?',
-  overview: 'Inside the coil nothing changes: the voltage still reverses every half turn. What changes is the way it is taken off. Instead of two rings, one ring is cut in half, and each half is joined to one end of the coil. The halves turn with the shaft, so every half turn each brush meets the other half, exactly when the coil reverses. The two reversals cancel, and the brush that was positive stays positive. Watch the red curve while you change the turns, the speed and the load.',
-  steps: [
-    {title: 'Let the coil reverse', body: 'The coil does what it always did: its voltage changes sign every half turn.'},
-    {title: 'Cut the ring in half', body: 'Each half of the ring is joined to one end of the coil and turns with it.'},
-    {title: 'Swap at the crossing', body: 'The gaps pass the brushes just as the coil voltage passes through zero, so each brush changes ends at that moment.'},
-    {title: 'Keep one sign outside', body: 'Two reversals at once leave the outside circuit with a voltage that never goes below zero.'},
-    {title: 'Live with the bridge', body: 'The brush is wider than the gap, so for a moment it touches both halves and shorts the coil.'},
-  ],
-  parts: [
-    {name: 'The split ring', role: 'The ring cut in two, which swaps ends every half turn.'},
-    {name: 'The two outputs, over one turn', role: 'The one sided curve, drawn against the sine the slip rings would give.'},
-    {name: 'The turning coil', role: 'The loop, still reversing inside.'},
-    {name: 'The load and the switch', role: 'The circuit that sees a current in one direction only.'},
-  ],
+  ...electricGeneratorLesson,
+  simple: 'How can a reversing coil deliver current in one direction?',
+  overview: 'The split ring swaps which winding end each brush contacts every half turn. That exchange coincides with the internal voltage reversal, so the external current keeps one sign. The output is pulsating DC, not a steady battery voltage. Watch the red trace and inspect the curved brush faces at the insulating gaps.',
   tryIt: [
-    dcOutput('Watch the split ring', 'Press Play and follow the red curve.', 'The red curve never goes below zero. It is the same size as the blue one, reaching 125.66 V, but every half turn the split ring swaps which half each brush touches, so the sign never gets out. Its average is 79.95 V.'),
-    dc('The brush bridges the gap', 'Set the turns to 40 and press Play, then look at the bottom of the red curve.', 'The brush face is wider than the gap, so at every crossing it touches both halves at once and the load gets nothing: that is the notch. While it lasts the coil is shorted through its own 0.1613 Ω and wastes 3.534 W of the 52.866 W the winding takes. That short is why a commutator sparks.', {turns: 40}),
-    dcLoad('Open the switch', 'Open the switch and press Play.', 'The resistor takes 0.0 W, and yet the winding still takes 1.767 W, because the bridge shorts the coil through itself whatever the switch is doing.', {closed: 0}),
-    dcOutput('Turn slower', 'Set the shaft speed to 1500 rpm and press Play.', 'The shape does not change, only the size: the peak is 62.83 V and the average 39.98 V.', {speed: 1500}),
-    dcLoad('A lighter load', 'Set the load to 50 Ω and press Play.', 'The resistor takes 157.4 W, which is what the slip rings gave at the same setting. The split ring changes which way the current runs and not how big it is.', {load: 50}),
-    dcOutput('Halve the field', 'Set the field to 0.5 T and press Play.', 'Half the field halves the whole curve: the average falls to 39.98 V and the resistor takes 194.2 W.', {field: 0.5}),
+    dc('Watch the split ring', 'Run and follow the red trace.', 'The brush peak is 124.66 V and its mean is 79.31 V. There are two positive pulses in each turn.'),
+    dc('The brush bridges the gap', 'Run the larger winding and inspect the crossings.', 'The winding resistance is 0.1613 Ω. Brush bridges account for 3.534 W of its 52.866 W average heating. Switching sparks are outside this resistive model.', {turns: 40}),
+    dcLoad('Open the switch', 'Disconnect the external load.', 'Load power is zero, but internal brush bridges still cause 1.767 W of winding heating.', {closed: 0}),
+    dc('Turn slower', 'Run at half speed.', 'The brush peak falls to 62.33 V and its mean to 39.66 V.', {speed: 1500}),
+    dcLoad('A lighter load', 'Increase resistance while keeping the same speed.', 'Average load power falls to 157.4 W. The load current still has one direction.', {load: 50}),
+    dc('Halve the field', 'Run with half the field strength.', 'The brush mean falls to 39.66 V and average load power to 194.2 W.', {field: 0.5}),
   ],
-  deeper: [
-    {title: 'A switch that keeps time with the coil', body: 'The commutator page calls it a rotary electrical switch that periodically reverses the current direction between the rotor and the external circuit, and in a generator a mechanical rectifier. It works only because it is fixed to the same shaft as the coil: the swap happens at the same instant as the reversal, every time, at any speed, without anything having to measure anything.'},
-    {title: 'One sided, but not steady', body: 'The output is direct in the sense that it never changes sign, but it is nowhere near flat: it runs from zero up to 125.66 V and back, twice a turn. Its average is 2/π of the peak, 79.95 V. A machine with many coils and many segments overlaps their humps and comes out much smoother; a single loop cannot.'},
-    {title: 'Wider than the gap, on purpose', body: 'The commutator page says brushes are made wider than the insulated gap, to ensure that brushes are always in contact with an armature coil. The cost is that for a moment the brush spans both halves and shorts the coil through itself. Here that moment is 2° either side of each crossing, where the coil voltage is almost nothing, and it still costs 1.767 W in the winding.'},
-    {title: 'The same power, either way out', body: 'Turning the negative halves over does not change how big the current is, only which way it runs, and a resistor only cares how big it is. So the same coil at the same speed into the same resistor delivers 777.0 W through slip rings and 776.973 W through a split ring, the difference being the notches.'},
-    {title: 'Why these machines went away', body: 'The commutator page notes that commutators are relatively inefficient and need periodic maintenance such as brush replacement, so commutated machines are declining in use. The generator page says the same of dynamos: alternating current came to dominate because it can be transformed to and from very high voltages, which lets power travel a long way without wasting much.'},
-  ],
-  misconception: 'The split ring does not smooth anything and does not store anything. It is a switch: it reverses the connection at the same moment the coil reverses, so the two cancel.',
-  limits: generatorLimits,
-  sources: [sources.commutator, sources.generator, sources.alternator, sources.faraday, sources.slipRing],
-  quiz: {
-    question: 'What does a split ring do that two slip rings do not?',
-    options: ['It swaps which end of the coil each brush touches, every half turn.', 'It stores charge between half turns so the output stays level.', 'It stops the coil reversing inside the machine.'],
-    answer: 0,
-    explanation: 'The coil reverses either way. The split ring turns with it and swaps ends at the same instant, so the two reversals cancel and the outside circuit keeps one sign.',
-  },
+  misconception: 'The split ring reverses connections. It neither smooths the voltage nor stores energy between pulses.',
+  quiz: {question: 'What does a split ring do that continuous slip rings do not?', options: ['It exchanges the winding ends connected to the brushes every half turn.', 'It stores charge to fill the spaces between pulses.', 'It prevents the internal coil voltage from reversing.'], answer: 0, explanation: 'The internal voltage still reverses. Swapping its connection at the same time preserves the external polarity.'},
 };
 
-// ---------------------------------------------------------------------------
-// Generator slip rings: the joint that turns.
-// ---------------------------------------------------------------------------
-
-const RING_DEFAULTS = {...GENERATOR_DEFAULTS, output: 0};
-const ring = trial(RING_DEFAULTS, 'rings'), ringCoil = trial(RING_DEFAULTS, 'coil');
-
+const rings = trial('rings');
 export const generatorSlipRingsLesson = {
-  simple: 'How do you get a wire off something that keeps turning?',
-  overview: 'A coil that turns cannot be joined to a circuit that does not, because the wire would wind up and break. The answer is a sliding joint: a metal ring fixed to the shaft, and a block of carbon held against it that does not turn. The ring can go round for ever while the carbon stays put, and current crosses where they touch. One ring is needed for each end of the coil, and each ring keeps its own brush, which is why the voltage arrives with its sign intact.',
-  steps: [
-    {title: 'Fix a ring to the shaft', body: 'A complete circle of copper turns with the coil and is joined to one of its ends.'},
-    {title: 'Press a brush against it', body: 'A block of soft carbon is held against the ring by a spring and does not turn.'},
-    {title: 'Let it rub', body: 'The two stay in contact all the way round, so current can cross the joint at any angle.'},
-    {title: 'Give the other end its own ring', body: 'A second ring, insulated from the first, carries the other end of the coil out.'},
-    {title: 'Keep the sign', body: 'Because each brush stays on its own ring, the voltage reaches the circuit exactly as the coil made it.'},
-  ],
-  parts: [
-    {name: 'Two slip rings', role: 'The sliding joints themselves, with their brushes.'},
-    {name: 'The turning coil', role: 'What the rings are joined to.'},
-    {name: 'The load and the switch', role: 'The circuit on the other side of the joint.'},
-  ],
+  ...acGeneratorLesson,
+  simple: 'How does a fixed circuit stay connected to a rotating winding?',
+  overview: 'Each winding end connects to its own insulated copper ring. A stationary carbon brush rubs continuously on each ring, so the coil can turn without twisting a fixed wire. The two connections retain their identities through every angle. Select slip rings, inspect their brushes, then watch a full turn.',
   tryIt: [
-    ring('Follow one ring', 'Press Play and watch the white key on each ring.', 'The key shows the ring going round while its brush stays put. The joint never breaks, so the coil’s 125.66 V reaches the load through it with the sign the coil gave it.'),
-    ring('Open the switch', 'Open the switch and press Play.', 'The rings are still touching their brushes and the coil still reaches 125.66 V, but the circuit is broken further along, so the current is 0.00 A. A contact that is closed is not the same thing as a circuit that is closed.', {closed: 0}),
-    ringCoil('More turns behind them', 'Set the turns to 40 and press Play.', 'The same two rings now carry 251.33 V. A slip ring does not care how many turns are behind it: it is a joint, not a part of the winding.', {turns: 40}),
-    ring('Turn slower', 'Set the shaft speed to 1500 rpm and press Play.', 'At half the speed the rings rub half as fast and carry 62.83 V at 25.00 Hz. Wear at the joint follows the speed; what crosses it does not.', {speed: 1500}),
-    ring('A heavier load', 'Set the load to 1 Ω and press Play.', 'The current through the joint peaks at 116.29 A. A real brush has to be big enough to carry it without burning, which is why brushes are sized by current and not by voltage.', {load: 1}),
-    ring('A lighter load', 'Set the load to 50 Ω and press Play.', 'A bigger resistor draws 2.51 A through the same joint, and the resistor takes 157.4 W. The same rings suit both.', {load: 50}),
+    rings('Follow one ring', 'Watch the light marker turn with each copper ring.', 'Each brush stays fixed on its own ring. Loaded brush voltage peaks at 124.66 V and changes sign every half turn.'),
+    rings('Open the switch', 'Open the circuit beyond the brushes.', 'Both brushes still touch their rings, but load current is zero. The brushes retain 125.66 V peak.', {closed: 0}),
+    rings('More turns behind them', 'Run with more winding turns.', 'The two rings retain their connections while brush voltage rises to 247.34 V peak.', {turns: 40}),
+    rings('Turn slower', 'Halve the shaft speed.', 'The rings turn more slowly and deliver 62.33 V peak at 25.00 Hz.', {speed: 1500}),
+    rings('A heavier load', 'Reduce the external resistance.', 'Peak current through the contacts rises to 116.29 A in this ideal circuit. Real brush ratings and heating would constrain operation.', {load: 1}),
+    rings('A lighter load', 'Increase the external resistance.', 'Peak current falls to 2.51 A and average load power to 157.4 W. Contact identity remains unchanged.', {load: 50}),
   ],
-  deeper: [
-    {title: 'What a slip ring is for', body: 'The slip ring page describes it as an electromechanical device that allows the transmission of power and electrical signals from a stationary to a rotating structure, and says it can eliminate damage prone wires dangling from movable joints. That is the whole idea: a joint that can turn for ever.'},
-    {title: 'Why carbon', body: 'The brush is carbon because carbon is soft, conducts, and wears away instead of wearing the ring away. When a brush is worn out it is pulled out and replaced; the ring, which is expensive, stays. The commutator page makes the same point about carbon brushes wearing faster by design.'},
-    {title: 'Rings against a split ring', body: 'Both are sliding joints, and the only difference is what the metal under the brush is joined to. A complete ring is joined to one end of the coil for ever, so the sign gets out; a ring cut in half swaps ends every half turn, so it does not. Nothing else about them differs.'},
-    {title: 'Which part of a real machine turns', body: 'The alternator page says the revolving field type has the advantage that the rotor circuit carries much less power than the armature circuit, making the slip ring connections smaller and less costly, and that only two contacts are needed for the direct current rotor. So a power station machine turns its magnet and keeps its output windings still, and the sliding joints carry only the small field current.'},
-    {title: 'The joint is not the circuit', body: 'Two brushes touching two rings is a path that is intact, and no more. Open the switch beyond them and the current stops, though nothing at the joint has changed. It is worth watching the current fall to 0.00 A while the coil goes on making 125.66 V.'},
-  ],
-  misconception: 'A slip ring does not turn alternating current into anything else. It is a joint that turns, and it hands the coil voltage on exactly as it found it.',
-  limits: generatorLimits,
-  sources: [sources.slipRing, sources.alternator, sources.commutator, sources.generator],
-  quiz: {
-    question: 'Why does a generator need slip rings at all?',
-    options: ['Because the coil turns and the circuit does not, and a fixed wire would wind up and break.', 'Because the coil voltage has to be smoothed before it leaves the machine.', 'Because the current has to be turned into direct current before it can be used.'],
-    answer: 0,
-    explanation: 'The rings are a joint that turns. The ring goes round with the coil, the carbon brush stays put, and current crosses where they rub, at any angle and for as long as the machine runs.',
-  },
+  misconception: 'Slip rings transfer a connection across a rotating joint. They do not convert AC to DC.',
+  quiz: {question: 'Why use two separate slip rings?', options: ['Each winding end needs its own continuous, insulated connection.', 'One ring carries voltage and the other carries current.', 'A second ring cancels the negative half of the waveform.'], answer: 0, explanation: 'Separate rings preserve the two winding terminals. Each brush follows one terminal continuously, allowing either current direction.'},
 };

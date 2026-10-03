@@ -1,257 +1,248 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed, significant} from './format.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
+import {generatorPlan, generatorAt, COIL, COIL_AREA, BRIDGE, GENERATOR_DEFAULTS, GENERATOR_DOMAINS, GENERATOR_SAMPLES, OUTPUT_OPTIONS} from './grid-physics.js';
 
-/** Watts to three figures below 100 W, to a tenth above, so the winding's heat reads 545.2 W or 0.254 W, as the lessons quote it. */
-const heat = watts => (Math.abs(watts) >= 100 ? fixed(watts, 1) : significant(watts, 3));
-import {chartText, fillLine, lineObject, segmentLines, solidArrow, surface, textLabel} from './scene-kit.js';
-import {generatorPlan, generatorAt, commutatedEmf, windingResistanceOf, COIL, COIL_AREA, BRIDGE, GENERATOR_DEFAULTS, GENERATOR_DOMAINS, GENERATOR_SAMPLES, OUTPUT_OPTIONS, SUPPLY, SYNCHRONOUS} from './grid-physics.js';
-
-// ---------------------------------------------------------------------------
-// The generator: one rectangular coil turning between two poles, its ends
-// carried out either by two slip rings or by a split ring, and the two outputs
-// drawn against each other over one turn.
-//
-// Scale: the machine is drawn at true size, 1 m to 10 scene units, so the
-// coil's 200 by 100 mm loop is 2.0 by 1.0 units and each turn of 2.5 mm² wire
-// is 1.78 mm thick. The chart is not to scale: it is fixed at one turn across
-// and 400 V up and down, said in the part text and in a reading.
-//
-// Time: one turn is drawn in 8 seconds, so the shaft is slowed by 8 divided by
-// the turn's length, which a reading gives.
-// ---------------------------------------------------------------------------
-
-/** Scene units per meter: the machine is at true size. */
 export const METER = 10;
-/** The wire's diameter, m, for a round wire of the declared cross section. */
 export const WIRE = 2 * Math.sqrt(COIL.wire / Math.PI);
-export const MACHINE = Object.freeze([-1.9, 0.9, 0]);
-/** The machine in scene units: the loop, the shaft, the poles and the two sets of contacts. */
+export const MACHINE = Object.freeze([-1.7, 0.85, 0]);
 export const BENCH = Object.freeze({
-  half: COIL.length / 2 * METER, radius: COIL.width / 2 * METER, pitch: WIRE * METER,
-  shaft: 1.7, shaftRadius: 0.045, gap: 0.8, poleThick: 0.5, poleWide: 2.4, poleDeep: 1.4,
-  ringRadius: 0.16, ringWidth: 0.1, ringA: -1.25, ringB: -1.05, ringKey: 0.05,
-  barRadius: 0.16, barLength: 0.24, barX: 1.15, brushGap: 0.02, brushSize: 0.18,
-  arrowZ: 0.62, arrow: 0.035, fieldZ: Object.freeze([-0.45, 0, 0.45]),
+  half: COIL.length / 2 * METER, radius: COIL.width / 2 * METER, pitch: WIRE * METER * 1.06,
+  shaft: 2, shaftRadius: 0.045, gap: 0.8, poleThick: 0.32, poleWide: 2.4, poleDeep: 1.4,
+  ringRadius: 0.18, ringWidth: 0.1, ringA: -1.3, ringB: -1.55,
+  barRadius: 0.18, barLength: 0.22, barX: -1.43, brushDepth: 0.085,
+  fieldZ: Object.freeze([-0.55, 0, 0.55]),
 });
-/** The chart: one turn across and 400 V up and down, on a fixed scale. */
-export const CHART = Object.freeze({x: 0.35, y: 0.95, w: 2.8, h: 0.6, volts: 400, z: 0, tick: 0.06, cursor: 0.07});
-/** The load bench under the machine. */
-export const LOAD = Object.freeze({x: -1.9, y: -1.15, z: 0, width: 3, height: 0.55, bar: 2.2, barHeight: 0.12, watts: 1400});
-export const COLORS = Object.freeze({north: 0xc14f39, south: 0x83b4c1, steel: 0xb4c5b0, copper: 0xce825f, brass: 0xe3b45e, ink: 0x374736, faint: 0x9aa39a, rings: 0x2b5d9c, bars: 0xc14f39, board: 0xf0dfaf, field: 0x83b4c1, current: 0xe3b45e, effort: 0xd9822b, shell: 0xae8056});
+export const CHART = Object.freeze({x: 1.15, y: 0.85, w: 3, h: 1.5, volts: 400, z: 0, cursor: 0.055});
+export const LOAD = Object.freeze({x: -1.7, y: -1.25, z: 0.9, width: 3.1, bar: 2.2, barHeight: 0.12});
+export const COLORS = Object.freeze({north: 0xc14f39, south: 0x83b4c1, copper: 0xce825f, brass: 0xe3b45e, ink: 0x374736, faint: 0xa7ad9e, rings: 0x2b5d9c, bars: 0xc14f39, field: 0x83b4c1, current: 0xe3b45e, effort: 0xd9822b});
+export const chartX = theta => CHART.x + theta / (2 * Math.PI) * CHART.w;
+export const chartY = volts => CHART.y + volts / CHART.volts * CHART.h / 2;
+const heat = watts => Math.abs(watts) >= 100 ? fixed(watts, 1) : significant(watts, 3);
 
-/** Where a turn angle and a voltage fall on the chart. */
-export const chartX = theta => CHART.x + Math.max(0, Math.min(1, theta / (2 * Math.PI))) * CHART.w;
-export const chartY = volts => CHART.y + Math.max(-1, Math.min(1, volts / CHART.volts)) * CHART.h / 2;
-
-/** The rectangle of turn `k` of `turns`, in the coil's own frame: four corners around the loop. */
+// Positive winding current follows this order; its area normal starts toward −y, along B.
 export function turnCorners(k, turns) {
   const y = (k - (turns - 1) / 2) * BENCH.pitch, {half, radius} = BENCH;
-  return [[-half, y, radius], [half, y, radius], [half, y, -radius], [-half, y, -radius]];
+  return [[-half, y, radius], [-half, y, -radius], [half, y, -radius], [half, y, radius]];
+}
+export function windingPath(turns) {
+  const points = [];
+  for (let k = 0; k < turns; k++) points.push(...turnCorners(k, turns));
+  points.push(turnCorners(turns - 1, turns)[0]);
+  return points;
 }
 
 export function createGeneratorModel() {
   const kit = houseModel('Electric generator'), {part, control, finish} = kit;
-  let clock = 0, lastClock = 0, disposed = false, drawnTurns = -1;
-  const unlit = color => new THREE.MeshBasicMaterial({color});
-  const flat = (color, parent) => { const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), unlit(color)); parent.add(mesh); return mesh; };
-  const rect = (mesh, x0, x1, y0, y1, z = 0) => { mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, z); mesh.scale.set(Math.max(1e-9, x1 - x0), Math.max(1e-9, y1 - y0), 1); };
-
-  const system = part('system', 'The generator and what it delivers', `A coil of wire turning between two poles, drawn at true size, 1 m to ${fixed(METER, 0)} scene units. Its ends come out either at two slip rings, which hand the coil's voltage out as it stands, or at a split ring, which hands out its size. Press Play to turn the shaft through one turn, drawn in ${fixed(COIL.show, 0)} seconds.`);
-
-  // The poles.
-  const field = part('field', 'The two poles and their field', `Two poles face each other ${fixed(2 * BENCH.gap / METER * 1000, 0)} mm apart. The warm pole above is north and the cool one below is south, and the field runs from one to the other. The arrows grow with the field you set.`, MACHINE, system);
+  let clock = 0, lastClock = 0, drawnTurns = -1, disposed = false;
+  const system = part('system', 'Generator and electrical load', 'An ideal shaft driver turns an insulated winding in a uniform magnetic field. Select slip rings or a split ring to compare the two ways of taking current off the rotating coil.');
+  const structure = part('structure', 'Stationary supports', 'The base, pole supports and two bearing pedestals hold the fixed parts. The shaft turns inside the bearing bores.', MACHINE, system);
+  kit.box([4.45, 0.14, 1.7], [0, -1.14, 0], 'wood', structure);
+  for (const x of [-1.85, 1.45]) {
+    kit.box([0.16, 0.91, 0.25], [x, -0.58, 0], 'cream', structure);
+    const bearing = kit.ring(0.085, 0.025, [x, 0, 0], 'metal', structure); bearing.rotation.y = Math.PI / 2;
+  }
+  for (const x of [-1.12, 1.12]) kit.box([0.12, 2.1, 0.12], [x, -0.05, -0.72], 'metal', structure);
+  const field = part('field', 'North and south poles', 'The upper north pole faces the lower south pole. Blue arrows point downward through the gap. The field is assumed uniform; arrows indicate direction and relative strength.', MACHINE, system);
   const poles = [1, -1].map(side => kit.box([BENCH.poleWide, BENCH.poleThick, BENCH.poleDeep], [0, side * (BENCH.gap + BENCH.poleThick / 2), 0], side > 0 ? COLORS.north : COLORS.south, field));
-  const fieldArrows = BENCH.fieldZ.map(z => { const arrow = solidArrow(kit, COLORS.field, field, BENCH.arrow); arrow.position.set(0, BENCH.gap, z); arrow.userData.setDirection(new THREE.Vector3(0, -1, 0)); return arrow; });
+  for (const side of [1, -1]) textLabel(field, side > 0 ? 'N' : 'S', {height: 0.18, position: [0, side * (BENCH.gap + BENCH.poleThick / 2), 0.715], color: '#fff8e5', weight: '600'});
+  const fieldArrows = BENCH.fieldZ.map(z => { const arrow = solidArrow(kit, COLORS.field, field, 0.014); arrow.position.set(0.9, BENCH.gap - 0.07, z); arrow.userData.setDirection(new THREE.Vector3(0, -1, 0)); return arrow; });
 
-  // The coil and its shaft.
-  const coil = part('coil', 'The turning coil', `A loop ${fixed(COIL.length * 1000, 0)} by ${fixed(COIL.width * 1000, 0)} mm, wound with ${fixed(COIL.wire * 1e6, 1)} mm² copper wire ${fixed(WIRE * 1000, 2)} mm across, turning on a shaft. Every turn you ask for is drawn, and every turn adds both voltage and winding resistance. Edge on to the field the loop holds the most flux and makes no voltage; face on it holds none and makes the most.`, MACHINE, system);
-  const shaft = kit.rod([-BENCH.shaft, 0, 0], [BENCH.shaft, 0, 0], BENCH.shaftRadius, 'metal', coil);
-  const spinner = new THREE.Group();
-  coil.add(spinner);
-  const windings = segmentLines(GENERATOR_DOMAINS.turns[1] * 4, COLORS.copper, spinner);
-  const arms = [-1, 1].map(side => { const arm = kit.box([0.12, 0.12, 2 * BENCH.radius], [side * BENCH.half * 0.6, 0, 0], 'cream', spinner); return arm; });
+  const coil = part('coil', 'Connected rotating winding', 'One continuous insulated wire forms the selected number of 200 × 100 mm turns. Insulating crossbars join the winding to its shaft. Flux is largest when the loop plane is perpendicular to the field; voltage peaks a quarter turn later.', MACHINE, system);
+  const spinner = new THREE.Group(); coil.add(spinner);
+  const shaft = kit.rod([-BENCH.shaft, 0, 0], [BENCH.shaft, 0, 0], BENCH.shaftRadius, 'metal', spinner);
+  const arms = [-0.6, 0.6].map(x => kit.box([0.08, 0.09, 0.97], [x, 0, 0], 'cream', spinner));
+  const wireMaterial = new THREE.MeshToonMaterial({color: COLORS.copper});
+  const windings = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial); spinner.add(windings);
+  function polylineGeometry(points, radius) {
+    const curve = new THREE.CurvePath();
+    for (let i = 1; i < points.length; i++) curve.add(new THREE.LineCurve3(new THREE.Vector3(...points[i - 1]), new THREE.Vector3(...points[i])));
+    return new THREE.TubeGeometry(curve, Math.max(16, points.length * 6), radius, 8, false);
+  }
+  function wire(points, parent, radius = 0.022, color = COLORS.copper) {
+    const mesh = new THREE.Mesh(polylineGeometry(points, radius), new THREE.MeshToonMaterial({color})); parent.add(mesh); return mesh;
+  }
+  const drive = part('drive', 'Driven pulley and shaft', 'An ideal external driver turns this pulley at the selected speed. It must supply the electrical load and winding heat. Rotor inertia, bearing friction and windage are omitted.', MACHINE, system);
+  const driveSpinner = new THREE.Group(); drive.add(driveSpinner);
+  const pulley = kit.ring(0.38, 0.045, [1.72, 0, 0], 'wood', driveSpinner); pulley.rotation.y = Math.PI / 2;
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; kit.rod([1.72, 0, 0], [1.72, 0.36 * Math.cos(a), 0.36 * Math.sin(a)], 0.025, 'metal', driveSpinner); }
 
-  // The slip rings and their brushes.
-  const rings = part('rings', 'Two slip rings', `Each end of the coil is joined to its own copper ring, and a fixed brush rubs on each. The rings never change which brush they touch, so the coil's voltage reaches the load exactly as the coil makes it: it rises, falls, and changes sign twice a turn. The white key on each ring shows it turning.`, MACHINE, system);
-  const ringSpinner = new THREE.Group();
-  rings.add(ringSpinner);
-  const ringMeshes = [BENCH.ringA, BENCH.ringB].map((x, i) => { const mesh = kit.cylinder(BENCH.ringRadius, BENCH.ringWidth, [x, 0, 0], i === 0 ? COLORS.copper : COLORS.brass, ringSpinner); mesh.rotation.z = Math.PI / 2; return mesh; });
-  const ringKeys = [BENCH.ringA, BENCH.ringB].map(x => kit.box([BENCH.ringWidth * 0.8, BENCH.ringKey, BENCH.ringKey], [x, BENCH.ringRadius + BENCH.ringKey / 2, 0], 'cream', ringSpinner));
-  const ringBrushes = [[BENCH.ringA, 1], [BENCH.ringB, -1]].map(([x, side]) => kit.box([BENCH.brushSize * 0.7, BENCH.brushSize, BENCH.brushSize], [x, side * (BENCH.ringRadius + BENCH.brushGap + BENCH.brushSize / 2), 0], COLORS.ink, rings));
-  const ringLeads = [[BENCH.ringA, BENCH.radius], [BENCH.ringB, -BENCH.radius]].map(([x, z]) => kit.rod([x, 0, 0], [-BENCH.half, 0, z], 0.03, COLORS.copper, ringSpinner));
+  // Extruded annular sectors give the electrical contact calculation real matching surfaces.
+  function sector(parent, x, inner, outer, depth, start, sweep, color) {
+    const shape = new THREE.Shape();
+    shape.moveTo(outer * Math.cos(start), outer * Math.sin(start));
+    shape.absarc(0, 0, outer, start, start + sweep, false);
+    shape.lineTo(inner * Math.cos(start + sweep), inner * Math.sin(start + sweep));
+    shape.absarc(0, 0, inner, start + sweep, start, true); shape.closePath();
+    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled: false, curveSegments: 64}), new THREE.MeshToonMaterial({color}));
+    mesh.rotation.y = Math.PI / 2; mesh.position.x = x - depth / 2; parent.add(mesh); return mesh;
+  }
+  const rings = part('rings', 'Two slip rings and fixed brushes', 'Two insulated copper annuli turn with the winding. Each curved carbon brush touches its own ring continuously. Ring A is connected to the winding start; ring B to its end.', MACHINE, system);
+  const ringSpinner = new THREE.Group(); rings.add(ringSpinner);
+  const ringMeshes = [BENCH.ringA, BENCH.ringB].map((x, i) => sector(ringSpinner, x, 0.1, BENCH.ringRadius, BENCH.ringWidth, 0, Math.PI * 2, i ? COLORS.brass : COLORS.copper));
+  const ringKeys = [BENCH.ringA, BENCH.ringB].map(x => kit.box([0.003, 0.02, 0.025], [x - BENCH.ringWidth / 2 - 0.002, 0.14, 0], 'cream', ringSpinner));
+  for (const x of [BENCH.ringA, BENCH.ringB]) { const sleeve = kit.cylinder(0.1, 0.12, [x, 0, 0], 'cream', ringSpinner); sleeve.rotation.z = Math.PI / 2; }
+  const ringBrushes = [BENCH.ringA, BENCH.ringB].map((x, i) => sector(rings, x, BENCH.ringRadius, BENCH.ringRadius + 0.12, 0.075, (i ? 1 : -1) * Math.PI / 2 - COIL.brush * Math.PI / 360, COIL.brush * Math.PI / 180, COLORS.ink));
+  const ringLeads = [0, 1].map(() => wire([[0, 0, 0], [0, 0, 1]], ringSpinner, WIRE * METER / 2));
 
-  // The split ring and its brushes.
-  const commutator = part('commutator', 'The split ring', `One ring cut into two halves, each joined to one end of the coil. The halves turn with the shaft, so every half turn each brush meets the other half: the coil's voltage still changes sign, but the brush that was positive stays positive. The gaps are ${fixed(COIL.gap, 0)}° wide and the brush faces ${fixed(COIL.brush, 0)}°, so a brush is wider than a gap and bridges both halves for ${fixed(BRIDGE * 180 / Math.PI, 0)}° either side of every crossing.`, MACHINE, system);
-  const barSpinner = new THREE.Group();
-  commutator.add(barSpinner);
-  const segments = [0, 1].map(i => {
-    const start = COIL.gap / 2 * Math.PI / 180 + i * Math.PI, sweep = Math.PI - COIL.gap * Math.PI / 180;
-    const mesh = surface(kit, new THREE.CylinderGeometry(BENCH.barRadius, BENCH.barRadius, BENCH.barLength, 24, 1, true, start, sweep), i === 0 ? COLORS.copper : COLORS.brass, barSpinner, true);
-    mesh.rotation.z = Math.PI / 2;
-    mesh.position.set(BENCH.barX, 0, 0);
-    return mesh;
-  });
-  const barLeads = [BENCH.radius, -BENCH.radius].map(z => kit.rod([BENCH.barX, 0, 0], [BENCH.half, 0, z], 0.03, COLORS.copper, barSpinner));
-  const barBrushes = [1, -1].map(side => kit.box([BENCH.brushSize * 0.7, BENCH.brushSize, BENCH.brushSize], [BENCH.barX, side * (BENCH.barRadius + BENCH.brushGap + BENCH.brushSize / 2), 0], COLORS.ink, commutator));
+  const commutator = part('commutator', 'Split ring and fixed brushes', 'Each copper half connects to one winding end. The 10° curved brush faces exceed the 6° insulating gaps, shorting the winding for 2° on either side of each voltage zero. This resistive model omits switching arcs and inductance.', MACHINE, system);
+  const barSpinner = new THREE.Group(); commutator.add(barSpinner);
+  const sleeve = kit.cylinder(0.1, BENCH.barLength, [BENCH.barX, 0, 0], 'cream', barSpinner); sleeve.rotation.z = Math.PI / 2;
+  const gap = COIL.gap * Math.PI / 180;
+  const segments = [0, 1].map(i => sector(barSpinner, BENCH.barX, 0.1, BENCH.barRadius, BENCH.barLength, Math.PI / 2 + gap / 2 + i * Math.PI, Math.PI - gap, i ? COLORS.brass : COLORS.copper));
+  const barBrushes = [1, -1].map(side => sector(commutator, BENCH.barX, BENCH.barRadius, BENCH.barRadius + 0.12, 0.15, side * Math.PI / 2 - COIL.brush * Math.PI / 360, COIL.brush * Math.PI / 180, COLORS.ink));
+  const barLeads = [0, 1].map(() => wire([[0, 0, 0], [0, 0, 1]], barSpinner, WIRE * METER / 2));
 
-  // The chart of both outputs over one turn.
-  const output = part('output', 'The two outputs, over one turn', `What each set of contacts hands out through one whole turn, on a fixed scale of ${fixed(CHART.volts, 0)} V up and down. The blue curve is the slip rings: a sine that changes sign twice a turn. The red curve is the split ring: the same size, never below zero, notched where the brush bridges both halves. The cross marks where the shaft is now.`, [0, 0, 0], system);
-  const frame = lineObject(5, COLORS.ink, output);
-  const zeroLine = segmentLines(1, COLORS.faint, output);
-  const ticks = segmentLines(3, COLORS.faint, output);
-  const ringTrace = lineObject(GENERATOR_SAMPLES, COLORS.rings, output);
-  const barTrace = lineObject(GENERATOR_SAMPLES, COLORS.bars, output);
-  const cursor = segmentLines(2, COLORS.ink, output);
-  fillLine(frame, [[CHART.x, CHART.y - CHART.h / 2, CHART.z], [CHART.x + CHART.w, CHART.y - CHART.h / 2, CHART.z], [CHART.x + CHART.w, CHART.y + CHART.h / 2, CHART.z], [CHART.x, CHART.y + CHART.h / 2, CHART.z], [CHART.x, CHART.y - CHART.h / 2, CHART.z]]);
-  fillLine(zeroLine, [[CHART.x, CHART.y, CHART.z], [CHART.x + CHART.w, CHART.y, CHART.z]]);
-  fillLine(ticks, [1, 2, 3].flatMap(k => [[chartX(k * Math.PI / 2), CHART.y - CHART.h / 2, CHART.z], [chartX(k * Math.PI / 2), CHART.y - CHART.h / 2 - CHART.tick, CHART.z]]));
-  // The chart's words, with its key to its right.
-  const TEXT = 0.05, css = color => `#${color.toString(16).padStart(6, '0')}`;
-  chartText(output, (degrees, volts) => [chartX(degrees * Math.PI / 180), chartY(volts), CHART.z], {
-    title: 'The two outputs, over one turn', size: TEXT,
-    x: {min: 0, max: 360, title: 'Turn of the coil', ticks: [0, 90, 180, 270, 360].map(degrees => [degrees, `${degrees}°`])},
-    y: {min: -CHART.volts, max: CHART.volts, title: 'Volts', ticks: [-CHART.volts, 0, CHART.volts].map(volts => [volts, `${volts < 0 ? '−' : ''}${Math.abs(volts)}`])},
-  });
-  [['Slip rings', COLORS.rings], ['Split ring', COLORS.bars]].forEach(([text, color], i) => textLabel(output, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h / 2 - 0.05 - 0.075 * i, 0.001]}));
-
-  // The load.
-  const load = part('load', 'The load and the switch', `A resistor across the brushes, with a switch in the line. Closed, the coil drives a current through it and the shaft has to work; open, the coil still makes its voltage but nothing flows and the shaft turns free. The bar below shows the power the resistor is taking, on a fixed scale of ${fixed(LOAD.watts, 0)} W.`, [LOAD.x, LOAD.y, LOAD.z], system);
-  const board = kit.box([LOAD.width, 0.12, 0.6], [0, -LOAD.height / 2 - 0.06, 0], 'wood', load);
-  const resistor = kit.box([0.9, 0.34, 0.34], [0.6, 0, 0], 'leaf', load);
-  const switchPivot = new THREE.Group();
-  switchPivot.position.set(-0.75, 0, 0);
-  load.add(switchPivot);
+  const load = part('load', 'Resistor and series switch', 'The external resistor dissipates I²R. Opening the blade breaks its circuit while the turning coil still induces voltage. A split-ring bridge can still heat the winding with this switch open.', [LOAD.x, LOAD.y, LOAD.z], system);
+  kit.box([LOAD.width, 0.12, 0.65], [0, -0.22, 0], 'wood', load);
+  const resistor = kit.box([0.85, 0.28, 0.3], [0.6, 0, 0], 'leaf', load);
+  const switchPivot = new THREE.Group(); switchPivot.position.set(-0.75, 0, 0); load.add(switchPivot);
   const blade = kit.rod([0, 0, 0], [0.55, 0, 0], 0.035, COLORS.brass, switchPivot);
   const studs = [-0.75, -0.2].map(x => kit.sphere(0.06, [x, 0, 0], COLORS.brass, load));
-  const wires = [[-1.5, -0.75], [-0.2, 0.15], [1.05, 1.5]].map(([a, b]) => kit.rod([a, 0, 0], [b, 0, 0], 0.03, COLORS.copper, load));
-  const feeds = [-1.5, 1.5].map(x => kit.rod([x, 0, 0], [x, 0.55, 0], 0.03, COLORS.copper, load));
-  const powerRail = kit.box([LOAD.bar, LOAD.barHeight, 0.08], [0, -LOAD.height / 2 - 0.34, 0.06], COLORS.ink, load);
-  const powerBar = flat(COLORS.current, load);
-  const currentArrows = [-1, 1].map(side => { const arrow = solidArrow(kit, COLORS.current, load, 0.03); arrow.position.set(side * 1.18, 0.28, 0.1); arrow.userData.setDirection(new THREE.Vector3(side, 0, 0)); return arrow; });
-  const effort = solidArrow(kit, COLORS.effort, system, 0.04);
-  effort.position.set(MACHINE[0] + BENCH.shaft + 0.1, MACHINE[1], 0);
-  effort.userData.setDirection(new THREE.Vector3(0, 1, 0));
-  // The two leads that carry whichever set of contacts is wired to the load.
-  const tapWires = segmentLines(2, COLORS.copper, system);
-  const brushHeight = BENCH.ringRadius + BENCH.brushGap + BENCH.brushSize / 2;
-  const feedTops = [[LOAD.x - 1.5, LOAD.y + 0.55, 0], [LOAD.x + 1.5, LOAD.y + 0.55, 0]];
-  const ringTap = [[MACHINE[0] + BENCH.ringA, MACHINE[1] + brushHeight, 0], [MACHINE[0] + BENCH.ringB, MACHINE[1] - brushHeight, 0]];
-  const barTap = [[MACHINE[0] + BENCH.barX, MACHINE[1] - brushHeight, 0], [MACHINE[0] + BENCH.barX, MACHINE[1] + brushHeight, 0]];
+  const wires = [[-1.5, -0.75], [-0.2, 0.18], [1.02, 1.5]].map(([a, b]) => kit.rod([a, 0, 0], [b, 0, 0], 0.025, COLORS.copper, load));
+  const loadName = textLabel(load, '', {height: 0.11, width: 1.2, position: [0.6, 0.24, 0.17]});
+  const powerRail = kit.box([LOAD.bar, LOAD.barHeight, 0.05], [0, -0.46, 0], COLORS.ink, load);
+  const powerBar = kit.box([LOAD.bar, LOAD.barHeight * 0.6, 0.03], [0, -0.46, 0.035], COLORS.current, load);
+  const powerLabel = textLabel(load, '', {height: 0.12, width: 3.1, position: [0, -0.66, 0.1]});
+  const currentArrows = [-1.2, 1.2].map(x => { const a = solidArrow(kit, COLORS.current, load, 0.015); a.position.set(x, 0.14, 0.15); return a; });
+  const leads = part('leads', 'Stationary circuit leads', 'Insulated fixed leads connect the selected brushes to the switch and resistor. Conventional current leaves brush B for positive AC voltage; the split-ring connections keep the load current in one direction.', [0, 0, 0], system);
+  const tapWires = [0, 1].map(() => wire([[0, 0, 0], [0, 0, 1]], leads));
+  const feedTops = [[LOAD.x - 1.5, LOAD.y, LOAD.z], [LOAD.x + 1.5, LOAD.y, LOAD.z]];
+  const ringTap = [[MACHINE[0] + BENCH.ringB, MACHINE[1] + 0.27, 0], [MACHINE[0] + BENCH.ringA, MACHINE[1] - 0.27, 0]];
+  const barTap = [[MACHINE[0] + BENCH.barX, MACHINE[1] + 0.27, 0], [MACHINE[0] + BENCH.barX, MACHINE[1] - 0.27, 0]];
+  let lastOutput = -1;
+
+  const forces = part('forces', 'Winding current and reaction forces', 'Gold arrows show conventional current; orange arrows show magnetic forces on the two active wire sides. Their torque opposes the imposed rotation. Arrow lengths use a bounded visual scale.', MACHINE, system);
+  const coilCurrentArrows = [1, -1].map(() => solidArrow(kit, COLORS.current, forces, 0.012));
+  const forceArrows = [1, -1].map(() => solidArrow(kit, COLORS.effort, forces, 0.016));
+
+  const output = part('output', 'Brush voltage over one turn', 'Blue compares slip rings; red compares a split ring at the same speed, field, winding and load. Both include winding voltage loss when the switch is closed. The cursor follows the selected contacts. The horizontal axis is shaft angle, so changing speed changes frequency without changing the chart width.', [0, 0, 0], system);
+  const frame = lineObject(5, COLORS.faint, output), zeroLine = lineObject(2, COLORS.ink, output);
+  fillLine(frame, [[CHART.x, chartY(-400), 0], [CHART.x + CHART.w, chartY(-400), 0], [CHART.x + CHART.w, chartY(400), 0], [CHART.x, chartY(400), 0], [CHART.x, chartY(-400), 0]]);
+  fillLine(zeroLine, [[CHART.x, CHART.y, 0], [CHART.x + CHART.w, CHART.y, 0]]);
+  const ringTrace = lineObject(GENERATOR_SAMPLES, COLORS.rings, output), barTrace = lineObject(GENERATOR_SAMPLES, COLORS.bars, output), cursor = segmentLines(2, COLORS.ink, output);
+  chartText(output, (angle, volts) => [chartX(angle * Math.PI / 180), chartY(volts), 0], {title: 'Brush voltage', size: 0.11, x: {min: 0, max: 360, title: 'Shaft angle', ticks: [0, 90, 180, 270, 360].map(a => [a, `${a}°`])}, y: {min: -400, max: 400, title: 'V', ticks: [[-400, '−400'], [0, '0'], [400, '400']]}});
+  for (const [i, label, color] of [[0, 'Slip rings', COLORS.rings], [1, 'Split ring', COLORS.bars]]) {
+    const x = CHART.x + 0.1 + i * 1.55;
+    kit.rod([x, CHART.y - 1.18, 0], [x + 0.2, CHART.y - 1.18, 0], 0.014, color, output);
+    textLabel(output, label, {height: 0.11, align: 'left', position: [x + 0.25, CHART.y - 1.18, 0]});
+  }
+  const liveLabel = textLabel(output, '', {height: 0.14, width: 3.1, position: [CHART.x + CHART.w / 2, CHART.y - 1.55, 0]});
 
   const d = GENERATOR_DEFAULTS;
-  control('output', 'Contacts', ...GENERATOR_DOMAINS.output, d.output, '', 'Two slip rings, which hand the coil voltage out as it stands, or a split ring, which hands out its size.', OUTPUT_OPTIONS);
-  control('speed', 'Shaft speed', ...GENERATOR_DOMAINS.speed, d.speed, 'rpm', 'How fast the drive turns the shaft. A machine with one pole pair makes one cycle a turn.');
-  control('field', 'Field', ...GENERATOR_DOMAINS.field, d.field, 'T', 'How strong the field between the poles is. Not from a source.');
-  control('turns', 'Turns', ...GENERATOR_DOMAINS.turns, d.turns, '', 'How many turns of wire the loop carries. Every turn adds voltage and adds resistance.');
-  control('load', 'Load', ...GENERATOR_DOMAINS.load, d.load, 'Ω', 'The resistor across the brushes. Not from a source.');
-  control('closed', 'Switch', ...GENERATOR_DOMAINS.closed, d.closed, '', 'Closed lets current flow; open leaves the coil making its voltage with nothing to drive.', [{value: 1, label: 'Closed'}, {value: 0, label: 'Open'}]);
+  control('output', 'Contacts', ...GENERATOR_DOMAINS.output, d.output, '', 'Swap the physical contacts: two continuous slip rings or one split ring.', OUTPUT_OPTIONS);
+  control('speed', 'Shaft speed', ...GENERATOR_DOMAINS.speed, d.speed, 'rpm', 'Ideal maintained speed. One pole pair makes one electrical cycle per turn.');
+  control('field', 'Field', ...GENERATOR_DOMAINS.field, d.field, 'T', 'Assumed uniform field between the poles.');
+  control('turns', 'Turns', ...GENERATOR_DOMAINS.turns, d.turns, '', 'Every turn is drawn and connected. More turns increase induction and winding resistance.');
+  control('load', 'Load', ...GENERATOR_DOMAINS.load, d.load, 'Ω', 'External resistance. A smaller resistance draws more current.');
+  control('closed', 'Switch', ...GENERATOR_DOMAINS.closed, d.closed, '', 'Open interrupts the load path. Split-ring brushes can still short the winding during commutation.', [{value: 1, label: 'Closed'}, {value: 0, label: 'Open'}]);
 
+  const replaceWire = (mesh, points, radius) => { mesh.geometry.dispose(); mesh.geometry = polylineGeometry(points, radius); mesh.userData.path = points; };
   const result = finish(v => {
     const plan = generatorPlan(v), now = generatorAt(plan, clock);
-
-    // Every turn asked for, drawn.
     if (drawnTurns !== plan.turns) {
       drawnTurns = plan.turns;
-      const points = [];
-      for (let k = 0; k < plan.turns; k++) {
-        const corners = turnCorners(k, plan.turns);
-        for (let i = 0; i < 4; i++) points.push(corners[i], corners[(i + 1) % 4]);
+      const points = windingPath(plan.turns), start = points[0], end = points.at(-1);
+      replaceWire(windings, points, WIRE * METER / 2);
+      for (const arm of arms) arm.scale.y = Math.max(1, plan.turns * BENCH.pitch / 0.09);
+      for (const [i, tip] of [start, end].entries()) {
+        const side = i ? -1 : 1;
+        const approach = i
+          ? [tip, [-1.08, tip[1], 0.57], [-1.13, -0.13, 0.57], [-1.17, -0.13, -0.075], [-1.17, 0, -0.075]]
+          : [tip, [-1.08, tip[1], 0.5], [-1.13, 0, 0.075]];
+        const ringX = [BENCH.ringA, BENCH.ringB][i];
+        replaceWire(ringLeads[i], [...approach, [ringX, 0, side * 0.075], [ringX, 0, side * 0.11]], WIRE * METER / 2);
+        replaceWire(barLeads[i], [...approach, [BENCH.barX, 0, side * 0.075], [BENCH.barX, 0, side * 0.11]], WIRE * METER / 2);
       }
-      fillLine(windings, points);
-      for (const arm of arms) arm.scale.y = Math.max(1, plan.turns * BENCH.pitch / 0.12);
     }
-    spinner.rotation.x = now.theta;
-    ringSpinner.rotation.x = now.theta;
-    barSpinner.rotation.x = now.theta;
-
-    // The field: the arrows grow with it and vanish when it is switched off.
-    for (const arrow of fieldArrows) arrow.userData.setLength(plan.field > 0 ? 2 * BENCH.gap * plan.field / GENERATOR_DOMAINS.field[1] : 0);
-
-    // Which contacts are wired to the load.
-    const alternating = plan.alternating;
-    const tap = alternating ? ringTap : barTap;
-    fillLine(tapWires, [tap[0], feedTops[0], tap[1], feedTops[1]]);
+    for (const group of [spinner, ringSpinner, barSpinner, driveSpinner]) group.rotation.x = now.theta;
+    rings.visible = plan.alternating; commutator.visible = !plan.alternating;
+    if (lastOutput !== plan.output) {
+      lastOutput = plan.output;
+      const taps = plan.alternating ? ringTap : barTap;
+      for (let i = 0; i < 2; i++) {
+        const a = taps[i], end = feedTops[i], laneX = i ? MACHINE[0] - 2.02 : MACHINE[0] - 2.22, z = i ? 0.82 : 1.06;
+        replaceWire(tapWires[i], [a, [laneX, a[1], 0], [laneX, a[1], z], [laneX, LOAD.y - i * 0.13, z], [end[0], LOAD.y - i * 0.13, z], end], 0.022);
+      }
+    }
     switchPivot.rotation.z = plan.closed ? 0 : Math.PI / 3;
-    for (const arrow of currentArrows) {
-      const size = Math.min(0.5, Math.abs(now.current) / 20 * 0.5);
-      arrow.userData.setLength(size);
-      arrow.userData.setDirection(new THREE.Vector3(Math.sign(now.current) || 1, 0, 0).multiplyScalar(arrow.position.x > 0 ? 1 : -1));
+    for (const arrow of fieldArrows) arrow.userData.setLength((2 * BENCH.gap - 0.14) * plan.field / 1.2);
+    for (let i = 0; i < 2; i++) {
+      const side = i ? -1 : 1;
+      const point = new THREE.Vector3(0, 0, side * (BENCH.radius + 0.07)).applyAxisAngle(new THREE.Vector3(1, 0, 0), now.theta);
+      const current = coilCurrentArrows[i], force = forceArrows[i], sign = Math.abs(now.coilCurrent) > 1e-9 ? Math.sign(now.coilCurrent) : 0;
+      current.position.copy(point).add(new THREE.Vector3(side * 0.25, 0, 0)); current.userData.setDirection(new THREE.Vector3(-side * (sign || 1), 0, 0)); current.userData.setLength(sign ? 0.4 : 0);
+      force.position.copy(point); force.userData.setDirection(new THREE.Vector3(0, 0, side * (sign || 1))); force.userData.setLength(sign ? Math.min(0.5, Math.abs(now.coilCurrent) * plan.field * 0.035) : 0);
     }
-    const share = Math.max(0, Math.min(1, now.loadPower / LOAD.watts));
-    rect(powerBar, -LOAD.bar / 2, -LOAD.bar / 2 + share * LOAD.bar, -LOAD.height / 2 - 0.34 - LOAD.barHeight / 2 + 0.02, -LOAD.height / 2 - 0.34 + LOAD.barHeight / 2 - 0.02, 0.11);
-    powerBar.visible = share > 0;
-    effort.userData.setLength(plan.drivePower > 0 ? Math.min(0.9, plan.drivePower / 1500 * 0.9) : 0);
-
-    // The two traces and the cursor.
-    fillLine(ringTrace, plan.chart.map(sample => [chartX(sample.theta), chartY(sample.rings), CHART.z]));
-    fillLine(barTrace, plan.chart.map(sample => [chartX(sample.theta), chartY(sample.commutator), CHART.z]));
-    const cx = chartX(now.theta), cy = chartY(now.terminal);
-    fillLine(cursor, [[cx - CHART.cursor, cy, CHART.z], [cx + CHART.cursor, cy, CHART.z], [cx, cy - CHART.cursor, CHART.z], [cx, cy + CHART.cursor, CHART.z]]);
-
-    const turning = plan.period !== null;
-    const status = !turning ? 'Standing still · a field alone makes no voltage; set a speed and press Play'
-      : clock <= 0 ? `Ready · ${alternating ? 'the slip rings' : 'the split ring'} will hand out ${alternating ? `${fixed(plan.rms, 1)} V RMS` : `${fixed(plan.mean, 1)} V on average`}; press Play`
-      : !now.done ? `Turning · ${fixed(now.terminal, 1)} V at the brushes, ${fixed(Math.abs(now.current), 2)} A through the load`
-      : `One turn done · ${alternating ? `${fixed(plan.rms, 1)} V RMS` : `${fixed(plan.mean, 1)} V on average`}, ${fixed(plan.loadPower, 0)} W into the resistor`;
-
-    return {
-      state: {...plan, now, clock, drawnTurns, alternating, turning},
-      readings: [
-        r('Your result', status),
-        r('Output', turning ? (alternating ? `${fixed(plan.rms, 2)} V RMS` : `${fixed(plan.mean, 2)} V mean`) : '0 V', turning
-          ? `The coil's peak is N B A ω: ${fixed(plan.turns, 0)} turns through ${fixed(plan.field, 2)} T over ${fixed(COIL_AREA, 3)} m² at ${fixed(plan.omega, 1)} rad/s give ${fixed(plan.peak, 2)} V. The slip rings hand that sine out as it stands, ${fixed(plan.rms, 2)} V RMS, which is the peak over the square root of 2. The split ring hands out its size, whose mean is 2/π of the peak less the notches, ${fixed(plan.mean, 2)} V.`
-          : 'With the shaft still the flux through the loop never changes, so there is no voltage at all, however strong the field.'),
-        r('Frequency', turning ? `${fixed(plan.frequency, 2)} Hz` : 'not turning', `One pole pair makes one cycle every turn, so the frequency is the speed over 60. A machine with ${SYNCHRONOUS.poles} poles has to turn at ${fixed(plan.synchronous.fifty, 0)} rpm for ${fixed(SUPPLY.frequency, 0)} Hz and ${fixed(plan.synchronous.sixty, 0)} rpm for 60 Hz, because the speed follows N = 120 f / P.`),
-        r('Load', plan.closed ? `${fixed(plan.loadPower, 1)} W` : 'switch open', plan.closed
-          ? `The loop's own winding is ${fixed(plan.winding, 4)} Ω: ${fixed(plan.turns, 0)} turns of ${fixed(COIL.wire * 1e6, 1)} mm² copper make ${fixed(plan.turns * 2 * (COIL.length + COIL.width), 1)} m of wire. With ${fixed(plan.load, 0)} Ω beyond it the current peaks at ${fixed(plan.currentPeak, 2)} A and the resistor takes ${fixed(plan.loadPower, 1)} W.`
-          : `The coil still makes ${fixed(plan.peak, 2)} V at its peak, but with the switch open nothing flows, nothing is delivered, and the shaft costs no extra torque.`),
-        r('Winding heat', `${heat(plan.windingPower)} W`, alternating
-          ? `The same current runs through the winding's ${fixed(plan.winding, 4)} Ω on its way to the load, and heats it. This is the price of the wire, not of the load.`
-          : `While a brush bridges both halves the coil is shorted through itself, whatever the switch is doing, and its own ${fixed(plan.winding, 4)} Ω takes ${fixed(plan.peak ** 2 * plan.bridgeShare / plan.winding, 3)} W of the ${fixed(plan.windingPower, 3)} W. That short is why a commutator sparks.`),
-        r('Shaft', turning ? `${fixed(plan.drivePower, 1)} W` : '0 W', `Whatever the coil delivers and whatever the winding wastes has to come in at the shaft: ${fixed(plan.loadPower, 1)} W plus ${heat(plan.windingPower)} W. Nothing comes from the magnet. The orange arrow is the effort the drive supplies.`),
-        r('Flux', `${fixed(plan.fluxPeak * 1000, 1)} mWb`, `Edge on to the field the loop holds ${fixed(plan.turns, 0)} turns times ${fixed(plan.field, 2)} T times ${fixed(COIL_AREA, 3)} m², which is ${fixed(plan.fluxPeak * 1000, 1)} mWb, and makes no voltage. A quarter turn later it holds none and makes its most. The voltage follows the rate the flux changes, not the flux.`),
-        r('Slowed', turning ? `${fixed(plan.slow, 0)} times` : 'not turning', `One turn takes ${fixed((plan.period ?? 0) * 1000, 2)} ms and is drawn in ${fixed(COIL.show, 0)} seconds. The machine itself is drawn at true size; the chart is on a fixed scale of ${fixed(CHART.volts, 0)} V up and down.`),
-      ],
-    };
+    for (const arrow of currentArrows) { arrow.userData.setDirection(new THREE.Vector3(Math.sign(now.current) || 1, 0, 0)); arrow.userData.setLength(Math.abs(now.current) > 1e-10 ? 0.23 : 0); }
+    const peakLoadPower = plan.currentPeak ** 2 * plan.load, share = peakLoadPower > 0 ? now.loadPower / peakLoadPower : 0;
+    powerBar.visible = share > 1e-12; powerBar.scale.x = Math.max(1e-9, share); powerBar.position.x = (share - 1) * LOAD.bar / 2;
+    powerLabel.userData.setText(`${fixed(now.loadPower, 1)} W now · scale 0–${fixed(peakLoadPower, 0)} W`);
+    loadName.userData.setText(`${plan.load} Ω load`);
+    fillLine(ringTrace, plan.chart.map(s => [chartX(s.theta), chartY(s.rings), 0.01]));
+    fillLine(barTrace, plan.chart.map(s => [chartX(s.theta), chartY(s.commutator), 0.012]));
+    const x = chartX(now.theta), y = chartY(now.terminal), c = CHART.cursor;
+    fillLine(cursor, [[x - c, y, 0.025], [x + c, y, 0.025], [x, y - c, 0.025], [x, y + c, 0.025]]);
+    liveLabel.userData.setText(`${fixed(now.terminal, 1)} V · ${fixed(now.current, 2)} A now`);
+    const turning = plan.period !== null, outputValue = plan.alternating ? `${fixed(plan.terminalRms, 2)} V RMS` : `${fixed(plan.terminalMean, 2)} V mean`;
+    const status = !turning ? 'Standing still · changing flux needs motion; raise shaft speed to run'
+      : clock <= 0 ? `Ready · ${outputValue} at the brushes over one turn; press Play`
+      : now.done ? `One turn done · ${outputValue}; ${fixed(plan.loadPower, 1)} W average into the resistor`
+      : `Turning · ${fixed(now.terminal, 1)} V at the brushes; ${fixed(now.current, 2)} A through the load`;
+    return {state: {...plan, now, clock, drawnTurns, alternating: plan.alternating, turning}, readings: [
+      r('Your result', status),
+      r('Brush output', turning ? outputValue : '0 V', 'Cycle measurement at the brushes, including the voltage lost in winding resistance. Mean and RMS are different measures.'),
+      r('Coil EMF', `${fixed(now.coilEmf, 2)} V`, `Instantaneous signed induction. Peak N B A ω = ${fixed(plan.peak, 2)} V. Winding resistance lowers the delivered voltage.`),
+      r('Brush voltage', `${fixed(now.terminal, 2)} V`, 'Instantaneous voltage between the contacted brushes. With the load switch open it can remain nonzero.'),
+      r('Load voltage', `${fixed(now.loadVoltage, 2)} V`, 'Instantaneous voltage across the resistor, equal to current times load resistance. Zero when its switch is open.'),
+      r('Load current', `${fixed(now.current, 3)} A`, 'Conventional current. Positive flows left to right through the pictured resistor. AC reverses each half turn.'),
+      r('Frequency', turning ? `${fixed(plan.frequency, 2)} Hz` : 'not turning', 'One full coil-voltage cycle per shaft revolution. The split ring gives two output pulses per revolution.'),
+      r('Load', `${fixed(plan.loadPower, 1)} W`, 'Cycle-average resistor heating. The bar shows instantaneous power on its labeled scale.'),
+      r('Winding heat', `${heat(plan.windingPower)} W`, plan.alternating ? 'Cycle-average I²R loss in the copper.' : `Includes ${heat(plan.peak ** 2 * plan.bridgeShare / plan.winding)} W during the short brush bridges, even with the load switch open. No arcing model is included.`),
+      r('Shaft', `${fixed(plan.drivePower, 1)} W`, 'Cycle-average mechanical input equals load power plus winding heat. An ideal driver maintains speed.'),
+      r('Drive torque now', `${significant(now.torque, 3)} N·m`, 'Required electromagnetic drive torque; the reaction on the shaft has equal magnitude and opposite direction.'),
+      r('Flux linkage', `${fixed(now.flux * 1000, 1)} mWb·turn`, 'N times the flux through one turn. Greatest magnitude with the loop plane perpendicular to the field; zero when parallel.'),
+      r('Contacts', plan.alternating ? 'Continuous slip rings' : now.bridged ? 'Brushes bridge both halves' : 'Each brush touches one half', 'The Contacts selector swaps the physical ring assembly as well as the electrical connection.'),
+      r('Slowed', turning ? `${fixed(plan.slow, 0)} times` : 'not turning', `One turn is drawn in ${COIL.show} seconds. Electrical time is ${fixed((plan.period ?? 0) * 1000, 2)} ms per turn.`),
+    ]};
   });
-
   const render = result.update;
-  const duration = () => result.getState().period;
-  result.advance = dt => {
-    const period = duration();
-    if (Number.isFinite(dt) && dt > 0 && period !== null) clock = Math.min(period, clock + dt * period / COIL.show);
+  result.update = next => {
+    const before = result.getState().values; render(next);
+    if (Object.entries(result.getState().values).some(([key, value]) => before[key] !== value)) { clock = 0; lastClock = 0; }
     return render();
   };
+  result.advance = dt => { const p = result.getState().period; if (Number.isFinite(dt) && dt > 0 && p !== null) clock = Math.min(p, clock + dt * p / COIL.show); return render(); };
   result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
   result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
-  const inspect = share => { const period = duration(); clock = period === null ? 0 : period * share; return render(); };
   result.actions = [
-    {label: 'Inspect: the coil face on', part: 'coil', view: 'front', replay: false, run() { return inspect(0.25); }},
-    {label: 'Inspect: the slip rings', part: 'rings', view: 'front', replay: false, run() { return inspect(0.125); }},
-    {label: 'Inspect: the split ring', part: 'commutator', view: 'front', replay: false, run() { return inspect(0.5); }},
-    {label: 'Inspect: the load', part: 'load', view: 'front', replay: false, run() { return inspect(0.25); }},
+    {label: 'Inspect the winding', part: 'coil', view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect the contacts', get part() { return result.getState().alternating ? 'rings' : 'commutator'; }, view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect the load', part: 'load', view: 'front', replay: false, run: () => render()},
+    {label: 'Inspect the voltage chart', part: 'output', view: 'front', isolate: true, replay: false, run: () => render()},
   ];
-  result.playback = {
-    label: 'Turn the shaft',
-    description: `One whole turn of the shaft, drawn in ${fixed(COIL.show, 0)} seconds however fast it is really turning.`,
-    stepLabel: 'Advance a sixteenth of a turn',
-    advance: result.advance,
-    step: () => result.advance(COIL.show / 16),
-    complete: () => { const period = duration(); return period !== null && clock >= period; },
-    blocked: () => duration() === null,
-  };
-  result.resultPart = {id: 'output', label: 'Inspect the two outputs', view: 'front', focusOnComplete: false, available: () => { const period = duration(); return period !== null && clock >= period; }};
-
-  kit.root.rotation.set(0.05, -0.12, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.6;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, field, poles, fieldArrows, coil, shaft, spinner, windings, arms, rings, ringSpinner, ringMeshes, ringKeys, ringBrushes, ringLeads, commutator, barSpinner, segments, barLeads, barBrushes, output, frame, zeroLine, ticks, ringTrace, barTrace, cursor, load, board, resistor, switchPivot, blade, studs, wires, feeds, powerRail, powerBar, currentArrows, effort, tapWires, ringTap, barTap, feedTops};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  result.playback = {label: 'Turn the shaft', description: 'One complete turn, drawn in eight seconds. Pause freezes the measured phase.', stepLabel: 'Advance a sixteenth of a turn', advance: result.advance, step: () => result.advance(COIL.show / 16), complete: () => result.getState().now.done, blocked: () => !result.getState().turning};
+  result.resultPart = {id: 'output', label: 'Inspect brush voltage', view: 'front', focusOnComplete: false, available: () => result.getState().now.done};
+  forces.userData.explosionExcluded = true;
+  for (const arrow of [...fieldArrows, ...currentArrows]) arrow.userData.explosionExcluded = true;
+  for (const [id, name, ids] of [
+    ['stationary-group', 'Supports and magnetic field', ['structure', 'field']],
+    ['rotating-group', 'Rotating assembly', ['coil', 'drive']],
+    ['circuit-group', 'Electrical connections and load', ['rings', 'commutator', 'leads', 'load']],
+  ]) {
+    const category = part(id, name, name + ' grouped for inspection and separation.', [0, 0, 0], system);
+    category.userData.explosionCategory = true;
+    for (const childId of ids) {
+      const child = kit.parts.find(item => item.id === childId);
+      category.attach(child.object); child.parentId = id;
+    }
+  }
+  output.userData.explosionCategory = true;
+  kit.root.rotation.set(0.08, -0.12, 0);
+  result.initialPart = 'system'; result.initialView = 'front'; result.frameVisibleOnly = true; result.framePadding = 0.57;
+  result.selectionOutline = false; result.transparentBackground = true;
+  result.topology = {system, structure, field, poles, fieldArrows, coil, shaft, spinner, windings, arms, driveSpinner, rings, ringSpinner, ringMeshes, ringKeys, ringBrushes, ringLeads, commutator, barSpinner, segments, barLeads, barBrushes, output, frame, zeroLine, ringTrace, barTrace, cursor, load, resistor, switchPivot, blade, studs, wires, powerRail, powerBar, currentArrows, forces, coilCurrentArrows, forceArrows, leads, tapWires, ringTap, barTap, feedTops};
+  const dispose = result.dispose; result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;
 }

@@ -1,0 +1,143 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {generatorPlan, generatorAt, COIL, BRIDGE, GENERATOR_DEFAULTS} from './grid-physics.js';
+import {createGeneratorModel, METER, BENCH, CHART, chartX, chartY} from './grid-generator-model.js';
+import {electricGeneratorLesson, acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
+import {tally, checkDisposal} from './model-check-kit.mjs';
+import {createPartExplosion} from './part-explosion.js';
+
+const t = tally();
+let states = 0, poses = 0, contacts = 0;
+const near = (a,b,label,tolerance=1e-8) => t.near(a,b,tolerance*Math.max(1,Math.abs(b)),label);
+const direction = arrow => new THREE.Vector3(0,1,0).applyQuaternion(arrow.quaternion);
+const anchors = [
+  [{}, 125.66370614359175, 124.6584603195747, 88.14684262424544, 0, 776.9865864623489, 6.265619833232383],
+  [{load:1}, 125.66370614359175, 116.28637302301576, 82.22688292416285, 0, 6761.260275423984, 545.2280286101902],
+  [{output:1}, 125.66370614359175, 124.6584603195747, 88.14604722743958, 79.31169663982412, 776.9725641822008, 8.032538419835499],
+  [{output:1,closed:0},125.66370614359175,125.66370614359175,88.85685695228165,79.95126616152767,0,1.7670316622702307],
+];
+for (const [values,peak,terminalPeak,rms,mean,load,heat] of anchors) {
+  const p=generatorPlan(values);
+  for(const [key,expected] of Object.entries({peak,terminalPeak,terminalRms:rms,terminalMean:mean,loadPower:load,windingPower:heat}))near(p[key],expected,'independent circuit anchor '+key);
+}
+for(const output of [0,1])for(const closed of [0,1])for(const speed of [0,60,1500,3000,3600])for(const field of [0,.5,1.2])for(const turns of [2,20,40])for(const load of [1,10,50]) {
+  const p=generatorPlan({output,closed,speed,field,turns,load});
+  near(p.winding,1.68e-8*turns*.6/2.5e-6,'copper resistance from sourced resistivity and declared wire');
+  for(let i=0;i<=48;i++) {
+    const s=generatorAt(p,(p.period??0)*i/48);
+    near(s.loadVoltage,s.current*load,'resistor Ohm law');
+    if(closed)near(s.terminal,s.loadVoltage,'brushes and closed load share terminal voltage');
+    else near(s.loadVoltage,0,'disconnected load has no voltage');
+    near(s.coilEmf,s.coilCurrent*p.winding+(s.bridged?0:(output?Math.sign(Math.sin(s.theta)):1)*s.terminal),'coil loop voltage balance');
+    near(s.drivePower,s.loadPower+s.windingPower,'instantaneous power conservation');
+    near(s.torque*p.omega,s.drivePower,'shaft torque supplies electrical work');
+    t.ok(s.torque>=-1e-10&&s.loadPower>=0&&s.windingPower>=0,'passive circuit never drives shaft');
+    if(!speed||!field)t.ok(s.current===0&&s.coilEmf===0,'zero induction boundary');
+    states++;
+  }
+}
+// Midpoint quadrature independently averages a full turn, including the short bridges.
+for(const values of [{},{output:1},{output:1,closed:0},{load:1},{turns:40,speed:3600,field:1.2}]) {
+  const p=generatorPlan(values),n=90000;
+  let voltage=0,square=0,load=0,heat=0,drive=0;
+  for(let i=0;i<n;i++) {const s=generatorAt(p,p.period*(i+.5)/n);voltage+=s.terminal;square+=s.terminal**2;load+=s.loadPower;heat+=s.windingPower;drive+=s.drivePower;}
+  near(voltage/n,p.terminalMean,'mean output integrated',1e-6);
+  near(Math.sqrt(square/n),p.terminalRms,'RMS output integrated',1e-6);
+  near(load/n,p.loadPower,'load energy per turn integrated',1e-6);
+  near(heat/n,p.windingPower,'winding heat including open-load commutation',1e-6);
+  near(drive/n,p.drivePower,'integrated shaft input',1e-6);
+}
+const model=createGeneratorModel(),g=model.topology;
+const materialBefore=model.root.rotation.clone();model.root.rotation.set(0,0,0);
+function rayHit(mesh,point,outward) {
+  const ray=new THREE.Raycaster(point.clone().addScaledVector(outward,.04),outward.clone().negate(),0,.08);
+  return ray.intersectObject(mesh,false).length>0;
+}
+for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.003,.007,.0625,.125,.25,.5,.503,.507,.75,1]) {
+  model.reset();model.update({output,turns});model.advance(COIL.show*share);model.root.updateMatrixWorld(true);
+  const s=model.getState(),now=s.now;poses++;
+  t.ok(g.rings.visible===!output&&g.commutator.visible===!!output,'only installed contacts visible');
+  near(g.spinner.rotation.x,now.theta,'drawn winding phase');near(g.driveSpinner.rotation.x,now.theta,'driver coupled to shaft');
+  const path=g.windings.userData.path;
+  t.ok(path.length===turns*4+1,'one continuous wound path');
+  for(let k=0;k<turns;k++) {
+    const a=new THREE.Vector3(...path[k*4+1]),b=new THREE.Vector3(...path[k*4+2]);
+    near(a.distanceTo(b)/METER,.2,'active side length');
+    near(Math.abs(path[k*4][2]-path[k*4+1][2])/METER,.1,'turn width');
+  }
+  const leads=output?g.barLeads:g.ringLeads;
+  for(let i=0;i<2;i++)assert.deepEqual(leads[i].userData.path[0],i?path.at(-1):path[0],'lead starts at actual winding end');
+  g.windings.geometry.computeBoundingBox();
+  const localBox=g.windings.geometry.boundingBox.clone().applyMatrix4(g.spinner.matrix);
+  t.ok(localBox.min.y>-.8&&localBox.max.y<.8,'copper clears both poles over rotation');
+  for(let side=-1;side<=1;side+=2) {
+    const x=output?BENCH.barX:(side>0?BENCH.ringB:BENCH.ringA),assembly=output?g.commutator:g.rings;
+    for(const angle of [-4.9,0,4.9]) {
+      const a=angle*Math.PI/180,radial=new THREE.Vector3(0,side*Math.cos(a),side*Math.sin(a));
+      const point=new THREE.Vector3(x,0,0).addScaledVector(radial,.18);assembly.localToWorld(point);
+      const meshes=output?g.segments:g.ringMeshes;
+      const hit=meshes.map(m=>rayHit(m,point,radial));
+      if(!output)t.ok(hit[side>0?1:0]&&!hit[side>0?0:1],'brush contact on its own complete ring');
+      else t.ok(hit.filter(Boolean).length<=1,'segments remain electrically separated at each contact point');
+      contacts++;
+    }
+    if(output) {
+      const hits=new Set();for(let a=-4.9;a<=4.91;a+=.2) {
+        const rad=a*Math.PI/180,outward=new THREE.Vector3(0,side*Math.cos(rad),side*Math.sin(rad));
+        const point=new THREE.Vector3(x,0,0).addScaledVector(outward,.18);assembly.localToWorld(point);
+        g.segments.forEach((m,index)=>{if(rayHit(m,point,outward))hits.add(index);});
+      }
+      t.ok(hits.size>0,'wide brush always touches copper');
+      t.ok((hits.size===2)===now.bridged,'drawn brush bridging agrees with electrical mask');
+    }
+  }
+  for(const arrow of g.currentArrows)if(arrow.visible)near(direction(arrow).x,Math.sign(now.current),'both load arrows follow same series current');
+  for(let i=0;i<2;i++)if(g.forceArrows[i].visible) {
+    const force=direction(g.forceArrows[i]),current=direction(g.coilCurrentArrows[i]),lorentz=current.clone().cross(new THREE.Vector3(0,-1,0));
+    near(force.dot(lorentz),1,'reaction force follows I cross B');
+    t.ok(g.forceArrows[i].position.clone().cross(force).x<=1e-10,'drawn reaction opposes positive rotation');
+  }
+  const curve=g.ringTrace.geometry.attributes.position;
+  for(let i=0;i<curve.count;i+=20){near(curve.getX(i),chartX(s.chart[i].theta),'chart angle',1e-6);near(curve.getY(i),chartY(s.chart[i].rings),'loaded voltage chart',1e-6);t.ok(Math.abs(s.chart[i].rings)<=CHART.volts,'trace fits voltage scale');}
+}
+model.root.rotation.copy(materialBefore);
+const expected = [
+  ['Turn the shaft',88.15,777.0,783.3],['Turn half as fast',44.07,194.2,195.8],['Double the turns',174.89,3058.8,3108.1],
+  ['Switch the field off',0,0,0],['Open the switch',88.86,0,0],['A heavier load',82.23,6761.3,7306.5],['Hold the shaft still',0,0,0],
+  ['Change to a split ring',79.31,777.0,785.0],['Open the split-ring load',79.95,0,1.8],
+];
+for(const [i,trial] of electricGeneratorLesson.tryIt.entries()) {
+  assert.equal(trial.title,expected[i][0]);assert.deepEqual(Object.keys(trial.values).sort(),Object.keys(GENERATOR_DEFAULTS).sort());
+  model.reset();model.update(trial.values);model.advance(8);const s=model.getState();
+  near(s.alternating?s.terminalRms:s.terminalMean,expected[i][1],trial.title+' output',.0005);
+  t.near(s.loadPower,expected[i][2],.051,trial.title+' average load');t.near(s.drivePower,expected[i][3],.051,trial.title+' shaft input');
+  t.ok(s.turning?model.playback.complete():model.playback.blocked(),trial.title+' named finished or blocked state');
+}
+for(const lesson of [electricGeneratorLesson,acGeneratorLesson,dcGeneratorLesson,generatorSlipRingsLesson])for(const trial of lesson.tryIt) {
+  model.reset();model.update(trial.values);model.advance(8);const s=model.getState();
+  t.ok(s.readings.every(x=>!/(NaN|undefined|Infinity)/.test(x.value)),'all shared lesson trials produce finite readings');
+}
+model.reset();model.advance(2);const time=model.getState().clock;
+for(const action of model.actions){action.run();near(model.getState().clock,time,'inspection preserves phase');t.ok(model.parts.some(p=>p.id===action.part),'inspection target exists');}
+model.update({load:1});near(model.getState().clock,0,'changed setting restarts experiment');
+model.advance(8);t.ok(model.playback.complete(),'one turn ends');model.reset();t.ok(!model.playback.complete(),'reset enables replay');
+model.advance(2);const quarter=model.getState().now;model.reset();for(let i=0;i<200;i++)model.advance(.01);near(model.getState().now.terminal,quarter.terminal,'frame-step independence');
+model.reset();model.update({speed:0});t.ok(model.playback.blocked(),'zero speed explicitly blocked');
+model.reset();model.advance(2);
+for(const aspect of [.65,1.25,2]) {
+  const camera=new THREE.OrthographicCamera(-10,10,10,-10,.01,100);camera.position.set(8,5,12);camera.lookAt(0,0,0);camera.updateMatrixWorld(true);
+  const state=JSON.stringify(model.getState()),view=createPartExplosion(model,camera,aspect);
+  try {
+    assert.deepEqual(new Set(view.categories.map(c=>c.id)),new Set(['stationary-group','rotating-group','circuit-group','output']));
+    t.ok(view.items.every(item=>!['system','forces'].includes(item.id)),'guides do not become scattered parts');
+    for(const category of view.categories)for(let i=0;i<category.items.length;i++)for(let j=i+1;j<category.items.length;j++) {
+      const a=category.inner.get(category.items[i]),b=category.inner.get(category.items[j]);
+      t.ok(Math.abs(a.x-b.x)>=(a.w+b.w)/2-1e-8||Math.abs(a.y-b.y)>=(a.h+b.h)/2-1e-8,'separated parts do not overlap');
+    }
+    for(const amount of [0,.5,1,0]){view.update(amount);assert.equal(JSON.stringify(model.getState()),state,'separation preserves experiment');}
+    t.ok(view.items.every(item=>item.group.position.length()<1e-10),'exact reassembly');
+  }finally{view.dispose();}
+}
+model.dispose();
+const released=checkDisposal(createGeneratorModel(),t);
+console.log(`PASS generator: ${t.count} checks; ${states} circuit states; ${poses} geometry poses; ${contacts} contact probes; ${released} resources disposed once.`);

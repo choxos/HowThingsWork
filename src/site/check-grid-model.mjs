@@ -11,6 +11,7 @@
 // integrated. Then every drawn turn, disc, tower and curve is read back from
 // the geometry at swept settings and times.
 import assert from 'node:assert/strict';
+import './check-generator-model.mjs';
 import * as THREE from 'three';
 import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
@@ -116,10 +117,10 @@ for (const values of [{}, {output: 1}, {output: 1, turns: 40}, {load: 1}]) {
   const mean = simpson(time => terminal(time), 0, T0, 4000) / T0;
   const heat = simpson(time => P.generatorAt(plan, time).loadPower, 0, T0, 4000) / T0;
   if (plan.alternating) {
-    t.near(Math.sqrt(meanSquare), plan.rms, relative(plan.rms, 2e-6), 'the root mean square of the sine, integrated');
+    t.near(Math.sqrt(meanSquare), plan.terminalRms, relative(plan.terminalRms, 2e-6), 'the root mean square of the sine, integrated');
     t.near(mean, 0, relative(plan.peak, 1e-6) + 1e-9, 'whose mean over a whole turn is nothing');
   } else {
-    t.near(mean, plan.mean, relative(plan.mean, 2e-4), 'the mean of the commutated output, integrated');
+    t.near(mean, plan.terminalMean, relative(plan.terminalMean, 2e-4), 'the mean of the commutated output, integrated');
     t.near(plan.mean, plan.peak * 2 * Math.cos(P.BRIDGE) / Math.PI, relative(plan.mean, 1e-12), 'which is 2cos(bridge)/π of the peak');
   }
   t.near(heat, plan.loadPower, relative(plan.loadPower, 5e-4) + 1e-9, 'and the load power, integrated over the turn');
@@ -260,72 +261,7 @@ const clear = (model, ids, gap, what) => {
   }
 };
 
-// The generator: every turn drawn, the coil clear of the poles, both traces.
-const generatorSettings = [{}, {output: 1}, {turns: 2}, {turns: 40, load: 1}, {speed: 600, field: 0.2}, {closed: 0}, {output: 1, turns: 40, speed: 3600}, {speed: 0}, {field: 0}];
-for (const values of generatorSettings) {
-  const plan = P.generatorPlan(values);
-  for (const share of [0, 0.125, 0.3, 0.5, 0.75, 1]) {
-    generator.reset();
-    generator.update(values);
-    generator.advance(P.COIL.show * share);
-    generator.root.updateMatrixWorld(true);
-    const state = generator.getState(), now = state.now;
-    counts.poses++;
-    t.near(state.clock, plan.period === null ? 0 : plan.period * share, 1e-12, 'the clock runs one turn over the seconds the scale gives');
-    t.near(G.spinner.rotation.x, now.theta, 1e-12, 'the coil drawn at the angle it has turned to');
-    t.ok(Math.abs(G.ringSpinner.rotation.x - now.theta) < 1e-12 && Math.abs(G.barSpinner.rotation.x - now.theta) < 1e-12, 'and the rings and the split ring with it');
-
-    // Every turn asked for, drawn, at its true size and pitch.
-    const winding = pointsOf(G.windings);
-    t.ok(winding.length === plan.turns * 8, `${plan.turns} turns drawn as ${plan.turns * 8} points`);
-    for (let k = 0; k < plan.turns; k++) {
-      const corners = GM.turnCorners(k, plan.turns);
-      t.near(corners[0][1], (k - (plan.turns - 1) / 2) * GM.WIRE * GM.METER, 1e-12, 'each turn one wire diameter from the last');
-      t.ok(Math.abs(Math.abs(corners[0][0]) - P.COIL.length / 2 * GM.METER) < 1e-12 && Math.abs(Math.abs(corners[0][2]) - P.COIL.width / 2 * GM.METER) < 1e-12, 'each turn the true size of the loop');
-      for (let i = 0; i < 4; i++) { const drawn = winding[k * 8 + i * 2]; t.ok(Math.abs(drawn[0] - corners[i][0]) < DRAWN && Math.abs(drawn[1] - corners[i][1]) < DRAWN, 'drawn where the loop is'); }
-      counts.turns++;
-    }
-    // The coil never touches a pole.
-    const coilBox = boxOf(G.spinner);
-    t.ok(coilBox.max.y - GM.MACHINE[1] < GM.BENCH.gap - 1e-3 && GM.MACHINE[1] - coilBox.min.y < GM.BENCH.gap - 1e-3, 'the coil stays clear of both poles');
-
-    // The two traces and the cursor.
-    const rings = pointsOf(G.ringTrace), bars = pointsOf(G.barTrace);
-    t.ok(rings.length === P.GENERATOR_SAMPLES && bars.length === P.GENERATOR_SAMPLES, 'both outputs drawn over the whole turn');
-    for (let i = 0; i < P.GENERATOR_SAMPLES; i += 20) {
-      const theta = 2 * Math.PI * i / (P.GENERATOR_SAMPLES - 1);
-      t.near(rings[i][0], GM.chartX(theta), DRAWN, 'the slip ring trace across in angle');
-      t.near(rings[i][1], GM.chartY(plan.peak * Math.sin(theta)), DRAWN, 'and up in voltage');
-      t.near(bars[i][1], GM.chartY(P.commutatedEmf(plan.peak, theta)), DRAWN, 'the split ring trace at the size of the same sine, notched');
-      t.ok(bars[i][1] >= GM.chartY(0) - DRAWN, 'and never below zero');
-      counts.points++;
-    }
-    const cursor = pointsOf(G.cursor);
-    t.near((cursor[0][0] + cursor[1][0]) / 2, GM.chartX(now.theta), DRAWN, 'the cursor where the shaft is');
-    t.near(cursor[0][1], GM.chartY(now.terminal), DRAWN, 'at the voltage the chosen contacts are handing out');
-    // The leads go to whichever contacts are chosen.
-    const tap = pointsOf(G.tapWires);
-    t.near(tap[0][0], plan.alternating ? GM.MACHINE[0] + GM.BENCH.ringA : GM.MACHINE[0] + GM.BENCH.barX, DRAWN, 'the load wired to the rings or to the split ring');
-    // The field arrows follow the field.
-    t.near(G.fieldArrows[0].userData.length, plan.field > 0 ? 2 * GM.BENCH.gap * plan.field / 1.2 : 0, 1e-12, 'the field arrows as long as the field is strong');
-  }
-}
-clear(generator, ['output', 'load'], 0.05, 'generator');
-{
-  generator.reset();
-  generator.root.updateMatrixWorld(true);
-  const machine = new THREE.Box3();
-  for (const id of ['field', 'coil', 'rings', 'commutator']) machine.union(boxOf(generator.parts.find(item => item.id === id).object));
-  for (const id of ['output', 'load']) {
-    const other = boxOf(generator.parts.find(item => item.id === id).object);
-    t.ok(machine.max.x + 0.05 <= other.min.x || other.max.x + 0.05 <= machine.min.x || machine.max.y + 0.05 <= other.min.y || other.max.y + 0.05 <= machine.min.y, `the machine stays clear of the ${id}`);
-  }
-  // Each brush touches its own ring, and the two rings never touch each other.
-  t.ok(Math.abs(GM.BENCH.ringA - GM.BENCH.ringB) > GM.BENCH.ringWidth, 'the two slip rings stand apart');
-  for (const brush of G.ringBrushes) t.near(Math.abs(brush.position.y) - GM.BENCH.brushSize / 2, GM.BENCH.ringRadius + GM.BENCH.brushGap, 1e-12, 'each brush face sits on its ring');
-  for (const brush of G.barBrushes) t.near(Math.abs(brush.position.y) - GM.BENCH.brushSize / 2, GM.BENCH.barRadius + GM.BENCH.brushGap, 1e-12, 'and each split ring brush on the copper');
-  t.ok(G.ringBrushes[0].position.x !== G.ringBrushes[1].position.x, 'the two ring brushes ride different rings');
-}
+const generatorSettings = [{}, {output: 1}, {turns: 2}, {turns: 40, load: 1}, {closed: 0}, {speed: 0}, {field: 0}];
 
 // The transformer: the core, the windings, the curves and the bars.
 const transformerSettings = [{}, {stage: 0, primaryTurns: 3, secondaryTurns: 60}, {stage: 2, primaryTurns: 55, secondaryTurns: 2}, {load: 0}, {load: 120, winding: 1}, {core: 1, primaryTurns: 72, secondaryTurns: 1}];
@@ -463,40 +399,6 @@ const def = P.generatorPlan({}), dcDef = P.generatorPlan({output: 1});
 const midDef = P.transformerPlan({}), upDef = P.transformerPlan({stage: 0, primaryTurns: 3, secondaryTurns: 60}), homeDef = P.transformerPlan({stage: 2, primaryTurns: 55, secondaryTurns: 2});
 const lineDef = P.linePlan({});
 
-checkTrialNumbers(GL.electricGeneratorLesson, {
-  'Turn the shaft': s => ({'125.66': s.peak, '88.86': s.rms, '50': s.frequency, '777.0': s.loadPower, '783.3': s.drivePower}),
-  'Turn half as fast': s => ({'62.83': s.peak, '25.00': s.frequency, '194.2': s.loadPower}),
-  'Double the turns': s => ({'251.33': s.peak, '0.1613': s.winding, '24.0': s.turns * 2 * (P.COIL.length + P.COIL.width), '3,058.8': s.loadPower}),
-  'Switch the field off': s => ({'0.000': s.fluxPeak * 1000, '0.00': s.peak}),
-  'Open the switch': s => ({'125.66': s.peak, '0.00': s.currentPeak, '0.0': s.loadPower}),
-  'A heavier load': s => ({'116.29': s.currentPeak, '6,761.3': s.loadPower, '545.228': s.windingPower, '7,306.5': s.drivePower}),
-  'Hold the shaft still': s => ({'400.000': s.fluxPeak * 1000, '0.00': s.peak, '0.0': s.loadPower}),
-}, runGenerator, t);
-checkTrialNumbers(GL.acGeneratorLesson, {
-  'Watch one whole turn': s => ({'125.66': s.peak, '88.86': s.rms, '50': s.frequency}),
-  'Turn faster': s => ({'150.80': s.peak, '106.63': s.rms, '60.00': s.frequency}),
-  'Turn slower': s => ({'62.83': s.peak, '25.00': s.frequency}),
-  'Halve the field': s => ({'200.000': s.fluxPeak * 1000, '62.83': s.peak, '194.2': s.loadPower}),
-  'A lighter load': s => ({'2.51': s.currentPeak, '157.4': s.loadPower, '0.254': s.windingPower}),
-  'Open the switch': s => ({'125.66': s.peak, '0.00': s.currentPeak, '0.0': s.loadPower}),
-}, runGenerator, t);
-checkTrialNumbers(GL.dcGeneratorLesson, {
-  'Watch the split ring': s => ({'125.66': s.peak, '79.95': s.mean}),
-  'The brush bridges the gap': s => ({'0.1613': s.winding, '3.534': s.peak ** 2 * s.bridgeShare / s.winding, '52.866': s.windingPower}),
-  'Open the switch': s => ({'0.0': s.loadPower, '1.767': s.windingPower}),
-  'Turn slower': s => ({'62.83': s.peak, '39.98': s.mean}),
-  'A lighter load': s => ({'157.4': s.loadPower}),
-  'Halve the field': s => ({'39.98': s.mean, '194.2': s.loadPower}),
-}, runGenerator, t);
-checkTrialNumbers(GL.generatorSlipRingsLesson, {
-  'Follow one ring': s => ({'125.66': s.peak}),
-  'Open the switch': s => ({'125.66': s.peak, '0.00': s.currentPeak}),
-  'More turns behind them': s => ({'251.33': s.peak}),
-  'Turn slower': s => ({'62.83': s.peak, '25.00': s.frequency}),
-  'A heavier load': s => ({'116.29': s.currentPeak}),
-  'A lighter load': s => ({'2.51': s.currentPeak, '157.4': s.loadPower}),
-}, runGenerator, t);
-
 checkTrialNumbers(TL.transformerLesson, {
   'Run two cycles': s => ({'132': s.primaryVolts / 1000, '11': s.secondaryVolts / 1000, '239.8': s.primaryCurrent, '2,863.6': s.secondaryCurrent, '99.535': 100 * s.efficiency}),
   'More turns on the secondary': s => ({'22': s.secondaryVolts / 1000, '478.4': s.primaryCurrent, '239.8': midDef.primaryCurrent}),
@@ -597,70 +499,9 @@ covered(lineLimits, {
   [`${f0(P.SITE.dry / 1e6)} MΩ for every mm of creepage dry and ${f0(P.SITE.wet / 1000)} kΩ wet`]: '500 MΩ for every mm of creepage dry and 500 kΩ wet',
 }, 'line limits');
 
-for (const lesson of [GL.electricGeneratorLesson, GL.acGeneratorLesson, GL.dcGeneratorLesson, GL.generatorSlipRingsLesson]) expectNone(lesson, 'generator family');
+
 for (const lesson of [TL.transformerLesson, TL.transformerTurnsRatioLesson, TL.transmissionTransformerLesson, TL.distributionTransformerLesson, TL.homeSupplyTransformerLesson]) expectNone(lesson, 'transformer family');
 for (const lesson of [LL.electricityTransmissionLesson, LL.powerLineInsulatorLesson, LL.powerPylonLesson]) expectNone(lesson, 'line family');
-
-covered(GL.electricGeneratorLesson.deeper[0].body, {
-  [`${f0(def.turns)} turns of ${f2(P.COIL_AREA)} m² at ${f0(def.field)} T and ${f1(def.omega)} rad/s give ${f2(def.peak)} V`]: '20 turns of 0.02 m² at 1 T and 314.2 rad/s give 125.66 V',
-}, 'generator deeper 1');
-covered(GL.electricGeneratorLesson.deeper[1].body, {
-  [`peaks at ${f2(def.peak)} V is not ${f2(def.peak)} V of useful voltage`]: 'peaks at 125.66 V is not 125.66 V of useful voltage',
-  [`the peak divided by the square root of two: ${f2(def.rms)} V`]: 'the peak divided by the square root of two: 88.86 V',
-  [`2/π of the peak, which here is ${f2(dcDef.mean)} V`]: '2/π of the peak, which here is 79.95 V',
-}, 'generator deeper 2');
-covered(GL.electricGeneratorLesson.deeper[2].body, {
-  [`At ${f0(def.turns)} turns the loop carries ${f1(def.turns * 2 * (P.COIL.length + P.COIL.width))} m of ${f1(P.COIL.wire * 1e6)} mm² copper, whose resistivity of ${f2(P.RESISTIVITY.copper * 1e8)} × 10⁻⁸ Ω·m makes ${f4(def.winding)} Ω`]: 'At 20 turns the loop carries 12.0 m of 2.5 mm² copper, whose resistivity of 1.68 × 10⁻⁸ Ω·m makes 0.0806 Ω',
-  [`${f3(def.windingPower)} W here, against ${f1(def.loadPower)} W delivered`]: '6.266 W here, against 777.0 W delivered',
-}, 'generator deeper 3');
-covered(GL.electricGeneratorLesson.deeper[3].body, {
-  [`the speed divided by ${f0(60)}`]: 'the speed divided by 60',
-  [`N = ${f0(P.SYNCHRONOUS.constant)} f / P`]: 'N = 120 f / P',
-  [`a machine with ${f0(P.SYNCHRONOUS.poles)} poles has to turn at ${f0(def.synchronous.fifty)} rpm to make ${f0(P.SUPPLY.frequency)} Hz and ${f0(def.synchronous.sixty)} rpm to make ${f0(60)} Hz`]: 'a machine with 2 poles has to turn at 3,000 rpm to make 50 Hz and 3,600 rpm to make 60 Hz',
-}, 'generator deeper 4');
-covered(GL.electricGeneratorLesson.deeper[4].body, {
-  [`${f1(def.loadPower)} W goes to the resistor, ${f3(def.windingPower)} W heats the winding, and the shaft supplies ${f1(def.drivePower)} W`]: '777.0 W goes to the resistor, 6.266 W heats the winding, and the shaft supplies 783.3 W',
-}, 'generator deeper 5');
-covered(GL.electricGeneratorLesson.deeper[5].body, {}, 'generator deeper 6');
-covered(GL.electricGeneratorLesson.quiz.explanation, {}, 'generator quiz');
-
-covered(GL.acGeneratorLesson.deeper[0].body, {}, 'ac deeper 1');
-covered(GL.acGeneratorLesson.deeper[1].body, {
-  [`the speed over ${f0(60)}`]: 'the speed over 60',
-  [`N = ${f0(P.SYNCHRONOUS.constant)} f / P`]: 'N = 120 f / P',
-  [`A machine with ${f0(P.SYNCHRONOUS.poles)} poles turns at ${f0(def.synchronous.fifty)} rpm for ${f0(P.SUPPLY.frequency)} Hz`]: 'A machine with 2 poles turns at 3,000 rpm for 50 Hz',
-  [`and ${f0(def.synchronous.sixty)} rpm for the ${f0(60)} Hz`]: 'and 3,600 rpm for the 60 Hz',
-}, 'ac deeper 2');
-covered(GL.acGeneratorLesson.deeper[2].body, {
-  [`${f2(def.rms)} V RMS here does the work of a steady ${f2(def.rms)} V, though the peak is ${f2(def.peak)} V`]: '88.86 V RMS here does the work of a steady 88.86 V, though the peak is 125.66 V',
-}, 'ac deeper 3');
-covered(GL.acGeneratorLesson.deeper[3].body, {
-  [`half the speed gave ${f1(P.generatorPlan({speed: 1500}).loadPower)} W where full speed gave ${f1(def.loadPower)} W`]: 'half the speed gave 194.2 W where full speed gave 777.0 W',
-}, 'ac deeper 4');
-covered(GL.acGeneratorLesson.deeper[4].body, {}, 'ac deeper 5');
-covered(GL.acGeneratorLesson.quiz.explanation, {}, 'ac quiz');
-
-covered(GL.dcGeneratorLesson.deeper[0].body, {}, 'dc deeper 1');
-covered(GL.dcGeneratorLesson.deeper[1].body, {
-  [`zero up to ${f2(dcDef.peak)} V and back, twice a turn. Its average is 2/π of the peak, ${f2(dcDef.mean)} V`]: 'zero up to 125.66 V and back, twice a turn. Its average is 2/π of the peak, 79.95 V',
-}, 'dc deeper 2');
-covered(GL.dcGeneratorLesson.deeper[2].body, {
-  [`that moment is ${f0(P.BRIDGE * 180 / Math.PI)}° either side of each crossing`]: 'that moment is 2° either side of each crossing',
-  [`it still costs ${f3(dcDef.peak ** 2 * dcDef.bridgeShare / dcDef.winding)} W in the winding`]: 'it still costs 1.767 W in the winding',
-}, 'dc deeper 3');
-covered(GL.dcGeneratorLesson.deeper[3].body, {
-  [`delivers ${f1(def.loadPower)} W through slip rings and ${f3(dcDef.loadPower)} W through a split ring`]: 'delivers 777.0 W through slip rings and 776.973 W through a split ring',
-}, 'dc deeper 4');
-covered(GL.dcGeneratorLesson.deeper[4].body, {}, 'dc deeper 5');
-covered(GL.dcGeneratorLesson.quiz.explanation, {}, 'dc quiz');
-
-for (const [i] of GL.generatorSlipRingsLesson.deeper.entries()) {
-  if (i === 4) covered(GL.generatorSlipRingsLesson.deeper[i].body, {
-    [`the current fall to ${f2(P.generatorPlan({closed: 0}).currentPeak)} A while the coil goes on making ${f2(def.peak)} V`]: 'the current fall to 0.00 A while the coil goes on making 125.66 V',
-  }, 'slip rings deeper 5');
-  else covered(GL.generatorSlipRingsLesson.deeper[i].body, {}, `slip rings deeper ${i + 1}`);
-}
-covered(GL.generatorSlipRingsLesson.quiz.explanation, {}, 'slip rings quiz');
 
 covered(TL.transformerLesson.deeper[0].body, {}, 'transformer deeper 1');
 covered(TL.transformerLesson.deeper[1].body, {[`lags the induced EMF by ${f0(90)} degrees`]: 'lags the induced EMF by 90 degrees'}, 'transformer deeper 2');
@@ -795,13 +636,6 @@ covered(LL.powerPylonLesson.quiz.explanation, {}, 'pylon quiz');
 
 // The models' own words: the scales and the slowed clocks, where the reader sees them.
 const partText = (model, id) => model.parts.find(item => item.id === id).description;
-covered(partText(generator, 'system'), {[`1 m to ${f0(GM.METER)} scene units`]: '1 m to 10 scene units', [`drawn in ${f0(P.COIL.show)} seconds`]: 'drawn in 8 seconds'}, 'generator system text');
-covered(partText(generator, 'field'), {[`${f0(2 * GM.BENCH.gap / GM.METER * 1000)} mm apart`]: '160 mm apart'}, 'generator field text');
-covered(partText(generator, 'coil'), {[`A loop ${f0(P.COIL.length * 1000)} by ${f0(P.COIL.width * 1000)} mm, wound with ${f1(P.COIL.wire * 1e6)} mm² copper wire ${f2(GM.WIRE * 1000)} mm across`]: 'A loop 200 by 100 mm, wound with 2.5 mm² copper wire 1.78 mm across'}, 'generator coil text');
-covered(partText(generator, 'commutator'), {[`gaps are ${f0(P.COIL.gap)}° wide and the brush faces ${f0(P.COIL.brush)}°`]: 'gaps are 6° wide and the brush faces 10°', [`bridges both halves for ${f0(P.BRIDGE * 180 / Math.PI)}° either side`]: 'bridges both halves for 2° either side'}, 'generator commutator text');
-covered(partText(generator, 'output'), {[`fixed scale of ${f0(GM.CHART.volts)} V up and down`]: 'fixed scale of 400 V up and down'}, 'generator output text');
-covered(partText(generator, 'load'), {[`fixed scale of ${f0(GM.LOAD.watts)} W`]: 'fixed scale of 1,400 W'}, 'generator load text');
-covered(partText(generator, 'rings'), {}, 'generator rings text');
 covered(partText(transformer, 'system'), {[`1 m to ${f1(TM.CORE_SCALE)} scene units`]: '1 m to 0.6 scene units', [`stands for ${f0(P.WINDING.per)} real turns`]: 'stands for 20 real turns', [`run ${f0(P.WINDING.cycles)} cycles, drawn in ${f0(P.WINDING.show)} seconds`]: 'run 2 cycles, drawn in 8 seconds'}, 'transformer system text');
 covered(partText(transformer, 'core'), {[`the same ${f1(TM.WINDOW.width)} by ${f1(TM.WINDOW.height)} m at every stage`]: 'the same 1.2 by 1.8 m at every stage'}, 'transformer core text');
 covered(partText(transformer, 'windings'), {[`standing for ${f0(P.WINDING.per)} real turns`]: 'standing for 20 real turns'}, 'transformer windings text');
@@ -817,13 +651,6 @@ covered(partText(lineModel, 'ladder'), {}, 'line ladder text');
 
 // The readings carry the lessons' figures.
 {
-  generator.reset();
-  const readings = generator.getState().readings, find = label => readings.find(item => item.label === label);
-  t.ok(readings.map(item => item.label).join() === 'Your result,Output,Frequency,Load,Winding heat,Shaft,Flux,Slowed', 'the generator has eight readings, its result first');
-  t.ok(find('Output').value === `${f2(def.rms)} V RMS` && find('Frequency').value === `${f2(def.frequency)} Hz` && find('Load').value === `${f1(def.loadPower)} W` && find('Shaft').value === `${f1(def.drivePower)} W` && find('Slowed').value === `${f0(def.slow)} times`, 'and they carry the figures the lessons quote');
-  generator.update({speed: 0});
-  const still = generator.getState().readings;
-  t.ok(still.find(item => item.label === 'Output').value === '0 V' && still.find(item => item.label === 'Frequency').value === 'not turning' && still.find(item => item.label === 'Slowed').value === 'not turning', 'and say so plainly when the shaft is not turning');
   transformer.reset();
   const trReadings = transformer.getState().readings, trFind = label => trReadings.find(item => item.label === label);
   t.ok(trReadings[0].label === 'Your result' && trReadings.length === 11, 'the transformer has eleven readings, its result first');
@@ -890,7 +717,7 @@ for (const [model, domains, defaults, keys, what] of [
     t.ok(typeof control.label === 'string' && control.label.length > 0 && !/[—–]| - |--/.test(control.help || ''), `${what}: ${control.key} is labeled and free of dashes`);
   }
   t.ok(model.parts.every(item => item.description && !/[—–]| - |--/.test(item.description)), `${what}: every part described, with no dashes`);
-  t.ok(model.parts.every(item => item.id === 'system' || item.parentId === 'system'), `${what}: every part a child of the system`);
+  t.ok(model.parts.every(item => item.id === 'system' || model.parts.some(parent => parent.id === item.parentId)), `${what}: every part has a valid assembly parent`);
   t.ok(model.initialPart === 'system' && model.frameVisibleOnly === true && typeof model.framePadding === 'number', `${what}: frames what is visible, from the system`);
   t.ok(model.topology && Object.keys(model.topology).length > 10, `${what}: its topology is exported`);
 }
@@ -899,7 +726,7 @@ checkRefusals(P.sampleTransformer, P.TRANSFORMER_DOMAINS, t);
 checkRefusals(P.sampleLine, P.LINE_DOMAINS, t);
 
 generator.reset();
-checkControlsMove(generator, () => [pointsOf(G.windings).length, G.spinner.rotation.x, G.fieldArrows[0].userData.length, G.switchPivot.rotation.z, G.powerBar.scale.x, G.currentArrows[0].userData.length, G.effort.userData.length, pointsOf(G.ringTrace).slice(0, 8), pointsOf(G.cursor), pointsOf(G.tapWires)], m => m.advance(3), t);
+checkControlsMove(generator, () => [G.windings.geometry.attributes.position.count, G.spinner.rotation.x, G.fieldArrows[0].userData.length, G.switchPivot.rotation.z, G.powerBar.scale.x, G.currentArrows[0].userData.length, pointsOf(G.ringTrace).slice(0, 8), pointsOf(G.cursor), G.rings.visible], m => m.advance(3), t);
 transformer.reset();
 checkControlsMove(transformer, () => [pointsOf(T2.primaryCoil).length, pointsOf(T2.secondaryCoil).length, T2.limbs[0].scale.x, T2.limbs[0].material.color.getHex(), T2.primaryCoil.material.color.getHex(), T2.fluxArrows[0].userData.length, T2.barMeshes.map(bar => bar.scale.x), pointsOf(T2.bestMark), T2.loadBox.scale.x, T2.drawArrow.userData.length, pointsOf(T2.voltageCurve).slice(0, 6)], m => m.advance(2), t);
 lineModel.reset();
