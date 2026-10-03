@@ -33,7 +33,7 @@ export function windingPath(turns) {
   return points;
 }
 
-export function createGeneratorModel() {
+export function createGeneratorModel({commutatorLesson = false} = {}) {
   const kit = houseModel('Electric generator'), {part, control, finish} = kit;
   let clock = 0, lastClock = 0, drawnTurns = -1, disposed = false;
   const system = part('system', 'Generator and electrical load', 'An ideal shaft driver turns an insulated winding in a uniform magnetic field. Select slip rings or a split ring to compare the two ways of taking current off the rotating coil.');
@@ -86,11 +86,12 @@ export function createGeneratorModel() {
   const ringBrushes = [BENCH.ringA, BENCH.ringB].map((x, i) => sector(rings, x, BENCH.ringRadius, BENCH.ringRadius + 0.12, 0.075, (i ? 1 : -1) * Math.PI / 2 - COIL.brush * Math.PI / 360, COIL.brush * Math.PI / 180, COLORS.ink));
   const ringLeads = [0, 1].map(() => wire([[0, 0, 0], [0, 0, 1]], ringSpinner, WIRE * METER / 2));
 
-  const commutator = part('commutator', 'Split ring and fixed brushes', 'Each copper half connects to one winding end. The 10° curved brush faces exceed the 6° insulating gaps, shorting the winding for 2° on either side of each voltage zero. This resistive model omits switching arcs and inductance.', MACHINE, system);
+  const commutator = part('commutator', 'Split ring and fixed brushes', 'Each colored copper half connects to one winding end. Cream separators insulate the halves. The 10° curved brush faces exceed the 6° insulating gaps, shorting the winding for 2° on either side of each voltage zero. This resistive model omits switching arcs and inductance.', MACHINE, system);
   const barSpinner = new THREE.Group(); commutator.add(barSpinner);
   const sleeve = kit.cylinder(0.1, BENCH.barLength, [BENCH.barX, 0, 0], 'cream', barSpinner); sleeve.rotation.z = Math.PI / 2;
   const gap = COIL.gap * Math.PI / 180;
   const segments = [0, 1].map(i => sector(barSpinner, BENCH.barX, 0.1, BENCH.barRadius, BENCH.barLength, Math.PI / 2 + gap / 2 + i * Math.PI, Math.PI - gap, i ? COLORS.brass : COLORS.copper));
+  const segmentInsulators = [0, 1].map(i => sector(barSpinner, BENCH.barX, 0.1, BENCH.barRadius, BENCH.barLength, Math.PI / 2 - gap / 2 + i * Math.PI, gap, 0xf3edcc));
   const barBrushes = [1, -1].map(side => sector(commutator, BENCH.barX, BENCH.barRadius, BENCH.barRadius + 0.12, 0.15, side * Math.PI / 2 - COIL.brush * Math.PI / 360, COIL.brush * Math.PI / 180, COLORS.ink));
   const barLeads = [0, 1].map(() => wire([[0, 0, 0], [0, 0, 1]], barSpinner, WIRE * METER / 2));
 
@@ -197,6 +198,8 @@ export function createGeneratorModel() {
       r('Brush voltage', `${fixed(now.terminal, 2)} V`, 'Instantaneous voltage between the contacted brushes. With the load switch open it can remain nonzero.'),
       r('Load voltage', `${fixed(now.loadVoltage, 2)} V`, 'Instantaneous voltage across the resistor, equal to current times load resistance. Zero when its switch is open.'),
       r('Load current', `${fixed(now.current, 3)} A`, 'Conventional current. Positive flows left to right through the pictured resistor. AC reverses each half turn.'),
+      r('Winding current', `${fixed(now.coilCurrent, 3)} A`, 'Signed current inside the rotating winding. During a split-ring bridge, it can circulate through the brushes even with the external load open.'),
+      r('Shaft angle', `${fixed(now.theta * 180 / Math.PI, 1)}°`, 'Mechanical angle within this turn. Each Step advances 22.5°. Voltage peaks at 90° and 270°.'),
       r('Frequency', turning ? `${fixed(plan.frequency, 2)} Hz` : 'not turning', 'One full coil-voltage cycle per shaft revolution. The split ring gives two output pulses per revolution.'),
       r('Load', `${fixed(plan.loadPower, 1)} W`, 'Cycle-average resistor heating. The bar shows instantaneous power on its labeled scale.'),
       r('Winding heat', `${heat(plan.windingPower)} W`, plan.alternating ? 'Cycle-average I²R loss in the copper.' : `Includes ${heat(plan.peak ** 2 * plan.bridgeShare / plan.winding)} W during the short brush bridges, even with the load switch open. No arcing model is included.`),
@@ -222,6 +225,15 @@ export function createGeneratorModel() {
     {label: 'Inspect the load', part: 'load', view: 'front', replay: false, run: () => render()},
     {label: 'Inspect the voltage chart', part: 'output', view: 'front', isolate: true, replay: false, run: () => render()},
   ];
+  if (commutatorLesson) result.actions.push({
+    label: 'Pause at brush bridge', part: 'commutator', view: 'side', isolate: true, replay: false,
+    run: () => {
+      render({...result.getState().values, output: 1});
+      clock = (result.getState().period ?? 0) * 179 / 360;
+      lastClock = 0;
+      return render();
+    },
+  });
   result.playback = {label: 'Turn the shaft', description: 'One complete turn, drawn in eight seconds. Pause freezes the measured phase.', stepLabel: 'Advance a sixteenth of a turn', advance: result.advance, step: () => result.advance(COIL.show / 16), complete: () => result.getState().now.done, blocked: () => !result.getState().turning};
   result.resultPart = {id: 'output', label: 'Inspect brush voltage', view: 'front', focusOnComplete: false, available: () => result.getState().now.done};
   forces.userData.explosionExcluded = true;
@@ -242,7 +254,7 @@ export function createGeneratorModel() {
   kit.root.rotation.set(0.08, -0.12, 0);
   result.initialPart = 'system'; result.initialView = 'front'; result.frameVisibleOnly = true; result.framePadding = 0.57;
   result.selectionOutline = false; result.transparentBackground = true;
-  result.topology = {system, structure, field, poles, fieldArrows, coil, shaft, spinner, windings, arms, driveSpinner, rings, ringSpinner, ringMeshes, ringKeys, ringBrushes, ringLeads, commutator, barSpinner, segments, barLeads, barBrushes, output, frame, zeroLine, ringTrace, barTrace, cursor, load, resistor, switchPivot, blade, studs, wires, powerRail, powerBar, currentArrows, forces, coilCurrentArrows, forceArrows, leads, tapWires, ringTap, barTap, feedTops};
+  result.topology = {system, structure, field, poles, fieldArrows, coil, shaft, spinner, windings, arms, driveSpinner, rings, ringSpinner, ringMeshes, ringKeys, ringBrushes, ringLeads, commutator, barSpinner, segments, segmentInsulators, barLeads, barBrushes, output, frame, zeroLine, ringTrace, barTrace, cursor, load, resistor, switchPivot, blade, studs, wires, powerRail, powerBar, currentArrows, forces, coilCurrentArrows, forceArrows, leads, tapWires, ringTap, barTap, feedTops};
   const dispose = result.dispose; result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;
 }

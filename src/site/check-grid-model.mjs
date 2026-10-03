@@ -667,7 +667,7 @@ covered(partText(lineModel, 'ladder'), {}, 'line ladder text');
 const lessons = [GL.electricGeneratorLesson, GL.acGeneratorLesson, GL.dcGeneratorLesson, GL.generatorSlipRingsLesson, TL.transformerLesson, TL.transformerTurnsRatioLesson, TL.transmissionTransformerLesson, TL.distributionTransformerLesson, TL.homeSupplyTransformerLesson, LL.electricityTransmissionLesson, LL.powerLineInsulatorLesson, LL.powerPylonLesson];
 for (const lesson of lessons) {
   t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${lesson.simple}: a quiz with its answer first`);
-  t.ok(lesson.steps.length === 5 && lesson.parts.length >= 3 && lesson.tryIt.length >= 6 && lesson.deeper.length >= 5, `${lesson.simple}: five steps, six trials and five deeper sections at least`);
+  t.ok(lesson.steps.length >= 5 && lesson.parts.length >= 3 && lesson.tryIt.length >= 6 && lesson.deeper.length >= 5, `${lesson.simple}: five steps, six trials and five deeper sections at least`);
   const all = [lesson.simple, lesson.overview, lesson.misconception, lesson.limits, lesson.quiz.question, lesson.quiz.explanation, ...lesson.quiz.options, ...lesson.steps.flatMap(step => [step.title, step.body]), ...lesson.parts.flatMap(item => [item.name, item.role]), ...lesson.deeper.flatMap(item => [item.title, item.body]), ...lesson.tryIt.flatMap(item => [item.title, item.instruction, item.observe]), ...lesson.sources.map(source => source.title)];
   for (const text of all) t.ok(!/[—–]| - |--/.test(text), `no dashes as punctuation: ${text.slice(0, 60)}`);
   for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre)\b/i.test(text), `American spelling: ${text.slice(0, 60)}`);
@@ -675,8 +675,8 @@ for (const lesson of lessons) {
 }
 t.ok(dailyLifeLessons['Electric generator'] === GL.electricGeneratorLesson && dailyLifeLessons['Transformer'] === TL.transformerLesson && dailyLifeLessons['Electricity transmission'] === LL.electricityTransmissionLesson, 'the three machines are routed to their lessons');
 for (const [name, machine, part, lesson, values] of [
-  ['AC generator', 'Electric generator', 'output', GL.acGeneratorLesson, {output: 0}],
-  ['DC generator', 'Electric generator', 'commutator', GL.dcGeneratorLesson, {output: 1}],
+  ['AC generator', 'Electric generator', 'system', GL.acGeneratorLesson, {output: 0}],
+  ['DC generator', 'Electric generator', 'system', GL.dcGeneratorLesson, {output: 1}],
   ['Generator slip rings', 'Electric generator', 'rings', GL.generatorSlipRingsLesson, {output: 0}],
   ['Transformer turns ratio', 'Transformer', 'windings', TL.transformerTurnsRatioLesson, undefined],
   ['Transmission transformer', 'Transformer', 'core', TL.transmissionTransformerLesson, {stage: 0, primaryTurns: 3, secondaryTurns: 60}],

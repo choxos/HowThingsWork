@@ -94,7 +94,7 @@ export const catalogMachineComponents = components => components.filter(entry =>
 // What a scene pictures for an item: its machine, close up on the item's own part.
 export const previewOf = (entry, components) => {
   const component = components[entry.name];
-  return {id: entry.id, name: component?.machine || entry.name, part: component?.part === 'system' ? undefined : component?.part};
+  return {id: entry.id, name: component?.machine || entry.name, part: component?.part === 'system' ? undefined : component?.part, ...(component?.values ? {values: {...component.values}} : {})};
 };
 
 // Part links stay inside an existing published lesson; they do not create new lessons.

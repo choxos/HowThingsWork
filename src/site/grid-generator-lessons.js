@@ -86,19 +86,36 @@ export const acGeneratorLesson = {
   quiz: {question: 'Why does the resistor heat during both halves of an AC cycle?', options: ['Voltage and current reverse together, keeping their product nonnegative.', 'The resistor stores the negative current until it becomes positive.', 'The slip rings secretly rectify the current.'], answer: 0, explanation: 'For this resistive load, voltage equals current times positive resistance. Power is therefore current squared times resistance, regardless of current direction.'},
 };
 
-const dc = trial('output', {output: 1}), dcLoad = trial('load', {output: 1});
+const dc = trial('system', {output: 1}), dcLoad = trial('load', {output: 1}), dcBridge = trial('commutator', {output: 1});
 export const dcGeneratorLesson = {
   ...electricGeneratorLesson,
   simple: 'How can a reversing coil deliver current in one direction?',
   overview: 'The split ring swaps which winding end each brush contacts every half turn. That exchange coincides with the internal voltage reversal, so the external current keeps one sign. The output is pulsating DC, not a steady battery voltage. Watch the red trace and inspect the curved brush faces at the insulating gaps.',
+  steps: [
+    {title: 'Turn the connected winding', body: 'The shaft drives the copper winding and both insulated commutator halves together. Each half stays connected to one winding end.'},
+    {title: 'Deliver the first pulse', body: 'After four Steps, the shaft reaches 90°. Positive coil EMF drives positive current through the pictured resistor.'},
+    {title: 'Exchange brush connections', body: 'Near 180°, each fixed brush crosses an insulating gap to the other copper half. The winding voltage is reversing at the same part of the turn.'},
+    {title: 'Inspect the short bridge', body: 'Click Pause at brush bridge to stop a moving shaft at 179°. Both brushes span the gaps: external voltage and current are zero, but current can circulate inside the winding. A stopped shaft remains stopped.'},
+    {title: 'Deliver the second pulse', body: 'After Reset and twelve Steps, the shaft reaches 270°. Coil voltage and winding current are negative, but the exchanged connections keep load voltage and load current positive.'},
+    {title: 'Supply the losses too', body: 'The mechanical driver supplies resistor heating and copper heating, including the short bridging intervals. The permanent magnetic field provides no net energy.'},
+  ],
   tryIt: [
-    dc('Watch the split ring', 'Run and follow the red trace.', 'The brush peak is 124.66 V and its mean is 79.31 V. There are two positive pulses in each turn.'),
-    dc('The brush bridges the gap', 'Run the larger winding and inspect the crossings.', 'The winding resistance is 0.1613 Ω. Brush bridges account for 3.534 W of its 52.866 W average heating. Switching sparks are outside this resistive model.', {turns: 40}),
-    dcLoad('Open the switch', 'Disconnect the external load.', 'Load power is zero, but internal brush bridges still cause 1.767 W of winding heating.', {closed: 0}),
+    dc('Watch the split ring', 'Press Step four times, then eight more times. Compare winding current with load current.', 'At both 90° and 270°, brush voltage is +124.66 V and load current +12.466 A. Winding current reverses. Mean brush output is 79.31 V; two positive pulses occur per turn.'),
+    dcBridge('The brush bridges the gap', 'Click Pause at brush bridge to inspect the larger winding at 179°, then press Play to continue.', 'Load current is zero at the bridge, while winding current is 27.197 A. Winding resistance is 0.1613 Ω. Bridges account for 3.534 W of its 52.866 W average heating. Switching sparks are outside this resistive model.', {turns: 40}),
+    dcLoad('Open the switch', 'Disconnect the external load, then click Pause at brush bridge.', 'At 179°, load current stays at zero while winding current is 27.197 A. Internal bridges cause 1.767 W average winding heating even with the external switch open.', {closed: 0}),
     dc('Turn slower', 'Run at half speed.', 'The brush peak falls to 62.33 V and its mean to 39.66 V.', {speed: 1500}),
     dcLoad('A lighter load', 'Increase resistance while keeping the same speed.', 'Average load power falls to 157.4 W. The load current still has one direction.', {load: 50}),
     dc('Halve the field', 'Run with half the field strength.', 'The brush mean falls to 39.66 V and average load power to 194.2 W.', {field: 0.5}),
   ],
+  deeper: [
+    {title: 'The winding still produces AC', body: 'The internal induction follows the same sine wave as with slip rings. The split ring changes which winding end reaches each brush. Away from the gaps, this gives the absolute value of the sine at the load, reduced by the copper voltage drop.'},
+    {title: 'One polarity, two pulses', body: 'At 3000 rpm the winding completes 50 electrical cycles each second. Rectification produces 100 output pulses per second. At the default load, brush peak is 124.66 V, mean is 79.31 V and RMS is 88.15 V. Mean describes signed average; RMS determines resistor heating. Neither is the instantaneous peak.'},
+    {title: 'Why the brush can short the winding', body: 'The illustrated brush face spans 10° and each insulating gap spans 6°. For 2° on either side of a voltage zero, a brush touches both copper halves. The two winding terminals are then joined through the brush. Their external voltage becomes zero, but the small nonzero internal EMF on either side of the crossing drives current through the winding resistance.'},
+    {title: 'Inspect a bridge without catching a fast frame', body: 'Pause at brush bridge selects split-ring contacts and positions a moving shaft at 179°, without changing field, turns, speed or load. Play continues from there. Reset starts a new full turn. At zero speed it keeps the shaft stopped. With the switch open, compare zero load current with nonzero winding current during this checkpoint.'},
+    {title: 'Why real commutation is harder', body: 'Real windings store magnetic energy. Their current cannot reverse instantly, and brush contact resistance changes across a gap. This resistive model omits those effects and cannot predict sparks, brush temperature or operating limits. Its bridge loss is a teaching result, not a rating for a real generator.'},
+    ...deeper,
+  ],
+  sources: [...sourceList, sources.acPower, sources.selfInductance],
   misconception: 'The split ring reverses connections. It neither smooths the voltage nor stores energy between pulses.',
   quiz: {question: 'What does a split ring do that continuous slip rings do not?', options: ['It exchanges the winding ends connected to the brushes every half turn.', 'It stores charge to fill the spaces between pulses.', 'It prevents the internal coil voltage from reversing.'], answer: 0, explanation: 'The internal voltage still reverses. Swapping its connection at the same time preserves the external polarity.'},
 };

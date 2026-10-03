@@ -20,6 +20,7 @@ import {infraredSignalingLesson, diodeLesson, lightEmittingDiodeLesson, photodio
 import {rgbSubpixelsLesson, oledDisplayLesson} from './lcd-lessons.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
 import {acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
+import {createGeneratorModel} from './grid-generator-model.js';
 import {transformerTurnsRatioLesson, transmissionTransformerLesson, distributionTransformerLesson, homeSupplyTransformerLesson} from './grid-transformer-lessons.js';
 import {powerLineInsulatorLesson, powerPylonLesson} from './grid-line-lessons.js';
 import {phonemesLesson} from './speech-lessons.js';
@@ -134,7 +135,7 @@ export const houseComponents={
  'Polarizing sunglasses':{machine:'Polarized light',part:'glasses',isolate:false,view:'front',values:{mode:1,brewster:1,material:0,glasses:1,analyzer:0},lesson:polarizingSunglassesLesson,intro:polarizingSunglassesLesson.simple},
  'Binocular prisms':{machine:'Binoculars',part:'probe',isolate:false,view:'front',values:{mode:1,index:1.5,angle:0},lesson:binocularPrismsLesson,intro:binocularPrismsLesson.simple},
  'AC generator':{machine:'Electric generator',part:'system',isolate:false,view:'front',values:{output:0},lesson:acGeneratorLesson,intro:acGeneratorLesson.simple},
- 'DC generator':{machine:'Electric generator',part:'commutator',isolate:false,view:'front',values:{output:1},lesson:dcGeneratorLesson,intro:dcGeneratorLesson.simple},
+ 'DC generator':{machine:'Electric generator',createModel:()=>createGeneratorModel({commutatorLesson:true}),part:'system',isolate:false,view:'front',values:{output:1},lesson:dcGeneratorLesson,intro:dcGeneratorLesson.simple},
  'Generator slip rings':{machine:'Electric generator',part:'rings',isolate:false,view:'front',values:{output:0},lesson:generatorSlipRingsLesson,intro:generatorSlipRingsLesson.simple},
  'Transformer turns ratio':{machine:'Transformer',part:'windings',isolate:false,view:'front',lesson:transformerTurnsRatioLesson,intro:transformerTurnsRatioLesson.simple},
  'Transmission transformer':{machine:'Transformer',part:'core',isolate:false,view:'front',values:{stage:0,primaryTurns:3,secondaryTurns:60},lesson:transmissionTransformerLesson,intro:transmissionTransformerLesson.simple},

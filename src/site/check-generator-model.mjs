@@ -53,7 +53,7 @@ function rayHit(mesh,point,outward) {
   const ray=new THREE.Raycaster(point.clone().addScaledVector(outward,.04),outward.clone().negate(),0,.08);
   return ray.intersectObject(mesh,false).length>0;
 }
-for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.003,.007,.0625,.125,.25,.5,.503,.507,.75,1]) {
+for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.003,.007,.0625,.125,.25,179/360,.5,.503,.507,.75,1]) {
   model.reset();model.update({output,turns});model.advance(COIL.show*share);model.root.updateMatrixWorld(true);
   const s=model.getState(),now=s.now;poses++;
   t.ok(g.rings.visible===!output&&g.commutator.visible===!!output,'only installed contacts visible');
@@ -67,6 +67,12 @@ for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.00
   }
   const leads=output?g.barLeads:g.ringLeads;
   for(let i=0;i<2;i++)assert.deepEqual(leads[i].userData.path[0],i?path.at(-1):path[0],'lead starts at actual winding end');
+  if(output)for(const side of [1,-1]) {
+    const point=g.barSpinner.localToWorld(new THREE.Vector3(BENCH.barX+.3,side*.14,0));
+    const ray=new THREE.Raycaster(point,new THREE.Vector3(-1,0,0),0,.6);
+    t.ok(g.segments.every(mesh=>ray.intersectObject(mesh,false).length===0),'insulating slot has no copper end cap');
+    t.ok(ray.intersectObject(g.segmentInsulators[side>0?0:1],false).length>0,'visible nonconducting separator fills the slot');
+  }
   g.windings.geometry.computeBoundingBox();
   const localBox=g.windings.geometry.boundingBox.clone().applyMatrix4(g.spinner.matrix);
   t.ok(localBox.min.y>-.8&&localBox.max.y<.8,'copper clears both poles over rotation');
@@ -101,6 +107,37 @@ for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.00
   for(let i=0;i<curve.count;i+=20){near(curve.getX(i),chartX(s.chart[i].theta),'chart angle',1e-6);near(curve.getY(i),chartY(s.chart[i].rings),'loaded voltage chart',1e-6);t.ok(Math.abs(s.chart[i].rings)<=CHART.volts,'trace fits voltage scale');}
 }
 model.root.rotation.copy(materialBefore);
+const dcExpected = [
+  ['Watch the split ring',79.31,777.0,8.033],['The brush bridges the gap',157.36,3058.8,52.866],
+  ['Open the switch',79.95,0,1.767],['Turn slower',39.66,194.2,2.008],
+  ['A lighter load',79.82,157.4,2.021],['Halve the field',39.66,194.2,2.008],
+];
+for(const [i,trial] of dcGeneratorLesson.tryIt.entries()) {
+  const [title,mean,power,heat]=dcExpected[i];assert.equal(trial.title,title);
+  model.reset();model.update(trial.values);const p=model.getState();
+  t.near(p.terminalMean,mean,.0051,title+' stated mean voltage');
+  t.near(p.loadPower,power,.051,title+' stated mean load');t.near(p.windingPower,heat,.00051,title+' stated winding loss');
+  model.advance(2);const a=model.getState().now;model.advance(4);const b=model.getState().now;
+  near(a.terminal,b.terminal,title+' equal positive output peaks');near(a.current,b.current,title+' same load direction');
+  near(a.coilCurrent,-b.coilCurrent,title+' internal winding current still reverses');
+  t.ok(a.terminal>0&&a.current>=0&&b.current>=0,title+' no negative pulse');
+  model.advance(2);t.ok(model.playback.complete(),title+' completed cycle');
+}
+const checkpointModel=createGeneratorModel({commutatorLesson:true}),checkpoint=checkpointModel.actions.at(-1);
+assert.equal(checkpoint.label,'Pause at brush bridge');
+for(const speed of [0,1500,3000,3600])for(const turns of [20,40])for(const closed of [0,1])for(const field of [0,.5,1]) {
+  const values={output:0,speed,turns,closed,field,load:50};checkpointModel.update(values);checkpointModel.advance(6);checkpoint.run();
+  const p=checkpointModel.getState(),s=p.now;
+  assert.deepEqual(p.values,{...values,output:1},'checkpoint preserves experiment settings and selects split ring');
+  near(s.theta,speed?179*Math.PI/180:0,'checkpoint phase');
+  t.ok(s.bridged&&s.current===0&&s.terminal===0,'checkpoint connects an internal short, not the load');
+  const emf=turns*field*.02*(2*Math.PI*speed/60)*Math.sin(179*Math.PI/180);
+  near(s.coilCurrent,emf/(turns*.6*1.68e-8/2.5e-6),'checkpoint current independently follows winding resistance');
+  t.ok(checkpointModel.playback.blocked()===!speed,'checkpoint cannot start a stopped shaft');
+  const theta=s.theta;checkpointModel.advance(.1);
+  if(speed)t.ok(checkpointModel.getState().now.theta>theta,'play continues after checkpoint');
+}
+checkpointModel.reset();near(checkpointModel.getState().clock,0,'checkpoint reset returns to start');checkpointModel.dispose();
 const expected = [
   ['Turn the shaft',88.15,777.0,783.3],['Turn half as fast',44.07,194.2,195.8],['Double the turns',174.89,3058.8,3108.1],
   ['Switch the field off',0,0,0],['Open the switch',88.86,0,0],['A heavier load',82.23,6761.3,7306.5],['Hold the shaft still',0,0,0],
@@ -160,4 +197,5 @@ for(const aspect of [.65,1.25,2]) {
 }
 model.dispose();
 const released=checkDisposal(createGeneratorModel(),t);
-console.log(`PASS generator: ${t.count} checks; ${states} circuit states; ${poses} geometry poses; ${contacts} contact probes; ${released} resources disposed once.`);
+const checkpointReleased=checkDisposal(createGeneratorModel({commutatorLesson:true}),t);
+console.log(`PASS generator: ${t.count} checks; ${states} circuit states; ${poses} geometry poses; ${contacts} contact probes; ${released+checkpointReleased} resources disposed once across both variants.`);

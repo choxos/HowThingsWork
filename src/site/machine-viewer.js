@@ -41,7 +41,7 @@ export function renderRoomMachines(container,entries,factory=createMachine) {
   if(!thumbnailCaches.has(factory))thumbnailCaches.set(factory,new Map());
   const thumbnails=thumbnailCaches.get(factory);
   // An entry may name one part of its machine; each machine is built once and pictured whole or close up on that part.
-  const key=entry=>entry.part?entry.name+'#'+entry.part:entry.name;
+  const key=entry=>JSON.stringify([entry.name,entry.part||null,Object.entries(entry.values||{}).sort(([a],[b])=>a.localeCompare(b))]);
   const pending=entries.filter(entry=>!thumbnails.has(key(entry)));
   if(pending.length) {
     let renderer;
@@ -51,10 +51,12 @@ export function renderRoomMachines(container,entries,factory=createMachine) {
       const model=factory(name),group=pending.filter(entry=>entry.name===name);
       if(!model){for(const entry of group)thumbnails.set(key(entry),null);continue;}
       const scene=new THREE.Scene();lighting(scene);scene.add(model.root);
+      const variants=group.some(entry=>entry.values),initialValues={...(model.getState?.().values||model.defaults)};
       const omitted=(model.thumbnailOmit||[]).map(object=>[object,object.parent]),origin=model.root.position.clone();
       try{
         for(const [object] of omitted)object.removeFromParent();
         for(const entry of group){
+          if(variants){model.reset?.();model.update?.({...initialValues,...entry.values});}
           model.root.position.copy(origin);
           // A part is pictured on its own: only its objects and the lights share the camera's layer.
           const part=entry.part&&model.parts?.find(item=>item.id===entry.part)?.object,alone=part&&shownInModel(part)?part:null;

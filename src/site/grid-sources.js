@@ -5,6 +5,7 @@ export const sources = {
   generatorPhysics: {title: 'OpenStax: Electric generators and back EMF', url: 'https://openstax.org/books/university-physics-volume-2/pages/13-6-electric-generators-and-back-emf'},
   terminalVoltage: {title: 'OpenStax: Internal resistance and terminal voltage', url: 'https://openstax.org/books/university-physics-volume-2/pages/10-1-electromotive-force'},
   acPower: {title: 'OpenStax: Power in an AC circuit', url: 'https://openstax.org/books/university-physics-volume-2/pages/15-4-power-in-an-ac-circuit'},
+  selfInductance: {title: 'OpenStax: Self-inductance and inductors', url: 'https://openstax.org/books/university-physics-volume-2/pages/14-2-self-inductance-and-inductors'},
   magneticTorque: {title: 'OpenStax: Force and torque on a current loop', url: 'https://openstax.org/books/university-physics-volume-2/pages/11-5-force-and-torque-on-a-current-loop'},
   conductorResistance: {title: 'OpenStax: Resistivity and resistance', url: 'https://openstax.org/books/university-physics-volume-2/pages/9-3-resistivity-and-resistance'},
   unswGenerator: {title: 'UNSW Physics: Electric motors and generators', url: 'https://www.animations.physics.unsw.edu.au/jw/electricmotors.html'},

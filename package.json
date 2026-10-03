@@ -38,6 +38,8 @@
     "check:publication-boundary": "node scripts/check-public-preview-boundary.mjs",
     "check:generator": "node src/site/check-generator.mjs",
     "check:ac-generator": "node src/site/check-generator.mjs ac-generator",
+    "check:dc-generator": "node src/site/check-generator.mjs dc-generator",
+    "check:room-previews": "node src/site/check-room-previews.mjs",
     "check:aircon": "node src/site/check-aircon.mjs",
     "check:mechanical-clock": "node src/site/check-pendulum-clock.mjs"
   },
