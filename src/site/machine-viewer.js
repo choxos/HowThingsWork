@@ -38,43 +38,54 @@ export function bindObjectDragging(canvas,camera,root,controls){
 const thumbnailCaches=new WeakMap();
 const shownInModel=object=>{for(let item=object;item;item=item.parent)if(!item.visible)return false;return true;};
 export function renderRoomMachines(container,entries,factory=createMachine) {
-  if(!thumbnailCaches.has(factory))thumbnailCaches.set(factory,new Map());
-  const thumbnails=thumbnailCaches.get(factory);
-  // An entry may name one part of its machine; each machine is built once and pictured whole or close up on that part.
-  const key=entry=>JSON.stringify([entry.name,entry.part||null,Object.entries(entry.values||{}).sort(([a],[b])=>a.localeCompare(b))]);
-  const pending=entries.filter(entry=>!thumbnails.has(key(entry)));
-  if(pending.length) {
+  const cache=entry=>{
+    const builder=entry.createModel||factory;
+    if(!thumbnailCaches.has(builder))thumbnailCaches.set(builder,new Map());
+    return thumbnailCaches.get(builder);
+  };
+  const key=entry=>JSON.stringify([entry.name,entry.part||null,Object.entries(entry.values||{}).sort(([a],[b])=>a.localeCompare(b)),entry.initialState??null]);
+  const groups=new Map();
+  for(const entry of entries){
+    if(cache(entry).has(key(entry)))continue;
+    const builder=entry.createModel||factory;
+    if(!groups.has(builder))groups.set(builder,new Map());
+    const machines=groups.get(builder);
+    if(!machines.has(entry.name))machines.set(entry.name,[]);
+    machines.get(entry.name).push(entry);
+  }
+  if(groups.size) {
     let renderer;
     try{renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});}catch{return;}
     renderer.setSize(360,300);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
-    for(const name of new Set(pending.map(entry=>entry.name))) {
-      const model=factory(name),group=pending.filter(entry=>entry.name===name);
-      if(!model){for(const entry of group)thumbnails.set(key(entry),null);continue;}
-      const scene=new THREE.Scene();lighting(scene);scene.add(model.root);
-      const variants=group.some(entry=>entry.values),initialValues={...(model.getState?.().values||model.defaults)};
-      const omitted=(model.thumbnailOmit||[]).map(object=>[object,object.parent]),origin=model.root.position.clone();
-      try{
-        for(const [object] of omitted)object.removeFromParent();
-        for(const entry of group){
-          if(variants){model.reset?.();model.update?.({...initialValues,...entry.values});}
-          model.root.position.copy(origin);
-          // A part is pictured on its own: only its objects and the lights share the camera's layer.
-          const part=entry.part&&model.parts?.find(item=>item.id===entry.part)?.object,alone=part&&shownInModel(part)?part:null;
-          const {camera}=frameModel(model,1.2,alone);
-          if(alone){scene.traverse(object=>{if(object.isLight)object.layers.enable(1);});alone.traverse(object=>object.layers.enable(1));camera.layers.set(1);}
-          renderer.render(scene,camera);
-          if(alone)alone.traverse(object=>object.layers.disable(1));
-          thumbnails.set(key(entry),renderer.domElement.toDataURL('image/png'));
+    try{
+      for(const [builder,machines] of groups)for(const [name,group] of machines) {
+        const model=builder(name),thumbnails=thumbnailCaches.get(builder);
+        if(!model){for(const entry of group)thumbnails.set(key(entry),null);continue;}
+        const scene=new THREE.Scene();lighting(scene);scene.add(model.root);
+        const variants=group.some(entry=>entry.values||entry.initialState),initialValues={...(model.getState?.().values||model.defaults)};
+        const omitted=(model.thumbnailOmit||[]).map(object=>[object,object.parent]),origin=model.root.position.clone();
+        try{
+          for(const [object] of omitted)object.removeFromParent();
+          for(const entry of group){
+            if(variants){model.reset?.(structuredClone(entry.initialState));model.update?.({...initialValues,...entry.values});}
+            model.root.position.copy(origin);
+            // A part is pictured on its own: only its objects and the lights share the camera's layer.
+            const part=entry.part&&model.parts?.find(item=>item.id===entry.part)?.object,alone=part&&shownInModel(part)?part:null;
+            const {camera}=frameModel(model,1.2,alone);
+            if(alone){scene.traverse(object=>{if(object.isLight)object.layers.enable(1);});alone.traverse(object=>object.layers.enable(1));camera.layers.set(1);}
+            renderer.render(scene,camera);
+            if(alone)alone.traverse(object=>object.layers.disable(1));
+            thumbnails.set(key(entry),renderer.domElement.toDataURL('image/png'));
+          }
+        }finally{
+          for(const [object,parent] of omitted)parent?.add(object);
+          model.dispose();
         }
-      }finally{
-        for(const [object,parent] of omitted)parent?.add(object);
-        model.dispose();
       }
-    }
-    renderer.dispose();renderer.forceContextLoss();
+    }finally{renderer.dispose();renderer.forceContextLoss();}
   }
   for(const entry of entries) {
-    const source=thumbnails.get(key(entry));
+    const source=cache(entry).get(key(entry));
     if(source)for(const button of container.querySelectorAll(`[data-machine="${entry.id}"]`)){const image=document.createElement('img');image.src=source;image.alt='';image.className='machine-thumbnail';button.querySelector('svg')?.replaceWith(image);}
   }
 }
