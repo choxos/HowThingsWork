@@ -131,7 +131,8 @@ export const publishedEntryIds = [
   "anchor-escapement",
   "mechanical-watch",
   "lever-escapement",
-  "hairspring"
+  "hairspring",
+  "liquid-in-glass-thermometer"
 ];
 
 // Built but not yet published. Only a dev server started with

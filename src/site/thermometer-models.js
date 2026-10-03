@@ -2,44 +2,14 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {lineObject, chartText, textLabel} from './scene-kit.js';
-import {sampleThermometer, sampleSix, LIQUIDS, MEDIA, BULB, SIX, THERMOMETER_DEFAULTS, THERMOMETER_DOMAINS, SIX_DEFAULTS, SIX_DOMAINS} from './thermometer-physics.js';
-
-// ---------------------------------------------------------------------------
-// Thermometers: a liquid-in-glass thermometer and Six's maximum-minimum
-// thermometer.
-//
-// Scale: one millimeter is 0.004 scene units for every length along the tubes,
-// so the column's rise per degree is drawn true. The bores, a fraction of a
-// millimeter wide, are drawn wider so the liquid shows.
-//
-// Time: the liquid-in-glass thermometer's twenty minutes play forty times faster
-// than real time; the maximum-minimum thermometer's day plays an hour a second.
-// The breeze's streaks move at a pace chosen to be seen.
-//
-// Colors: the glass bulb tints from blue at -50 degrees to red at 50; mercury
-// is silver and alcohol red.
-//
-// Charts, beside each: the reading against time, -50 to 50 degrees up (the
-// liquid-in-glass thermometer, over 1,200 s) and -30 to 50 degrees up (the
-// maximum-minimum thermometer, air in gold and bulb in red over 24 h, with the
-// indices' readings). Not to the thermometers' scale.
-// ---------------------------------------------------------------------------
+import {sampleSix, SIX, SIX_DEFAULTS, SIX_DOMAINS} from './thermometer-physics.js';
 
 const MM = 0.004;
-const STEM = {bottom: 8, top: 300, twenty: 154};
-const COLD = new THREE.Color(0x4f86c6), HOT = new THREE.Color(0xd23b1f);
 const LIQUID_COLORS = [0x9aa7ad, 0xc14f39];
-const SPEED = 40;
-const TICKS = 11;
-const GLASS_CHART = {left: 40, bottom: 20, width: 220, height: 200};
 const ARM = {left: -15, right: 15, bottom: -215, top: 195};
 const SIX_TICKS = 17;
 const SIX_CHART = {left: 95, bottom: -200, width: 220, height: 380};
 
-export const tempColor = T => COLD.clone().lerp(HOT, Math.max(0, Math.min(1, (T + 50) / 100)));
-/** Where on the stem a temperature falls, in millimeters, before clamping to the stem. */
-export const columnAt = (rise, T) => STEM.twenty + rise * 1000 * (T - 20);
-export const glassChartPoint = (t, T) => [(GLASS_CHART.left + t / BULB.duration * GLASS_CHART.width) * MM, (GLASS_CHART.bottom + (Math.max(-50, Math.min(50, T)) + 50) / 100 * GLASS_CHART.height) * MM, 0];
 export const sixChartPoint = (hours, T) => [(SIX_CHART.left + hours / 24 * SIX_CHART.width) * MM, (SIX_CHART.bottom + (Math.max(-30, Math.min(50, T)) + 30) / 80 * SIX_CHART.height) * MM, 0];
 /** A 9 am start, so many hours later, as a time of day. */
 export const timeOfDay = hours => { const minutes = Math.round((9 + hours) * 60) % 1440; return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; };
@@ -55,137 +25,7 @@ const glassTube = (kit, radius, height, y, parent, opacity = 0.25) => {
 const liquidRod = (kit, radius, parent) => { const rod = kit.cylinder(radius * MM, 1, [0, 0, 0], 'red', parent); rod.material = rod.material.clone(); return rod; };
 const setSpan = (rod, bottom, top) => { const span = Math.max(1e-4, top - bottom); rod.scale.y = span * MM; rod.position.y = (bottom + span / 2) * MM; rod.visible = top - bottom > 1e-4; };
 
-export function createLiquidThermometerModel() {
-  const kit = houseModel('Liquid-in-glass thermometer'), {root, part, control, finish} = kit;
-  const system = part('system', 'Liquid-in-glass thermometer', 'A glass bulb of liquid on a hair-thin bore. Warmth makes the liquid grow more than the glass, and the extra has nowhere to go but up the bore. Drawn at true length.');
-
-  const bulbPart = part('bulb', 'Bulb', 'Holds 0.118 mL of liquid in glass 0.4 mm thick. Its tint shows its temperature; it must warm or cool before the column can move.', [0, 0, 0], system);
-  const bulbGlass = glassTube(kit, 2.9, 6.8, 3.4, bulbPart, 0.45);
-  const bulbLiquid = liquidRod(kit, 2.5, bulbPart);
-  setSpan(bulbLiquid, 0.4, 6.4);
-
-  const stem = part('stem', 'Stem and bore', 'A glass stem 292 mm long with a bore a fraction of a millimeter across, drawn wider than it is. The liquid column’s top is the reading.', [0, 0, 0], system);
-  glassTube(kit, 3, STEM.top - STEM.bottom, (STEM.top + STEM.bottom) / 2, stem, 0.18);
-  const column = liquidRod(kit, 0.7, stem);
-
-  const scale = part('scale', 'Scale', 'Marks every 10 degrees, engraved for this bore, with 20 °C at the middle. A finer bore spreads the degrees out but fits fewer on the stem.', [5 * MM, 0, 0], system);
-  const ticks = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color: 0x374736}));
-  ticks.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TICKS * 6), 3));
-  ticks.frustumCulled = false;
-  scale.add(ticks);
-  const scaleNumbers = Array.from({length: TICKS}, (_, i) => textLabel(scale, String(-50 + 10 * i).replace('-', '−'), {height: 5 * MM, align: 'left'}));
-
-  const surroundings = part('surroundings', 'Surroundings', 'Still air, a breeze, or a beaker of stirred water around the bulb. Water carries heat fifty times better than still air.', [0, 0, 0], system);
-  const beaker = glassTube(kit, 22, 50, 22, surroundings, 0.3);
-  beaker.material.color.set(0x2f6690);
-  const streaks = [0, 1, 2].map(() => lineObject(2, 0x9aa7ad, surroundings));
-
-  const chart = part('chart', 'Reading over time', 'The reading against time, 0 to 1,200 s across and -50 to 50 °C up; the gray line is the surroundings. Not to the thermometer’s scale.', [0, 0, 0], system);
-  kit.rod(glassChartPoint(0, -50), glassChartPoint(BULB.duration, -50), 0.6 * MM, 'ink', chart);
-  kit.rod(glassChartPoint(0, -50), glassChartPoint(0, 50), 0.6 * MM, 'ink', chart);
-  const trace = lineObject(121, 0xd23b1f, chart), target = lineObject(2, 0x7a8b83, chart), cursor = lineObject(2, 0x374736, chart);
-  chartText(chart, glassChartPoint, {
-    title: 'Reading over time', size: 11 * MM,
-    x: {min: 0, max: BULB.duration, title: 'Seconds after it is moved', ticks: [[0, '0'], [600, '600'], [1200, '1,200']]},
-    y: {min: -50, max: 50, title: 'Temperature (°C)', ticks: [[-50, '−50'], [0, '0'], [50, '50']]},
-    legend: [['Reading', 0xd23b1f], ['Surroundings', 0x7a8b83]],
-  });
-
-  const specs = {
-    liquid: ['Liquid', '', LIQUIDS.map(({value, label}) => ({value, label})), 'Alcohol grows six times as much as mercury for each degree.'],
-    bore: ['Bore diameter', 'mm', null, 'A narrower bore makes the same growth climb further.'],
-    surroundings: ['Surroundings', '°C', null, 'The thermometer starts at 20 °C and is moved at once into this.'],
-    medium: ['Around the bulb', '', MEDIA.map(({value, label}) => ({value, label})), 'How well the surroundings carry heat to the bulb.'],
-  };
-  for (const [name, [min, max, step]] of Object.entries(THERMOMETER_DOMAINS)) {
-    const [label, unit, options, help] = specs[name];
-    control(name, label, min, max, step, THERMOMETER_DEFAULTS[name], unit, help, options);
-  }
-
-  let clock = 0, lastClock = 0, disposed = false, chartKey = '';
-  const result = finish(values => {
-    const s = sampleThermometer(values, clock), raw = columnAt(s.rise, s.reads), top = Math.max(STEM.bottom, Math.min(STEM.top, raw));
-    setSpan(column, STEM.bottom, top);
-    column.material.color.set(LIQUID_COLORS[values.liquid]);
-    bulbLiquid.material.color.set(LIQUID_COLORS[values.liquid]);
-    bulbGlass.material.color.copy(tempColor(s.bulb));
-    beaker.visible = values.medium === 2;
-    streaks.forEach((streak, i) => {
-      const x = ((clock * 0.2 + i * 20) % 60) - 30;
-      streak.geometry.attributes.position.array.set([(x - 8) * MM, (i * 3 + 1) * MM, 6 * MM, (x + 8) * MM, (i * 3 + 1) * MM, 6 * MM]);
-      streak.geometry.attributes.position.needsUpdate = true;
-      streak.visible = values.medium === 1;
-    });
-
-    const key = JSON.stringify(values);
-    if (key !== chartKey) {
-      chartKey = key;
-      const marks = ticks.geometry.attributes.position.array;
-      for (let i = 0; i < TICKS; i++) {
-        const y = columnAt(s.rise, -50 + 10 * i), on = y >= STEM.bottom && y <= STEM.top, length = i === 5 ? 8 : 4;
-        marks.set(on ? [0, y * MM, 0, length * MM, y * MM, 0] : [0, 0, 0, 0, 0, 0], i * 6);
-        scaleNumbers[i].visible = on; scaleNumbers[i].userData.place((length + 2) * MM, y * MM, 0);
-      }
-      ticks.geometry.attributes.position.needsUpdate = true;
-      ticks.geometry.computeBoundingSphere();
-      const line = trace.geometry.attributes.position.array;
-      for (let i = 0; i <= 120; i++) line.set(glassChartPoint(i * 10, sampleThermometer(values, i * 10).reads), i * 3);
-      trace.geometry.attributes.position.needsUpdate = true;
-      trace.geometry.computeBoundingSphere();
-      target.geometry.attributes.position.array.set([...glassChartPoint(0, values.surroundings), ...glassChartPoint(BULB.duration, values.surroundings)]);
-      target.geometry.attributes.position.needsUpdate = true;
-    }
-    cursor.geometry.attributes.position.array.set([...glassChartPoint(clock, -50), ...glassChartPoint(clock, 50)]);
-    cursor.geometry.attributes.position.needsUpdate = true;
-
-    const low = 20 - (STEM.twenty - STEM.bottom) / (s.rise * 1000), high = 20 + (STEM.top - STEM.twenty) / (s.rise * 1000);
-    const offScale = raw < STEM.bottom ? 'below the scale' : raw > STEM.top ? 'above the scale' : null;
-    const shown = s.frozen ? `frozen at ${fixed(s.freezes, 2)} °C` : offScale ?? `${fixed(s.reads, 1)} °C`;
-    return {
-      state: {...s, top, low, high, offScale},
-      readings: [
-        r('Your result', clock === 0 ? 'Ready · press Play to move it into the surroundings' : `${fixed(clock, 0)} s · reads ${shown}`),
-        r('Bulb', `${fixed(s.bulb, 2)} °C`, `Heading for ${values.surroundings} °C.`),
-        r('Column', `${fixed(s.rise * 1000, 3)} mm for each degree`, 'The bulb’s volume times the growth the glass does not match, over the bore’s area.'),
-        r('Readable to', `${fixed(s.resolution, 3)} °C`, 'A fifth of a millimeter by eye.'),
-        r('Scale covers', `${fixed(low, 1)} to ${fixed(high, 1)} °C`, high > LIQUIDS[values.liquid].boils ? `The stem is long enough for ${fixed(high, 1)} °C, but ${LIQUIDS[values.liquid].label.toLowerCase()} boils at ${LIQUIDS[values.liquid].boils} °C, so the marks above that are never used.` : undefined),
-        r('Response', `time constant ${fixed(s.tau, 1)} s`, s.settle > 0 ? `Within 0.5 °C of the surroundings after ${fixed(s.settle, 1)} s.` : 'Already within 0.5 °C.'),
-        r('Liquid', `${LIQUIDS[values.liquid].label}, freezing at ${Number(s.freezes.toFixed(2))} °C and boiling at ${LIQUIDS[values.liquid].boils} °C`),
-      ],
-    };
-  });
-
-  const render = result.update;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(BULB.duration, clock + dt * SPEED); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = lastClock = 0; return render(result.defaults); };
-  result.actions = [
-    {label: 'Inspect: the column after a minute', part: 'stem', view: 'front', replay: false, run() { clock = 60; return render(); }},
-    {label: 'Inspect: the bulb', part: 'bulb', view: 'front', replay: false, run() { return render(); }},
-    {label: 'Inspect: twenty minutes on', part: 'chart', view: 'front', replay: false, run() { clock = BULB.duration; return render(); }},
-  ];
-  result.playback = {
-    label: 'Move it into the surroundings',
-    description: 'Twenty minutes, forty times faster than real time.',
-    stepLabel: 'Advance twenty seconds',
-    advance: result.advance,
-    step: () => result.advance(20 / SPEED),
-    complete: () => clock >= BULB.duration,
-    blocked: () => false,
-  };
-
-  root.rotation.set(0.05, -0.2, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, bulbPart, bulbGlass, bulbLiquid, stem, column, scale, ticks, surroundings, beaker, streaks, chart, trace, target, cursor, MM, STEM, SPEED, LIQUID_COLORS};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
-  return result;
-}
+export {createLiquidThermometerModel} from './liquid-thermometer-model.js';
 
 export function createSixThermometerModel() {
   const kit = houseModel('Maximum-minimum thermometer'), {root, part, control, finish} = kit;

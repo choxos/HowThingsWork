@@ -1,9 +1,6 @@
-import {THERMOMETER_DEFAULTS, SIX_DEFAULTS} from './thermometer-physics.js';
+import {SIX_DEFAULTS} from './thermometer-physics.js';
 
 const trial = (defaults, part, view) => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
-const glassTrial = trial(THERMOMETER_DEFAULTS, 'system', 'front');
-const stemTrial = trial(THERMOMETER_DEFAULTS, 'stem', 'front');
-const bulbTrial = trial(THERMOMETER_DEFAULTS, 'bulb', 'front');
 const sixTrial = trial(SIX_DEFAULTS, 'system', 'front');
 const indexTrial = trial(SIX_DEFAULTS, 'indices', 'front');
 const dayTrial = trial(SIX_DEFAULTS, 'chart', 'front');
@@ -14,49 +11,7 @@ const sources = [
   {title: 'Liquid-in-glass thermometer', url: 'https://en.wikipedia.org/wiki/Thermometer'},
 ];
 
-export const liquidThermometerLesson = {
-  simple: 'How does a thread of liquid in a glass tube measure temperature, and why do you have to wait for the reading?',
-  overview: 'Nearly everything grows a little when it warms. The trick in a liquid-in-glass thermometer is to make a tiny growth easy to see: a bulb holds a relatively large amount of liquid, and the only room for its extra volume is a bore finer than a hair. A hundredth of a microliter becomes millimeters up the stem. But the bulb must first warm or cool to the temperature around it, and that takes time.',
-  steps: [
-    {title: 'Fill a bulb', body: 'A small glass bulb holds the liquid, joined to a long stem with a very fine bore.'},
-    {title: 'Let it grow', body: 'Warm liquid takes more room, and it grows much more than the glass around it does.'},
-    {title: 'Funnel the growth', body: 'The only way out is up the bore, so the small change in volume becomes a long move of the column.'},
-    {title: 'Wait for the bulb', body: 'Heat has to flow into or out of the bulb before the liquid changes. Stirred water does that fast, still air slowly.'},
-    {title: 'Read the scale', body: 'Marks engraved for that bore turn the column’s height into degrees.'},
-  ],
-  parts: [
-    {name: 'Bulb', role: 'Holds most of the liquid and takes in the heat.'},
-    {name: 'Stem and bore', role: 'Turn the liquid’s growth into a long, readable column.'},
-    {name: 'Scale', role: 'Marks the degrees for this bore.'},
-    {name: 'Surroundings', role: 'Still air, a breeze, or stirred water around the bulb.'},
-    {name: 'Reading over time', role: 'Shows how the reading creeps toward the true temperature.'},
-  ],
-  tryIt: [
-    glassTrial('Into the cold', 'Play as the thermometer moves into still air at 0 °C.', 'The column falls 1.800 mm for each degree, but slowly: after a minute it still reads 15.96 °C, and it takes 981.4 s to come within 0.5 °C.'),
-    bulbTrial('Stir it in water', 'Put the bulb in stirred water at 0 °C.', 'Water carries heat 50 times better than still air: the time constant drops from 266.1 s to 5.3 s, and the reading settles within 19.6 s.', {medium: 2}),
-    bulbTrial('A breeze', 'Hang it in a breeze at 0 °C.', 'Moving air helps: the reading settles within 245.4 s, four times sooner than in still air.', {medium: 1}),
-    stemTrial('Mercury instead', 'Choose mercury in the same 0.3 mm bore.', 'Mercury grows six times less than alcohol, so the column moves only 0.285 mm a degree and can be read only to 0.702 °C.', {liquid: 0}),
-    stemTrial('A finer bore for mercury', 'Choose mercury in a 0.15 mm bore.', 'Half the width is a quarter of the area: the column moves 1.140 mm a degree, readable to 0.175 °C.', {liquid: 0, bore: 0.15}),
-    stemTrial('Too fine a bore', 'Choose alcohol in a 0.15 mm bore.', 'Each degree spreads over 7.200 mm, readable to 0.028 °C, but the stem now holds only 40.3 °C down to 0.3 degrees below zero.', {bore: 0.15}),
-    bulbTrial('Mercury freezes', 'Put a mercury thermometer into a stirred bath of alcohol and dry ice, forty degrees below zero.', 'The thread freezes solid at 38.83 degrees below zero and stops there, though the bath is colder.', {liquid: 0, surroundings: -40, medium: 2}),
-    bulbTrial('Alcohol keeps going', 'Put an alcohol thermometer into the same kind of bath at fifty degrees below zero.', 'Alcohol does not freeze until 114 degrees below zero, so it reads the full 50 degrees below.', {surroundings: -50, medium: 2}),
-  ],
-  deeper: [
-    {title: 'Why the bore is so fine', body: 'The alcohol in this bulb grows by only 0.13 µL for each degree, a droplet too small to see. Squeezed into a bore 0.3 mm across, it makes a column 1.8 mm long.'},
-    {title: 'Glass grows too', body: 'The bulb itself gets bigger as it warms, making a little more room. Glass grows 10 millionths of its volume a degree against alcohol’s 1,090, so the column shows nearly all of the liquid’s growth.'},
-    {title: 'Waiting for the reading', body: 'The bulb’s temperature closes the gap to its surroundings by the same share every time constant. In still air that is minutes, which is why a thermometer brought in from outdoors needs time before it can be read.'},
-    {title: 'Mercury’s decline', body: 'Mercury is poisonous, and a broken thermometer spills it. Most liquid thermometers now use colored alcohol or similar spirits, and clinical thermometers are electronic.'},
-  ],
-  misconception: 'A thermometer does not show the temperature the moment you look. It shows its own bulb’s temperature, which only catches up with its surroundings after heat has had time to flow.',
-  limits,
-  sources,
-  quiz: {
-    question: 'Why does a liquid thermometer need such a narrow bore?',
-    options: ['The liquid’s growth is tiny, and a narrow bore turns it into a long move of the column.', 'A narrow bore makes the liquid warm faster.', 'A wide bore would let the liquid freeze.'],
-    answer: 0,
-    explanation: 'The same small extra volume climbs much further up a thin tube than a wide one, so a degree becomes millimeters.',
-  },
-};
+export {liquidThermometerLesson} from './liquid-thermometer-lesson.js';
 
 export const sixThermometerLesson = {
   simple: 'How does a maximum-minimum thermometer remember the day’s hottest and coldest moments?',

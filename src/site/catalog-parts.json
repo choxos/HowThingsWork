@@ -1349,6 +1349,16 @@
       "parentId": "system"
     }
   ],
+  "liquid-in-glass-thermometer": [
+    {
+      "id": "system",
+      "name": "Liquid-in-glass thermometer"
+    },
+    {
+      "id": "chart",
+      "name": "Temperature response"
+    }
+  ],
   "binoculars": [
     {
       "id": "body",

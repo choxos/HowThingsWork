@@ -69,3 +69,7 @@ assert(watch.components.some(entry => entry.id === 'hairspring'));
 assert(!catalogMachineComponents(watch.components).some(entry => entry.id === 'hairspring'), 'Passive hairspring stays inside its watch family, outside the smaller-machine list');
 assert.deepEqual(tags('hairspring'), ['springs']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'hairspring')).map(family => family.entry.id), ['mechanical-watch']);
+const thermometer = families.find(family => family.entry.id === 'liquid-in-glass-thermometer');
+assert(thermometer, 'Liquid-in-glass thermometer is a whole instrument');
+assert.equal(catalogMachineComponents(thermometer.components).length, 0, 'Bulb, capillary and scale are not smaller machines');
+assert.deepEqual(tags('liquid-in-glass-thermometer'), ['exploiting-heat']);
