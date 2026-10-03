@@ -126,7 +126,8 @@ export const publishedEntryIds = [
   "distribution-transformer",
   "home-supply-transformer",
   "electricity-transmission",
-  "power-line-insulator"
+  "power-line-insulator",
+  "power-pylon"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -213,7 +214,7 @@ export const previewEntryIds = [
   "hair-dryer",
   "bimetal-thermostat",
   "rod-thermostat",
-  "wax-thermostat", "polarizing-filter", "liquid-crystals", "polarizing-sunglasses", "binocular-prisms", "power-pylon",
+  "wax-thermostat", "polarizing-filter", "liquid-crystals", "polarizing-sunglasses", "binocular-prisms",
 ];
 const preview = import.meta.env?.DEV === true && import.meta.env?.VITE_PREVIEW_UNPUBLISHED === '1';
 const allowed = new Set([...publishedEntryIds, ...(preview ? previewEntryIds : [])]);
@@ -229,6 +230,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'power-pylon': ['forces-and-structures'],
   'power-line-insulator': ['electricity'],
   'electricity-transmission': ['electricity', 'magnetism'],
   'lever-lock': ['levers', 'springs'],
@@ -292,5 +294,6 @@ const places = drafts.places.filter(place => groups.some(group => group.place ==
     ...groups.filter(group => group.place === place.id).map(group => group.items[0]),
   ])].slice(0, 6),
 }));
-const principles = drafts.principles.filter(principle => entries.some(entry => entry.principles.includes(principle.id)));
+const principles = [...drafts.principles, {id: 'forces-and-structures', name: 'Forces and structures'}]
+  .filter(principle => entries.some(entry => entry.principles.includes(principle.id)));
 export const neighborhoodCatalog = {entries, groups, places, principles};

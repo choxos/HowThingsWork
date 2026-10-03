@@ -3581,6 +3581,28 @@
       "parentId": "system"
     }
   ],
+  "power-pylon": [
+    {
+      "id": "span-stage",
+      "name": "Suspended span and reference",
+      "parentId": "system"
+    },
+    {
+      "id": "left",
+      "name": "Left rigid pylon",
+      "parentId": "system"
+    },
+    {
+      "id": "right",
+      "name": "Right rigid pylon",
+      "parentId": "system"
+    },
+    {
+      "id": "inspection",
+      "name": "Geometric inspection sweep",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",

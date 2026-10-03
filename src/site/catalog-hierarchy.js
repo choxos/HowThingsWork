@@ -44,6 +44,7 @@ export const componentParentIds = {
   'generator-slip-rings': 'electric-generator',
   'transformer-turns-ratio': 'transformer',
   'power-line-insulator': 'electricity-transmission',
+  'power-pylon': 'electricity-transmission',
   'heated-extrusion-nozzle': '3d-printer',
   'printer-filament-reel': '3d-printer',
   'layer-by-layer-fabrication': '3d-printer',
