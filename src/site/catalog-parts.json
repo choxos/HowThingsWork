@@ -3441,6 +3441,33 @@
       "parentId": "garment"
     }
   ],
+  "transmission-transformer": [
+    {
+      "id": "sending-stage",
+      "name": "Sending stage",
+      "parentId": "system"
+    },
+    {
+      "id": "line-stage",
+      "name": "Line and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "receiving-stage",
+      "name": "Receiving stage and load",
+      "parentId": "system"
+    },
+    {
+      "id": "currents",
+      "name": "Instantaneous conventional currents",
+      "parentId": "system"
+    },
+    {
+      "id": "power-indicator",
+      "name": "Mean source power split",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",
