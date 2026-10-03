@@ -13,7 +13,7 @@ const stages=['Inspect start (0%)','Inspect quarter (25%)','Inspect three quarte
 const inspect=i=>page.getByRole('button',{name:stages[i],exact:true}).click();
 async function preset(i){await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.locator(`[data-experiment="${i}"]`).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();}
 // Independent Cartesian-constraint and DOP853 results; no production sampler.
-const anchors=JSON.parse(await readFile(new URL('../../documentation/audit/evidence/platform-scale/independent-review/preset-anchors.json',import.meta.url),'utf8')).cases;
+const anchors=JSON.parse(await readFile(new URL('./fixtures/platform-scale-reference.json',import.meta.url),'utf8')).cases;
 const mapped={'First rod tension':['firstRodForce',2],'Second rod tension':['secondRodForce',2],'Continuous secured-payload force':['payloadForce',2],'Stop torque':['stopTorque',2],'Payload stopping impulse':['payloadStoppingImpulse',3],'Kinetic energy':['kineticEnergy',3],'Potential energy change':['potentialEnergy',3],'Damper heat':['damperHeat',3],'Impact heat':['impactHeat',3]};
 function compare(r,i,t){
  const v=lesson.tryIt[i].values,a=anchors[i].snapshots.find(s=>Math.abs(s.elapsed-t)<1e-12);assert.ok(a,'Independent snapshot exists');assert.deepEqual(anchors[i].values,v);

@@ -6,7 +6,7 @@ import {createRobervalBalanceModel} from './roberval-balance-model.js';
 import {robervalBalanceLesson as lesson} from './roberval-balance-lesson.js';
 const near=(a,b,tol=2e-8)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=tol,`${a} != ${b}`);
 const vector=(a,b,tol=2e-8)=>{assert.equal(a.length,b.length);a.forEach((x,i)=>near(x,b[i],tol));};
-const anchors=JSON.parse(await readFile(new URL('../../documentation/audit/evidence/roberval-balance/independent-review/preset-anchors.json',import.meta.url),'utf8')).cases;
+const anchors=JSON.parse(await readFile(new URL('./fixtures/roberval-balance-reference.json',import.meta.url),'utf8')).cases;
 const a=.45,h=.35,e=.30,J=.03375,c=.8;
 let controlTrials=0,referenceSamples=0,geometryPoses=0,eventBoundaries=0,renderedStates=0;
 function verify(s,v){

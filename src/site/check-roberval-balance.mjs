@@ -13,7 +13,7 @@ const stages=['Inspect start (0%)','Inspect quarter (25%)','Inspect three quarte
 const inspect=i=>page.getByRole('button',{name:stages[i],exact:true}).click();
 async function preset(i){await page.getByRole('tab',{name:'Try it yourself',exact:true}).click();await page.locator(`[data-experiment="${i}"]`).click();await page.getByRole('tab',{name:'Controls',exact:true}).click();}
 // Independent ODE reference. This browser check never calls the production sampler.
-const anchors=JSON.parse(await readFile(new URL('../../documentation/audit/evidence/roberval-balance/independent-review/preset-anchors.json',import.meta.url),'utf8')).cases;
+const anchors=JSON.parse(await readFile(new URL('./fixtures/roberval-balance-reference.json',import.meta.url),'utf8')).cases;
 const mapped={'Driving torque':['gravityTorque',3],'Damper torque':['damperTorque',3],'Stop torque':['stopTorque',3],'Signed left stop force':['stopLeftForce',2],'Signed right stop force':['stopRightForce',2],'Kinetic energy':['kineticEnergy',3],'Potential energy change':['potentialEnergy',3],'Damper heat':['damperHeat',3],'Impact heat':['impactHeat',3]};
 function compare(r,i,t){
  const v=lesson.tryIt[i].values,a=anchors[i].snapshots.find(s=>Math.abs(s.elapsed-t)<1e-12);assert.ok(a,'Independent snapshot exists');assert.deepEqual(anchors[i].values,v);

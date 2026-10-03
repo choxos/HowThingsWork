@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import * as THREE from 'three';
 import {houseComponents} from './house-components.js';
@@ -8,7 +8,7 @@ import {scaleCalibratingPlateLesson as lesson} from './scale-calibrating-plate-l
 import {componentParentIds,groupCatalogEntries} from './catalog-hierarchy.js';
 
 const base=new URL('../../documentation/audit/evidence/scale-calibrating-plate/',import.meta.url);
-const reference=JSON.parse(await readFile(new URL('independent-review/preset-anchors.json',base),'utf8'));
+const reference=JSON.parse(await readFile(new URL('./fixtures/scale-calibrating-plate-reference.json',import.meta.url),'utf8'));
 const hash=async path=>createHash('sha256').update(await readFile(new URL(path,import.meta.url))).digest('hex');
 assert.equal(reference.files['src/site/scale-calibrating-plate-lesson.js'],await hash('./scale-calibrating-plate-lesson.js'));
 const near=(a,b,tol=1e-10)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=tol,`${a} != ${b}`);
@@ -49,4 +49,4 @@ for(const [i,t] of [0,2,6,8].entries()){assert.equal(m.actions[i].part,'calibrat
 m.reset();m.actions[1].run();const loaded=m.getState();m.update({zero:5});near(m.getState().plateTravel,loaded.plateTravel);near(m.getState().indicatedMass,loaded.indicatedMass+5);m.update({position:-.75});near(m.getState().plateTravel,loaded.plateTravel);assert.ok(m.getState().guideMoment<0);m.reset();near(m.getState().elapsed,0);assert.equal(m.playback.complete(),false);
 const resources=new Set();m.root.traverse(o=>{if(o.geometry)resources.add(o.geometry);for(const mat of o.material?(Array.isArray(o.material)?o.material:[o.material]):[]){resources.add(mat);if(mat.gradientMap)resources.add(mat.gradientMap);}});const counts=new Map([...resources].map(r=>[r,0]));for(const r of resources)r.addEventListener('dispose',()=>counts.set(r,counts.get(r)+1));m.dispose();m.dispose();assert.ok([...counts.values()].every(n=>n===1));
 const files={};for(const name of ['bathroom-scale-model.js','bathroom-scale-physics.js','scale-calibrating-plate-lesson.js','house-components.js','check-scale-calibrating-plate-model.mjs'])files['src/site/'+name]=await hash('./'+name);
-const result={passed:true,presets:lesson.tryIt.length,snapshots,numericComparisons,arrowContacts,framedVertices,resources:resources.size,files,checks:['independent preset references including partial loading and unloading','component-parent state parity','actual arrow contact positions and force directions','context geometry containment','playback actions and reset','zero and load-position invariance','one-time resource disposal']};await writeFile(new URL('model-results.json',base),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));
+const result={passed:true,presets:lesson.tryIt.length,snapshots,numericComparisons,arrowContacts,framedVertices,resources:resources.size,files,checks:['independent preset references including partial loading and unloading','component-parent state parity','actual arrow contact positions and force directions','context geometry containment','playback actions and reset','zero and load-position invariance','one-time resource disposal']};await mkdir(base,{recursive:true});await writeFile(new URL('model-results.json',base),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));

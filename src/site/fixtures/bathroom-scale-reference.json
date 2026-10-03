@@ -1,0 +1,473 @@
+{
+  "method": "Independent Python full-load equilibrium, from agreed constants and control settings",
+  "cases": [
+    {
+      "preset": 0,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 4.901732178547634,
+      "platformTravelMm": 1.2254330446369086,
+      "rackTravelMm": 9.803464357095269,
+      "mainTension": 148.05196535642904,
+      "dialTension": 0.45098267821452365,
+      "indicatedMass": 60.0,
+      "mainEnergyChange": 0.36530640743168774,
+      "dialEnergyChange": -0.004661462395045541,
+      "inputWork": 0.36064494503664224,
+      "supportForces": [
+        147.15,
+        147.15,
+        147.15,
+        147.15
+      ]
+    },
+    {
+      "preset": 1,
+      "values": {
+        "mass": 0,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 0.0,
+      "plateTravelMm": 0.0,
+      "platformTravelMm": 0.0,
+      "rackTravelMm": 0.0,
+      "mainTension": 1.0,
+      "dialTension": 0.5,
+      "indicatedMass": 0.0,
+      "mainEnergyChange": 0.0,
+      "dialEnergyChange": 0.0,
+      "inputWork": 0.0,
+      "supportForces": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "preset": 2,
+      "values": {
+        "mass": 30,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 294.3,
+      "plateTravelMm": 2.450866089273817,
+      "platformTravelMm": 0.6127165223184543,
+      "rackTravelMm": 4.901732178547634,
+      "mainTension": 74.52598267821452,
+      "dialTension": 0.4754913391072618,
+      "indicatedMass": 30.0,
+      "mainEnergyChange": 0.09255203490255885,
+      "dialEnergyChange": -0.0023907986433982942,
+      "inputWork": 0.09016123625916056,
+      "supportForces": [
+        73.575,
+        73.575,
+        73.575,
+        73.575
+      ]
+    },
+    {
+      "preset": 3,
+      "values": {
+        "mass": 120,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 1177.2,
+      "plateTravelMm": 9.803464357095269,
+      "platformTravelMm": 2.450866089273817,
+      "rackTravelMm": 19.606928714190538,
+      "mainTension": 295.1039307128581,
+      "dialTension": 0.4019653564290473,
+      "indicatedMass": 120.0,
+      "mainEnergyChange": 1.4514221653696557,
+      "dialEnergyChange": -0.008842385223086896,
+      "inputWork": 1.442579780146569,
+      "supportForces": [
+        294.3,
+        294.3,
+        294.3,
+        294.3
+      ]
+    },
+    {
+      "preset": 4,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": -0.75,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 4.901732178547634,
+      "platformTravelMm": 1.2254330446369086,
+      "rackTravelMm": 9.803464357095269,
+      "mainTension": 148.05196535642904,
+      "dialTension": 0.45098267821452365,
+      "indicatedMass": 60.0,
+      "mainEnergyChange": 0.36530640743168774,
+      "dialEnergyChange": -0.004661462395045541,
+      "inputWork": 0.36064494503664224,
+      "supportForces": [
+        257.5125,
+        257.5125,
+        36.7875,
+        36.7875
+      ]
+    },
+    {
+      "preset": 5,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0.75,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 4.901732178547634,
+      "platformTravelMm": 1.2254330446369086,
+      "rackTravelMm": 9.803464357095269,
+      "mainTension": 148.05196535642904,
+      "dialTension": 0.45098267821452365,
+      "indicatedMass": 60.0,
+      "mainEnergyChange": 0.36530640743168774,
+      "dialEnergyChange": -0.004661462395045541,
+      "inputWork": 0.36064494503664224,
+      "supportForces": [
+        36.7875,
+        36.7875,
+        257.5125,
+        257.5125
+      ]
+    },
+    {
+      "preset": 6,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 5,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 4.901732178547634,
+      "platformTravelMm": 1.2254330446369086,
+      "rackTravelMm": 9.803464357095269,
+      "mainTension": 148.05196535642904,
+      "dialTension": 0.45098267821452365,
+      "indicatedMass": 65.0,
+      "mainEnergyChange": 0.36530640743168774,
+      "dialEnergyChange": -0.004661462395045541,
+      "inputWork": 0.36064494503664224,
+      "supportForces": [
+        147.15,
+        147.15,
+        147.15,
+        147.15
+      ]
+    },
+    {
+      "preset": 7,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": -5,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 4.901732178547634,
+      "platformTravelMm": 1.2254330446369086,
+      "rackTravelMm": 9.803464357095269,
+      "mainTension": 148.05196535642904,
+      "dialTension": 0.45098267821452365,
+      "indicatedMass": 55.0,
+      "mainEnergyChange": 0.36530640743168774,
+      "dialEnergyChange": -0.004661462395045541,
+      "inputWork": 0.36064494503664224,
+      "supportForces": [
+        147.15,
+        147.15,
+        147.15,
+        147.15
+      ]
+    },
+    {
+      "preset": 8,
+      "values": {
+        "mass": 0,
+        "stiffness": 30000,
+        "zero": 5,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 0.0,
+      "plateTravelMm": 0.0,
+      "platformTravelMm": 0.0,
+      "rackTravelMm": 0.0,
+      "mainTension": 1.0,
+      "dialTension": 0.5,
+      "indicatedMass": 5.0,
+      "mainEnergyChange": 0.0,
+      "dialEnergyChange": 0.0,
+      "inputWork": 0.0,
+      "supportForces": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "preset": 9,
+      "values": {
+        "mass": 60,
+        "stiffness": 20000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 7.35014985014985,
+      "platformTravelMm": 1.8375374625374625,
+      "rackTravelMm": 14.7002997002997,
+      "mainTension": 148.002997002997,
+      "dialTension": 0.4264985014985015,
+      "indicatedMass": 89.97002997002997,
+      "mainEnergyChange": 0.5475971780467285,
+      "dialEnergyChange": -0.0068099028219532716,
+      "inputWork": 0.5407872752247752,
+      "supportForces": [
+        147.15,
+        147.15,
+        147.15,
+        147.15
+      ]
+    },
+    {
+      "preset": 10,
+      "values": {
+        "mass": 60,
+        "stiffness": 40000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 588.6,
+      "plateTravelMm": 3.676911544227886,
+      "platformTravelMm": 0.9192278860569715,
+      "rackTravelMm": 7.353823088455772,
+      "mainTension": 148.07646176911544,
+      "dialTension": 0.46323088455772116,
+      "indicatedMass": 45.007496251874066,
+      "mainEnergyChange": 0.2740704816257538,
+      "dialEnergyChange": -0.003541714759187123,
+      "inputWork": 0.27052876686656674,
+      "supportForces": [
+        147.15,
+        147.15,
+        147.15,
+        147.15
+      ]
+    },
+    {
+      "preset": 11,
+      "values": {
+        "mass": 30,
+        "stiffness": 20000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 294.3,
+      "plateTravelMm": 3.675074925074925,
+      "platformTravelMm": 0.9187687312687313,
+      "rackTravelMm": 7.35014985014985,
+      "mainTension": 74.5014985014985,
+      "dialTension": 0.4632492507492507,
+      "indicatedMass": 44.985014985014985,
+      "mainEnergyChange": 0.1387368319742196,
+      "dialEnergyChange": -0.00354001316802578,
+      "inputWork": 0.1351968188061938,
+      "supportForces": [
+        73.575,
+        73.575,
+        73.575,
+        73.575
+      ]
+    },
+    {
+      "preset": 12,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 1
+      },
+      "weight": 97.2,
+      "plateTravelMm": 0.80946035976016,
+      "platformTravelMm": 0.20236508994004,
+      "rackTravelMm": 1.61892071952032,
+      "mainTension": 25.283810792804797,
+      "dialTension": 0.4919053964023984,
+      "indicatedMass": 9.908256880733944,
+      "mainEnergyChange": 0.010637851470105873,
+      "dialEnergyChange": -0.0008029080990199295,
+      "inputWork": 0.009834943371085944,
+      "supportForces": [
+        24.3,
+        24.3,
+        24.3,
+        24.3
+      ]
+    },
+    {
+      "preset": 13,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 2
+      },
+      "weight": 222.6,
+      "plateTravelMm": 1.8537641572285142,
+      "platformTravelMm": 0.46344103930712854,
+      "rackTravelMm": 3.7075283144570284,
+      "mainTension": 56.612924716855424,
+      "dialTension": 0.48146235842771484,
+      "indicatedMass": 22.691131498470945,
+      "mainEnergyChange": 0.05340038741660567,
+      "dialEnergyChange": -0.0018193997417222628,
+      "inputWork": 0.05158098767488341,
+      "supportForces": [
+        55.65,
+        55.65,
+        55.65,
+        55.65
+      ]
+    },
+    {
+      "preset": 14,
+      "values": {
+        "mass": 0,
+        "stiffness": 30000,
+        "zero": -10,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 0.0,
+      "plateTravelMm": 0.0,
+      "platformTravelMm": 0.0,
+      "rackTravelMm": 0.0,
+      "mainTension": 1.0,
+      "dialTension": 0.5,
+      "indicatedMass": -10.0,
+      "mainEnergyChange": 0.0,
+      "dialEnergyChange": 0.0,
+      "inputWork": 0.0,
+      "supportForces": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "preset": 15,
+      "values": {
+        "mass": 120,
+        "stiffness": 20000,
+        "zero": 10,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 1177.2,
+      "plateTravelMm": 14.7002997002997,
+      "platformTravelMm": 3.675074925074925,
+      "rackTravelMm": 29.4005994005994,
+      "mainTension": 295.005994005994,
+      "dialTension": 0.352997002997003,
+      "indicatedMass": 189.94005994005994,
+      "mainEnergyChange": 2.1756884124866143,
+      "dialEnergyChange": -0.012539311587513386,
+      "inputWork": 2.163149100899101,
+      "supportForces": [
+        294.3,
+        294.3,
+        294.3,
+        294.3
+      ]
+    },
+    {
+      "preset": 16,
+      "values": {
+        "mass": 5,
+        "stiffness": 30000,
+        "zero": 0,
+        "position": 0,
+        "gravity": 0
+      },
+      "weight": 49.050000000000004,
+      "plateTravelMm": 0.40847768154563624,
+      "platformTravelMm": 0.10211942038640906,
+      "rackTravelMm": 0.8169553630912725,
+      "mainTension": 13.254330446369087,
+      "dialTension": 0.4959152231845436,
+      "indicatedMass": 5.0,
+      "mainEnergyChange": 0.0029112879263591095,
+      "dialEnergyChange": -0.00040680914138242725,
+      "inputWork": 0.0025044787849766827,
+      "supportForces": [
+        12.262500000000001,
+        12.262500000000001,
+        12.262500000000001,
+        12.262500000000001
+      ]
+    },
+    {
+      "preset": 17,
+      "values": {
+        "mass": 60,
+        "stiffness": 30000,
+        "zero": 5,
+        "position": 0,
+        "gravity": 1
+      },
+      "weight": 97.2,
+      "plateTravelMm": 0.80946035976016,
+      "platformTravelMm": 0.20236508994004,
+      "rackTravelMm": 1.61892071952032,
+      "mainTension": 25.283810792804797,
+      "dialTension": 0.4919053964023984,
+      "indicatedMass": 14.908256880733944,
+      "mainEnergyChange": 0.010637851470105873,
+      "dialEnergyChange": -0.0008029080990199295,
+      "inputWork": 0.009834943371085944,
+      "supportForces": [
+        24.3,
+        24.3,
+        24.3,
+        24.3
+      ]
+    }
+  ]
+}

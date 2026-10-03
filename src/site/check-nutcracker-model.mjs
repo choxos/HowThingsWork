@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {writeFile} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import * as THREE from 'three';
 import {sampleNutcracker,NUTCRACKER_DOMAINS} from './nutcracker-physics.js';
 import {createNutcrackerModel} from './nutcracker-model.js';
@@ -40,4 +40,4 @@ for(const trial of lesson.tryIt)for(const time of [0,2,3,8]){
 }
 assert.deepEqual(m.catalogParts.map(p=>p.id),['hinge','handles','jaws','shell','kernel']);assert.equal(m.topology.forceGuide.userData.explosionExcluded,true);assert.ok(m.topology.levers.every(l=>l.handDot.userData.explosionExcluded));
 const resources=new Set();m.root.traverse(o=>{if(o.geometry)resources.add(o.geometry);for(const mat of o.material?(Array.isArray(o.material)?o.material:[o.material]):[]){resources.add(mat);if(mat.gradientMap)resources.add(mat.gradientMap);}});const counts=new Map([...resources].map(r=>[r,0]));for(const r of resources)r.addEventListener('dispose',()=>counts.set(r,counts.get(r)+1));m.dispose();m.dispose();assert.ok([...counts.values()].every(n=>n===1));
-const result={passed:true,samples,integrals,poses,framedPoses,contactPoses,presets:lesson.tryIt.length,resources:resources.size,crackTime,finalCompressionMillimeters:limits,anchors:['independent force-limit solution','two actual hand-force integrals','paired torque balance','partial stalls and exact cracking boundary','separate manual inspection stages','preset resampling and reset','finite full geometry','full-handle framing','resource disposal']};await writeFile(new URL('../../documentation/audit/evidence/nutcracker/model-results.json',import.meta.url),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));
+const result={passed:true,samples,integrals,poses,framedPoses,contactPoses,presets:lesson.tryIt.length,resources:resources.size,crackTime,finalCompressionMillimeters:limits,anchors:['independent force-limit solution','two actual hand-force integrals','paired torque balance','partial stalls and exact cracking boundary','separate manual inspection stages','preset resampling and reset','finite full geometry','full-handle framing','resource disposal']};const output=new URL('../../documentation/audit/evidence/nutcracker/model-results.json',import.meta.url);await mkdir(new URL('.',output),{recursive:true});await writeFile(output,JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));
