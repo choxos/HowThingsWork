@@ -59,3 +59,5 @@ console.log(`Catalog visibility: ${families.length} whole items with ${families.
 
 const clock = families.find(family => family.entry.id === 'mechanical-clock');
 assert(catalogMachineComponents(clock.components).some(entry => entry.id === 'anchor-escapement'), 'Escapement is a smaller machine under its clock');
+assert(families.some(family => family.entry.id === 'mechanical-watch'), 'Mechanical watch is a whole machine');
+assert.deepEqual(tags('mechanical-watch'), ['gears-and-belts', 'springs']);

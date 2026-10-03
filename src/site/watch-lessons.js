@@ -1,62 +1,77 @@
-import {WATCH_DEFAULTS} from './watch-physics.js';
+import {WATCH_DEFAULTS, balance} from './watch-physics.js';
+import {WATCH_CONTACT_ANGLES} from './watch-escapement.js';
 
-const trial = (part, view) => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...WATCH_DEFAULTS, ...values}, reset: true, part, isolate: false, view});
-const watchTrial = trial('system', 'front');
-const leverTrial = trial('escapement', 'front');
-const springTrial = trial('hairspring', 'front');
-const barrelTrial = trial('barrel', 'front');
-const chartTrial = trial('charts', 'front');
-
-const limits = 'Illustrative watch: a 49 mg balance ring at 4.5 mm radius, and a hairspring 0.12 mm tall and 0.03 mm thick with a modulus of 195 GPa, cut to swing at exactly 4 Hz at 20 °C. Each regulator mark changes the working length by 0.02%. Carbon steel’s modulus falls 240 millionths a degree and Nivarox’s rises 6; their expansions are 11.5 and 8 millionths and the balance’s 12. A mainspring of 0.012 N·m fading to 40% over 42 hours and to nothing two hours later, 30% of its power reaching a balance with a Q of 250, and a lever needing 110 degrees of swing. Not modeled: the escapement disturbing the balance, positional errors, magnetism, and the real mainspring curve. Time is slowed tenfold.';
+const trial = (part, view = 'front', isolate = false) => (title, instruction, observe, values = {}, initialState = {phase: 0}) => ({title, instruction, observe, values: {...WATCH_DEFAULTS, ...values}, initialState, reset: true, part, isolate, view});
+const watchTrial = trial('movement');
+const leverTrial = trial('escapement');
+const springTrial = trial('hairspring');
+const barrelTrial = trial('barrel');
+const chartTrial = trial('charts', 'front', true);
+const startingSwing = balance(WATCH_DEFAULTS).amplitude;
+const phaseAtAngle = (angle, side = 0) => ({phase: side / 2 + Math.acos(-angle / startingSwing) / (2 * Math.PI)});
+const limits = 'Original teaching movement with an English-form ratchet lever, not a replica of a particular watch. The 49 mg balance is treated as a thin ring of mean radius 4.5 mm; support-spoke, roller and spring inertia are neglected. The active hairspring is 84.0035 mm at the center regulator setting and 20 °C, plus a 2 mm terminal; its section is 0.12 × 0.03 mm and its reference modulus is 195 GPa. One regulator mark changes active length by 0.02%. The 220 × 1.2 × 0.14 mm mainspring uses a declared linear bending law with a 200 GPa modulus and 5.5 turns of usable winding above its free shape. Thirty percent of mean barrel work reaches an oscillator with Q = 250. The uncompensated thermal example uses an illustrative modulus slope of −240 ppm/°C and expansion of 11.5 ppm/°C. The ideal compensated example has expansion of 8 ppm/°C and a modulus chosen to exactly cancel size changes; neither is a commercial alloy specification. Balance expansion is 12 ppm/°C. Spring contours preserve ribbon length, end attachment and coil clearance; their shapes are kinematic illustrations, not elastic stress solutions. Balance motion is a settled harmonic approximation. Tooth, fork, jewel, banking and safety contacts are geometric; short clearance travel is interpolated, not a collision simulation. Positional errors, magnetism, shock transients, lubrication, finite-amplitude spring error and thermal expansion of the train are omitted. Winding and hand setting are prepared states; their hardware is omitted. The upper impulse roller is translucent to expose the jewel. Playback covers two watch seconds at one-tenth speed.';
 const sources = [
-  {title: 'OpenStax University Physics: the torsional pendulum', url: 'https://openstax.org/books/university-physics-volume-1/pages/15-4-pendulums'},
-  {title: 'Balance spring: stiffness, temperature and alloys', url: 'https://en.wikipedia.org/wiki/Balance_spring'},
-  {title: 'Lever escapement', url: 'https://en.wikipedia.org/wiki/Lever_escapement'},
+  {title: 'H. R. Playtner: An Analysis of the Lever Escapement', url: 'https://www.gutenberg.org/ebooks/21978'},
+  {title: 'OpenStax University Physics: torsional pendulums', url: 'https://openstax.org/books/university-physics-volume-1/pages/15-4-pendulums'},
 ];
 
 export const watchLesson = {
-  simple: 'How does a mechanical watch keep time with no battery, and why did old watches run slow in summer?',
-  overview: 'A mechanical watch is a pendulum clock folded into a wrist. Instead of a weight it has a coiled mainspring; instead of a pendulum, a balance wheel that swings back and forth on a hairspring. The lever escapement lets the wheels move half a tooth at each swing and gives the balance a tiny push. Change the regulator, the temperature, the hairspring’s alloy and how long ago it was wound, and watch what changes and what does not.',
+  simple: 'How does a wound spring become seconds, minutes and hours without a battery?',
+  overview: 'Follow one connected drive through an open mechanical watch. The mainspring turns a barrel; four meshing gear pairs carry its push to a lever escapement. The balance wheel and hairspring set the rhythm, while the same train turns the hands. Freeze an unlocking, impulse or release to see the contact, then compare winding, regulation and temperature.',
   steps: [
-    {title: 'Wind the mainspring', body: 'Turning the crown coils a steel ribbon tight inside the barrel. As it unwinds, over a day and a half or more, it turns the barrel and the wheel train.'},
-    {title: 'Swing the balance', body: 'The balance wheel twists its hairspring as it turns. The spring pushes back, the balance swings the other way, and the two keep a steady beat.'},
-    {title: 'Let a tooth go', body: 'Near the middle of each swing, the balance’s roller jewel knocks the lever over. A pallet releases the escape wheel, which moves half a tooth before the other pallet stops it.'},
-    {title: 'Push the balance', body: 'As the tooth slides across a pallet it pushes the lever, and the lever’s fork pushes the balance, making up what friction took.'},
-    {title: 'Count the beats', body: 'At 4 swings a second, the wheels step 8 times a second, and the fourth wheel turns the seconds hand once a minute.'},
+    {title: 'Store energy in the mainspring', body: 'Winding bends a steel ribbon away from its free shape. In this running view its inner end is held at the arbor, while the outer hook pulls the barrel around. The 96-tooth barrel gear drives a 12-tooth pinion.'},
+    {title: 'Carry the drive through the train', body: 'The center, third, fourth and escape arbors are connected by real meshing teeth. Each wheel and its pinion turn together. The four speed ratios multiply to 7,680 escape-wheel turns for one barrel turn.'},
+    {title: 'Let the balance unlock a pallet', body: 'The hairspring brings the balance back toward its middle position. Its flat-faced ruby enters the fork and pushes the lever away from a banking pin. The escape wheel recoils slightly as the tooth climbs the sloped locking face.'},
+    {title: 'Return a push to the balance', body: 'Once unlocked, the wheel tooth slides along the inclined pallet face. It drives the lever through the opposite side of the fork, giving the balance energy. This ratchet-tooth design puts the lifting action on the pallet.'},
+    {title: 'Catch the next tooth and swing free', body: 'The departing tooth clears its pallet, leaving a short free drop before the other pallet catches a tooth. Draw brings the lever to the opposite bank. The ruby leaves the fork; horns and a notched safety roller guard against accidental unlocking.'},
+    {title: 'Count the oscillations', body: 'At the nominal rate the balance completes four cycles per second, with eight alternating beats. The 15-tooth escape wheel turns 16 times per minute, the fourth wheel once per minute, and the center wheel once per hour. A separate twelve-to-one reduction turns the hour hand.'},
   ],
   parts: [
-    {name: 'Mainspring and barrel', role: 'Store the energy and turn the wheels.'},
-    {name: 'Wheel train', role: 'Carry the barrel’s turning to the escape wheel and the seconds hand.'},
-    {name: 'Lever escapement', role: 'Releases the wheels in steps and pushes the balance.'},
-    {name: 'Balance wheel', role: 'Swings back and forth to set the beat.'},
-    {name: 'Hairspring', role: 'Pushes the balance back toward the middle; the regulator adjusts it.'},
-    {name: 'Movement plate', role: 'Carries everything.'},
-    {name: 'Charts', role: 'The swing as the mainspring runs down, and the rate against temperature.'},
+    {name: 'Mainspring and barrel', role: 'Store energy in one continuous ribbon and transmit its torque to the first gear pair.'},
+    {name: 'Wheel train', role: 'Carry torque to the escapement and connect the minute and seconds arbors.'},
+    {name: 'Lever escapement', role: 'Alternate locking, unlocking, impulse and release through actual working contacts.'},
+    {name: 'Balance wheel and rollers', role: 'Provide rotational inertia, carry the impulse jewel and operate the safety roller.'},
+    {name: 'Hairspring and regulator', role: 'Supply restoring torque; movable curb pins choose the active spring length.'},
+    {name: 'Twelve-to-one hand reduction', role: 'Turn the hour sleeve once for twelve minute-arbor revolutions.'},
+    {name: 'Watch face and hands', role: 'Show seconds, minutes and hours from the same mechanical train.'},
+    {name: 'Plate, bearings and supports', role: 'Keep the rotating arbors aligned and hold the fixed spring attachments.'},
+    {name: 'Wind and temperature comparisons', role: 'Compare predicted swing and rate on labeled explanatory plots.'},
   ],
   tryIt: [
-    watchTrial('Wind it and watch', 'Play with the watch fully wound.', 'The balance swings 318.3 degrees each way, 4 times a second, which makes 28,800 beats an hour, and the watch keeps perfect time: 0.00 s a day off.'),
-    springTrial('Move the regulator', 'Move the regulator one mark toward fast.', 'Shortening the hairspring’s working length by 0.02% makes the watch gain 8.64 s a day.', {index: 1}),
-    barrelTrial('A day later', 'Set the watch to 24 hours after winding.', 'The mainspring’s push has fallen to 7.89 mN·m and the swing to 258.0 degrees, yet the watch still keeps time.', {hours: 24}),
-    chartTrial('Nearly run down', 'Set the watch to 43 hours after winding.', 'With only 2.40 mN·m left, the swing drops to 142.4 degrees.', {hours: 43}),
-    watchTrial('Stopped', 'Set the watch to 44 hours after winding.', 'The mainspring is spent; the balance cannot swing the 110 degrees the lever needs, so the watch stops.', {hours: 44}),
-    chartTrial('A steel hairspring in summer', 'Choose a carbon steel hairspring at 30 °C.', 'Steel grows softer as it warms, and the watch loses 99.21 s a day.', {alloy: 0, temperature: 30}),
-    chartTrial('Nivarox in summer', 'Choose a Nivarox hairspring at 30 °C.', 'Nivarox hardly changes, and the watch gains just 2.59 s a day.', {temperature: 30}),
-    watchTrial('Where the energy goes', 'Compare the mainspring with the balance.', 'The balance receives 0.972 µW, 0.122 µJ each beat, and holds 9.67 µJ in its swing.'),
+    watchTrial('Fully wound', 'Play the assembled movement, then pause it.', 'The initial supported swing is 242.47° each way at 4 Hz, or 28,800 beats per hour. The ideal compensated setting has 0.00 s/day of modeled rate error.'),
+    leverTrial('The balance unlocks the wheel', 'Inspect the entry pallet as the ruby enters the fork.', 'Working contact says Unlocking. The balance drives the fork, and the escape wheel recoils slightly on the locking face.', {}, phaseAtAngle((WATCH_CONTACT_ANGLES.enter + WATCH_CONTACT_ANGLES.unlock) / 2)),
+    leverTrial('A push on the entry pallet', 'Freeze the middle of the first impulse.', 'Working contact says Impulse, Entry pallet. The tooth and pallet touch while the opposite fork wall pushes the ruby.', {}, {phase: 0.25}),
+    leverTrial('A push on the exit pallet', 'Compare the return beat.', 'Working contact says Impulse, Exit pallet. The lever and balance move the other way, but the wheel still advances in the same direction.', {}, {phase: 0.75}),
+    leverTrial('The brief free drop', 'Freeze just after the entry tooth leaves its pallet.', 'Working contact says Free drop. Neither pallet touches a tooth during this clearance interval.', {}, phaseAtAngle(WATCH_CONTACT_ANGLES.release + WATCH_CONTACT_ANGLES.drop / 2)),
+    leverTrial('One tooth, two beats', 'Compare the mechanism after one complete balance cycle.', 'The release counter reads 2. The escape wheel has advanced one of its 15 teeth; the lever has returned to its first bank.', {}, {phase: 1}),
+    trial('train', 'iso', true)('Follow the connected train', 'Inspect the center, third and fourth wheels and their pinions.', 'Each large wheel drives the next small pinion in the opposite direction. The center arbor turns once for 60 fourth-wheel turns.'),
+    trial('watch-face', 'back')('Read the three hands', 'Prepare ten hours of use and play while looking at the front face.', 'The prepared dial starts at 10:00, with hour and minute hands apart. The small seconds hand advances through the fourth-wheel arbor. All three hands are mechanically connected, not independent animations.', {hours: 10}),
+    trial('motion-work', 'iso', true)('Reduce minutes to hours', 'Inspect the two small gear pairs under the face.', 'The 12:36 and 10:40 pairs give 3 × 4 = 12. Two direction reversals keep minute and hour hands turning together.'),
+    springTrial('Shorten the active spring', 'Move the regulator one mark toward fast.', 'The curb pins move along the terminal, leaving 83.9867 mm active at 20 °C. The watch gains 8.64 s/day. No ribbon is removed.', {index: 1}),
+    barrelTrial('A day of nominal use', 'Prepare the wind remaining after 24 nominal hours.', 'The spring retains 2.5 winding turns. Torque is 3.9184 mN·m and supported swing is 163.47°, while the ideal frequency remains 4 Hz.', {hours: 24}),
+    chartTrial('Almost run down', 'Prepare 43 nominal hours of use.', 'Only 0.125 winding turn remains. Torque is 0.1959 mN·m and supported swing is 36.55°, still above this model’s engagement threshold.', {hours: 43}),
+    watchTrial('No wind left', 'Prepare 44 nominal hours of use.', 'The mechanism stops and playback is blocked. Continuing power is zero; the running-rate reading is unavailable and its chart marker is hidden.', {hours: 44}),
+    chartTrial('An uncompensated warm spring', 'Choose the uncompensated thermal response at 30 °C.', 'With the stated illustrative coefficients, the watch loses 99.21 s/day. Warming weakens this spring enough to slow its natural oscillation.', {alloy: 0, temperature: 30}),
+    chartTrial('Ideal thermal compensation', 'Compare the compensated response at 30 °C.', 'The model remains at 4 Hz and 0.00 s/day of rate error because its chosen modulus change exactly balances expansion. This is an ideal comparison, not a promise about a real alloy.', {temperature: 30}),
+    watchTrial('Work replaces losses', 'Compare mainspring torque, delivered work and balance energy.', 'Initially the balance receives a mean 0.0705 µJ per beat, or 0.5642 µW. Its settled oscillation holds 5.6123 µJ. Those figures follow the connected train and the declared losses.'),
   ],
   deeper: [
-    {title: 'A pendulum without gravity', body: 'The balance and hairspring swing for the same reason a pendulum does, but the spring provides the restoring push, so a watch keeps time on its side, upside down, or on a running wrist. Its period is 2π times the square root of the balance’s inertia over the spring’s stiffness.'},
-    {title: 'Why summer slowed old watches', body: 'Warm steel is slightly softer, and a softer hairspring lets the balance swing more slowly. A steel hairspring lost about 10 s a day for every degree, which is why makers once built balances that changed shape with temperature, until alloys such as Nivarox, whose stiffness hardly changes, made that unnecessary.'},
-    {title: 'Power reserve', body: 'This mainspring runs the watch for about 42 hours before its push fades too far. An automatic watch keeps it wound with a swinging rotor moved by the wrist.'},
-    {title: 'Two and a half centuries old', body: 'Thomas Mudge invented the lever escapement in the 1750s. Almost every mechanical watch since has used it, because it leaves the balance free for most of each swing.'},
+    {title: 'What sets the rate?', body: 'For the ideal torsional oscillator, frequency is √(κ/I)/(2π): κ is restoring torque per radian and I is rotational inertia. The modeled flat spring has κ = Ewt³/(12L), with modulus E, ribbon height w, thickness t and active length L. Shortening L increases stiffness and frequency.'},
+    {title: 'Why the regulator does not cut the spring', body: 'Two curb pins constrain a point near the outer end. Moving that constraint changes how much ribbon flexes with the balance. The remaining terminal still exists between the pins and the fixed stud. This model treats the pins as an ideal clamp; real pin clearance also affects behavior.'},
+    {title: 'Draw, horns and the safety roller', body: 'Draw holds the lever at a bank between beats. If a jolt tries to move it, the guard dart meets the safety roller before a pallet can unlock. Near the roller notch, the fork horns protect the handoff to the ruby. The notch provides room for the normal working stroke.'},
+    {title: 'Where the stored energy goes', body: 'The illustrative mainspring obeys τ = κₘθ and stores κₘθ²/2 above its free shape. Gearing trades angular speed for torque; it does not create energy. The chosen transmission efficiency and quality factor determine the settled amplitude. The rate calculation neglects disturbance from the escapement.'},
+    {title: 'Winding and usable reserve', body: 'The declared 5.5 winding turns correspond to 44 hours at the nominal train rate. Usable reserve is slightly shorter because the balance eventually cannot cross the engagement region. Here that geometric threshold is 18.23° each way. It is not a general stopping amplitude for real watches.'},
+    {title: 'Temperature and real watch errors', body: 'Temperature changes spring elasticity and dimensions, and the balance’s size. Compensation aims to make their combined effect small. Actual watches also respond to position, magnetism, lubrication, shocks and the changing swing as wind runs down; the ideal compensated curve does not include these errors.'},
+    {title: 'Ratchet teeth and club teeth', body: 'The English-form ratchet wheel used here supplies impulse through a point sliding along a pallet. A club-tooth design divides the lifting action between wheel tooth and pallet. Both use a detached balance, but their working faces must be constructed differently.'},
   ],
-  misconception: 'A running-down mainspring does not make a good watch run slow. The balance and hairspring set the pace; a weaker push only makes the swing smaller, until it is too small to work at all.',
+  misconception: 'More winding mainly supplies more energy and supports a wider swing. It does not choose the ideal oscillator’s natural frequency. Real watches can still change rate as their amplitude changes.',
   limits,
   sources,
   quiz: {
-    question: 'What sets how fast a mechanical watch runs?',
-    options: ['The balance wheel’s inertia and the hairspring’s stiffness.', 'How tightly the mainspring is wound.', 'The number of teeth on the escape wheel.'],
+    question: 'With the same wind and temperature, what happens when the regulator shortens the active hairspring?',
+    options: ['Restoring stiffness increases, so the balance oscillates faster.', 'The gears change their tooth ratios.', 'The mainspring gains stored energy.'],
     answer: 0,
-    explanation: 'The balance and hairspring swing at their own natural pace. The mainspring only keeps them swinging, and the wheels only count the swings.',
+    explanation: 'Shorter active length makes κ larger. With the same rotational inertia, √(κ/I)/(2π) increases. The gear ratios and prepared mainspring winding remain unchanged.',
   },
 };
 

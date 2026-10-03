@@ -1,126 +1,175 @@
-// Mechanical watch, lever escapement and hairspring: the spring's stiffness
-// and the balance's period from their formulas, isochronism by direct
-// integration, the energy balance, the temperature slope by linearization,
-// the drawing held to the state, and every number all three lessons quote held
-// to the model.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {sampleWatch, balance, barrelTorque, balanceInertia, SPRING_LENGTH, ALLOYS, WATCH, WATCH_DEFAULTS as D, WATCH_DOMAINS} from './watch-physics.js';
-import {createWatchModel, hairspringPoints, mainspringPoints, mainspringTurns, ampPoint, ratePoint, escapeShape} from './watch-model.js';
-import {watchLesson, leverEscapementLesson, hairspringLesson} from './watch-lessons.js';
-import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
-import {fixed} from './format.js';
+import {sampleWatch, balance, balanceInertia, SPRING_LENGTH, WATCH, WATCH_DEFAULTS as D, WATCH_DOMAINS} from './watch-physics.js';
+import {createWatchModel, ampPoint, ratePoint} from './watch-model.js';
+import {watchLesson as lesson} from './watch-lessons.js';
+import {WATCH_TRAIN_GEARS as G, WATCH_MESH_PAIRS} from './watch-train.js';
+import {WATCH_HAIRSPRING as H, WATCH_MAINSPRING as M, watchHairspring} from './watch-springs.js';
+import {checkDisposal, checkFinite, checkRefusals, tally} from './model-check-kit.mjs';
+import {createPartExplosion} from './part-explosion.js';
+import {frameModel} from './machine-viewer.js';
 
-const t = tally(), TAU = Math.PI * 2, deg = x => x * 180 / Math.PI;
-
-// 1. Stiffness, inertia, period.
-t.near(balanceInertia(), 49e-6 * 0.0045 ** 2, 1e-18, 'balance inertia');
-t.near(SPRING_LENGTH, 195e9 * 0.12e-3 * 0.03e-3 ** 3 / (12 * 49e-6 * 0.0045 ** 2 * (TAU * 4) ** 2), 1e-15, 'spring length for 4 Hz');
-for (const index of [-5, 0, 3]) for (const alloy of [0, 1]) for (const temperature of [0, 20, 40]) for (const hours of [0, 20, 42, 43, 44]) {
-  const values = {index, alloy, temperature, hours}, b = balance(values), a = ALLOYS[alloy], dT = temperature - 20, grow = 1 + a.expansion * dT;
-  const kappa = 195e9 * (1 + a.elastic * dT) * 0.12e-3 * grow * (0.03e-3 * grow) ** 3 / (12 * SPRING_LENGTH * (1 - 2e-4 * index) * grow);
-  const inertia = 49e-6 * (0.0045 * (1 + 12e-6 * dT)) ** 2;
-  t.near(b.kappa, kappa, 1e-12 * kappa, 'hairspring stiffness from its shape and metal');
-  t.near(b.period, TAU * Math.sqrt(inertia / kappa), 1e-12, 'period of the balance');
-  const torque = hours <= 42 ? 0.012 * (1 - 0.6 * hours / 42) : Math.max(0, 0.012 * 0.4 * (1 - (hours - 42) / 2));
-  t.near(barrelTorque(hours), torque, 1e-15, 'mainspring torque');
-  const power = 0.3 * torque * 6.5 * TAU / (42 * 3600);
-  t.near(TAU * (kappa * b.amplitude ** 2 / 2) / 250, power * b.period, 1e-9 * power * b.period + 1e-18, 'each period the swing loses what the mainspring gives');
-  assert.equal(b.running, b.amplitude >= 110 * Math.PI / 180, 'the lever needs 110 degrees');
-  if (b.running) t.near(b.rate, 86400 * (b.frequency / 4 - 1), 1e-9, 'rate against 4 Hz');
+const t = tally(), TAU = 2 * Math.PI, degrees = r => r * 180 / Math.PI;
+const near = (a, b, tolerance = 1e-10, message = 'Numerical agreement') => t.near(a, b, tolerance, message);
+const equal = (a, b, message) => { assert.deepEqual(a, b, message); t.add(); };
+const distanceToSegment = (p, a, b) => {
+  const d = b.clone().sub(a), u = Math.max(0, Math.min(1, p.clone().sub(a).dot(d) / d.lengthSq()));
+  return p.distanceTo(a.clone().addScaledVector(d, u));
+};
+const model = createWatchModel(), p = model.topology, MM = p.MM;
+const point = (object, xyz) => object.localToWorld(new THREE.Vector3(...xyz).multiplyScalar(MM));
+const read = name => model.getState().readings.find(r => r.label === name);
+near(balanceInertia(), 49e-6 * .0045 ** 2, 1e-20, 'Thin-ring inertia');
+near(SPRING_LENGTH, 195e9 * .00012 * .00003 ** 3 / (12 * 49e-6 * .0045 ** 2 * (TAU * 4) ** 2), 1e-15);
+let physicsCases = 0;
+for (const index of [-5, 0, 5]) for (const alloy of [0, 1]) for (const temperature of [0, 10, 20, 30, 40]) for (const hours of [0, 24, 43, 44]) {
+  const values = {index, alloy, temperature, hours}, b = balance(values), dt = temperature - 20;
+  const growth = 1 + (alloy ? 8e-6 : 11.5e-6) * dt, inertia = 49e-6 * (.0045 * (1 + 12e-6 * dt)) ** 2;
+  const modulus = 195e9 * (alloy ? inertia / (49e-6 * .0045 ** 2) / growth ** 3 : 1 - 240e-6 * dt);
+  const length = SPRING_LENGTH * (1 - .0002 * index) * growth;
+  const stiffness = modulus * .00012 * growth * (.00003 * growth) ** 3 / (12 * length);
+  const mainStiffness = 200e9 * .0012 * .00014 ** 3 / (12 * .220);
+  const torque = mainStiffness * TAU * (5.5 - hours / 8), barrelPerCycle = TAU / (15 * 7680);
+  near(b.kappa, stiffness, 1e-18); near(b.inertia, inertia, 1e-20);
+  near(b.period, TAU * Math.sqrt(inertia / stiffness)); near(b.torque, torque);
+  near(b.mainspringEnergy, mainStiffness * (TAU * (5.5 - hours / 8)) ** 2 / 2);
+  equal(b.running, hours < 44, 'Every offered nonempty setting has enough swing');
+  if (b.running) {
+    near(b.beatEnergy, .3 * torque * barrelPerCycle / 2, 1e-18);
+    near(TAU * b.energy / 250, b.power * b.period, 1e-18, 'Mean work replenishes one cycle of loss');
+    near(.5 * stiffness * b.amplitude ** 2, b.energy, 1e-18);
+    near(b.rate, 86400 * (1 / b.period / 4 - 1), 1e-8);
+    if (alloy) near(b.frequency, 4 / Math.sqrt(1 - .0002 * index));
+  } else { equal([b.power, b.energy, b.beatEnergy, b.rate], [0, 0, 0, null], 'Stopped has no continuing work or rate'); }
+  physicsCases++;
 }
-t.near(balance({}).frequency, 4, 1e-12, 'the default watch beats at exactly 4 Hz');
-t.near(balance({index: 1}).rate, 86400 * (1 / Math.sqrt(1 - 2e-4) - 1), 1e-9, 'a regulator mark shortens the spring by 0.02%');
-for (const alloy of [0, 1]) {
-  const a = ALLOYS[alloy], slope = (balance({alloy, temperature: 21}).rate - balance({alloy, temperature: 19}).rate) / 2;
-  t.near(slope, 86400 * (a.elastic + 3 * a.expansion - 2 * 12e-6) / 2, 0.01 * Math.abs(86400 * (a.elastic + 3 * a.expansion - 2 * 12e-6) / 2), 'rate per degree from the modulus, the spring and the balance');
-}
-// Isochronism: a balance pushed back in proportion to its angle takes the same time for any swing.
-for (const degrees of [142.4, 318.3]) {
-  const b = balance({}), f = ([th, w]) => [w, -b.kappa / b.inertia * th], dt = b.period / 20000;
-  let state = [degrees * Math.PI / 180, 0], time = 0;
-  for (;;) {
-    const k1 = f(state), k2 = f(state.map((v, i) => v + dt / 2 * k1[i])), k3 = f(state.map((v, i) => v + dt / 2 * k2[i])), k4 = f(state.map((v, i) => v + dt * k3[i]));
-    const next = state.map((v, i) => v + dt / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
-    if (next[0] <= 0) { time += dt * state[0] / (state[0] - next[0]); break; }
-    state = next; time += dt;
+for (const amplitude of [40, 240]) {
+  const b = balance(), step = b.period / 20000;
+  let angle = amplitude * Math.PI / 180, velocity = 0, elapsed = 0;
+  const derivative = ([a, v]) => [v, -b.kappa / b.inertia * a];
+  for (let i = 0; i < 6000; i++) {
+    const state = [angle, velocity], k1 = derivative(state), k2 = derivative(state.map((x, j) => x + step * k1[j] / 2)), k3 = derivative(state.map((x, j) => x + step * k2[j] / 2)), k4 = derivative(state.map((x, j) => x + step * k3[j]));
+    const next = state.map((x, j) => x + step / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
+    if (next[0] <= 0) { elapsed += step * angle / (angle - next[0]); break; }
+    [angle, velocity] = next; elapsed += step;
   }
-  t.near(4 * time, b.period, 1e-9, `a ${degrees} degree swing takes the same period`);
+  near(4 * elapsed, b.period, 1e-9, 'Direct oscillator integration gives amplitude-independent period');
 }
-// 0.0019 s and 0.005 s put the balance inside and just beyond the lever's lift, where the fork follows the roller.
-for (const time of [0, 0.0019, 0.005, 0.07, 0.3, 1.23, 1.99]) {
-  const s = sampleWatch({}, time);
-  t.near(s.angle, s.amplitude * Math.sin(TAU * s.frequency * time), 1e-12, 'balance angle');
-  assert.equal(s.beats, Math.floor(2 * s.frequency * time + 1e-9), 'a beat each time the balance passes the middle');
-  t.near(s.escape, s.beats * TAU / 30, 1e-15, 'half a tooth of 15 each beat');
-  t.near(s.seconds, s.escape / 16, 1e-15, 'the fourth wheel turns a sixteenth as fast');
-  t.near(Math.abs(s.fork), Math.abs(s.angle) >= 26 * Math.PI / 180 ? 10 * Math.PI / 180 : 10 * Math.PI / 180 * Math.abs(s.angle) / (26 * Math.PI / 180), 1e-12, 'lever follows the roller only inside the lift');
+const expectedStages = ['Locked; balance free', 'Unlocking', 'Impulse', 'Impulse', 'Free drop', 'Locked; balance free', 'Locked; balance free', 'Locked; balance free', 'Locked; balance free', 'Locked; balance free', 'Locked; balance free', 'Locked; balance free', 'Stopped; no continuing drive', 'Locked; balance free', 'Locked; balance free', 'Locked; balance free'];
+const histories = [D, {...D, index: -5, alloy: 0, temperature: 40, hours: 43}, {...D, hours: 44}];
+const presetChecks = [
+  s => { near(degrees(s.amplitude), 242.470327, 1e-6); near(s.frequency, 4); near(s.rate, 0); equal(s.beatsPerHour, 28800); },
+  s => { equal(s.contact.face, 'lock'); equal(s.forkContact, 'balance drives fork'); },
+  s => { equal(s.contactSide, 0); equal(s.contact.face, 'impulse'); },
+  s => { equal(s.contactSide, 1); equal(s.contact.face, 'impulse'); },
+  s => { equal(s.contactSide, null); equal(s.contact, null); },
+  s => { equal(s.beats, 2); near(s.escape, TAU / 15); },
+  s => near(s.fourth, 60 * s.center),
+  s => { near(s.hour, s.minute / 12); equal(read('Dial').value, '10:00:00'); },
+  () => equal(G.motion.teeth / G.cannon.teeth * G.hour.teeth / G.motionPinion.teeth, 12),
+  s => { near(s.hair.workingLength, 83.9867, .00005); near(s.rate, 8.64, .005); },
+  s => { near(s.remainingTurns, 2.5); near(s.torque * 1000, 3.9184, .00005); near(degrees(s.amplitude), 163.47, .005); },
+  s => { near(s.remainingTurns, .125); near(s.torque * 1000, .1959, .00005); near(degrees(s.amplitude), 36.55, .005); },
+  s => { equal(s.running, false); equal(s.power, 0); equal(p.rateDot.visible, false); },
+  s => near(s.rate, -99.21, .005),
+  s => { near(s.frequency, 4); near(s.rate, 0); },
+  s => { near(s.beatEnergy * 1e6, .0705, .00005); near(s.power * 1e6, .5642, .00005); near(s.energy * 1e6, 5.6123, .00005); },
+];
+equal(lesson.tryIt.length, presetChecks.length);
+for (const [i, trial] of lesson.tryIt.entries()) for (const history of histories) {
+  model.reset(); model.update(history); model.advance(30);
+  model.reset(trial.initialState); model.update(trial.values);
+  const s = model.getState(); equal(s.values, trial.values, trial.title); equal(s.stage, expectedStages[i], trial.title);
+  near(s.time, trial.initialState.phase / s.frequency); presetChecks[i](s);
+  t.ok(model.parts.some(part => part.id === trial.part), 'Preset target exists');
+  const held = JSON.stringify(s); model.advance(0); equal(JSON.stringify(model.getState()), held, 'Zero advance leaves prepared preset unchanged');
 }
-assert.equal(escapeShape().getPoints(1).length, 15 * 3 + 2, 'fifteen teeth of three corners, the start and its closing repeat');
-
-// 2. The drawing.
-const m = createWatchModel(), p = m.topology, MM = p.MM;
-m.root.position.set(0.1, -0.2, 0.3);
-for (const values of [{}, {alloy: 0, temperature: 40, index: -3}, {hours: 43}, {hours: 44}, {index: 5, temperature: 0}]) for (const playback of [0, 0.6, 3.1, 11, 20]) {
-  m.reset(); m.update(values); m.advance(playback);
-  m.root.updateMatrixWorld(true);
-  const s = m.getState();
-  t.near(s.time, Math.min(2, playback / 10), 1e-12, 'watch time slowed tenfold');
-  t.near(p.wheel.rotation.z, s.angle, 1e-15, 'balance at its angle');
-  t.near(p.lever.rotation.z, s.fork, 1e-15, 'lever at its angle');
-  t.near(p.escapeWheel.rotation.z, -s.escape, 1e-15, 'escape wheel steps');
-  t.near(p.secondsHand.rotation.z, -s.seconds, 1e-15, 'seconds hand on the fourth wheel');
-  t.near(p.regulator.rotation.z, s.values.index * 3 * Math.PI / 180, 1e-15, 'regulator at its mark');
-  assert.equal(p.coil.material.color.getHex(), p.ALLOY_COLORS[s.values.alloy]);
-  const coil = p.coil.geometry.attributes.position, last = coil.count - 1;
-  t.near(Math.atan2(coil.getY(last), coil.getX(last)), Math.PI / 2, 1e-6, 'outer end held at the stud');
-  t.near(Math.hypot(coil.getX(last), coil.getY(last)) / MM, 3.2, 1e-5, 'outer coil at 3.2 mm');
-  const inner = Math.atan2(coil.getY(0), coil.getX(0)), expected = Math.PI / 2 - TAU * 12 + s.angle;
-  t.near(Math.cos(inner), Math.cos(expected), 1e-6, 'inner end turns with the balance');
-  t.near(Math.sin(inner), Math.sin(expected), 1e-6, 'inner end turns with the balance');
-  t.near(Math.hypot(coil.getX(0), coil.getY(0)) / MM, 0.8, 1e-5, 'inner coil at 0.8 mm');
-  const spring = p.mainspring.geometry.attributes.position, turns = mainspringTurns(s.values.hours), probe = 157, share = probe / (spring.count - 1);
-  t.near(Math.atan2(spring.getY(probe), spring.getX(probe)), Math.atan2(Math.sin(TAU * turns * share), Math.cos(TAU * turns * share)), 1e-5, 'mainspring coiled by its hours');
-  t.near(p.ampDot.position.y, ampPoint(s.values.hours, deg(s.amplitude))[1], 1e-12, 'swing chart dot');
-  t.near(p.ampLine.geometry.attributes.position.getY(30), ampPoint(30, deg(balance({...s.values, hours: 30}).amplitude))[1], 1e-6, 'swing chart line');
-  for (const [alloy, line] of p.rateLines.entries()) t.near(line.geometry.attributes.position.getY(35), ratePoint(35, balance({...s.values, alloy, temperature: 35, hours: 0}).rate)[1], 1e-6, 'rate chart for each alloy');
-  t.near(p.rateDot.position.y, ratePoint(s.values.temperature, s.rate ?? 0)[1], 1e-12, 'rate chart dot');
-  checkFinite(m.root, t);
+for (const entry of lesson.parts) t.ok(model.parts.some(part => part.name === entry.name), 'Glossary names match actual parts');
+const profiles = [D, {...D, index: -5, alloy: 0, temperature: 40}, {...D, index: 5, alloy: 0, temperature: 0}, {...D, hours: 24}, {...D, hours: 43}, {...D, hours: 44}];
+let poses = 0;
+model.root.position.set(.1, -.2, .3); model.root.rotation.set(.17, -.3, .24);
+const neutralHair = watchHairspring({length: SPRING_LENGTH * 1000});
+for (const values of profiles) for (let i = 0; i <= 80; i++) {
+  model.reset({phase: i / 80}); model.update(values); model.root.updateMatrixWorld(true);
+  const s = model.getState(); near(p.wheel.rotation.z, s.angle); near(p.lever.rotation.z, s.lever);
+  near(p.hourHand.rotation.z, s.trainAngles.hour); near(p.minuteHand.rotation.z, s.trainAngles.center); near(p.secondsHand.rotation.z, s.trainAngles.fourth);
+  for (const [name, spec] of Object.entries(G)) {
+    const mesh = p.gears[name]; near(mesh.rotation.z, spec.phase);
+    near(mesh.parent.rotation.z, s.trainAngles[spec.arbor]);
+    near(mesh.position.z / MM + .08, spec.z); equal(mesh.userData.teeth, spec.teeth);
+    equal(mesh.geometry.parameters.shapes.curves.length > spec.teeth, true, 'Actual toothed gear is drawn');
+  }
+  for (const [a, b] of WATCH_MESH_PAIRS) {
+    const ga = G[a], gb = G[b];
+    near(point(p.gears[a], [0, 0, 0]).distanceTo(point(p.gears[b], [0, 0, 0])) / MM, (ga.teeth + gb.teeth) * ga.module / 2, 1e-8, 'World pitch circles touch in one axial plane');
+  }
+  if (s.contact) {
+    const at = point(p.movement, [p.POSITION.escape[0] + s.contact.point[0], p.POSITION.escape[1] + s.contact.point[1], p.LEVEL.escape]);
+    const pallet = p.palletMeshes[s.contactSide], contour = pallet.geometry.parameters.shapes.getPoints(1).map(v => point(pallet, [v.x, v.y, .13]));
+    t.ok(Math.min(...contour.map((a, j) => distanceToSegment(at, a, contour[(j + 1) % contour.length]))) < 1e-8, 'World tooth contact lies on actual pallet face');
+    const tooth = p.escapeWheel.geometry.parameters.shapes.getPoints(1).map(v => point(p.escapeWheel, [v.x, v.y, .1]));
+    t.ok(Math.min(...tooth.map(v => v.distanceTo(at))) < 1e-7, 'Actual rotated tooth tip touches pallet');
+  }
+  const mainFirst = point(p.mainspring, [...s.spring.points[0], 2.05]), mainLast = point(p.mainspring, [...s.spring.points.at(-1), 2.05]);
+  near(mainFirst.distanceTo(point(p.heldArbor, [M.inner, 0, 2.05])), 0, 1e-10, 'Inner mainspring end attached in every state');
+  near(mainLast.distanceTo(point(p.barrelBody, [M.outer, 0, 2.05])), 0, 1e-9, 'Outer mainspring end attached to moving barrel');
+  const hairFirst = point(p.coil, [...s.hair.points[0], p.LEVEL.spring]);
+  near(hairFirst.distanceTo(point(p.wheel, [H.inner * s.growth * Math.cos(neutralHair.innerAngle), H.inner * s.growth * Math.sin(neutralHair.innerAngle), p.LEVEL.spring])), 0, 1e-10, 'Inner hairspring attached to rotating collar');
+  near(point(p.coil, [...s.hair.points.at(-1), p.LEVEL.spring]).distanceTo(point(p.terminal, [...s.hair.terminal[0], p.LEVEL.spring])), 0, 1e-10);
+  const stud = p.stud.getWorldPosition(new THREE.Vector3()), terminalEnd = point(p.terminal, [...s.hair.terminal.at(-1), 7.4]);
+  near(stud.distanceTo(terminalEnd), 0, 1e-10, 'Fixed terminal enters actual stud');
+  for (const [mesh, points, thickness, height, z] of [[p.coil, s.hair.points, H.thickness * s.growth, H.height * s.growth, 7], [p.terminal, s.hair.terminal, H.thickness * s.growth, H.height * s.growth, 7], [p.mainspring, s.spring.points, M.thickness, M.height, 2.05]]) {
+    const vertices = mesh.geometry.attributes.position;
+    for (const j of [0, Math.floor(points.length / 2), points.length - 1]) {
+      const corners = [0, 1, 2, 3].map(k => new THREE.Vector3().fromBufferAttribute(vertices, 4 * j + k).divideScalar(MM));
+      const center = corners.reduce((sum, v) => sum.add(v), new THREE.Vector3()).multiplyScalar(.25);
+      near(center.distanceTo(new THREE.Vector3(...points[j], z)), 0, 2e-6, 'Float32 rendered ribbon follows solved centerline');
+      near(corners[0].distanceTo(corners[1]), thickness, 2e-6); near(corners[0].distanceTo(corners[3]), height, 2e-6);
+    }
+  }
+  near(p.regulator.rotation.z, s.hair.outerAngle); equal(p.rateDot.visible, s.running);
+  near(p.ampDot.position.y, ampPoint(values.hours, degrees(s.predictedAmplitude))[1]);
+  if (s.running) near(p.rateDot.position.y, ratePoint(values.temperature, s.rate)[1]);
+  equal(read('Working contact').value, s.stage); equal(model.playback.blocked(), !s.running);
+  if (i % 20 === 0) checkFinite(model.root, t);
+  poses++;
 }
-checkControlsMove(m, () => [p.regulator.rotation.z, p.coil.material.color.getHex(), p.rateDot.position.toArray(), p.ampDot.position.toArray(), p.mainspring.geometry.attributes.position.getX(200)], model => model.advance(0.9), t);
-
-// 3. The lessons, the text, refusals and disposal.
-const run = values => { m.reset(); m.update(values); m.advance(3); return m.getState(); };
-checkTrialNumbers(watchLesson, {
-  'Wind it and watch': st => ({'318.3': deg(st.amplitude), '4': st.frequency, '28,800': st.beatsPerHour, '0.00': Math.abs(st.rate)}),
-  'Move the regulator': st => ({'0.02': WATCH.index * 100, '8.64': st.rate}),
-  'A day later': st => (t.near(st.rate, 0, 1e-9, 'still keeps time'), {'7.89': st.torque * 1000, '258.0': deg(st.amplitude)}),
-  'Nearly run down': st => ({'2.40': st.torque * 1000, '142.4': deg(st.amplitude)}),
-  'Stopped': st => (t.ok(!st.running, 'stopped'), {'110': deg(WATCH.minimum)}),
-  'A steel hairspring in summer': st => ({'99.21': -st.rate}),
-  'Nivarox in summer': st => ({'2.59': st.rate}),
-  'Where the energy goes': st => ({'0.972': st.power * 1e6, '0.122': st.beatEnergy * 1e6, '9.67': st.energy * 1e6}),
-}, run, t);
-checkTrialNumbers(leverEscapementLesson, {
-  'Lock, unlock, push': () => ({'10': deg(WATCH.fork), '15': WATCH.teeth, '12': 360 / (2 * WATCH.teeth)}),
-  'Counting to sixty': st => ({'8': 2 * st.frequency, '16': WATCH.fourth, '1': 1}),
-  'A push every beat': st => (t.near(TAU * st.energy / WATCH.Q / 2, st.beatEnergy, 1e-9 * st.beatEnergy, 'a beat’s push is a beat’s loss'), {'0.122': st.beatEnergy * 1e6}),
-  'Free most of the time': st => ({'26': deg(WATCH.lift) / 2, '318.3': deg(st.amplitude)}),
-  'A weaker push': st => (t.ok(st.running, 'still running'), {'221.8': deg(st.amplitude), '0.059': st.beatEnergy * 1e6}),
-  'Too little swing': st => (t.ok(!st.running, 'stopped'), {'110': deg(WATCH.minimum)}),
-}, run, t);
-checkTrialNumbers(hairspringLesson, {
-  'The spring sets the beat': st => ({'84.00': st.length * 1000, '0.03': WATCH.thickness * 1000, '0.627': st.kappa * 1e6, '9.92': st.inertia / 1e-10, '4': st.frequency}),
-  'A shorter spring, a faster beat': st => ({'0.10': 5 * WATCH.index * 100, '43.23': st.rate}),
-  'Steel softens in the heat': st => ({'0.624': st.kappa * 1e6, '198.56': -st.rate}),
-  'And stiffens in the cold': st => ({'198.02': st.rate}),
-  'The compensating alloy': st => ({'2.59': st.rate}),
-  'Wide and narrow swings': st => ({'221.8': deg(st.amplitude), '0.250000': st.period}),
-}, run, t);
-checkQuotedText(watchLesson.deeper.map(section => section.body).join(' '), {'about 10 s a day': `about ${fixed(Math.abs(balance({alloy: 0, temperature: 21}).rate - balance({alloy: 0, temperature: 20}).rate), 0)} s a day`, 'about 42 hours': `about ${WATCH.reserve} hours`}, t);
-checkQuotedText(hairspringLesson.deeper.map(section => section.body).join(' '), {'10% thinner is 27% softer': `10% thinner is ${fixed((1 - 0.9 ** 3) * 100, 0)}% softer`}, t);
-checkQuotedText(watchLesson.limits, {'49 mg': `${fixed(WATCH.mass * 1e6, 0)} mg`, '4.5 mm': `${fixed(WATCH.radius * 1000, 1)} mm`, '195 GPa': `${fixed(WATCH.modulus / 1e9, 0)} GPa`, '0.02%': `${fixed(WATCH.index * 100, 2)}%`, 'Q of 250': `Q of ${WATCH.Q}`}, t);
-checkQuotedText(m.parts.map(part => part.description).join(' '), {'84 mm long': `${fixed(SPRING_LENGTH * 1000, 0)} mm long`, '0.12 mm tall': `${fixed(WATCH.width * 1000, 2)} mm tall`, '10 degrees': `${fixed(deg(WATCH.fork), 0)} degrees`, '15-tooth': `${WATCH.teeth}-tooth`}, t);
-checkRefusals(sampleWatch, WATCH_DOMAINS, t);
-const resources = checkDisposal(m, t);
-console.log(`PASS watch model: ${t.count} checks, ${watchLesson.tryIt.length + leverEscapementLesson.tryIt.length + hairspringLesson.tryIt.length} trials, ${resources} resources`);
+model.root.position.set(0, 0, 0); model.root.rotation.set(0, 0, 0); model.reset(); model.root.updateMatrixWorld(true);
+for (const [name, bearing] of Object.entries(p.upperBearings)) {
+  const shaft = p.shafts.find(mesh => mesh.parent === (name === 'lever' ? p.lever : p.arbors[name]));
+  const sb = new THREE.Box3().setFromObject(shaft), bb = new THREE.Box3().setFromObject(bearing);
+  t.ok(sb.min.z < bb.min.z && sb.max.z > bb.max.z, 'Shaft passes through upper bearing');
+}
+const mainBox = new THREE.Box3().setFromObject(p.barrelArbor);
+t.ok(mainBox.min.z / MM <= -.25 + 2e-6 && mainBox.max.z / MM >= .43, 'Held barrel arbor passes through plate and bearing');
+for (const values of profiles) for (const action of model.actions) {
+  model.reset(); model.update(values); action.run(); const s = model.getState();
+  equal(s.values, values); t.ok(model.parts.some(part => part.id === action.part), 'Inspection target exists');
+  if (s.running && /unlocking|impulse|free drop/.test(action.label)) {
+    equal(s.stage, action.label.endsWith('unlocking') ? 'Unlocking' : action.label.endsWith('impulse') ? 'Impulse' : 'Free drop');
+    if (s.stage !== 'Free drop') equal(s.contactSide, action.label.includes('entry') ? 0 : 1);
+  }
+}
+model.reset(); model.playback.step(); equal(model.getState().beats, 1); model.playback.step(); equal(model.getState().beats, 2); near(model.getState().escape, TAU / 15);
+model.advance(100); t.ok(model.playback.complete(), 'Two-second checkpoint reached'); near(model.getState().time, 2);
+const completed = JSON.stringify(model.getState()); model.advance(1); equal(JSON.stringify(model.getState()), completed, 'Completion freezes');
+model.reset(); t.ok(!model.playback.complete(), 'Reset permits replay'); model.update({hours: 44}); const stopped = JSON.stringify(model.getState());
+model.playback.step(); model.advance(100); equal(JSON.stringify(model.getState()), stopped, 'No wind blocks step and play');
+model.update({hours: 0}); t.ok(!model.playback.blocked(), 'Rewinding recovers');
+for (const bad of [NaN, Infinity, -1, 1.01]) { assert.throws(() => model.reset({phase: bad}), RangeError); t.add(); }
+checkRefusals(sampleWatch, WATCH_DOMAINS, t); assert.throws(() => sampleWatch({}, 2.01), RangeError); t.add();
+const resources = checkDisposal(model, t);
+let layouts = 0;
+for (const values of [D, {...D, hours: 44}]) for (const aspect of [1, 1.16]) {
+  const m = createWatchModel(); m.update(values); for (const cover of m.covers) cover.visible = false;
+  const state = JSON.stringify(m.getState()), {camera} = frameModel(m, aspect), explosion = createPartExplosion(m, camera, aspect);
+  const chartGeometry = new Set(); m.topology.charts.traverse(o => { if (o.geometry) chartGeometry.add(o.geometry); });
+  explosion.root.traverse(o => { if (o.geometry) t.ok(!chartGeometry.has(o.geometry), 'Explanatory charts excluded from physical inventory'); });
+  explosion.update(1);
+  const inverse = camera.quaternion.clone().invert(), boxes = explosion.items.map(unit => {
+    const b = new THREE.Box3(); for (const x of [unit.bounds.min.x, unit.bounds.max.x]) for (const y of [unit.bounds.min.y, unit.bounds.max.y]) for (const z of [unit.bounds.min.z, unit.bounds.max.z]) b.expandByPoint(new THREE.Vector3(x, y, z).add(unit.group.position).applyQuaternion(inverse)); return b;
+  });
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) t.ok(boxes[i].max.x <= boxes[j].min.x || boxes[j].max.x <= boxes[i].min.x || boxes[i].max.y <= boxes[j].min.y || boxes[j].max.y <= boxes[i].min.y, 'Separated groups do not overlap');
+  t.ok(boxes.length > 10, 'Actual parts available to separate'); explosion.update(0); explosion.dispose(); equal(JSON.stringify(m.getState()), state, 'Separation preserves mechanism'); m.dispose(); layouts++;
+}
+console.log(JSON.stringify({passed: true, checks: t.count, physicsCases, poses, presets: lesson.tryIt.length, histories: histories.length, actions: model.actions.length, resources, layouts}));

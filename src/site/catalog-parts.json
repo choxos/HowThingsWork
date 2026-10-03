@@ -551,6 +551,18 @@
       "parentId": "system"
     }
   ],
+  "mechanical-watch": [
+    {
+      "id": "movement",
+      "name": "Complete watch movement",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Wind and temperature comparisons",
+      "parentId": "system"
+    }
+  ],
   "anchor-escapement": [
     {
       "id": "case",
