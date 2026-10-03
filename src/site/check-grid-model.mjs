@@ -677,7 +677,7 @@ t.ok(dailyLifeLessons['Electric generator'] === GL.electricGeneratorLesson && da
 for (const [name, machine, part, lesson, values] of [
   ['AC generator', 'Electric generator', 'system', GL.acGeneratorLesson, {output: 0}],
   ['DC generator', 'Electric generator', 'system', GL.dcGeneratorLesson, {output: 1}],
-  ['Generator slip rings', 'Electric generator', 'rings', GL.generatorSlipRingsLesson, {output: 0}],
+  ['Generator slip rings', 'Electric generator', 'system', GL.generatorSlipRingsLesson, {output: 0}],
   ['Transformer turns ratio', 'Transformer', 'windings', TL.transformerTurnsRatioLesson, undefined],
   ['Transmission transformer', 'Transformer', 'core', TL.transmissionTransformerLesson, {stage: 0, primaryTurns: 3, secondaryTurns: 60}],
   ['Distribution transformer', 'Transformer', 'losses', TL.distributionTransformerLesson, {stage: 1, primaryTurns: 60, secondaryTurns: 5}],

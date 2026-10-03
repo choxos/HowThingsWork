@@ -77,7 +77,16 @@
 
 /* Type choices belong beside the scene, before the scrollable action list. */
 .daily-scene-heading{margin-bottom:.8rem}.daily-primary-controls .daily-control{padding:.6rem .8rem;border:1px solid #c1c5ab;border-radius:8px;background:#fff9e6}.daily-primary-controls select{min-height:44px;min-width:0;max-width:100%}.daily-primary-controls .daily-control p{margin:.4rem 0 0}
-@media(max-width:650px){.daily-scene-heading{grid-row:1;min-width:0;margin-bottom:0}.daily-primary-controls select{font-size:1rem}}
+@media(max-width:650px){
+ .daily-scene-heading{grid-row:1;min-width:0;margin-bottom:0}
+ body:has(.daily-primary-controls) .house-breadcrumbs{margin-block:.75rem}
+ body:has(.daily-primary-controls) .daily-heading{margin-bottom:.5rem}
+ .daily-layout:has(.daily-primary-controls){gap:.75rem;margin-top:.5rem}
+ .daily-primary-controls .daily-control:has(>select[data-control="output"]){display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:.6rem;padding:.4rem .6rem}
+ .daily-primary-controls .daily-control:has(>select[data-control="output"])>label{margin:0}
+ .daily-primary-controls select{font-size:1rem;width:100%;margin-top:0}
+ .daily-primary-controls .daily-control p{grid-column:1/-1}
+}
 
 /* The dishwasher belongs below the kitchen counter, beside the sink. Small
    tools retain their table slots on the same page. Anchored by item ID. */

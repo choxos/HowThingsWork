@@ -4707,6 +4707,28 @@
       "parentId": "system"
     }
   ],
+  "generator-slip-rings": [
+    {
+      "id": "output",
+      "name": "Brush voltage over one turn",
+      "parentId": "system"
+    },
+    {
+      "id": "stationary-group",
+      "name": "Supports and magnetic field",
+      "parentId": "system"
+    },
+    {
+      "id": "rotating-group",
+      "name": "Rotating assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit-group",
+      "name": "Electrical connections and load",
+      "parentId": "system"
+    }
+  ],
   "spark-gap": [
     {
       "id": "gap",

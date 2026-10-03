@@ -5,6 +5,7 @@ import {createGeneratorModel, METER, BENCH, CHART, chartX, chartY} from './grid-
 import {electricGeneratorLesson, acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
 import {tally, checkDisposal} from './model-check-kit.mjs';
 import {createPartExplosion} from './part-explosion.js';
+import {componentParentIds, groupCatalogEntries, catalogMachineComponents} from './catalog-hierarchy.js';
 
 const t = tally();
 let states = 0, poses = 0, contacts = 0;
@@ -48,7 +49,16 @@ for(const values of [{},{output:1},{output:1,closed:0},{load:1},{turns:40,speed:
   near(drive/n,p.drivePower,'integrated shaft input',1e-6);
 }
 const model=createGeneratorModel(),g=model.topology;
+t.ok(model.controls.find(control=>control.key==='output').primary,'contact arrangement is a primary scene control');
+model.root.updateMatrixWorld(true);
+for(let i=0;i<2;i++) {
+  const point=g.ringKeys[i].getWorldPosition(new THREE.Vector3());
+  const ray=new THREE.Raycaster(point.clone().add(new THREE.Vector3(0,0,20)),new THREE.Vector3(0,0,-1));
+  t.ok(ray.intersectObjects([g.ringKeys[i],g.ringMeshes[i]],false)[0]?.object===g.ringKeys[i],'rotation marker visible on the front-facing ring surface');
+}
 const materialBefore=model.root.rotation.clone();model.root.rotation.set(0,0,0);
+model.root.updateMatrixWorld(true);
+const fixedRingBrushes=g.ringBrushes.map(brush=>brush.matrixWorld.clone());
 function rayHit(mesh,point,outward) {
   const ray=new THREE.Raycaster(point.clone().addScaledVector(outward,.04),outward.clone().negate(),0,.08);
   return ray.intersectObject(mesh,false).length>0;
@@ -58,6 +68,13 @@ for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.00
   const s=model.getState(),now=s.now;poses++;
   t.ok(g.rings.visible===!output&&g.commutator.visible===!!output,'only installed contacts visible');
   near(g.spinner.rotation.x,now.theta,'drawn winding phase');near(g.driveSpinner.rotation.x,now.theta,'driver coupled to shaft');
+  near(g.ringSpinner.rotation.x,now.theta,'slip rings turn with the winding');
+  for(let i=0;i<2;i++)assert.deepEqual(g.ringBrushes[i].matrixWorld.toArray(),fixedRingBrushes[i].toArray(),'slip-ring brushes remain fixed');
+  if(!output)for(const [i,x] of [BENCH.ringA,BENCH.ringB].entries()) {
+    const point=g.ringSpinner.localToWorld(new THREE.Vector3(x+.3,.08,0));
+    const ray=new THREE.Raycaster(point,new THREE.Vector3(-1,0,0),0,.6);
+    t.ok(ray.intersectObject(g.ringMeshes[i],false).length===0,'copper annulus leaves insulation space around the metal shaft');
+  }
   const path=g.windings.userData.path;
   t.ok(path.length===turns*4+1,'one continuous wound path');
   for(let k=0;k<turns;k++) {
@@ -107,6 +124,32 @@ for(const output of [0,1])for(const turns of [2,20,40])for(const share of [0,.00
   for(let i=0;i<curve.count;i+=20){near(curve.getX(i),chartX(s.chart[i].theta),'chart angle',1e-6);near(curve.getY(i),chartY(s.chart[i].rings),'loaded voltage chart',1e-6);t.ok(Math.abs(s.chart[i].rings)<=CHART.volts,'trace fits voltage scale');}
 }
 model.root.rotation.copy(materialBefore);
+assert.equal(componentParentIds['generator-slip-rings'],'electric-generator');
+const generatorEntry={id:'electric-generator'},ringEntry={id:'generator-slip-rings'};
+const families=groupCatalogEntries([generatorEntry,ringEntry]);
+assert.equal(families.length,1);assert.equal(families[0].entry,generatorEntry);
+assert.deepEqual(families[0].components,[ringEntry]);assert.deepEqual(catalogMachineComponents(families[0].components),[]);
+const ringExpected = [
+  ['Follow one ring',124.66,88.15,12.466,50,777.0,6.266,400],
+  ['Open the switch',125.66,88.86,0,50,0,0,400],
+  ['More turns behind them',247.34,174.89,24.734,50,3058.8,49.333,400],
+  ['Turn slower',62.33,44.07,6.233,25,194.2,1.566,200],
+  ['A heavier load',116.29,82.23,116.286,50,6761.3,545.228,400],
+  ['A lighter load',125.46,88.71,2.509,50,157.4,.254,400],
+];
+for(const [i,trial] of generatorSlipRingsLesson.tryIt.entries()) {
+  const [title,peak,rms,current,hz,power,heat,slowed]=ringExpected[i];assert.equal(trial.title,title);
+  assert.deepEqual(Object.keys(trial.values).sort(),Object.keys(GENERATOR_DEFAULTS).sort());
+  model.reset();model.update(trial.values);const plan=model.getState();
+  t.near(plan.terminalPeak,peak,.0051,title+' peak voltage');t.near(plan.terminalRms,rms,.0051,title+' RMS voltage');
+  near(plan.frequency,hz,title+' physical frequency');near(plan.slow,slowed,title+' explicit display slowing');
+  t.near(plan.loadPower,power,.051,title+' mean load');t.near(plan.windingPower,heat,.00051,title+' winding heat');
+  model.advance(2);const a=model.getState().now;model.advance(4);const b=model.getState().now;
+  t.near(a.current,current,.00051,title+' current peak');near(a.current,-b.current,title+' opposite half-turn current');
+  near(a.terminal,-b.terminal,title+' opposite half-turn voltage');
+  t.ok(!a.bridged&&!b.bridged,title+' complete rings never bridge winding ends');
+  model.advance(2);t.ok(model.playback.complete(),title+' completes one displayed turn');
+}
 const dcExpected = [
   ['Watch the split ring',79.31,777.0,8.033],['The brush bridges the gap',157.36,3058.8,52.866],
   ['Open the switch',79.95,0,1.767],['Turn slower',39.66,194.2,2.008],

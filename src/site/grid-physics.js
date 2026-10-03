@@ -71,7 +71,7 @@ export const COIL_AREA = COIL.length * COIL.width;
 /** Half the angle, radians, over which a brush wider than the gap bridges both segments. */
 export const BRIDGE = (COIL.brush - COIL.gap) / 2 * Math.PI / 180;
 
-export const OUTPUT_OPTIONS = Object.freeze([{value: 0, label: 'Slip rings, alternating'}, {value: 1, label: 'Commutator, direct'}].map(Object.freeze));
+export const OUTPUT_OPTIONS = Object.freeze([{value: 0, label: 'Slip rings (AC)'}, {value: 1, label: 'Commutator (DC)'}].map(Object.freeze));
 export const GENERATOR_DEFAULTS = Object.freeze({output: 0, speed: 3000, field: 1, turns: 20, load: 10, closed: 1});
 export const GENERATOR_DOMAINS = Object.freeze({output: Object.freeze([0, 1, 1]), speed: Object.freeze([0, 3600, 60]), field: Object.freeze([0, 1.2, 0.05]), turns: Object.freeze([2, 40, 2]), load: Object.freeze([1, 50, 1]), closed: Object.freeze([0, 1, 1])});
 

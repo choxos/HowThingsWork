@@ -136,7 +136,7 @@ export const houseComponents={
  'Binocular prisms':{machine:'Binoculars',part:'probe',isolate:false,view:'front',values:{mode:1,index:1.5,angle:0},lesson:binocularPrismsLesson,intro:binocularPrismsLesson.simple},
  'AC generator':{machine:'Electric generator',part:'system',isolate:false,view:'front',values:{output:0},lesson:acGeneratorLesson,intro:acGeneratorLesson.simple},
  'DC generator':{machine:'Electric generator',createModel:()=>createGeneratorModel({commutatorLesson:true}),part:'system',isolate:false,view:'front',values:{output:1},lesson:dcGeneratorLesson,intro:dcGeneratorLesson.simple},
- 'Generator slip rings':{machine:'Electric generator',part:'rings',isolate:false,view:'front',values:{output:0},lesson:generatorSlipRingsLesson,intro:generatorSlipRingsLesson.simple},
+ 'Generator slip rings':{machine:'Electric generator',part:'system',isolate:false,view:'front',values:{output:0},lesson:generatorSlipRingsLesson,intro:generatorSlipRingsLesson.simple},
  'Transformer turns ratio':{machine:'Transformer',part:'windings',isolate:false,view:'front',lesson:transformerTurnsRatioLesson,intro:transformerTurnsRatioLesson.simple},
  'Transmission transformer':{machine:'Transformer',part:'core',isolate:false,view:'front',values:{stage:0,primaryTurns:3,secondaryTurns:60},lesson:transmissionTransformerLesson,intro:transmissionTransformerLesson.simple},
  'Distribution transformer':{machine:'Transformer',part:'losses',isolate:false,view:'front',values:{stage:1,primaryTurns:60,secondaryTurns:5},lesson:distributionTransformerLesson,intro:distributionTransformerLesson.simple},

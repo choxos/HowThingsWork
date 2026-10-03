@@ -78,10 +78,10 @@ export function createGeneratorModel({commutatorLesson = false} = {}) {
     const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled: false, curveSegments: 64}), new THREE.MeshToonMaterial({color}));
     mesh.rotation.y = Math.PI / 2; mesh.position.x = x - depth / 2; parent.add(mesh); return mesh;
   }
-  const rings = part('rings', 'Two slip rings and fixed brushes', 'Two insulated copper annuli turn with the winding. Each curved carbon brush touches its own ring continuously. Ring A is connected to the winding start; ring B to its end.', MACHINE, system);
+  const rings = part('rings', 'Two slip rings and fixed brushes', 'Copper-colored ring A connects to the winding start; gold-colored ring B to its end. Insulating sleeves separate both copper rings from the shaft. The cream side marks show rotation, not gaps. Each fixed carbon brush touches its own complete ring continuously.', MACHINE, system);
   const ringSpinner = new THREE.Group(); rings.add(ringSpinner);
   const ringMeshes = [BENCH.ringA, BENCH.ringB].map((x, i) => sector(ringSpinner, x, 0.1, BENCH.ringRadius, BENCH.ringWidth, 0, Math.PI * 2, i ? COLORS.brass : COLORS.copper));
-  const ringKeys = [BENCH.ringA, BENCH.ringB].map(x => kit.box([0.003, 0.02, 0.025], [x - BENCH.ringWidth / 2 - 0.002, 0.14, 0], 'cream', ringSpinner));
+  const ringKeys = [BENCH.ringA, BENCH.ringB].map(x => kit.box([0.003, 0.02, 0.025], [x + BENCH.ringWidth / 2 + 0.002, 0.14, 0], 'cream', ringSpinner));
   for (const x of [BENCH.ringA, BENCH.ringB]) { const sleeve = kit.cylinder(0.1, 0.12, [x, 0, 0], 'cream', ringSpinner); sleeve.rotation.z = Math.PI / 2; }
   const ringBrushes = [BENCH.ringA, BENCH.ringB].map((x, i) => sector(rings, x, BENCH.ringRadius, BENCH.ringRadius + 0.12, 0.075, (i ? 1 : -1) * Math.PI / 2 - COIL.brush * Math.PI / 360, COIL.brush * Math.PI / 180, COLORS.ink));
   const ringLeads = [0, 1].map(() => wire([[0, 0, 0], [0, 0, 1]], ringSpinner, WIRE * METER / 2));
@@ -132,7 +132,7 @@ export function createGeneratorModel({commutatorLesson = false} = {}) {
   const liveLabel = textLabel(output, '', {height: 0.22, width: 3.1, position: [CHART.x + CHART.w / 2, CHART.y - 2, 0]});
 
   const d = GENERATOR_DEFAULTS;
-  control('output', 'Contacts', ...GENERATOR_DOMAINS.output, d.output, '', 'Swap the physical contacts: two continuous slip rings or one split ring.', OUTPUT_OPTIONS);
+  control('output', 'Contacts', ...GENERATOR_DOMAINS.output, d.output, '', 'Swap the physical contacts: two continuous slip rings or one split ring.', OUTPUT_OPTIONS, {primary:true});
   control('speed', 'Shaft speed', ...GENERATOR_DOMAINS.speed, d.speed, 'rpm', 'Ideal maintained speed. One pole pair makes one electrical cycle per turn.');
   control('field', 'Field', ...GENERATOR_DOMAINS.field, d.field, 'T', 'Assumed uniform field between the poles.');
   control('turns', 'Turns', ...GENERATOR_DOMAINS.turns, d.turns, '', 'Every turn is drawn and connected. More turns increase induction and winding resistance.');

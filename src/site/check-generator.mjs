@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {electricGeneratorLesson, acGeneratorLesson, dcGeneratorLesson} from './grid-generator-lessons.js';
+import {electricGeneratorLesson, acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
 
 const base=process.env.SITE_URL||'http://127.0.0.1:5196/';
 const output=process.env.EVIDENCE_DIR||'documentation/generator-browser';
 const variant=process.argv[2]||process.env.GENERATOR_LESSON||'electric-generator';
-const variants={'electric-generator':{name:'Electric generator',lesson:electricGeneratorLesson},'ac-generator':{name:'AC generator',lesson:acGeneratorLesson},'dc-generator':{name:'DC generator',lesson:dcGeneratorLesson}};
+const variants={'electric-generator':{name:'Electric generator',lesson:electricGeneratorLesson},'ac-generator':{name:'AC generator',lesson:acGeneratorLesson},'dc-generator':{name:'DC generator',lesson:dcGeneratorLesson},'generator-slip-rings':{name:'Generator slip rings',lesson:generatorSlipRingsLesson}};
 assert.ok(variants[variant],'known generator lesson');
 const {name,lesson}=variants[variant];
 const direct=variant==='dc-generator',checkpoints=[];
+const slipRings=variant==='generator-slip-rings';let continuousContactChecks=0;
 await mkdir(output,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000},hasTouch:true,reducedMotion:'reduce'});
@@ -23,6 +24,9 @@ try {
   await page.goto(new URL('#machine/'+variant,base).href);
   await page.getByRole('heading',{name,exact:true}).waitFor();
   await page.locator('canvas').waitFor();
+  assert.equal(await page.locator('.daily-primary-controls [data-control="output"]').count(),1);
+  const contactChoice=await page.locator('[data-control="output"]').boundingBox(),openingCanvas=await page.locator('canvas').boundingBox();
+  assert.ok(contactChoice.y+contactChoice.height<=1000&&contactChoice.y<openingCanvas.y,'contact type visible above the scene without scrolling');
   assert.equal(await reading('Brush output').innerText(),direct?'79.31 V mean':'88.15 V RMS');
   await capture('assembled');
   for(const [index,trial] of lesson.tryIt.entries()) {
@@ -45,7 +49,11 @@ try {
     let result=await reading('Your result').innerText(),steps=0;
     if(trial.values.speed===0)assert.equal(await page.locator('[data-play]').isDisabled(),true);
     else {
-      while(!/^One turn done/.test(result)&&steps<17){await page.locator('[data-step]').click();result=await reading('Your result').innerText();steps++;}
+      while(!/^One turn done/.test(result)&&steps<17){
+        await page.locator('[data-step]').click();result=await reading('Your result').innerText();steps++;
+        if(slipRings){assert.equal(await reading('Contacts').innerText(),'Continuous slip rings');continuousContactChecks++;}
+        if(slipRings&&index===0&&[4,12].includes(steps))await capture('ring-phase-'+steps);
+      }
       assert.match(result,/^One turn done/,trial.title);
     }
     assert.equal(await page.locator('[data-play]').getAttribute('aria-pressed'),'false');
@@ -161,6 +169,7 @@ try {
     await tools.getByRole('button',{name:'Try it yourself',exact:true}).click();await page.locator('[data-experiment]').nth(lesson.tryIt.findIndex(trial=>trial.values.speed===1500)).click();
     await tools.getByRole('button',{name:'Controls',exact:true}).click();await page.locator('[data-step]').click();
     assert.equal(await reading('Brush output').innerText(),direct?'39.66 V mean':'44.07 V RMS');
+    assert.equal(await page.locator('.daily-primary-controls [data-control="output"]').count(),1);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     await page.locator('[data-view="reset"]').click();await capture('phone-'+viewport.width);
     await page.getByRole('button',{name:'Inspect the voltage chart',exact:true}).click();await capture('phone-chart-'+viewport.width);
@@ -190,6 +199,6 @@ try {
   }
   assert.match(page.url(),new RegExp('#machine/'+variant+'$'));
   assert.deepEqual(errors,[]);
-  const report={passed:true,variant,presets,checkpoints,halfTurns,controls,actions,pause:true,completion:true,replay:true,blocked:true,popup:true,deselection:true,zoomOnlyButtons:true,outsideDrag:true,wheelSeparation:true,pinch:true,quiz:true,navigation:true,mobileWidths:[390,320],errors};
+  const report={passed:true,variant,presets,checkpoints,halfTurns,continuousContactChecks,controls,actions,pause:true,completion:true,replay:true,blocked:true,popup:true,deselection:true,zoomOnlyButtons:true,outsideDrag:true,wheelSeparation:true,pinch:true,quiz:true,navigation:true,mobileWidths:[390,320],errors};
   await writeFile(output+'/browser.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 } finally {await browser.close();}

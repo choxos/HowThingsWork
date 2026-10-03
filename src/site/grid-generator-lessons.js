@@ -2,7 +2,7 @@ import {GENERATOR_DEFAULTS} from './grid-physics.js';
 import {sources, generatorLimits} from './grid-sources.js';
 
 const sourceList = [sources.generatorPhysics, sources.terminalVoltage, sources.magneticTorque, sources.conductorResistance, sources.unswGenerator];
-const trial = (part, defaults = {}) => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...GENERATOR_DEFAULTS, ...defaults, ...values}, reset: true, part, isolate: false, view: 'front'});
+const trial = (part, defaults = {}, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...GENERATOR_DEFAULTS, ...defaults, ...values}, reset: true, part, isolate: false, view});
 const chart = trial('output'), coil = trial('coil'), load = trial('load');
 const parts = [
   {name: 'North and south poles', role: 'Provide the field across the rotating winding.'},
@@ -120,18 +120,41 @@ export const dcGeneratorLesson = {
   quiz: {question: 'What does a split ring do that continuous slip rings do not?', options: ['It exchanges the winding ends connected to the brushes every half turn.', 'It stores charge to fill the spaces between pulses.', 'It prevents the internal coil voltage from reversing.'], answer: 0, explanation: 'The internal voltage still reverses. Swapping its connection at the same time preserves the external polarity.'},
 };
 
-const rings = trial('rings');
+const rings = trial('rings', {}, 'iso');
 export const generatorSlipRingsLesson = {
   ...acGeneratorLesson,
   simple: 'How does a fixed circuit stay connected to a rotating winding?',
-  overview: 'Each winding end connects to its own insulated copper ring. A stationary carbon brush rubs continuously on each ring, so the coil can turn without twisting a fixed wire. The two connections retain their identities through every angle. Select slip rings, inspect their brushes, then watch a full turn.',
+  overview: 'Each winding end connects to its own complete copper ring. Insulating sleeves keep the rings separate from the shaft. Stationary carbon brushes touch the turning rings, connecting them to fixed wires without winding those wires around the shaft. Click Inspect the contacts, then Step or Play: cream marks turn with the rings while the black brushes stay still. The two connections keep their identities even when current reverses.',
+  steps: [
+    {title: 'Keep the two winding ends separate', body: 'The copper-colored ring A joins the start of the winding. The gold-colored ring B joins its end. Both rings are copper in this model; the different colors help you follow the two connections.'},
+    {title: 'Insulate the rings from the shaft', body: 'Cream sleeves sit between the conducting rings and the metal shaft. The axial space between the two rings keeps their conducting surfaces apart. Without this separation, the winding ends would be shorted together.'},
+    {title: 'Turn the rings, keep the brushes fixed', body: 'Click Inspect the contacts. The cream side marks move with the rings and their winding leads. The black brushes and external leads remain still. The side marks do not interrupt the complete copper contact surfaces.'},
+    {title: 'Reach the first voltage peak', body: 'Reset and press Step four times. At 90°, the default brush voltage is +124.66 V and load current is +12.466 A. Each brush still contacts its original ring.'},
+    {title: 'Reverse current without swapping connections', body: 'Eight more Steps reach 270°. Voltage is now −124.66 V and current is −12.466 A. The winding has reversed its EMF; neither brush has moved to the other ring.'},
+    {title: 'Distinguish contact from a complete circuit', body: 'Choose Open the switch in Try it yourself. Both brushes remain in contact, but the break beyond them prevents load current. The turning winding still produces voltage between the brushes.'},
+  ],
+  parts: [
+    {name: 'Two slip rings and fixed brushes', role: 'Two continuous sliding connections retain the winding terminal identities through every shaft angle.'},
+    {name: 'Connected rotating winding', role: 'Its two leads rotate with their rings, while changing magnetic flux generates the voltage.'},
+    {name: 'Driven pulley and shaft', role: 'Turns the winding and rings together; insulating sleeves prevent the shaft from joining the two electrical terminals.'},
+    {name: 'Resistor and series switch', role: 'The fixed load can draw current through both contacts or interrupt the external circuit.'},
+    {name: 'Brush voltage over one turn', role: 'The blue trace reverses sign without either brush switching rings.'},
+  ],
   tryIt: [
-    rings('Follow one ring', 'Watch the light marker turn with each copper ring.', 'Each brush stays fixed on its own ring. Loaded brush voltage peaks at 124.66 V and changes sign every half turn.'),
-    rings('Open the switch', 'Open the circuit beyond the brushes.', 'Both brushes still touch their rings, but load current is zero. The brushes retain 125.66 V peak.', {closed: 0}),
-    rings('More turns behind them', 'Run with more winding turns.', 'The two rings retain their connections while brush voltage rises to 247.34 V peak.', {turns: 40}),
-    rings('Turn slower', 'Halve the shaft speed.', 'The rings turn more slowly and deliver 62.33 V peak at 25.00 Hz.', {speed: 1500}),
-    rings('A heavier load', 'Reduce the external resistance.', 'Peak current through the contacts rises to 116.29 A in this ideal circuit. Real brush ratings and heating would constrain operation.', {load: 1}),
-    rings('A lighter load', 'Increase the external resistance.', 'Peak current falls to 2.51 A and average load power to 157.4 W. Contact identity remains unchanged.', {load: 50}),
+    rings('Follow one ring', 'Use four Steps, then eight more, to follow the cream side marks past opposite half turns.', 'Both black brushes stay fixed on their own rings. Brush voltage reaches +124.66 V and −124.66 V, with current +12.466 A and −12.466 A. RMS output is 88.15 V; average load power is 777.0 W.'),
+    rings('Open the switch', 'Open the circuit beyond the brushes and run a full turn.', 'Both brushes still touch their rings, but load current and electromagnetic shaft power are zero. The brushes retain 125.66 V peak, or 88.86 V RMS.', {closed: 0}),
+    rings('More turns behind them', 'Run with more winding turns, then inspect the winding.', 'The same two rings carry output from all 40 series turns. Brush voltage rises to 247.34 V peak, or 174.89 V RMS, while frequency remains 50.00 Hz.', {turns: 40}),
+    rings('Turn slower', 'Halve the physical shaft speed and compare Frequency and Slowed.', 'Frequency falls to 25.00 Hz and brush voltage to 62.33 V peak, or 44.07 V RMS. Every displayed turn still takes eight seconds: Slowed changes from 400 times to 200 times.', {speed: 1500}),
+    rings('A heavier load', 'Reduce the external resistance, then inspect the load.', 'Peak current through each contact rises to 116.29 A. Average load power is 6,761.3 W and winding heat is 545.2 W in this ideal circuit. Brush heating and operating ratings are not predicted.', {load: 1}),
+    rings('A lighter load', 'Increase the external resistance and run a full turn.', 'Peak current falls to 2.51 A and average load power to 157.4 W. RMS brush voltage is 88.71 V. Contact identity remains unchanged.', {load: 50}),
+  ],
+  deeper: [
+    {title: 'A sliding joint, not a loose wire', body: 'The winding and its ring leads rotate together. The brushes and their load leads stay fixed. Sliding occurs only at the brush faces, so the external wires do not twist with each revolution. A complete conducting ring provides contact at every angle; its brush need not chase a particular spot on the copper.'},
+    {title: 'Two rings preserve two terminals', body: 'One ring cannot replace the pair: joining both winding ends to the same conductor would short them. Insulation from the metal shaft matters for the same reason. The separate rings preserve two terminal connections; neither ring is permanently the positive one when this winding generates AC.'},
+    {title: 'Continuous contact does not mean constant current', body: 'A brush can remain in contact while current passes through zero or reverses. Here the changing flux in the winding sets the voltage. Opening the external switch gives another distinct case: both contacts remain intact, but the broken load path carries no current.'},
+    {title: 'Read speed from the measured clock', body: 'For legibility, every full demonstration turn lasts eight seconds. At 3000 rpm the physical shaft makes 50 turns each second, so the drawing is slowed 400 times. At 1500 rpm it is slowed 200 times. Frequency and voltage change with the speed control; the screen is showing one enlarged cycle rather than a real-time shaft.'},
+    {title: 'What real brushes add', body: 'This model treats an intact sliding contact as having zero resistance. It includes copper winding loss, but no brush voltage drop, contact heating, wear, bounce or arcing. A high calculated current does not establish that a real brush assembly could carry it.'},
+    ...acGeneratorLesson.deeper,
   ],
   misconception: 'Slip rings transfer a connection across a rotating joint. They do not convert AC to DC.',
   quiz: {question: 'Why use two separate slip rings?', options: ['Each winding end needs its own continuous, insulated connection.', 'One ring carries voltage and the other carries current.', 'A second ring cancels the negative half of the waveform.'], answer: 0, explanation: 'Separate rings preserve the two winding terminals. Each brush follows one terminal continuously, allowing either current direction.'},
