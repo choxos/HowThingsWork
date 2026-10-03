@@ -61,3 +61,7 @@ const clock = families.find(family => family.entry.id === 'mechanical-clock');
 assert(catalogMachineComponents(clock.components).some(entry => entry.id === 'anchor-escapement'), 'Escapement is a smaller machine under its clock');
 assert(families.some(family => family.entry.id === 'mechanical-watch'), 'Mechanical watch is a whole machine');
 assert.deepEqual(tags('mechanical-watch'), ['gears-and-belts', 'springs']);
+const watch = families.find(family => family.entry.id === 'mechanical-watch');
+assert(catalogMachineComponents(watch.components).some(entry => entry.id === 'lever-escapement'), 'Detached lever is a smaller machine under its watch');
+assert.deepEqual(tags('lever-escapement'), ['levers', 'gears-and-belts', 'springs']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'lever-escapement')).map(family => family.entry.id), ['mechanical-watch']);

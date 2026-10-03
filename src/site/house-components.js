@@ -31,6 +31,7 @@ import {createTransformerModel} from './transformer-model.js';
 import {powerPylonLesson} from './power-pylon-lesson.js';
 import {createPowerPylonModel} from './power-pylon-model.js';
 import {createAnchorEscapementModel} from './anchor-escapement-model.js';
+import {createLeverEscapementModel} from './lever-escapement-model.js';
 import {powerLineInsulatorLesson} from './power-line-insulator-lesson.js';
 import {createPowerLineInsulatorModel} from './power-line-insulator-model.js';
 import {phonemesLesson} from './speech-lessons.js';
@@ -100,7 +101,7 @@ export const houseComponents={
  'Cylinder-lock cam and bolt':{machine:'Cylinder lock',createModel:()=>{const model=createCylinderModel({camLesson:true});model.resultPart.focusOnComplete=false;model.followParts=model.parts.filter(part=>!['system','frame','door'].includes(part.id)).map(part=>part.id);return model;},isolate:false,part:'latch-drive',view:'back',values:{insertion:1},lesson:cylinderComponentLessons['Cylinder-lock cam and bolt'],intro:cylinderComponentLessons['Cylinder-lock cam and bolt'].simple},
  'Scale calibrating plate':{machine:'Bathroom scale',part:'calibration',view:'front',isolate:false,createModel:()=>createBathroomScaleModel({plateTeaching:true}),lesson:scaleCalibratingPlateLesson,intro:scaleCalibratingPlateLesson.simple},
  'Anchor escapement':{machine:'Mechanical clock',createModel:createAnchorEscapementModel,part:'escapement',isolate:true,view:'front',lesson:anchorEscapementLesson,intro:anchorEscapementLesson.simple},
- 'Lever escapement':{machine:'Mechanical watch',part:'escapement',isolate:false,view:'front',lesson:leverEscapementLesson,intro:leverEscapementLesson.simple},
+ 'Lever escapement':{machine:'Mechanical watch',createModel:createLeverEscapementModel,part:'escapement',isolate:false,view:'front',lesson:leverEscapementLesson,intro:leverEscapementLesson.simple},
 'Hairspring':{machine:'Mechanical watch',part:'hairspring',isolate:false,view:'front',lesson:hairspringLesson,intro:hairspringLesson.simple},
  'Lockstitch':{lesson:utilityComponentLessons.Lockstitch,machine:'Sewing machine',createModel:()=>{const model=createSewingModel();model.resultPart.focusOnComplete=false;model.followParts=[...model.followParts,'stitch-formation','needle','hook-assembly','hook','bobbin','take-up','take-up-rocker'];return model;},part:'stitch-formation',view:'side',isolate:true,intro:'A hook carries a loop of upper thread around the bobbin thread; the take-up then tightens their interlock.'},
  'Feed-dog':{lesson:utilityComponentLessons['Feed-dog'],machine:'Sewing machine',createModel:()=>{const model=createSewingModel({feedLesson:true});model.resultPart.focusOnComplete=false;return model;},part:'feed-bar',view:'side',isolate:true,intro:'Toothed bars rise, move the cloth while the needle is clear, drop, and return.'},

@@ -4,6 +4,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 // components, close-up studies or alternate names for a published machine.
 export const componentParentIds = {
   'anchor-escapement': 'mechanical-clock',
+  'lever-escapement': 'mechanical-watch',
   'refrigerant-compressor': 'refrigerator',
   'siphon': 'toilet-tank',
   'rotating-spray-arm': 'dishwasher',
@@ -79,6 +80,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 
 const nestedMachineIds = new Set([
   "anchor-escapement",
+  "lever-escapement",
   "refrigerant-compressor",
   "siphon",
   "rotating-spray-arm",

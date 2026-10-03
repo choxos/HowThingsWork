@@ -590,6 +590,18 @@
       "parentId": "system"
     }
   ],
+  "lever-escapement": [
+    {
+      "id": "movement",
+      "name": "Complete watch movement",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Wind and temperature comparisons",
+      "parentId": "system"
+    }
+  ],
   "rack-and-pinion-corkscrew": [
     {
       "id": "bottle",
