@@ -3549,6 +3549,38 @@
       "parentId": "system"
     }
   ],
+  "power-line-insulator": [
+    {
+      "id": "source-stage",
+      "name": "Source and feeder",
+      "parentId": "system"
+    },
+    {
+      "id": "support-stage",
+      "name": "Insulation and mechanical support",
+      "parentId": "system"
+    },
+    {
+      "id": "consumer-stage",
+      "name": "Consumer and common return",
+      "parentId": "system"
+    },
+    {
+      "id": "junctions",
+      "name": "Shared line and return nodes",
+      "parentId": "system"
+    },
+    {
+      "id": "indicators",
+      "name": "Mean dissipated power indicators",
+      "parentId": "system"
+    },
+    {
+      "id": "currents",
+      "name": "Signed instantaneous currents",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",

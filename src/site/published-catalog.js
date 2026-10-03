@@ -125,7 +125,8 @@ export const publishedEntryIds = [
   "transmission-transformer",
   "distribution-transformer",
   "home-supply-transformer",
-  "electricity-transmission"
+  "electricity-transmission",
+  "power-line-insulator"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -212,7 +213,7 @@ export const previewEntryIds = [
   "hair-dryer",
   "bimetal-thermostat",
   "rod-thermostat",
-  "wax-thermostat", "polarizing-filter", "liquid-crystals", "polarizing-sunglasses", "binocular-prisms", "power-line-insulator", "power-pylon",
+  "wax-thermostat", "polarizing-filter", "liquid-crystals", "polarizing-sunglasses", "binocular-prisms", "power-pylon",
 ];
 const preview = import.meta.env?.DEV === true && import.meta.env?.VITE_PREVIEW_UNPUBLISHED === '1';
 const allowed = new Set([...publishedEntryIds, ...(preview ? previewEntryIds : [])]);
