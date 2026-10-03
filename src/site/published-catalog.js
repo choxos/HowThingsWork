@@ -130,7 +130,8 @@ export const publishedEntryIds = [
   "power-pylon",
   "anchor-escapement",
   "mechanical-watch",
-  "lever-escapement"
+  "lever-escapement",
+  "hairspring"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -235,6 +236,7 @@ const groupPrinciples = {
 const entryPrinciples = {
   'mechanical-watch': ['gears-and-belts', 'springs'],
   'lever-escapement': ['levers', 'gears-and-belts', 'springs'],
+  'hairspring': ['springs'],
   'power-pylon': ['forces-and-structures'],
   'power-line-insulator': ['electricity'],
   'electricity-transmission': ['electricity', 'magnetism'],

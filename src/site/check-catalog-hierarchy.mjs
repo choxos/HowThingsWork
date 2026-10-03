@@ -65,3 +65,7 @@ const watch = families.find(family => family.entry.id === 'mechanical-watch');
 assert(catalogMachineComponents(watch.components).some(entry => entry.id === 'lever-escapement'), 'Detached lever is a smaller machine under its watch');
 assert.deepEqual(tags('lever-escapement'), ['levers', 'gears-and-belts', 'springs']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'lever-escapement')).map(family => family.entry.id), ['mechanical-watch']);
+assert(watch.components.some(entry => entry.id === 'hairspring'));
+assert(!catalogMachineComponents(watch.components).some(entry => entry.id === 'hairspring'), 'Passive hairspring stays inside its watch family, outside the smaller-machine list');
+assert.deepEqual(tags('hairspring'), ['springs']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'hairspring')).map(family => family.entry.id), ['mechanical-watch']);

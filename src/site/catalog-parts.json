@@ -3522,6 +3522,23 @@
       "parentId": "system"
     }
   ],
+  "hairspring": [
+    {
+      "id": "movement",
+      "name": "Complete watch movement",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Wind and temperature comparisons",
+      "parentId": "system"
+    },
+    {
+      "id": "energy",
+      "name": "Spring and balance energy",
+      "parentId": "system"
+    }
+  ],
   "zipper-slide-wedges": [
     {
       "id": "body",

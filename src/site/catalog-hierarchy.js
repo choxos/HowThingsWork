@@ -5,6 +5,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 export const componentParentIds = {
   'anchor-escapement': 'mechanical-clock',
   'lever-escapement': 'mechanical-watch',
+  'hairspring': 'mechanical-watch',
   'refrigerant-compressor': 'refrigerator',
   'siphon': 'toilet-tank',
   'rotating-spray-arm': 'dishwasher',

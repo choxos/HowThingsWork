@@ -32,6 +32,7 @@ import {powerPylonLesson} from './power-pylon-lesson.js';
 import {createPowerPylonModel} from './power-pylon-model.js';
 import {createAnchorEscapementModel} from './anchor-escapement-model.js';
 import {createLeverEscapementModel} from './lever-escapement-model.js';
+import {createHairspringModel} from './hairspring-model.js';
 import {powerLineInsulatorLesson} from './power-line-insulator-lesson.js';
 import {createPowerLineInsulatorModel} from './power-line-insulator-model.js';
 import {phonemesLesson} from './speech-lessons.js';
@@ -102,7 +103,7 @@ export const houseComponents={
  'Scale calibrating plate':{machine:'Bathroom scale',part:'calibration',view:'front',isolate:false,createModel:()=>createBathroomScaleModel({plateTeaching:true}),lesson:scaleCalibratingPlateLesson,intro:scaleCalibratingPlateLesson.simple},
  'Anchor escapement':{machine:'Mechanical clock',createModel:createAnchorEscapementModel,part:'escapement',isolate:true,view:'front',lesson:anchorEscapementLesson,intro:anchorEscapementLesson.simple},
  'Lever escapement':{machine:'Mechanical watch',createModel:createLeverEscapementModel,part:'escapement',isolate:false,view:'front',lesson:leverEscapementLesson,intro:leverEscapementLesson.simple},
-'Hairspring':{machine:'Mechanical watch',part:'hairspring',isolate:false,view:'front',lesson:hairspringLesson,intro:hairspringLesson.simple},
+'Hairspring':{machine:'Mechanical watch',createModel:createHairspringModel,part:'oscillator',isolate:false,view:'front',lesson:hairspringLesson,intro:hairspringLesson.simple},
  'Lockstitch':{lesson:utilityComponentLessons.Lockstitch,machine:'Sewing machine',createModel:()=>{const model=createSewingModel();model.resultPart.focusOnComplete=false;model.followParts=[...model.followParts,'stitch-formation','needle','hook-assembly','hook','bobbin','take-up','take-up-rocker'];return model;},part:'stitch-formation',view:'side',isolate:true,intro:'A hook carries a loop of upper thread around the bobbin thread; the take-up then tightens their interlock.'},
  'Feed-dog':{lesson:utilityComponentLessons['Feed-dog'],machine:'Sewing machine',createModel:()=>{const model=createSewingModel({feedLesson:true});model.resultPart.focusOnComplete=false;return model;},part:'feed-bar',view:'side',isolate:true,intro:'Toothed bars rise, move the cloth while the needle is clear, drop, and return.'},
  'Bobbin and bobbin thread':{machine:'Sewing machine',createModel:()=>{const model=createSewingModel();model.resultPart.focusOnComplete=false;model.followParts=[...model.followParts,'hook-assembly'];return model;},part:'hook-assembly',view:'iso',isolate:true,lesson:utilityComponentLessons['Bobbin and bobbin thread'],intro:utilityComponentLessons['Bobbin and bobbin thread'].simple},
