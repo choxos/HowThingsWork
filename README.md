@@ -45,7 +45,7 @@ node src/site/check-house.mjs
 node src/site/check-lessons.mjs
 ```
 
-Focused model and browser checks live beside their lessons in `src/site/`. Browser checks require Playwright and its Chromium browser (`npx playwright install chromium`); some detailed visual checks use installed Google Chrome. `npm run test:browser` runs checks sequentially and reports any failed attempt as a failure. Use `SITE_URL` to check an existing server. The deployment smoke checker also accepts `PLAYWRIGHT_MODULE` for an external Playwright installation. Checks that load source fixtures require the Vite development server.
+Focused model and browser checks live beside their lessons in `src/site/`. Playwright is installed by `npm ci`; install its Chromium browser with `npx playwright install chromium`. Some detailed visual checks use installed Google Chrome. `npm run test:browser` runs checks sequentially and reports any failed attempt as a failure. Use `SITE_URL` to check an existing server. The deployment smoke checker also accepts `PLAYWRIGHT_MODULE` for an external Playwright installation. Checks that load source fixtures require the Vite development server.
 
 ```sh
 SITE_URL=http://127.0.0.1:4173/ npm run check:publication
@@ -59,7 +59,6 @@ Passing a check establishes the behavior it tests. It does not establish complet
 `scripts/record-tour.mjs` records real browser interactions and encodes a silent MP4. It requires installed Google Chrome, FFmpeg, and Playwright. Output goes to the local `documentation/` directory. Move an existing tour aside before recording; the encoder refuses to overwrite it.
 
 ```sh
-npm install --no-save --package-lock=false playwright
 node scripts/record-tour.mjs
 ```
 
