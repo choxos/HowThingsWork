@@ -49,10 +49,15 @@ try {
   assert.equal(await page.locator('[data-part-link]').count(), 0, 'Ordinary parts stay inside viewers');
   await links();
   for (const entry of catalog.entries) {
+    console.log(`Checking lesson: ${entry.id}`);
     const target = canonical(entry);
     assert.ok(target && !houseComponents[target.name]?.redirectTo, entry.id + ': valid one-hop published target');
-    await page.evaluate(id => {location.hash = 'machine/' + id;}, entry.id);
-    await page.waitForFunction(expected => location.hash === '#machine/' + expected.id && document.querySelector('.daily-heading h1')?.textContent === expected.name && document.querySelector('.daily-viewer canvas'), target, {timeout: 45000});
+    await page.goto(new URL('#machine/' + entry.id, base).href, {waitUntil: 'domcontentloaded', timeout: 45000});
+    try {
+      await page.waitForFunction(expected => location.hash === '#machine/' + expected.id && document.querySelector('.daily-heading h1')?.textContent === expected.name && document.querySelector('.daily-viewer canvas'), target, {timeout: 45000});
+    } catch (cause) {
+      throw new Error(`${entry.id}: expected ${target.name} at #machine/${target.id}; current URL ${page.url()}; page errors: ${errors.join('; ') || 'none'}`, {cause});
+    }
     const presets = await page.locator('[data-experiment]').count();
     assert.ok(presets > 0, entry.name + ': no experiments');
     assert.equal(await page.locator('.daily-viewer canvas').count(), 1, entry.name);
@@ -61,13 +66,15 @@ try {
   }
   const hidden = drafts.entries.filter(entry => !allowed.has(entry.id)).map(entry => '#machine/' + entry.id);
   const hiddenRooms=[...new Set(drafts.groups.filter(group=>group.place==='home').map(group=>'#room/'+group.room.toLowerCase().replace(/[^a-z0-9]+/g,'-')))].filter(route=>!routes.has(route));
+  console.log(`Checking ${hidden.length} hidden lesson routes and retired navigation routes`);
   for (const route of [...hidden, '#assembly/front-door', ...hiddenRooms, ...drafts.places.filter(place=>!catalog.places.some(p=>p.id===place.id)).map(place=>'#place/'+place.id), '#/topic/levers', '#machine/unknown']) {
-    await page.evaluate(hash => {location.hash = hash;}, route);
+    await page.goto(new URL(route, base).href, {waitUntil: 'domcontentloaded', timeout: 45000});
     await page.waitForFunction(() => location.hash === '#list' && document.querySelector('#catalog-search'));
     assert.equal(await page.locator('.daily-viewer').count(), 0, route);
   }
+  console.log('Checking public location navigation');
   for (const route of [...routes].filter(route => !route.startsWith('#machine/'))) {
-    await page.evaluate(hash => {location.hash = hash;}, route);
+    await page.goto(new URL(route, base).href, {waitUntil: 'domcontentloaded', timeout: 45000});
     const heading = route === '#neighborhood' ? 'A little neighborhood. A world to discover.' :
       route === '#list' ? 'Explore the finished collection.' :
       route.startsWith('#place/') ? catalog.places.find(place => route === '#place/' + place.id).name :
@@ -83,6 +90,9 @@ try {
     await writeFile(process.env.EVIDENCE_DIR + '/publication-browser.json', JSON.stringify(report, null, 2) + '\n');
   }
   console.log(JSON.stringify(report));
+} catch (error) {
+  console.error(error);
+  throw error;
 } finally {
   await browser.close();
 }
