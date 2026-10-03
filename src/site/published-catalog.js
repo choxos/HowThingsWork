@@ -114,7 +114,8 @@ export const publishedEntryIds = [
   "toaster",
   "refrigerator",
   "refrigerant-compressor",
-  "mechanical-clock"
+  "mechanical-clock",
+  "air-conditioner"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -185,7 +186,6 @@ export const previewEntryIds = [
   "active-burglar-alarm",
   "passive-infrared-movement-detector",
   "lightning-conductor", "magnetic-burglar-alarm",
-  "air-conditioner",
   "car-ignition-system",
   "solenoid",
   "spark-plug",

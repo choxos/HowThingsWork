@@ -36,6 +36,7 @@
     "check:roberval-balance": "node src/site/check-roberval-balance.mjs",
     "check:scale-calibrating-plate": "node src/site/check-scale-calibrating-plate.mjs",
     "check:publication-boundary": "node scripts/check-public-preview-boundary.mjs",
+    "check:aircon": "node src/site/check-aircon.mjs",
     "check:mechanical-clock": "node src/site/check-pendulum-clock.mjs"
   },
   "dependencies": {

@@ -1276,6 +1276,28 @@
       "name": "Cylinder pressure-volume chart"
     }
   ],
+  "air-conditioner": [
+    {
+      "id": "indoor",
+      "name": "Indoor unit, cut open",
+      "parentId": "system"
+    },
+    {
+      "id": "outdoor",
+      "name": "Outdoor unit, cut open",
+      "parentId": "system"
+    },
+    {
+      "id": "connections",
+      "name": "Connections between units",
+      "parentId": "system"
+    },
+    {
+      "id": "observations",
+      "name": "Air and room measurements",
+      "parentId": "system"
+    }
+  ],
   "binoculars": [
     {
       "id": "body",

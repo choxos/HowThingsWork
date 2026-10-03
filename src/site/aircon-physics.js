@@ -1,65 +1,12 @@
 import {validateControls, validTime, clamp} from './physics-kit.js';
 
-// ---------------------------------------------------------------------------
-// Air conditioner: a vapor compression loop of R-410A whose cold coil sits in
-// the room's air, taking heat out of it and water out with the heat, and whose
-// hot coil stands outdoors giving both back to the outdoor air.
-//
-// Exact within the model: the refrigerant's boiling pressure from Clausius and
-// Clapeyron through the two points its property table gives, 1 atm at
-// −48.5 °C and 1.383 MPa above the atmosphere at 21.1 °C, with the latent heat B R / M that fit
-// implies; the compressor's volumetric efficiency from its clearance and the
-// pressure ratio, its mass flow from the suction vapor taken as an ideal gas,
-// and its ideal work cp T ((Pc/Pe)^((γ−1)/γ) − 1), with γ from the table's gas
-// heat capacity and R/M; the saturation pressure of water from the Arden Buck
-// equation, the humidity ratio 0.621959 p/(101,325 − p), which is the molar
-// mass of water over the molar mass of dry air, the dew point from the Buck
-// equation turned around, and the latent heat of condensing water from the
-// Latent heat page's cubic fit; the sensible and latent loads of the air
-// crossing the coil; the loop closed by its own first law, the condenser
-// rejecting the cooling load plus the compressor's work; and the room
-// integrated step by step as one stirred volume.
-//
-// Sourced: R-410A's composition, molar mass, boiling point, vapor pressure at
-// 21.1 °C, critical point, and gas and liquid heat capacities; dry air's
-// density, molar mass and heat capacity; water's molar mass; the Buck
-// coefficients; a ton of refrigeration; the range of residential capacities;
-// the coefficient of performance of most air conditioners; the comfort band of
-// 30 to 60 percent; and that too little airflow can ice the coil.
-//
-// Not from a source, each said in the lesson's limits: a rotary compressor of
-// 11 cm³ turning at 2,900 rpm with 4 percent clearance, 55 percent efficient
-// against the ideal compression, chosen so that the unit's coefficient of
-// performance falls inside the 3.5 to 5 its page gives for most air
-// conditioners; its vapor taken as an ideal gas with a
-// constant latent heat and a liquid heat capacity fixed at the table's 30 °C
-// value; vapor leaving the evaporator 5 °C superheated and liquid leaving the
-// condenser at the condensing temperature; the coil's surface at the
-// evaporating temperature, with 85 percent of the air brought to it and the
-// rest slipping past unchanged, which can leave the mixture a shade above
-// saturation, where the model reads it as saturated; an outdoor coil of 450 W/K;
-// a room whose air, furnishings and surfaces hold 6 times what its air alone
-// holds, for moisture as well as heat, losing 60 W for each degree it is cooler
-// than outdoors, with no moisture coming back in; the run stopped at 30 minutes;
-// the refrigerant drawn going round once every 7 s of the run; and standard
-// atmospheric pressure everywhere.
-// ---------------------------------------------------------------------------
+import {R410A, saturationPressure, saturationTemperature, liquidEnthalpy, vaporEnthalpy} from './r410a-properties.js';
+export {R410A, liquidEnthalpy, vaporEnthalpy};
 
-/** The gas constant and standard atmosphere, from the Density of air page and the standard atmosphere. */
+// Manufacturer saturation properties; ideal-gas compressor and well-mixed room.
+// Equipment parameters are illustrative, not product ratings.
 export const GAS = 8.31446261815324;
 export const ATMOSPHERE = 101325;
-
-/** R-410A, from the property table on its Wikipedia page. Pressures in Pa, temperatures in °C, heat capacities in J/(kg·K). */
-export const R410A = Object.freeze({
-  name: 'R-410A', molar: 0.0726, melting: -155, boiling: -48.5,
-  liquidDensity: 1040, liquidDensityAt: 30, vaporDensity: 3.0, vaporDensityAt: 30,
-  // The table's 1.383 MPa at 21.1 °C is a gauge pressure, 201 psi above the
-  // atmosphere on the usual pressure-temperature charts; the boiling curve needs
-  // the absolute pressure.
-  vaporPressureGauge: 1.383e6, vaporPressure: 1.383e6 + 101325, vaporPressureAt: 21.1,
-  criticalTemperature: 72.8, criticalPressure: 4.90e6,
-  gasHeat: 840, liquidHeat: 1800, liquidHeatAt: 30,
-});
 
 /** Dry air, from the Density of air and Table of specific heat capacities pages. */
 export const AIR = Object.freeze({density: 1.2041, densityAt: 20, standardDensity: 1.2250, standardDensityAt: 15, molar: 0.0289652, heat: 1012, heatAt: 'typical room conditions'});
@@ -77,7 +24,7 @@ export const RATED = Object.freeze({ton: 3516.853, btu: 12000, smallest: 3.5e3, 
 export const DECLARED = Object.freeze({
   displacement: 11e-6, rpm: 2900, clearance: 0.04, efficiency: 0.55, superheat: 5,
   contact: 0.85, condenser: 450, roomLoss: 60, furnishings: 6,
-  longest: 1800, step: 15, samples: 181, slower: 60, lap: 7, iceAt: 0,
+  longest: 1800, step: 15, samples: 181, slower: 60, lap: 120, iceAt: 0,
 });
 
 export const AIRCON_DEFAULTS = Object.freeze({room: 28, humidity: 60, flow: 0.15, outdoor: 35, volume: 40, set: 24});
@@ -91,18 +38,11 @@ const K = 273.15;
 /** The molar mass of water over the molar mass of dry air: the 0.622 of the humidity ratio, worked out rather than typed. */
 export const MOLAR_RATIO = WATER.molar / AIR.molar;
 
-/** Clausius and Clapeyron through the refrigerant's two sourced points: ln(P2/P1) = B (1/T1 − 1/T2). */
-export const CLAPEYRON = Math.log(R410A.vaporPressure / ATMOSPHERE) / (1 / (R410A.boiling + K) - 1 / (R410A.vaporPressureAt + K));
-/** The latent heat that fit implies, J/kg: B R / M. */
-export const LATENT = CLAPEYRON * GAS / R410A.molar;
-/** The refrigerant's own gas constant and its ratio of heat capacities, from the table's gas heat capacity. */
+/** Ideal-gas approximation used only for compressor work and mass flow. */
 export const REFRIGERANT_GAS = GAS / R410A.molar;
 export const GAMMA = R410A.gasHeat / (R410A.gasHeat - REFRIGERANT_GAS);
-
-/** The refrigerant's boiling pressure at `celsius`, Pa. */
-export const boilingPressure = celsius => ATMOSPHERE * Math.exp(-CLAPEYRON * (1 / (celsius + K) - 1 / (R410A.boiling + K)));
-/** The temperature, °C, at which the refrigerant boils at `pascals`. */
-export const boilingPoint = pascals => 1 / (1 / (R410A.boiling + K) - Math.log(pascals / ATMOSPHERE) / CLAPEYRON) - K;
+export const boilingPressure = saturationPressure;
+export const boilingPoint = saturationTemperature;
 
 /** The saturation vapor pressure of water, Pa, at `celsius`. */
 export const buckPressure = celsius => 100 * BUCK.a * Math.exp((BUCK.b - celsius / BUCK.d) * (celsius / (BUCK.c + celsius)));
@@ -123,7 +63,7 @@ export const relativeHumidity = (celsius, ratio) => 100 * vaporPressureOf(ratio)
 export const saturatedRatio = celsius => humidityRatio(buckPressure(celsius));
 
 /** The x where an increasing `fn` crosses zero, by bisection; the nearer end if it never does. */
-function bisect(fn, lo, hi, steps = 40) {
+function bisect(fn, lo, hi, steps = 32) {
   if (fn(lo) >= 0) return lo;
   if (fn(hi) <= 0) return hi;
   let a = lo, b = hi;
@@ -137,7 +77,7 @@ function bisect(fn, lo, hi, steps = 40) {
  * fills, the refrigerant it moves, and the work it takes.
  */
 export function compressorAt(evaporating, condensing) {
-  const low = boilingPressure(evaporating), high = boilingPressure(condensing);
+  const low = boilingPressure(evaporating, 'dew'), high = boilingPressure(condensing, 'bubble');
   const suction = evaporating + DECLARED.superheat;
   const density = low * R410A.molar / (GAS * (suction + K));
   const ratio = high / low;
@@ -145,17 +85,13 @@ export function compressorAt(evaporating, condensing) {
   const swept = DECLARED.displacement * DECLARED.rpm / 60;
   const mass = volumetric * swept * density;
   const ideal = mass * R410A.gasHeat * (suction + K) * (ratio ** ((GAMMA - 1) / GAMMA) - 1);
-  return {low, high, suction, density, ratio, volumetric, swept, mass, ideal, work: ideal / DECLARED.efficiency};
+  const work = ideal / DECLARED.efficiency;
+  return {low, high, suction, density, ratio, volumetric, swept, mass, ideal, work, discharge: suction + (mass > 0 ? work / (mass * R410A.gasHeat) : 0)};
 }
 
-/**
- * What each kilogram of refrigerant carries out of the cold coil, J/kg: its
- * latent heat, less the part spent cooling the liquid from the condensing
- * temperature as it flashes through the expansion valve, plus the superheat it
- * picks up before it leaves.
- */
+/** Evaporator enthalpy rise after isenthalpic throttling, plus superheat. */
 export const refrigeratingEffect = (evaporating, condensing) =>
-  LATENT - R410A.liquidHeat * (condensing - evaporating) + R410A.gasHeat * DECLARED.superheat;
+  vaporEnthalpy(evaporating) - liquidEnthalpy(condensing) + R410A.gasHeat * DECLARED.superheat;
 
 /**
  * What the air gives up crossing a coil whose surface is at `coil`: the share
@@ -167,15 +103,22 @@ export const refrigeratingEffect = (evaporating, condensing) =>
 export function coilAir(enteringC, enteringRatio, flow, coil) {
   const dryFlow = AIR.density * flow;
   const bypass = 1 - DECLARED.contact;
-  const leavingC = DECLARED.contact * coil + bypass * enteringC;
+  let leavingC = DECLARED.contact * coil + bypass * enteringC;
   const saturated = saturatedRatio(coil);
-  const leavingRatio = saturated < enteringRatio ? DECLARED.contact * saturated + bypass * enteringRatio : enteringRatio;
+  let leavingRatio = saturated < enteringRatio ? DECLARED.contact * saturated + bypass * enteringRatio : enteringRatio;
+  let mist = 0;
+  if (leavingRatio > saturatedRatio(leavingC)) {
+    const mixedRatio = leavingRatio;
+    const mixedEnthalpy = AIR.heat * leavingC + waterLatent(coil) * leavingRatio;
+    leavingC = bisect(temperature => AIR.heat * temperature + waterLatent(coil) * saturatedRatio(temperature) - mixedEnthalpy, leavingC, enteringC);
+    leavingRatio = saturatedRatio(leavingC);
+    mist = dryFlow * (mixedRatio - leavingRatio);
+  }
   const condensate = dryFlow * (enteringRatio - leavingRatio);
   const sensible = dryFlow * AIR.heat * (enteringC - leavingC);
   const latent = condensate * waterLatent(coil);
-  // Mixing coil air with the air that slips past can land a shade above saturation; the model reads that as saturated.
-  const leavingHumidity = Math.min(100, relativeHumidity(leavingC, leavingRatio));
-  return {dryFlow, leavingC, leavingRatio, leavingHumidity, saturated, condensate, sensible, latent, total: sensible + latent};
+  const leavingHumidity = relativeHumidity(leavingC, leavingRatio);
+  return {dryFlow, leavingC, leavingRatio, leavingHumidity, saturated, condensate, mist, sensible, latent, total: sensible + latent};
 }
 
 /**
@@ -243,9 +186,11 @@ export function airconPlan(input = {}) {
   for (let step = 1; reached === null && step * DECLARED.step <= DECLARED.longest; step++) {
     const previous = track[step - 1];
     const leak = DECLARED.roomLoss * (values.outdoor - previous.celsius);
-    const celsius = previous.celsius + (leak - previous.cycle.air.sensible) * DECLARED.step / heatCapacity;
-    const ratio = Math.max(0, previous.ratio - previous.cycle.air.condensate * DECLARED.step / waterCapacity);
-    const t = step * DECLARED.step;
+    const change = (leak - previous.cycle.air.sensible) / heatCapacity;
+    const dt = change < 0 ? Math.min(DECLARED.step, (values.set - previous.celsius) / change) : DECLARED.step;
+    const celsius = dt < DECLARED.step ? values.set : previous.celsius + change * dt;
+    const ratio = Math.max(0, previous.ratio - previous.cycle.air.condensate * dt / waterCapacity);
+    const t = previous.t + dt;
     track.push({t, celsius, ratio, cycle: solveCycle(celsius, ratio, values.flow, values.outdoor)});
     if (celsius <= values.set) reached = t;
   }
@@ -270,7 +215,9 @@ export function airconPlan(input = {}) {
 /** The room's air at time t in the run, read off the track between its steps. */
 export function roomAt(plan, t) {
   const place = clamp(t / DECLARED.step, 0, plan.track.length - 1);
-  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
+  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1);
+  const span = plan.track[high].t - plan.track[low].t;
+  const part = span > 0 ? clamp((t - plan.track[low].t) / span, 0, 1) : 0;
   const celsius = plan.track[low].celsius + part * (plan.track[high].celsius - plan.track[low].celsius);
   const ratio = plan.track[low].ratio + part * (plan.track[high].ratio - plan.track[low].ratio);
   return {celsius, ratio, humidity: relativeHumidity(celsius, ratio), dew: dewPointOf(vaporPressureOf(ratio))};
@@ -283,7 +230,7 @@ export function roomAt(plan, t) {
 export function airconAt(plan, time) {
   const t = Math.min(validTime(time), plan.duration), started = t > 0;
   const room = roomAt(plan, t);
-  const cycle = plan.track[Math.min(plan.track.length - 1, Math.round(t / DECLARED.step))].cycle;
+  const cycle = solveCycle(room.celsius, room.ratio, plan.values.flow, plan.values.outdoor);
   return {time, t, started, done: t >= plan.duration, arrived: plan.reaches && t >= plan.reached, room, cycle, turn: t / DECLARED.lap};
 }
 
