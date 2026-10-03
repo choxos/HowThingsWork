@@ -2,7 +2,6 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 
 // A catalog group can contain several whole machines. These entries identify
 // components, close-up studies or alternate names for a published machine.
-// Every one of them is listed beneath that machine and shown in its room.
 export const componentParentIds = {
   'refrigerant-compressor': 'refrigerator',
   'siphon': 'toilet-tank',
@@ -72,6 +71,25 @@ export function groupCatalogEntries(entries, matches = entries) {
     return components.length ? [{entry: family.entry, components}] : [];
   });
 }
+
+const nestedMachineIds = new Set([
+  "refrigerant-compressor",
+  "siphon",
+  "rotating-spray-arm",
+  "cylinder-lock-cam-and-bolt",
+  "feed-dog-lift-and-advance-linkages",
+  "rotary-sewing-hook",
+  "thread-take-up-lever",
+  "window-shade-pawls-and-locking-disk",
+  "electric-bell-pushbutton-switch",
+  "commutator",
+  "heated-extrusion-nozzle",
+  "horizontal-seismograph-pendulum",
+  "vertical-seismograph-pendulum",
+  "seismograph-recording-pen-and-moving-paper",
+  "inertial-accelerometer-armature-spring-and-coils"
+]);
+export const catalogMachineComponents = components => components.filter(entry => nestedMachineIds.has(entry.id));
 
 // What a scene pictures for an item: its machine, close up on the item's own part.
 export const previewOf = (entry, components) => {

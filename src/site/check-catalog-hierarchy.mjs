@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {neighborhoodCatalog as catalog} from './published-catalog.js';
-import {componentParentIds, groupCatalogEntries, hasCatalogPart} from './catalog-hierarchy.js';
+import {catalogMachineComponents, componentParentIds, groupCatalogEntries, hasCatalogPart} from './catalog-hierarchy.js';
 
 const entries = catalog.entries;
 const families = groupCatalogEntries(entries);
@@ -48,4 +48,4 @@ console.log(`Catalog principles: ${entries.length} valid tag sets, fuse/inductio
 
 // The list and the rooms show every lesson; the hierarchy only decides which machine each one sits beneath.
 assert(hasCatalogPart('3d-printer', 'frame'), 'Ordinary part bookmarks remain valid');
-console.log(`Catalog visibility: ${families.length} whole items with ${entries.length - families.length} smaller machines, parts and alternate names beneath them.`);
+console.log(`Catalog visibility: ${families.length} whole items with ${families.reduce((total, family) => total + catalogMachineComponents(family.components).length, 0)} smaller machines; ordinary parts stay inside viewers.`);

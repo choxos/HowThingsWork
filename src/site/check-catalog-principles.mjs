@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {neighborhoodCatalog as catalog} from './published-catalog.js';
-import {groupCatalogEntries} from './catalog-hierarchy.js';
+import {catalogMachineComponents, groupCatalogEntries} from './catalog-hierarchy.js';
 import {houseComponents} from './house-components.js';
 
 const base = process.env.SITE_URL || 'http://127.0.0.1:5193/';
@@ -25,7 +25,7 @@ try {
         components: [...row.querySelectorAll('.catalog-components button')].map(button => button.dataset.entry),
         principles: row.lastElementChild.textContent,
       })));
-      assert.deepEqual(actual.map(row => [row.id, row.components]), expected.map(({entry, components}) => [entry.id, components.map(part => part.id)]));
+      assert.deepEqual(actual.map(row => [row.id, row.components]), expected.map(({entry, components}) => [entry.id, catalogMachineComponents(components).map(part => part.id)]));
       for (const row of actual) assert(row.principles.includes(principle.name), `${row.id}: show the matching principle even when a component matched`);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}: no horizontal overflow`);
       filters.push({width, principle: principle.id, families: actual.length});
@@ -34,8 +34,8 @@ try {
     const allFamilies = groupCatalogEntries(catalog.entries);
     assert.equal(await page.locator('.catalog-table tbody tr').count(), allFamilies.length);
     assert.equal(await page.locator('[data-part-link]').count(), 0);
-    assert.deepEqual(await page.locator('.catalog-components button').evaluateAll(nodes => nodes.map(node => node.dataset.entry)), allFamilies.flatMap(family => family.components.map(entry => entry.id)));
-    for (const child of allFamilies.flatMap(family => family.components)) {
+    assert.deepEqual(await page.locator('.catalog-components button').evaluateAll(nodes => nodes.map(node => node.dataset.entry)), allFamilies.flatMap(family => catalogMachineComponents(family.components).map(entry => entry.id)));
+    for (const child of allFamilies.flatMap(family => catalogMachineComponents(family.components))) {
       // An alternate name opens the page that holds it.
       const target = catalog.entries.find(entry => entry.id === (houseComponents[child.name]?.redirectTo || child.id));
       await page.locator(`.catalog-components button[data-entry="${child.id}"]`).click();
