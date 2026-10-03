@@ -19,9 +19,10 @@ const playbackIcons={
 const playbackIcon=kind=>`<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${playbackIcons[kind]}</svg>`;
 const within = (value,min,max) => Math.max(min,Math.min(max,value));
 
-export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='Back to room'}={}) {
+export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='Back to room',initialView}={}) {
   const model=providedModel||createDailyLifeMachine(name);
   if(!model)throw new Error('This lesson has no model.');
+  const openingView=initialView||model.initialView||'iso';
   const values=Object.fromEntries(model.controls.map(control=>[control.key,control.initial]));
   model.update(values);
   const scene=new THREE.Scene();lighting(scene);scene.add(model.root);
@@ -311,7 +312,12 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   document.addEventListener('click',onOutsideClick,true);
   document.addEventListener('keydown',onEscape);
   host.querySelector('.daily-part-path').addEventListener('click',event=>{const button=event.target.closest('[data-parent]');if(button)selectPart(button.dataset.parent||null);});
-  function resetView(){restoreAssembly();overviewZoom=1.15;if(orbit){orbit.minZoom=overviewZoom;orbit.maxZoom=3;}camera.zoom=overviewZoom;camera.position.set(radius*1.3,radius*.85,radius*2);orbit?.target.set(0,0,0);camera.updateProjectionMatrix();orbit?.update();draw();}
+  function setView(view){
+    const distance=radius*2.7,directions={iso:[radius*1.3,radius*.85,radius*2],front:[0,radius*.15,distance],side:[distance,radius*.15,0],back:[0,radius*.15,-distance],top:[0,distance,.001],bottom:[0,-distance,.001]};
+    camera.position.copy(orbit?.target||new THREE.Vector3()).add(new THREE.Vector3(...(directions[view]||directions.iso)));
+    orbit?.update();draw();
+  }
+  function resetView(){restoreAssembly();overviewZoom=1.15;if(orbit){orbit.minZoom=overviewZoom;orbit.maxZoom=3;}camera.zoom=overviewZoom;orbit?.target.set(0,0,0);camera.updateProjectionMatrix();setView(openingView);}
   function zoom(factor,gesture=false){
     if(gesture&&(explosion||(factor<1&&camera.zoom<=overviewZoom+1e-6))&&separate(explosionTarget-Math.log(factor)*.65)!==false)return;
     const previous=camera.zoom;
@@ -323,7 +329,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   }
   host.querySelector('.daily-camera').addEventListener('click',event=>{
     const view=event.target.closest('[data-view]')?.dataset.view;if(!view)return;
-    if(view==='reset'){selectPart(null);return;}if(view==='in'||view==='out'){zoom(view==='in'?1.2:1/1.2);return;}else{restoreAssembly();const distance=radius*2.7;camera.position.copy(orbit?.target||new THREE.Vector3()).add(new THREE.Vector3(...({iso:[radius*1.3,radius*.85,radius*2],front:[0,radius*.15,distance],side:[distance,radius*.15,0],back:[0,radius*.15,-distance],top:[0,distance,.001],bottom:[0,-distance,.001]}[view])));}orbit?.update();draw();
+    if(view==='reset'){selectPart(null);return;}if(view==='in'||view==='out'){zoom(view==='in'?1.2:1/1.2);return;}restoreAssembly();setView(view);
   });
   options.addEventListener('change',event=>{if(!event.target.matches('[data-labels]'))restoreAssembly();if(event.target.matches('[data-cutaway]'))cutaway=event.target.checked;if(event.target.matches('[data-labels]'))labels=event.target.checked;if(event.target.matches('[data-isolate]'))isolated=event.target.checked;if(explosion)draw();else update();});
   host.addEventListener('input',event=>{const key=event.target.dataset.control||event.target.dataset.number;if(!key||event.target.value==='')return;apply({[key]:Number(event.target.value)});});
@@ -404,6 +410,6 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   }
   const resize=new ResizeObserver(resizeViewer);resize.observe(wrap);
   const onVisibility=()=>{if(document.hidden)stop();};document.addEventListener('visibilitychange',onVisibility);
-  syncControls();selectPart(selected);if(model.initialView)host.querySelector(`[data-view="${model.initialView}"]`)?.click();if(model.animate&&!model.playback&&!matchMedia('(prefers-reduced-motion: reduce)').matches)start();
+  syncControls();selectPart(selected);setView(openingView);if(model.animate&&!model.playback&&!matchMedia('(prefers-reduced-motion: reduce)').matches)start();
   return {apply,reset,selectPart,isReplaying:()=>Boolean(pendingReplay),setIsolated(value){isolated=Boolean(value);options.querySelector('[data-isolate]').checked=isolated;update();},setActive(value){active=value;if(!value){stop();restoreAssembly();}else draw();},setInteractionEnabled(value){if(orbit)orbit.enabled=value;},dispose(){disposed=true;restoreAssembly();stop();resize.disconnect();document.removeEventListener('visibilitychange',onVisibility);document.removeEventListener('click',onOutsideClick,true);document.removeEventListener('keydown',onEscape);orbit?.dispose();highlight.geometry.dispose();highlight.material.dispose();model.dispose();reflectionTarget?.dispose();renderer?.dispose();renderer?.forceContextLoss();}};
 }
