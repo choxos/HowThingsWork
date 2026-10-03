@@ -56,3 +56,6 @@ console.log(`Catalog principles: ${entries.length} valid tag sets, fuse/inductio
 // The list and the rooms show every lesson; the hierarchy only decides which machine each one sits beneath.
 assert(hasCatalogPart('3d-printer', 'frame'), 'Ordinary part bookmarks remain valid');
 console.log(`Catalog visibility: ${families.length} whole items with ${families.reduce((total, family) => total + catalogMachineComponents(family.components).length, 0)} smaller machines; ordinary parts stay inside viewers.`);
+
+const clock = families.find(family => family.entry.id === 'mechanical-clock');
+assert(catalogMachineComponents(clock.components).some(entry => entry.id === 'anchor-escapement'), 'Escapement is a smaller machine under its clock');

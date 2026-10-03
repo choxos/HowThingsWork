@@ -127,7 +127,8 @@ export const publishedEntryIds = [
   "home-supply-transformer",
   "electricity-transmission",
   "power-line-insulator",
-  "power-pylon"
+  "power-pylon",
+  "anchor-escapement"
 ];
 
 // Built but not yet published. Only a dev server started with
