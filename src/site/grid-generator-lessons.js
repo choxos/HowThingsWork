@@ -55,19 +55,33 @@ export const electricGeneratorLesson = {
   },
 };
 
-const ac = trial('output'), acLoad = trial('load');
+const ac = trial('system'), acLoad = trial('load');
 export const acGeneratorLesson = {
   ...electricGeneratorLesson,
   simple: 'Why does a generator’s current reverse while its resistor keeps heating?',
   overview: 'Two continuous slip rings keep each winding end attached to the same fixed brush. The coil voltage changes sign every half turn, so a connected resistor receives alternating current. Voltage and current reverse together; their product remains nonnegative. Watch the blue trace and compare instantaneous current with average load power.',
+  steps: [
+    {title: 'Start facing the field', body: 'At the starting angle, flux linkage is greatest but its instantaneous rate of change is zero. Voltage and current are both zero.'},
+    {title: 'Turn through the first quarter', body: 'Press Step four times. The loop is parallel to the field and flux passes through zero. Positive brush voltage and load current reach their peaks.'},
+    {title: 'Keep the connections', body: 'Each winding end remains wired to its own complete slip ring. Fixed brushes follow those same terminals throughout the turn.'},
+    {title: 'Reverse the current', body: 'Eight more steps reach three quarters of a turn. Voltage and current have equal negative peaks. The gold load arrows reverse, while the resistor heats at the same rate as at the positive peak.'},
+    {title: 'Complete the cycle', body: 'After sixteen steps, the machine returns to its starting phase. One shaft revolution produces one complete AC cycle in this two-pole model.'},
+  ],
   tryIt: [
-    ac('Watch one whole turn', 'Press Play and follow the blue trace.', 'Brush voltage reaches positive and negative peaks of 124.66 V. Its RMS value is 88.15 V and its frequency is 50.00 Hz. Average load power is 777.0 W.'),
+    ac('Watch one whole turn', 'Press Step four times, then eight more times, to compare opposite half turns. Play runs a complete turn.', 'Brush voltage reaches +124.66 V and −124.66 V, with load current +12.466 A and −12.466 A. Instantaneous load power is 1,554.0 W at either peak. RMS voltage is 88.15 V, frequency 50.00 Hz, and average load power 777.0 W.'),
     ac('Turn faster', 'Run the faster shaft.', 'At 3600 rpm, brush output is 105.78 V RMS and frequency is 60.00 Hz.', {speed: 3600}),
     ac('Turn slower', 'Run at half the original speed.', 'Brush output is 44.07 V RMS at 25.00 Hz. Load power falls to 194.2 W.', {speed: 1500}),
     ac('Halve the field', 'Keep the speed but reduce the field.', 'Brush output is 44.07 V RMS. Frequency stays at 50.00 Hz, and average load power falls to 194.2 W.', {field: 0.5}),
     acLoad('A lighter load', 'Increase the load resistance.', 'Peak current falls to 2.51 A and average load power to 157.4 W. Winding loss is 0.254 W.', {load: 50}),
     acLoad('Open the switch', 'Disconnect the resistor while the coil turns.', 'Brush output rises to 88.86 V RMS. The resistor’s current, voltage and power are all zero.', {closed: 0}),
   ],
+  deeper: [
+    {title: 'Frequency counts complete cycles', body: 'This machine has one north pole and one south pole. One revolution contains both a positive and a negative half cycle. Divide rpm by 60 to get cycles per second: 3000 rpm gives 50 Hz. Current reverses twice during that cycle. More turns or a stronger field changes voltage, not frequency.'},
+    {title: 'Zero mean does not mean zero heating', body: 'The positive and negative currents cancel in a signed average, but their squares do not. For this sine wave, RMS current is peak current divided by √2. With the default 10 Ω resistor it is 8.815 A, giving 777.0 W average heating. At either current peak, instantaneous heating is twice the average.'},
+    {title: 'What the signs mean', body: 'Positive current travels left to right through the pictured resistor. Negative current travels right to left. Neither sign says that energy is negative: resistor voltage changes sign with current, so their product is nonnegative. Gold arrows show conventional current; electrons in the copper move in the opposite direction.'},
+    ...deeper,
+  ],
+  sources: [...sourceList, sources.acPower],
   misconception: 'An AC current with zero signed average can deliver positive average power. Heating depends on current squared.',
   quiz: {question: 'Why does the resistor heat during both halves of an AC cycle?', options: ['Voltage and current reverse together, keeping their product nonnegative.', 'The resistor stores the negative current until it becomes positive.', 'The slip rings secretly rectify the current.'], answer: 0, explanation: 'For this resistive load, voltage equals current times positive resistance. Power is therefore current squared times resistance, regardless of current direction.'},
 };

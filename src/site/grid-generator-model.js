@@ -122,13 +122,13 @@ export function createGeneratorModel() {
   fillLine(frame, [[CHART.x, chartY(-400), 0], [CHART.x + CHART.w, chartY(-400), 0], [CHART.x + CHART.w, chartY(400), 0], [CHART.x, chartY(400), 0], [CHART.x, chartY(-400), 0]]);
   fillLine(zeroLine, [[CHART.x, CHART.y, 0], [CHART.x + CHART.w, CHART.y, 0]]);
   const ringTrace = lineObject(GENERATOR_SAMPLES, COLORS.rings, output), barTrace = lineObject(GENERATOR_SAMPLES, COLORS.bars, output), cursor = segmentLines(2, COLORS.ink, output);
-  chartText(output, (angle, volts) => [chartX(angle * Math.PI / 180), chartY(volts), 0], {title: 'Brush voltage', size: 0.11, x: {min: 0, max: 360, title: 'Shaft angle', ticks: [0, 90, 180, 270, 360].map(a => [a, `${a}°`])}, y: {min: -400, max: 400, title: 'V', ticks: [[-400, '−400'], [0, '0'], [400, '400']]}});
+  chartText(output, (angle, volts) => [chartX(angle * Math.PI / 180), chartY(volts), 0], {title: 'Brush voltage', size: 0.24, x: {min: 0, max: 360, title: 'Shaft angle', ticks: [0, 90, 180, 270, 360].map(a => [a, `${a}°`])}, y: {min: -400, max: 400, title: 'V', ticks: [[-400, '−400'], [0, '0'], [400, '400']]}});
   for (const [i, label, color] of [[0, 'Slip rings', COLORS.rings], [1, 'Split ring', COLORS.bars]]) {
     const x = CHART.x + 0.1 + i * 1.55;
-    kit.rod([x, CHART.y - 1.18, 0], [x + 0.2, CHART.y - 1.18, 0], 0.014, color, output);
-    textLabel(output, label, {height: 0.11, align: 'left', position: [x + 0.25, CHART.y - 1.18, 0]});
+    kit.rod([x, CHART.y - 1.6, 0], [x + 0.2, CHART.y - 1.6, 0], 0.014, color, output);
+    textLabel(output, label, {height: 0.22, align: 'left', position: [x + 0.25, CHART.y - 1.6, 0]});
   }
-  const liveLabel = textLabel(output, '', {height: 0.14, width: 3.1, position: [CHART.x + CHART.w / 2, CHART.y - 1.55, 0]});
+  const liveLabel = textLabel(output, '', {height: 0.22, width: 3.1, position: [CHART.x + CHART.w / 2, CHART.y - 2, 0]});
 
   const d = GENERATOR_DEFAULTS;
   control('output', 'Contacts', ...GENERATOR_DOMAINS.output, d.output, '', 'Swap the physical contacts: two continuous slip rings or one split ring.', OUTPUT_OPTIONS);

@@ -117,6 +117,26 @@ for(const lesson of [electricGeneratorLesson,acGeneratorLesson,dcGeneratorLesson
   model.reset();model.update(trial.values);model.advance(8);const s=model.getState();
   t.ok(s.readings.every(x=>!/(NaN|undefined|Infinity)/.test(x.value)),'all shared lesson trials produce finite readings');
 }
+const acExpected = [
+  ['Watch one whole turn',88.15,50,777.0,6.266],['Turn faster',105.78,60,1118.9,9.022],
+  ['Turn slower',44.07,25,194.2,1.566],['Halve the field',44.07,50,194.2,1.566],
+  ['A lighter load',88.71,50,157.4,.254],['Open the switch',88.86,50,0,0],
+];
+for(const [i,trial] of acGeneratorLesson.tryIt.entries()) {
+  const [title,rms,hz,watts,heat]=acExpected[i];assert.equal(trial.title,title);
+  model.reset();model.update(trial.values);const p=model.getState();
+  t.near(p.terminalRms,rms,.0051,title+' stated RMS');near(p.frequency,hz,title+' frequency');
+  t.near(p.loadPower,watts,.051,title+' stated load power');t.near(p.windingPower,heat,.00051,title+' stated winding heat');
+  model.advance(2);const first=model.getState().now;model.advance(4);const second=model.getState().now;
+  near(first.terminal,-second.terminal,title+' equal opposite voltage peaks');
+  near(first.current,-second.current,title+' equal opposite current peaks');
+  near(first.loadPower,second.loadPower,title+' both half turns heat equally');
+  near(first.loadPower,2*p.loadPower,title+' sine peak heating twice average');
+  near(first.flux,0,title+' quarter turn flux zero');near(second.flux,0,title+' three quarter turn flux zero');
+  t.ok(first.torque>=0&&second.torque>=0,title+' torque opposes drive in both half turns');
+  if(!trial.values.closed)t.ok(first.current===0&&first.terminal>0&&first.torque===0,'open AC load retains voltage without electromagnetic drag');
+  model.advance(2);t.ok(model.playback.complete(),title+' completes');
+}
 model.reset();model.advance(2);const time=model.getState().clock;
 for(const action of model.actions){action.run();near(model.getState().clock,time,'inspection preserves phase');t.ok(model.parts.some(p=>p.id===action.part),'inspection target exists');}
 model.update({load:1});near(model.getState().clock,0,'changed setting restarts experiment');

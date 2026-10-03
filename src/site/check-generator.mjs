@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {electricGeneratorLesson} from './grid-generator-lessons.js';
+import {electricGeneratorLesson, acGeneratorLesson} from './grid-generator-lessons.js';
 
 const base=process.env.SITE_URL||'http://127.0.0.1:5196/';
 const output=process.env.EVIDENCE_DIR||'documentation/generator-browser';
+const variant=process.argv[2]||process.env.GENERATOR_LESSON||'electric-generator';
+const variants={'electric-generator':{name:'Electric generator',lesson:electricGeneratorLesson},'ac-generator':{name:'AC generator',lesson:acGeneratorLesson}};
+assert.ok(variants[variant],'known generator lesson');
+const {name,lesson}=variants[variant];
 await mkdir(output,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000},hasTouch:true,reducedMotion:'reduce'});
@@ -15,17 +19,17 @@ const tab=name=>page.getByRole('tab',{name,exact:true}).click();
 const capture=name=>page.locator('.daily-canvas-wrap').screenshot({path:output+'/'+name+'.png'});
 const reset=()=>page.getByRole('button',{name:'Reset experiment',exact:true}).click();
 try {
-  await page.goto(new URL('#machine/electric-generator',base).href);
-  await page.getByRole('heading',{name:'Electric generator',exact:true}).waitFor();
+  await page.goto(new URL('#machine/'+variant,base).href);
+  await page.getByRole('heading',{name,exact:true}).waitFor();
   await page.locator('canvas').waitFor();
   assert.equal(await reading('Brush output').innerText(),'88.15 V RMS');
   await capture('assembled');
-  for(const [index,trial] of electricGeneratorLesson.tryIt.entries()) {
+  for(const [index,trial] of lesson.tryIt.entries()) {
     await tab('Try it yourself');await page.locator('[data-experiment]').nth(index).click();
     for(const [key,value] of Object.entries(trial.values)) assert.equal(Number(await page.locator('[data-control="'+key+'"]').inputValue()),value,trial.title+': '+key);
     await tab('Controls');
     let result=await reading('Your result').innerText(),steps=0;
-    if(index===6)assert.equal(await page.locator('[data-play]').isDisabled(),true);
+    if(trial.values.speed===0)assert.equal(await page.locator('[data-play]').isDisabled(),true);
     else {
       while(!/^One turn done/.test(result)&&steps<17){await page.locator('[data-step]').click();result=await reading('Your result').innerText();steps++;}
       assert.match(result,/^One turn done/,trial.title);
@@ -33,6 +37,20 @@ try {
     assert.equal(await page.locator('[data-play]').getAttribute('aria-pressed'),'false');
     presets.push({title:trial.title,steps,result});
     await capture('preset-'+index);
+  }
+  await reset();await tab('Controls');
+  const halfTurns=[];
+  for(let step=1;step<=12;step++) {
+    await page.locator('[data-step]').click();
+    if(step===4||step===12) {
+      const sign=step===4?'':'-';
+      assert.equal(await reading('Brush voltage').innerText(),sign+'124.66 V');
+      assert.equal(await reading('Load current').innerText(),sign+'12.466 A');
+      assert.equal(await reading('Load').innerText(),'777.0 W');
+      assert.equal(await reading('Contacts').innerText(),'Continuous slip rings');
+      halfTurns.push({step,voltage:await reading('Brush voltage').innerText(),current:await reading('Load current').innerText()});
+      await capture('half-turn-'+step);
+    }
   }
   await reset();
   for(const [key,values] of Object.entries({speed:[0,3600],field:[0,1.2],turns:[2,40],load:[1,50]})) {
@@ -118,7 +136,7 @@ try {
   for(const viewport of [{width:390,height:844},{width:320,height:568}]) {
     await page.setViewportSize(viewport);await page.locator('[data-view="reset"]').click();
     const tools=page.getByRole('navigation',{name:'Lesson tools'});
-    await tools.getByRole('button',{name:'Try it yourself',exact:true}).click();await page.locator('[data-experiment]').nth(1).click();
+    await tools.getByRole('button',{name:'Try it yourself',exact:true}).click();await page.locator('[data-experiment]').nth(lesson.tryIt.findIndex(trial=>trial.values.speed===1500)).click();
     await tools.getByRole('button',{name:'Controls',exact:true}).click();await page.locator('[data-step]').click();
     assert.equal(await reading('Brush output').innerText(),'44.07 V RMS');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
@@ -135,7 +153,21 @@ try {
     await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   };
   try{await pinch(120,20);assert.ok(Number(await page.locator('[data-separation]').inputValue())>0);await capture('phone-pinch');await pinch(20,120);await page.waitForFunction(()=>document.querySelector('[data-separation]').value==='0');}finally{await session.detach();}
+  await page.setViewportSize({width:1440,height:1000});
+  for(let i=0;i<lesson.quiz.options.length;i++) {
+    await page.locator('[data-answer]').nth(i).click();
+    assert.equal(await page.locator('[data-answer]').nth(i).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('.daily-answer').innerText(),(i===lesson.quiz.answer?'That’s right. ':'Try thinking through the parts again. ')+lesson.quiz.explanation);
+  }
+  await page.getByRole('button',{name:'Back to The discovery center',exact:true}).click();
+  await page.getByRole('button',{name:'Electric generator',exact:true}).click();
+  await page.getByRole('heading',{name:'Electric generator',exact:true}).waitFor();
+  if(variant==='ac-generator') {
+    await page.locator('.daily-related a[href="#machine/ac-generator"]').click();
+    await page.getByRole('heading',{name,exact:true}).waitFor();
+  }
+  assert.match(page.url(),new RegExp('#machine/'+variant+'$'));
   assert.deepEqual(errors,[]);
-  const report={passed:true,presets,controls,actions,pause:true,completion:true,replay:true,blocked:true,popup:true,deselection:true,zoomOnlyButtons:true,outsideDrag:true,wheelSeparation:true,pinch:true,mobileWidths:[390,320],errors};
+  const report={passed:true,variant,presets,halfTurns,controls,actions,pause:true,completion:true,replay:true,blocked:true,popup:true,deselection:true,zoomOnlyButtons:true,outsideDrag:true,wheelSeparation:true,pinch:true,quiz:true,navigation:true,mobileWidths:[390,320],errors};
   await writeFile(output+'/browser.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 } finally {await browser.close();}
