@@ -21,7 +21,9 @@ import {rgbSubpixelsLesson, oledDisplayLesson} from './lcd-lessons.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
 import {acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
 import {createGeneratorModel} from './grid-generator-model.js';
-import {transformerTurnsRatioLesson, transmissionTransformerLesson, distributionTransformerLesson, homeSupplyTransformerLesson} from './grid-transformer-lessons.js';
+import {transmissionTransformerLesson, distributionTransformerLesson, homeSupplyTransformerLesson} from './grid-transformer-lessons.js';
+import {transformerTurnsRatioLesson} from './transformer-turns-ratio-lesson.js';
+import {createTransformerModel} from './transformer-model.js';
 import {createTransformerModel as createGridTransformerModel} from './grid-transformer-model.js';
 import {powerLineInsulatorLesson, powerPylonLesson} from './grid-line-lessons.js';
 import {phonemesLesson} from './speech-lessons.js';
@@ -138,7 +140,7 @@ export const houseComponents={
  'AC generator':{machine:'Electric generator',part:'system',isolate:false,view:'front',values:{output:0},lesson:acGeneratorLesson,intro:acGeneratorLesson.simple},
  'DC generator':{machine:'Electric generator',createModel:()=>createGeneratorModel({commutatorLesson:true}),part:'system',isolate:false,view:'front',values:{output:1},lesson:dcGeneratorLesson,intro:dcGeneratorLesson.simple},
  'Generator slip rings':{machine:'Electric generator',part:'system',isolate:false,view:'front',values:{output:0},lesson:generatorSlipRingsLesson,intro:generatorSlipRingsLesson.simple},
- 'Transformer turns ratio':{machine:'Transformer',createModel:createGridTransformerModel,part:'windings',isolate:false,view:'front',lesson:transformerTurnsRatioLesson,intro:transformerTurnsRatioLesson.simple},
+ 'Transformer turns ratio':{machine:'Transformer',createModel:()=>createTransformerModel({turnsRatioLesson:true}),part:'system',isolate:false,view:'iso',lesson:transformerTurnsRatioLesson,intro:transformerTurnsRatioLesson.simple},
  'Transmission transformer':{machine:'Transformer',createModel:createGridTransformerModel,part:'core',isolate:false,view:'front',values:{stage:0,primaryTurns:3,secondaryTurns:60},lesson:transmissionTransformerLesson,intro:transmissionTransformerLesson.simple},
  'Distribution transformer':{machine:'Transformer',createModel:createGridTransformerModel,part:'losses',isolate:false,view:'front',values:{stage:1,primaryTurns:60,secondaryTurns:5},lesson:distributionTransformerLesson,intro:distributionTransformerLesson.simple},
  'Home-supply transformer':{machine:'Transformer',createModel:createGridTransformerModel,part:'load',isolate:false,view:'front',values:{stage:2,primaryTurns:55,secondaryTurns:2},lesson:homeSupplyTransformerLesson,intro:homeSupplyTransformerLesson.simple},

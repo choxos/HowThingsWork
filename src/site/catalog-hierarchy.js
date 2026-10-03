@@ -42,6 +42,7 @@ export const componentParentIds = {
   'commutator': 'direct-current-motor',
   'motor-rotor': 'universal-motor',
   'generator-slip-rings': 'electric-generator',
+  'transformer-turns-ratio': 'transformer',
   'heated-extrusion-nozzle': '3d-printer',
   'printer-filament-reel': '3d-printer',
   'layer-by-layer-fabrication': '3d-printer',
