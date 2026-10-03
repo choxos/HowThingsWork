@@ -1,6 +1,6 @@
 import {raftLesson} from './raft-lesson.js';
 import {electricGeneratorLesson} from './grid-generator-lessons.js';
-import {transformerLesson} from './grid-transformer-lessons.js';
+import {transformerLesson} from './transformer-lesson.js';
 import {electricityTransmissionLesson} from './grid-line-lessons.js';
 import {lcdLesson} from './lcd-lesson.js';
 import {polarizedLightLesson} from './polarized-light-lesson.js';

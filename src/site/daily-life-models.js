@@ -1,6 +1,6 @@
 import {createRaftModel} from './raft-model.js';
 import {createGeneratorModel} from './grid-generator-model.js';
-import {createTransformerModel as createGridTransformerModel} from './grid-transformer-model.js';
+import {createTransformerModel} from './transformer-model.js';
 import {createLineModel} from './grid-line-model.js';
 import {createLCDModel} from './lcd-model.js';
 import {createPolarizedLightModel} from './polarized-light-model.js';
@@ -49,7 +49,7 @@ import {createZipperModel} from './zipper-model.js';
 export function createDailyLifeMachine(name) {
   if(name==='Raft')return createRaftModel();
   if(name==='Electric generator')return createGeneratorModel();
-  if(name==='Transformer')return createGridTransformerModel();
+  if(name==='Transformer')return createTransformerModel();
   if(name==='Electricity transmission')return createLineModel();
   if(name==='Liquid crystal display')return createLCDModel();
   if(name==='Polarized light')return createPolarizedLightModel();

@@ -2730,6 +2730,23 @@
       "parentId": "system"
     }
   ],
+  "transformer": [
+    {
+      "id": "magnetic",
+      "name": "Magnetic core and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "primary",
+      "name": "Primary circuit · 12 turns",
+      "parentId": "system"
+    },
+    {
+      "id": "secondary",
+      "name": "Separate secondary circuit",
+      "parentId": "system"
+    }
+  ],
   "two-way-light-switch": [
     {
       "id": "supply",

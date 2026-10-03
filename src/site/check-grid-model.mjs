@@ -21,6 +21,7 @@ import * as TM from './grid-transformer-model.js';
 import * as LM from './grid-line-model.js';
 import * as GL from './grid-generator-lessons.js';
 import * as TL from './grid-transformer-lessons.js';
+import {transformerLesson} from './transformer-lesson.js';
 import * as LL from './grid-line-lessons.js';
 import {generatorLimits, transformerLimits, lineLimits} from './grid-sources.js';
 import {houseComponents} from './house-components.js';
@@ -673,7 +674,7 @@ for (const lesson of lessons) {
   for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre)\b/i.test(text), `American spelling: ${text.slice(0, 60)}`);
   t.ok(lesson.sources.length >= 4 && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources.map(source => source.url)).size === lesson.sources.length, 'four sources at least, each a link, none twice');
 }
-t.ok(dailyLifeLessons['Electric generator'] === GL.electricGeneratorLesson && dailyLifeLessons['Transformer'] === TL.transformerLesson && dailyLifeLessons['Electricity transmission'] === LL.electricityTransmissionLesson, 'the three machines are routed to their lessons');
+t.ok(dailyLifeLessons['Electric generator'] === GL.electricGeneratorLesson && dailyLifeLessons['Transformer'] === transformerLesson && dailyLifeLessons['Electricity transmission'] === LL.electricityTransmissionLesson, 'the three machines are routed to their lessons');
 for (const [name, machine, part, lesson, values] of [
   ['AC generator', 'Electric generator', 'system', GL.acGeneratorLesson, {output: 0}],
   ['DC generator', 'Electric generator', 'system', GL.dcGeneratorLesson, {output: 1}],
@@ -686,6 +687,7 @@ for (const [name, machine, part, lesson, values] of [
   ['Power pylon', 'Electricity transmission', 'pylon', LL.powerPylonLesson, undefined],
 ]) {
   const component = houseComponents[name];
+  if (machine === 'Transformer') t.ok(component.createModel === TM.createTransformerModel, `${name} retains its grid-stage draft model`);
   t.ok(component && component.machine === machine && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the ${machine}'s ${part} with its own lesson`);
   assert.deepEqual(component.values, values);
   // Every trial stays on the machine the page is about, which is what `stage` and
