@@ -9,7 +9,7 @@ import {watchHairspring, watchMainspring, WATCH_HAIRSPRING as HAIR, WATCH_MAINSP
 import {WATCH_TRAIN_GEARS, WATCH_ARBOR_POSITIONS as POSITION, watchTrainAngles} from './watch-train.js';
 
 const MM = 0.04, TAU = 2 * Math.PI, DURATION = WATCH.duration;
-const ALLOY_COLORS = [0x374736, 0x83a6ac];
+const ALLOY_COLORS = [0x374736, 0x164455];
 const LEVEL = {escape: 5.3, safety: 4.85, roller: 5.65, balance: 6.45, spring: 7.0, bridge: 7.8};
 export const hairspringPoints = angle => watchHairspring({angle, length: SPRING_LENGTH * 1000}).points;
 export const mainspringTurns = hours => MAIN.freeTurns + Math.max(0, WATCH.turns - hours / WATCH.hoursPerTurn);
@@ -213,13 +213,14 @@ export function createWatchModel() {
   const axis = (a, b) => kit.rod(a, b, 0.035 * MM, 'ink', charts);
   axis(ampPoint(0, 0), ampPoint(44, 0)); axis(ampPoint(0, 0), ampPoint(0, 260));
   axis(ratePoint(0, -250), ratePoint(40, -250)); axis(ratePoint(0, -250), ratePoint(0, 250)); axis(ratePoint(0, 0), ratePoint(40, 0));
-  const stopLine = lineObject(2, 0xc14f39, charts); stopLine.geometry.attributes.position.array.set([...ampPoint(0, WATCH.minimum * 180 / Math.PI), ...ampPoint(44, WATCH.minimum * 180 / Math.PI)]); stopLine.geometry.computeBoundingSphere();
-  const ampLine = lineObject(177, 0x397b86, charts), rateLines = ALLOYS.map((_, i) => lineObject(41, ALLOY_COLORS[i], charts));
+  const stopLine = lineObject(2, 0x702e24, charts); stopLine.geometry.attributes.position.array.set([...ampPoint(0, WATCH.minimum * 180 / Math.PI), ...ampPoint(44, WATCH.minimum * 180 / Math.PI)]); stopLine.geometry.computeBoundingSphere();
+  const ampLine = lineObject(177, 0x164455, charts), rateLines = ALLOYS.map((_, i) => lineObject(41, ALLOY_COLORS[i], charts));
+  for (const line of [stopLine, ampLine, ...rateLines]) line.position.z = 0.08 * MM;
   const ampDot = kit.sphere(0.2 * MM, [0, 0, 0], 'red', charts), rateDot = kit.sphere(0.2 * MM, [0, 0, 0], 'red', charts);
   chartText(charts, ampPoint, {title: 'Predicted settled swing as wind is used', size: 1.5 * MM,
     x: {min: 0, max: 44, title: 'Equivalent hours of use at 4 Hz', ticks: [[0, '0'], [24, '24'], [44, '44']]},
     y: {min: 0, max: 260, title: 'Swing each way (degrees)', ticks: [[0, '0'], [130, '130'], [260, '260']]},
-    legend: [['Settled swing', 0x397b86], ['Engagement threshold', 0xc14f39]]});
+    legend: [['Settled swing', 0x164455], ['Engagement threshold', 0x702e24]]});
   chartText(charts, ratePoint, {title: 'Ideal-model rate against temperature', size: 1.5 * MM,
     x: {min: 0, max: 40, title: 'Temperature (°C)', ticks: [[0, '0'], [20, '20'], [40, '40']]},
     y: {min: -250, max: 250, title: 'Seconds per day, gained or lost', ticks: [[-250, '−250'], [0, '0'], [250, '+250']]},
