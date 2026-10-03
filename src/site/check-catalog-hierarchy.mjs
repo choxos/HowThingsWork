@@ -41,6 +41,10 @@ assert(tags('electricity-meter').includes('magnetism'), 'Keep the induction mete
 assert(tags('heated-extrusion-nozzle').includes('exploiting-heat'));
 assert(!tags('heated-extrusion-nozzle').includes('magnetism'));
 assert.deepEqual(tags('stepper-motor'), ['magnetism']);
+assert.deepEqual(tags('power-line-insulator'), ['electricity']);
+const transmission = families.find(family => family.entry.id === 'electricity-transmission');
+assert(transmission.components.some(entry => entry.id === 'power-line-insulator'));
+assert(!catalogMachineComponents(transmission.components).some(entry => entry.id === 'power-line-insulator'), 'Passive insulation stays out of the smaller-machine list');
 assert(tags('3d-printer').includes('exploiting-heat') && tags('3d-printer').includes('screws'));
 const springResults = groupCatalogEntries(entries, entries.filter(entry => entry.principles.includes('springs')));
 assert(springResults.some(family => family.entry.id === 'cylinder-lock' && family.components.some(entry => entry.id === 'lock-return-springs')));

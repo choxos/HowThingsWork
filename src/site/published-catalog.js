@@ -229,6 +229,8 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'power-line-insulator': ['electricity'],
+  'electricity-transmission': ['electricity', 'magnetism'],
   'lever-lock': ['levers', 'springs'],
   'lever-lock-tumblers-and-stumps': ['levers', 'springs'],
   'lever-lock-bolt-and-bolt-pin': ['levers'],

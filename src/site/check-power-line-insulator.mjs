@@ -43,6 +43,13 @@ async function snapshot(v, elapsed = 0) {
     return { voltage: v.voltage, insulation: v.insulation, connected: v.connected, nodeVoltage: await value('Supported node RMS voltage'), consumerCurrent: await value('Consumer RMS current'), supportCurrent: await value('Support RMS current'), consumerPower: await value('Mean consumer power'), supportPower: await value('Mean support-path power'), consumerEnergy: await value('Delivered consumer energy'), supportEnergy: await value('Support-path energy'), feederHeat: await value('Feeder heat'), sourceWork: await value('Source work') };
 }
 try {
+    await page.goto(new URL('#list', base).href);
+    await page.locator('.catalog-table tbody tr').first().waitFor();
+    assert.equal(await page.locator('[data-entry="power-line-insulator"]').count(), 0, 'Passive insulator is not a standalone machine or smaller machine');
+    await page.locator('button[data-entry="electricity-transmission"]').click();
+    await page.getByRole('heading', {name: 'Electricity transmission', exact: true}).waitFor();
+    await page.locator('.daily-related a[href="#machine/power-line-insulator"]').click();
+    await page.getByRole('heading', {name: 'Power-line insulator', exact: true}).waitFor();
     await page.goto(new URL('#machine/power-line-insulator', base).href);
     await page.getByRole('heading', { name: 'Power-line insulator', exact: true }).waitFor();
     await page.locator('[data-control="insulation"]').waitFor();
