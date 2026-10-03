@@ -679,7 +679,6 @@ for (const [name, machine, part, lesson, values] of [
   ['AC generator', 'Electric generator', 'system', GL.acGeneratorLesson, {output: 0}],
   ['DC generator', 'Electric generator', 'system', GL.dcGeneratorLesson, {output: 1}],
   ['Generator slip rings', 'Electric generator', 'system', GL.generatorSlipRingsLesson, {output: 0}],
-  ['Home-supply transformer', 'Transformer', 'load', TL.homeSupplyTransformerLesson, {stage: 2, primaryTurns: 55, secondaryTurns: 2}],
   ['Power-line insulator', 'Electricity transmission', 'insulator', LL.powerLineInsulatorLesson, undefined],
   ['Power pylon', 'Electricity transmission', 'pylon', LL.powerPylonLesson, undefined],
 ]) {

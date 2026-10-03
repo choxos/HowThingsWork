@@ -21,13 +21,13 @@ import {rgbSubpixelsLesson, oledDisplayLesson} from './lcd-lessons.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
 import {acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
 import {createGeneratorModel} from './grid-generator-model.js';
-import {homeSupplyTransformerLesson} from './grid-transformer-lessons.js';
+import {homeSupplyTransformerLesson} from './home-supply-transformer-lesson.js';
+import {createHomeSupplyTransformerModel} from './home-supply-transformer-model.js';
 import {distributionTransformerLesson} from './distribution-transformer-lesson.js';
 import {transmissionTransformerLesson} from './transmission-transformer-lesson.js';
 import {createElectricityTransmissionModel} from './electricity-transmission-model.js';
 import {transformerTurnsRatioLesson} from './transformer-turns-ratio-lesson.js';
 import {createTransformerModel} from './transformer-model.js';
-import {createTransformerModel as createGridTransformerModel} from './grid-transformer-model.js';
 import {powerLineInsulatorLesson, powerPylonLesson} from './grid-line-lessons.js';
 import {phonemesLesson} from './speech-lessons.js';
 import {createCrashSensorModel} from './crash-sensor-model.js';
@@ -146,7 +146,7 @@ export const houseComponents={
  'Transformer turns ratio':{machine:'Transformer',createModel:()=>createTransformerModel({turnsRatioLesson:true}),part:'system',isolate:false,view:'iso',lesson:transformerTurnsRatioLesson,intro:transformerTurnsRatioLesson.simple},
  'Transmission transformer':{machine:'Transformer',createModel:()=>createElectricityTransmissionModel({sendingLesson:true}),part:'system',isolate:false,view:'iso',lesson:transmissionTransformerLesson,intro:transmissionTransformerLesson.simple},
  'Distribution transformer':{machine:'Transformer',createModel:()=>createElectricityTransmissionModel({distributionLesson:true}),part:'system',isolate:false,view:'iso',lesson:distributionTransformerLesson,intro:distributionTransformerLesson.simple},
- 'Home-supply transformer':{machine:'Transformer',createModel:createGridTransformerModel,part:'load',isolate:false,view:'front',values:{stage:2,primaryTurns:55,secondaryTurns:2},lesson:homeSupplyTransformerLesson,intro:homeSupplyTransformerLesson.simple},
+ 'Home-supply transformer':{machine:'Transformer',createModel:createHomeSupplyTransformerModel,part:'system',isolate:false,view:'iso',lesson:homeSupplyTransformerLesson,intro:homeSupplyTransformerLesson.simple},
  'Power-line insulator':{machine:'Electricity transmission',part:'insulator',isolate:false,view:'front',lesson:powerLineInsulatorLesson,intro:powerLineInsulatorLesson.simple},
  'Power pylon':{machine:'Electricity transmission',part:'pylon',isolate:false,view:'front',lesson:powerPylonLesson,intro:powerPylonLesson.simple},
 };

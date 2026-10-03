@@ -3495,6 +3495,33 @@
       "parentId": "system"
     }
   ],
+  "home-supply-transformer": [
+    {
+      "id": "magnetic",
+      "name": "Magnetic core and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "primary",
+      "name": "Regional source circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "secondary",
+      "name": "Home supply and parallel loads",
+      "parentId": "system"
+    },
+    {
+      "id": "dots",
+      "name": "Fixed dotted winding terminals",
+      "parentId": "system"
+    },
+    {
+      "id": "currents",
+      "name": "Instantaneous conventional current",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",
