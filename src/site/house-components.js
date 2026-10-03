@@ -29,6 +29,7 @@ import {createElectricityTransmissionModel} from './electricity-transmission-mod
 import {transformerTurnsRatioLesson} from './transformer-turns-ratio-lesson.js';
 import {createTransformerModel} from './transformer-model.js';
 import {powerLineInsulatorLesson, powerPylonLesson} from './grid-line-lessons.js';
+import {createLineModel} from './grid-line-model.js';
 import {phonemesLesson} from './speech-lessons.js';
 import {createCrashSensorModel} from './crash-sensor-model.js';
 import {createPrinterModel} from './printer-model.js';
@@ -147,6 +148,6 @@ export const houseComponents={
  'Transmission transformer':{machine:'Transformer',createModel:()=>createElectricityTransmissionModel({sendingLesson:true}),part:'system',isolate:false,view:'iso',lesson:transmissionTransformerLesson,intro:transmissionTransformerLesson.simple},
  'Distribution transformer':{machine:'Transformer',createModel:()=>createElectricityTransmissionModel({distributionLesson:true}),part:'system',isolate:false,view:'iso',lesson:distributionTransformerLesson,intro:distributionTransformerLesson.simple},
  'Home-supply transformer':{machine:'Transformer',createModel:createHomeSupplyTransformerModel,part:'system',isolate:false,view:'iso',lesson:homeSupplyTransformerLesson,intro:homeSupplyTransformerLesson.simple},
- 'Power-line insulator':{machine:'Electricity transmission',part:'insulator',isolate:false,view:'front',lesson:powerLineInsulatorLesson,intro:powerLineInsulatorLesson.simple},
- 'Power pylon':{machine:'Electricity transmission',part:'pylon',isolate:false,view:'front',lesson:powerPylonLesson,intro:powerPylonLesson.simple},
+ 'Power-line insulator':{machine:'Electricity transmission',createModel:createLineModel,part:'insulator',isolate:false,view:'front',lesson:powerLineInsulatorLesson,intro:powerLineInsulatorLesson.simple},
+ 'Power pylon':{machine:'Electricity transmission',createModel:createLineModel,part:'pylon',isolate:false,view:'front',lesson:powerPylonLesson,intro:powerPylonLesson.simple},
 };

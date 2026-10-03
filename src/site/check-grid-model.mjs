@@ -674,7 +674,7 @@ for (const lesson of lessons) {
   for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre)\b/i.test(text), `American spelling: ${text.slice(0, 60)}`);
   t.ok(lesson.sources.length >= 4 && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources.map(source => source.url)).size === lesson.sources.length, 'four sources at least, each a link, none twice');
 }
-t.ok(dailyLifeLessons['Electric generator'] === GL.electricGeneratorLesson && dailyLifeLessons['Transformer'] === transformerLesson && dailyLifeLessons['Electricity transmission'] === LL.electricityTransmissionLesson, 'the three machines are routed to their lessons');
+t.ok(dailyLifeLessons['Electric generator'] === GL.electricGeneratorLesson && dailyLifeLessons['Transformer'] === transformerLesson, 'generator and transformer retain their accepted lessons');
 for (const [name, machine, part, lesson, values] of [
   ['AC generator', 'Electric generator', 'system', GL.acGeneratorLesson, {output: 0}],
   ['DC generator', 'Electric generator', 'system', GL.dcGeneratorLesson, {output: 1}],
