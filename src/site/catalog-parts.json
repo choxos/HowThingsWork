@@ -1359,6 +1359,16 @@
       "name": "Temperature response"
     }
   ],
+  "maximum-minimum-thermometer": [
+    {
+      "id": "system",
+      "name": "Maximum-minimum thermometer"
+    },
+    {
+      "id": "chart",
+      "name": "Day and recorded extremes"
+    }
+  ],
   "binoculars": [
     {
       "id": "body",

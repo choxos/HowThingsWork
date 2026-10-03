@@ -73,3 +73,8 @@ const thermometer = families.find(family => family.entry.id === 'liquid-in-glass
 assert(thermometer, 'Liquid-in-glass thermometer is a whole instrument');
 assert.equal(catalogMachineComponents(thermometer.components).length, 0, 'Bulb, capillary and scale are not smaller machines');
 assert.deepEqual(tags('liquid-in-glass-thermometer'), ['exploiting-heat']);
+
+const maximumMinimum = families.find(family => family.entry.id === 'maximum-minimum-thermometer');
+assert(maximumMinimum, 'Maximum-minimum thermometer is a whole instrument');
+assert.equal(catalogMachineComponents(maximumMinimum.components).length, 0, 'Reservoirs, indices and reset magnet remain ordinary parts');
+assert.deepEqual(tags('maximum-minimum-thermometer'), ['exploiting-heat']);

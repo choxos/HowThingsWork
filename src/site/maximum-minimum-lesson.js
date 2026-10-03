@@ -1,0 +1,61 @@
+import {MAX_MIN_DEFAULTS} from './maximum-minimum-physics.js';
+
+const trial = (title, instruction, observe, values = {}, time = 24, part = 'system', state = {}) => ({title, instruction, observe, values: {...MAX_MIN_DEFAULTS, ...values}, reset: true, initialState: {time, since: 0, ...state}, part, isolate: ['sensor', 'receiver', 'chart'].includes(part), view: ['sensor', 'receiver'].includes(part) ? 'iso' : 'front'});
+
+export const sixThermometerLesson = {
+  simple: 'How can a thermometer remember heat and cold after the temperature changes? Follow two liquid interfaces, inspect their memory markers, and reset them without rewinding the day.',
+  overview: 'This model shows a classic Six mechanism with alcohol and mercury. Expansion of the alcohol moves a connected mercury thread around a U-shaped tube. Each advancing end pushes a small index. Elastic contact with the glass holds an index when the mercury moves away. The right index records the highest temperature; the left records the lowest. An external magnet returns them to the current liquid levels. Modern instruments can use different, mercury-free liquids.',
+  steps: [
+    {title: 'Fill one connected cavity', body: 'Alcohol fills the left sensing reservoir and the tube down to the mercury. Mercury runs through the bottom bend. More alcohol lies above its right end, with gas space in the receiving reservoir.'},
+    {title: 'Warm the alcohol', body: 'Alcohol expands more than the glass. It pushes the left mercury interface down and the right interface up. The right interface pushes the maximum index whenever it reaches a new high.'},
+    {title: 'Leave a memory', body: 'As the instrument cools, the right mercury interface retreats. The index stays against the glass, held by its elastic wire. The gap below it separates the recorded maximum from the current temperature.'},
+    {title: 'Record a minimum', body: 'Cooling contracts the sensing alcohol. Mercury rises in the left arm and advances the minimum index. Colder temperatures are higher on this scale, so its numbers increase downward.'},
+    {title: 'Read the lower ends', body: 'Compare each index’s lower end with its own Celsius scale. The liquid interfaces show the current temperature; the indices show extremes since the last reset.'},
+    {title: 'Reset at the current time', body: 'Prepare the magnet reset, then press Play or step. The magnet returns the left index and then the right. When both reach the mercury, a new recording interval starts. The weather clock stays fixed during this demonstration.'},
+  ],
+  parts: [
+    {name: 'Connected U-tube', role: 'Joins both reservoirs through one sealed bore.'},
+    {name: 'Sensing reservoir', role: 'Holds most of the left alcohol, whose expansion moves the thread.'},
+    {name: 'Receiving reservoir', role: 'Contains alcohol and space for changing liquid volume.'},
+    {name: 'Alcohol and mercury thread', role: 'Transfers expansion into opposite movements in the two arms.'},
+    {name: 'Minimum index and spring', role: 'Remembers the highest rise in the left arm, corresponding to the coldest temperature.'},
+    {name: 'Maximum index and spring', role: 'Remembers the highest rise in the right arm, corresponding to the warmest temperature.'},
+    {name: 'Reset magnet', role: 'Returns the indices to the current mercury interfaces.'},
+    {name: 'Minimum and maximum scales', role: 'Convert each interface or index position into a temperature.'},
+    {name: 'Day and recorded extremes', role: 'An explanatory chart comparing air, liquid and the current recording interval.'},
+  ],
+  tryIt: [
+    trial('Morning reset', 'Open the instrument at 9 am with both indices touching the mercury.', 'Both indices read 11.65 °C. The air is 12.00 °C, but the chosen liquid response lags behind it.', {}, 0),
+    trial('Read at noon', 'Open the state three hours after the morning reset.', 'The maximum has reached 17.40 °C. The minimum still reads the morning’s 11.65 °C.', {}, 3),
+    trial('After the warmest moment', 'Inspect the maximum index at 9 pm, after the afternoon peak.', 'The liquid has cooled to 12.35 °C. The right index remains at 19.99 °C, leaving a visible gap above the mercury.', {}, 12, 'max-index'),
+    trial('A complete day', 'Read both indices at 9 am the next morning.', 'Maximum 19.99 °C and minimum 4.01 °C remain recorded, although the liquid is back at 11.65 °C.'),
+    trial('The liquid lags the air', 'Inspect the day chart when the air reaches its 3 pm peak.', 'Air is 20.00 °C and liquid is 19.98 °C. The liquid’s peak comes about ten minutes later.', {}, 6, 'chart'),
+    trial('An instantaneous comparison', 'Set the response time to zero and inspect 3 pm.', 'Air and liquid both reach 20.00 °C at the same moment. This ideal limit removes the thermal lag.', {response: 0}, 6, 'chart'),
+    trial('A slower instrument', 'Choose a 30-minute time constant and inspect 3 pm.', 'Liquid reads 19.87 °C while air is 20.00 °C. The liquid peak is delayed by about 30 minutes.', {response: 1800}, 6, 'chart'),
+    trial('A winter day', 'Inspect a complete day averaging −5 °C with a 3 °C swing.', 'The indices retain a maximum of −2.00 °C and a minimum of −8.00 °C.', {mean: -5, swing: 3}),
+    trial('A warm summer day', 'Inspect a complete day averaging 25 °C with a 12 °C swing.', 'The maximum is 36.99 °C and the minimum is 13.01 °C.', {mean: 25, swing: 12}),
+    trial('No daily swing', 'Hold the prescribed air temperature at 12 °C.', 'Both indices and both mercury interfaces remain at 12.00 °C. There is no new extreme to record.', {swing: 0}),
+    trial('Watch the magnet return', 'Open a prepared reset at 9 pm. Press Play or step through six reset seconds.', 'The magnet returns each index to the mercury. When reset finishes, both read 12.35 °C and recording starts at 9 pm.', {}, 12, 'system', {resetting: true}),
+    trial('Reset without rewinding', 'Open the instant after resetting both indices at 9 pm.', 'Both indices read 12.35 °C. The afternoon’s 19.99 °C maximum is gone; the clock is still 9 pm.', {}, 12, 'system', {since: 12}),
+    trial('Record only the night', 'Read next morning after a 9 pm reset.', 'Minimum 4.01 °C is retained, but maximum is only 12.35 °C. The afternoon was outside this recording interval.', {}, 24, 'chart', {since: 12}),
+    trial('Space in the receiving bulb', 'Inspect the right reservoir at the next morning reading.', 'The alcohol surface lies inside the bulb, leaving 466.23 µL of gas space. The reservoir joins the tube continuously.', {}, 24, 'receiver'),
+    trial('See the sensing liquid', 'Inspect the left reservoir at noon.', 'The bulb is full of alcohol and joins the filled capillary. Expansion of both regions contributes to the interface movement.', {}, 3, 'sensor'),
+  ],
+  deeper: [
+    {title: 'A mechanical memory', body: 'Each index follows an advancing interface but does not follow a retreating one. This one-way contact and friction form a memory. The magnet overrides the hold during reset; it does not create the temperature extremes.'},
+    {title: 'Two scales, opposite directions', body: 'The left alcohol volume determines the left interface. Conserving the mercury volume then determines the right interface. Mercury also expands slightly, so the two shifts are not exactly equal and opposite. Each side has its own calibration, including expansion of the glass.'},
+    {title: 'What the indices remember', body: 'Indices record the instrument’s liquid temperature, which can lag behind the air. The chosen daily model is already in steady periodic operation at 9 am; it does not assume that the liquid suddenly starts at the air temperature when recording begins.'},
+    {title: 'Response over a day', body: 'The air cycle has a 24-hour period. For a first-order response with time constant τ, the liquid’s swing is reduced by 1/√(1 + (ωτ)²), and its peak lags by arctan(ωτ)/ω, with ω = 2π/24 hours. A reset changes the recorded interval, not this temperature law.'},
+    {title: 'The recording interval matters', body: 'A morning-to-morning interval includes afternoon warmth and overnight cold. Resetting in the evening discards the afternoon record. The chart draws stored extremes only across the interval that began with the latest reset.'},
+    {title: 'Different fillings, shared principle', body: 'The classic instrument uses immiscible alcohol and mercury. Mercury-free versions can use other expansion and transfer liquids; their scales and material behavior must match those liquids. This example does not assign properties to an unspecified modern alloy.'},
+  ],
+  misconception: 'The highest mercury level on the left means the lowest temperature. Read the lower ends of the indices on their own scales, and distinguish these stored records from the current liquid levels.',
+  limits: 'An illustrative vertical classic Six mechanism, not a replica or a calibrated commercial instrument. The receiving bulb has an air space, as in the teaching diagram; historical reservoir fillings vary. All physical lengths use a common millimeter scale. The bore is 1 mm, the U-bend centerline radius is 12 mm, straight arms run from −90 to +90 mm, and each bulb has a nominal 6 mm inner radius. Circular frusta approximate the reservoir profiles. At 20 °C the two mercury interfaces are level at zero height and the receiving reservoir is half filled. Representative constant volumetric expansion coefficients are 1,100 millionths per kelvin for ethanol, 180 for mercury and 9 for borosilicate glass. A prescribed uniform temperature applies to all glass and liquid; its time constant is chosen directly. Scales are drawn beside the tube. Indices have ideal frictional hold and point contact at their lower ends; their small displaced volume, buoyancy and thermal expansion are neglected. Menisci are flat. Pressure, wetting, evaporation, thermal gradients, breakage and phase changes are outside this model. Offered temperatures remain above mercury’s freezing point. Reset motion is guided for clarity; magnetic forces are not solved. Weather pauses during the six-second reset demonstration. One playback second otherwise advances fifteen modeled minutes. Decimal readouts expose the calculation and do not imply measurement accuracy.',
+  sources: [
+    {title: 'Museo Galileo: Six’s maximum and minimum thermometer', url: 'https://catalogue.museogalileo.it/object/SixsMaximumMinimumThermometer.html'},
+    {title: 'US7011445B1: maximum/minimum thermometer mechanisms and alternative liquids', url: 'https://patents.google.com/patent/US7011445B1/en'},
+    {title: 'OpenStax College Physics 2e: thermal expansion of solids and liquids', url: 'https://openstax.org/books/college-physics-2e/pages/13-2-thermal-expansion-of-solids-and-liquids'},
+    {title: 'NIST Chemistry WebBook: mercury phase-change data', url: 'https://webbook.nist.gov/cgi/cbook.cgi?ID=C7439976&Units=SI&Mask=4'},
+  ],
+  quiz: {question: 'At 9 pm you reset both indices. What can the next morning’s maximum tell you?', options: ['The highest liquid temperature since 9 pm.', 'The afternoon peak before the reset.', 'The highest temperature ever reached by the air.'], answer: 0, explanation: 'Reset erases the previous records. The indices then retain extremes of the instrument’s own temperature during the new interval.'},
+};

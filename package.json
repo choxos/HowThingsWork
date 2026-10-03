@@ -67,7 +67,9 @@
     "check:hairspring-model": "node src/site/check-hairspring-model.mjs",
     "check:mechanical-watch-model": "node src/site/check-watch-escapement.mjs && node src/site/check-watch-springs.mjs && node src/site/check-watch-train.mjs && node src/site/check-watch-model.mjs",
     "check:liquid-thermometer": "node src/site/check-liquid-thermometer.mjs",
-    "check:liquid-thermometer-model": "node src/site/check-liquid-thermometer-model.mjs"
+    "check:liquid-thermometer-model": "node src/site/check-liquid-thermometer-model.mjs",
+    "check:maximum-minimum": "node src/site/check-maximum-minimum.mjs",
+    "check:maximum-minimum-model": "node src/site/check-maximum-minimum-model.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",
