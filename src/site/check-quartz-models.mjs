@@ -97,7 +97,7 @@ checkQuotedText(quartzOscillatorLesson.deeper.map(section => section.body).join(
 checkQuotedText(clock.parts.map(part => part.description).join(' '), {'2.59 mm': `${fixed(tineLength() * 1000, 2)} mm`, '2,400 mAh': `${fixed(QUARTZ.clock.capacity, 0)} mAh`}, t);
 checkRefusals(sampleQuartzClock, QUARTZ_CLOCK_DOMAINS, t);
 const resources = checkDisposal(clock, t);
-console.log(`PASS quartz models: ${t.count} checks, ${quartzClockLesson.tryIt.length + quartzOscillatorLesson.tryIt.length + piezoelectricityLesson.tryIt.length} trials, ${resources} resources`);
+console.log(`PASS retained quartz drafts: ${t.count} checks, ${quartzClockLesson.tryIt.length + quartzOscillatorLesson.tryIt.length + piezoelectricityLesson.tryIt.length} trials, ${resources} resources`);
 
 await import('./check-kinetic-watch-physics.mjs');
 await import('./check-kinetic-watch-train.mjs');
@@ -105,3 +105,5 @@ await import('./check-kinetic-watch-model.mjs');
 await import('./check-quartz-clock-physics.mjs');
 await import('./check-quartz-clock-train.mjs');
 await import('./check-quartz-clock-model.mjs');
+await import('./check-quartz-oscillator-physics.mjs');
+await import('./check-quartz-oscillator-model.mjs');

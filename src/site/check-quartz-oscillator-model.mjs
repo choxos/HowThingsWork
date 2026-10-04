@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createQuartzOscillatorModel} from './quartz-oscillator-model.js';
 import {quartzOscillatorLesson as lesson} from './quartz-oscillator-lesson.js';
-import {OSCILLATOR_DEFAULTS as D, oscillatorPlan} from './quartz-oscillator-physics.js';
+import {OSCILLATOR_DEFAULTS as D, oscillatorPlan, oscillatorEnvelope} from './quartz-oscillator-physics.js';
 import {tally, checkFinite, checkDisposal} from './model-check-kit.mjs';
 import {createPartExplosion} from './part-explosion.js';
 import {frameModel} from './machine-viewer.js';
@@ -40,6 +40,23 @@ for (const control of model.controls) for (const value of [control.min, control.
   model.reset(); model.update({[control.key]: value}); equal(model.getState().values[control.key], value); model.advance(.1); checkFinite(model.root, t);
 }
 model.root.updateMatrixWorld(true); equal(g.wires.length, 11);
+equal(g.mounts.length, 16);
+const boardBounds = new THREE.Box3().setFromObject(g.board);
+for (const {mesh, body} of g.mounts) {
+  const post = new THREE.Box3().setFromObject(mesh), component = new THREE.Box3().setFromObject(body);
+  t.near(post.min.z, boardBounds.max.z, 3e-8, 'Mount starts on the actual panel surface');
+  t.near(post.max.z, component.min.z, 3e-8, 'Mount meets the actual component underside');
+  t.ok(post.min.x >= component.min.x && post.max.x <= component.max.x && post.min.y >= component.min.y && post.max.y <= component.max.y, 'Mount lands inside component footprint');
+}
+let maximumPlotError = 0;
+for (const values of [D, {...D, gain: 10, capacitor: 12}, {...D, gain: 0, initial: 1, resistance: 60}]) {
+  model.reset({settings: values}); const line = g.envelopeLine.geometry.attributes.position, plan = oscillatorPlan(values);
+  for (let i = 0; i < line.count - 1; i++) {
+    const time = 8 * (i + .5) / (line.count - 1), drawn = ((line.getY(i) + line.getY(i + 1)) / (2 * g.MM) + 9) / 19;
+    maximumPlotError = Math.max(maximumPlotError, Math.abs(drawn - oscillatorEnvelope(plan, time).amplitude));
+  }
+}
+t.ok(maximumPlotError < .001, 'Fast-startup curve stays within 0.1% amplitude of its analytic marker');
 for (const wire of g.wires) wire.meshes.forEach((mesh, i) => {
   const half = mesh.geometry.parameters.height / 2;
   for (const [j, y] of [-half, half].entries()) t.near(new THREE.Vector3(0, y, 0).applyMatrix4(mesh.matrixWorld).distanceTo(new THREE.Vector3(...wire.points[i + j].map(v => v * g.MM))), 0, 1e-12, 'Actual electrical segment endpoints meet');
@@ -66,4 +83,4 @@ for (const aspect of [1, 1.24]) for (const settings of [D, {...D, mode: 1, initi
   equal(boxes.length, 7, 'Seven real component groups; no detached-label pseudo-part'); explosion.update(0); explosion.dispose(); equal(JSON.stringify(m.getState()), before); m.dispose(); layouts++;
 }
 const resources = checkDisposal(model, t);
-console.log(JSON.stringify({passed: true, checks: t.count, presets, actions: model.actions.length, layouts, resources}));
+console.log(JSON.stringify({passed: true, checks: t.count, presets, actions: model.actions.length, layouts, resources, mounts: g.mounts.length, maximumPlotError}));

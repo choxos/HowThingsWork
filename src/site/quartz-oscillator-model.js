@@ -17,10 +17,10 @@ export function createQuartzOscillatorModel() {
   const rod = (a, b, radius, color, parent) => kit.rod(a.map(v => v * MM), b.map(v => v * MM), radius * MM, color, parent);
   const disk = (radius, depth, position, color, parent) => kit.disk(radius * MM, depth * MM, position.map(v => v * MM), color, parent);
   const label = (parent, text, position, height = .8, width, color = '#374736') => {const object = textLabel(parent, text, {position: position.map(v => v * MM), height: height * MM, color, ...(width ? {width: width * MM} : {})}); object.raycast = () => {}; return object;};
-  const support = part('support', 'Insulating support', 'Holds the components without joining their electrical terminals.', [0, 0, 0], circuit);
+  const support = part('support', 'Insulating support', 'The panel and insulating mounting posts hold each component without joining its electrical terminals.', [0, 0, 0], circuit);
   const board = box([29, 24, .35], [-2, 2, -.5], 0xd6d4b2, support);
   const supply = part('supply', 'DC supply and contacts', 'An ideal 1.5 V source powers the amplifier. A zero amplifier-strength setting disables sustaining feedback. This model makes no battery-life prediction.', [-11 * MM, 3 * MM, 0], circuit);
-  box([3.5, 6, 1.8], [0, 0, 1.5], 'gold', supply);
+  const supplyBody = box([3.5, 6, 1.8], [0, 0, 1.5], 'gold', supply);
   rod([0, 3, 1.5], [0, 3.6, 2], .3, 'metal', supply); rod([0, -3, 1.5], [0, -3.6, 2], .3, 'metal', supply);
   label(supply, '1.5 V', [0, 0, 2.5], .8); label(supply, '+', [0, 2, 2.5]); label(supply, '−', [0, -2, 2.5]);
   const amplifier = part('amplifier', 'Inverting sustaining amplifier', 'A biased amplifier senses a small AC input and returns an inverted output. In the complete resonant loop, phase and gain allow feedback to replace losses. Gain compression limits the vibration.', [0, 8 * MM, 0], circuit);
@@ -29,12 +29,12 @@ export function createQuartzOscillatorModel() {
   label(amplifier, 'INVERT', [0, .25, 2.9], .65, undefined, '#f8f5e9');
   const gainLabel = label(amplifier, '', [0, -.55, 2.9], .5, 3.7, '#f8f5e9');
   const bias = part('bias', 'DC bias feedback resistor', 'A large 20 MΩ resistor connects output to input, biasing the inverter into its amplifying region. Its AC loading and noise are omitted from the simplified envelope calculation.', [0, 11.3 * MM, 0], circuit);
-  box([3, .7, .7], [0, 0, 2], 'cream', bias);
+  const biasBody = box([3, .7, .7], [0, 0, 2], 'cream', bias);
   for (const sign of [-1, 1]) rod([sign * 1.5, 0, 2], [sign * 2, 0, 2], .1, COPPER, bias);
   label(bias, '20 MΩ', [0, .7, 2], .65);
   const quartz = part('quartz', 'Quartz resonator and electrodes', 'Cutaway of a 2 × 2 × 6.1 mm tuning-fork package. The internal fork and electrode paths are illustrative. Opposite tine flexure represents one coupled mode; drawn deformation is normalized, not a measured distance.', [0, 2.55 * MM, 2 * MM], circuit);
   const can = box([2, 6.1, 2], [0, 0, 0], 'metal', quartz); covers.push(can);
-  box([2, 6.1, .12], [0, 0, -.94], 'metal', quartz); box([1.7, .35, .18], [0, -1.8, 0], 'cream', quartz);
+  const quartzBack = box([2, 6.1, .12], [0, 0, -.94], 'metal', quartz); box([1.7, .35, .18], [0, -1.8, 0], 'cream', quartz);
   const tines = [];
   for (const sign of [-1, 1]) {
     const mesh = surface(kit, new THREE.BoxGeometry(.24 * MM, 3.8 * MM, .12 * MM, 1, 32, 1), 'cream', quartz);
@@ -44,13 +44,20 @@ export function createQuartzOscillatorModel() {
   }
   label(quartz, 'QUARTZ', [0, -4.35, .2], .75);
   const capacitors = part('capacitors', 'Equal adjustable load capacitors', 'One capacitor joins each crystal terminal to common ground. With equal branches and no parasitics, their series equivalent is half the value of either capacitor. Screw angle is only an adjustment indicator.', [0, 0, 0], circuit);
-  const screws = [], capLabels = [];
+  const screws = [], capLabels = [], capacitorBodies = [];
   for (const x of [-6, 6]) {
-    disk(1.25, .8, [x, -5, 2], 'cream', capacitors);
+    capacitorBodies.push(disk(1.25, .8, [x, -5, 2], 'cream', capacitors));
     const screw = box([1.6, .16, .1], [x, -5, 2.5], 'ink', capacitors); screws.push(screw);
     rod([x, -3.5, 2], [x, -3.8, 2], .12, COPPER, capacitors); rod([x, -6.2, 2], [x, -6.5, 2], .12, COPPER, capacitors);
     capLabels.push(label(capacitors, '', [x, -2.5, 2.2], .75, 5));
   }
+  const mounts = [];
+  const mount = (body, x, y, top) => {const mesh = rod([x, y, -.325], [x, y, top], .16, 'cream', support); mounts.push({mesh, body});};
+  for (const x of [-12.2, -9.8]) for (const y of [1, 5]) mount(supplyBody, x, y, .6);
+  for (const x of [-1.5, 1.5]) for (const y of [7.2, 8.8]) mount(amplifierBody, x, y, 1.2);
+  for (const x of [-.9, .9]) mount(biasBody, x, 11.3, 1.65);
+  for (const x of [-.6, .6]) mount(quartzBack, x, 2.55, 1);
+  capacitorBodies.forEach((body, i) => {for (const offset of [-.5, .5]) mount(body, (i ? 6 : -6) + offset, -5, 1.6);});
   const wiring = part('wiring', 'Signal, supply and ground paths', 'Input and output each meet a crystal lead, a load capacitor, the amplifier and one end of the bias resistor. Blue ground connects both capacitor returns and the amplifier to supply negative. Red supplies the amplifier; crossings on different heights remain insulated.', [0, 0, 0], circuit);
   const terminals = {supplyPlus: [-11, 6.6, 2], supplyMinus: [-11, -.6, 2], ampIn: [-2.5, 8, 2], ampOut: [2.5, 8, 2], ampPlus: [0, 9.7, 2], ampGround: [0, 6.3, 2], crystalIn: [-.5, -.5, 2], crystalOut: [.5, -.5, 2], biasIn: [-2, 11.3, 2], biasOut: [2, 11.3, 2], capIn: [-6, -3.5, 2], capOut: [6, -3.5, 2], groundIn: [-6, -6.5, 2], groundOut: [6, -6.5, 2]};
   const wires = [];
@@ -72,7 +79,7 @@ export function createQuartzOscillatorModel() {
   const guide = (id, name, description) => {const p = part(id, name, description, [50 * MM, 0, 0], system); p.userData.inspectionOnly = id; p.userData.explosionExcluded = true; guides.push(p); const panel = box([40, 39, .2], [0, 0, -.3], 'cream', p); panel.material = new THREE.MeshBasicMaterial({color: 0xf8f5e9}); return p;};
   const envelope = guide('envelope', 'Amplitude over eight seconds', 'Calculated amplitude envelope, not individual cycles. The blue curve follows the selected experiment. The gold level marks the nonzero steady amplitude when feedback can overcome loss.');
   const envelopePoint = (t, a) => [(-12 + 3.25 * t) * MM, (-9 + 19 * a) * MM, .1 * MM];
-  const envelopeLine = lineObject(257, BLUE, envelope), steadyLine = lineObject(2, 0xb07a20, envelope), envelopeDot = kit.sphere(.23 * MM, [0, 0, 0], 'red', envelope);
+  const envelopeLine = lineObject(4097, BLUE, envelope), steadyLine = lineObject(2, 0xb07a20, envelope), envelopeDot = kit.sphere(.23 * MM, [0, 0, 0], 'red', envelope);
   for (const [a, b] of [[[0, 0], [8, 0]], [[0, 0], [0, 1]]]) kit.rod(envelopePoint(...a), envelopePoint(...b), .035 * MM, 'ink', envelope);
   chartText(envelope, envelopePoint, {title: 'Does the vibration grow?', size: 2.2 * MM, x: {min: 0, max: 8, title: 'Elapsed seconds', ticks: [[0, '0'], [4, '4'], [8, '8']]}, y: {min: 0, max: 1, title: 'Relative amplitude', ticks: [[0, '0'], [.5, '0.5'], [1, '1']]}});
   const envelopeStatus = label(envelope, '', [0, -17, .2], 1.5, 36);
@@ -101,8 +108,8 @@ export function createQuartzOscillatorModel() {
     const nextKey = JSON.stringify(values);
     if (nextKey !== key) {
       plan = oscillatorPlan(values); key = nextKey; time = Math.min(initialTime ?? 0, plan.duration); lastClock = 0;
+      for (let i = 0; i <= 4096; i++) envelopeLine.geometry.attributes.position.array.set(envelopePoint(8 * i / 4096, oscillatorEnvelope(plan, 8 * i / 4096).amplitude), i * 3);
       for (let i = 0; i <= 256; i++) {
-        envelopeLine.geometry.attributes.position.array.set(envelopePoint(8 * i / 256, oscillatorEnvelope(plan, 8 * i / 256).amplitude), i * 3);
         const t = 4 * i / (256 * plan.frequency), amp = oscillatorEnvelope(plan, t).amplitude / Math.sqrt(plan.initialEnergyFraction);
         waveLine.geometry.attributes.position.array.set(wavePoint(4 * i / 256, amp * Math.sin(8 * Math.PI * i / 256)), i * 3);
       }
@@ -150,7 +157,7 @@ export function createQuartzOscillatorModel() {
   result.initialPart = 'circuit'; result.initialView = 'front'; result.frameVisibleOnly = true; result.framePadding = .64; result.selectionOutline = false; result.transparentBackground = true; result.thumbnailOmit = guides;
   for (const p of result.parts) {p.maxZoom = 300; p.framePadding = guides.includes(p.object) ? .53 : .64;}
   result.frameBoundsForPart = id => {root.updateMatrixWorld(true); const object = id === 'system' ? circuit : result.parts.find(p => p.id === id)?.object; return object ? new THREE.Box3().setFromObject(object) : null;};
-  result.topology = {system, circuit, support, board, supply, amplifier, amplifierBody, bias, quartz, can, tines, capacitors, screws, wiring, wires, terminals, guides, envelope, envelopePoint, envelopeLine, steadyLine, envelopeDot, waveform, wavePoint, waveLine, waveDot, energy, energyLabels, MM};
+  result.topology = {system, circuit, support, board, mounts, supply, amplifier, amplifierBody, bias, quartz, can, tines, capacitors, screws, wiring, wires, terminals, guides, envelope, envelopePoint, envelopeLine, steadyLine, envelopeDot, waveform, wavePoint, waveLine, waveDot, energy, energyLabels, MM};
   const dispose = result.dispose; result.dispose = () => {if (disposed) return; disposed = true; dispose();};
   return result;
 }
