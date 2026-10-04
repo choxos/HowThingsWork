@@ -1,0 +1,75 @@
+import {UPRIGHT_DEFAULTS} from './upright-vacuum-physics.js';
+
+const trial = (title, instruction, observe, values = {}, time = 0, part = 'system', view = 'iso', isolate = false) => {
+  const settings = {...UPRIGHT_DEFAULTS, ...values};
+  return {title, instruction, observe, values: settings, reset: true, initialState: {time, settings}, part, view, isolate};
+};
+
+export const uprightVacuumLesson = {
+  simple: 'What does a powered brush add to airflow, and where does the loosened dust go?',
+  overview: 'Follow a fixed sample through an upright cleaner. Six markers start loose; six represent dust caught among carpet fibers. A visible belt turns the brush, selected bristle encounters free the bound markers, and moving air carries them through the fan into a paper bag. Remove the belt, raise the head or close the fan inlet to separate those jobs. This original direct-air layout is one kind of upright, not every upright cleaner.',
+  steps: [
+    {title: 'Transmit the motor motion', body: 'The motor rotor, fan and small pulley share a shaft. An open belt turns a larger pulley on the brush shaft. With 8 mm and 24 mm pitch radii and no slip, the brush turns once for every three motor turns.'},
+    {title: 'Reach the carpet', body: 'The rotating bristles sweep the carpet. Each of the six selected bound markers is released at a prescribed bottom encounter. Raising the head 12 mm keeps the brush turning but removes contact. These events illustrate agitation; they do not calculate real adhesion or a cleaning percentage.'},
+    {title: 'Let airflow carry loose material', body: 'The fan maintains a pressure difference that makes room air enter around the head. Loose markers follow a representative route toward the fan eye. With the belt removed, airflow continues and carries the already-loose sample, while the selected bound markers remain.'},
+    {title: 'Turn the stream outward', body: 'In this direct-air arrangement, dirty air enters near the fan axis, crosses the radial blade passages and enters a stationary collector. The motor stays outside that stream. Detailed blade-scale flow, impacts and particle inertia are not solved.'},
+    {title: 'Blow the stream into the bag', body: 'A hollow 40 mm duct rises from the collector into the upper part of the bag. Its centerline is 750 mm long. Because the fan comes first, the broad bag space has pressure above the room while air flows.'},
+    {title: 'Retain the sample', body: 'Air passes through the paper and outer cover. All illustrated markers that reach the paper stop there and remain visible. Blue air markers continue through the cover. The retained count is a trace of this fixed sample, not a filtration-efficiency claim.'},
+    {title: 'Distinguish pressure, flow and brushing', body: 'Close the ideal fan-eye gate. The brush can still free the bound markers, but there is no stream to transport them. Turn the motor off and both jobs stop. Increase bag resistance and transport slows even though the fan pressure rise grows.'},
+  ],
+  parts: [
+    {name: 'Cutaway head and chassis', role: 'Admits air around the head and supports the mechanism.'},
+    {name: 'Wheels and height supports', role: 'Raise the head while preserving shaft and belt alignment.'},
+    {name: 'Brush roll and bearings', role: 'Sweep the carpet with supported rotating bristles.'},
+    {name: 'Brush belt and pulleys', role: 'Transmit motor motion with a three-to-one speed reduction.'},
+    {name: 'Motor and mounting feet', role: 'Drive the shaft inside a fixed stator.'},
+    {name: 'Common motor and fan shaft', role: 'Join the rotor, fan and small belt pulley.'},
+    {name: 'Direct-air centrifugal impeller', role: 'Transfer energy to the stream before the bag.'},
+    {name: 'Fan housing and outlet collector', role: 'Guide axial entry into radial discharge.'},
+    {name: 'Fan-inlet sealing gate', role: 'Create the no-flow comparison inside the model.'},
+    {name: 'Hollow discharge duct', role: 'Carry the stream into the bag through an open bore.'},
+    {name: 'Paper bag and retained sample', role: 'Keep the illustrated dust while air crosses the paper.'},
+    {name: 'Porous outer cover', role: 'Provide a second flow resistance before the room.'},
+    {name: 'Handle and bag supports', role: 'Support the bag independently of its air tube.'},
+    {name: 'Conserved dust sample', role: 'Track bound, loose, traveling and retained markers.'},
+  ],
+  tryIt: [
+    trial('Finish the clean trial', 'Open the completed trial, then use Replay for a fresh sample.', 'All 12 markers are retained. Clean airflow is 25.63 L/s and fan total-pressure rise is 2.32 kPa. The completed sample stays visible.', {}, 90),
+    trial('Watch the brush release dust', 'Inspect the head at one trace second, then step forward.', 'Three markers remain bound and nine are already in transit. Each selected release coincides with a bristle reaching the bottom of its lane.', {}, 1, 'intake', 'front'),
+    trial('Follow the discharge duct', 'Inspect the connected duct at 15 trace seconds.', 'All 12 markers are in transit. The route leads from the fan collector through an open tube into the upper part of the bag.', {}, 15, 'duct'),
+    trial('Remove the brush belt', 'Compare the completed trial with the belt absent.', 'The fan still moves 25.63 L/s, but the brush remains still. Six initially loose markers collect; six selected bound markers stay among the fibers.', {belt: 0}, 90, 'intake', 'front'),
+    trial('Raise the head', 'Inspect the completed trial with the head raised 12 mm.', 'The brush turns but misses the carpet. Six loose markers collect and six bound markers remain. Airflow rises to 26.60 L/s, yet extra flow does not replace this modeled brush contact.', {height: 1}, 90, 'intake', 'front'),
+    trial('Brush without transport', 'Close the fan-eye gate and inspect the head at three trace seconds.', 'All six selected bound markers have been freed, leaving twelve loose markers and none collected. The brush turns, but airflow is zero.', {seal: 1}, 3, 'intake', 'front'),
+    trial('Pressure at a closed gate', 'Inspect the closed annular gate in isolation.', 'A 5.00 kPa difference holds the gate with 11.92 N. Flow power and all flowing losses are zero; the vented bag is at room pressure.', {seal: 1}, 3, 'gate', 'front', true),
+    trial('Switch the motor off', 'Inspect a completed interval with no drive.', 'The fan, shaft, pulleys and brush stay still. Six markers remain bound and six remain loose. Neither airflow nor pressure rise is produced.', {motor: 0}, 90),
+    trial('Slow transport with a loaded bag', 'Compare four times the bag resistance at 60 trace seconds.', 'Flow falls to 18.13 L/s while fan pressure rises to 3.66 kPa. The sample takes longer to reach the paper. Continue to the completed trial to account for every marker.', {bag: 4}, 60),
+    trial('Finish the loaded-bag trace', 'Inspect the loaded bag at the completed checkpoint.', 'All 12 markers eventually remain on the paper. Increased resistance changes transport timing, not the size of the sample.', {bag: 4}, 90, 'capture', 'front'),
+    trial('Load the outer cover', 'Inspect the completed trial with three times the outer-cover resistance.', 'Airflow falls to 22.74 L/s. The broad cover space is about 1.37 kPa above the room. All twelve selected markers still finish on the paper.', {cover: 1}, 90, 'collection', 'front'),
+    trial('Combine both restrictions', 'Inspect the completed trial with loaded bag and cover.', 'Airflow is 16.32 L/s and fan pressure rise is 3.91 kPa. The full sample remains accounted for and all twelve markers finish on the paper.', {bag: 4, cover: 1}, 90, 'capture', 'front'),
+    trial('Find the operating point', 'Inspect the fan and system curves with four times the bag resistance.', 'The curves meet at 18.13 L/s and 3.66 kPa. These assigned characteristics determine one steady flow, not a universal upright-cleaner rating.', {bag: 4}, 60, 'fan-chart', 'front', true),
+    trial('Account for the pressure losses', 'Inspect the loaded-bag and loaded-cover loss budget.', 'Head, duct, bag, cover and outlet losses add to the 3.91 kPa fan rise. The bars show total-pressure losses, not a local static-pressure map.', {bag: 4, cover: 1}, 60, 'budget-chart', 'front', true),
+    trial('Inspect the belt reduction', 'Inspect the belt and both pulleys, then play or step.', 'The common motor shaft runs at a prescribed 9000 rpm and the brush at 3000 rpm. Both are slowed 300 times in the scene, so the three-to-one relation remains visible.', {}, 1.25, 'belt', 'front', true),
+    trial('Look through the fan eye', 'Inspect the impeller from its inlet side and rotate it.', 'The annular eye leads into eight radial passages. This fan precedes the bag; the model does not claim that debris can never damage it.', {}, 2, 'impeller', 'front', true),
+  ],
+  deeper: [
+    {title: 'Agitation and transport are different jobs', body: 'A brush changes the contact between dirt and fibers. Airflow transports material that is already mobile. The selected six-plus-six sample lets you remove one mechanism at a time. It does not imply that every real carpet particle needs a brush, or that airflow alone cannot clean a carpet.'},
+    {title: 'An open belt preserves tangential speed', body: 'Without slip, the belt moves at the same rim speed on both pulleys: r₁ω₁ = r₂ω₂. An 8 mm driving radius and 24 mm driven radius therefore give ω₂ = ω₁/3. The two shafts turn in the same direction. Belt tension, stretch, slip and transmitted torque are not calculated.'},
+    {title: 'One assigned operating point', body: 'The fan supplies Δpt = 5,000[1 − (Q/0.035)²] Pa at its prescribed speed. The path combines an entry coefficient of 2.5, smooth-duct friction, a lumped bend coefficient of 1.5, linear bag and cover resistances, and outlet mixing. The steady flow makes the fan rise equal their sum.'},
+    {title: 'What changes when the head rises', body: 'At working height, the front opening is 300 × 6 mm. Raising the whole 350 × 300 mm head by 12 mm adds open area along its full perimeter. The calculation uses a representative average entry speed over this total area. Actual carpet deformation, leaks, local jets and floor pressure are not resolved.'},
+    {title: 'Why air leaves the bag', body: 'The direct-air fan adds pressure before the bag. In the broad bag and cover spaces, total pressure minus the small ρv²/2 contribution estimates section-average static pressure. Both remain above the room while air flows. The paper and cover resist those outward flows; fabric inflation and a detailed membrane pressure field are outside the model.'},
+    {title: 'Other upright layouts', body: 'Upright describes the appliance form, not one mandatory air path. Some arrangements collect or separate dirt before the fan, and brush drives can differ. This lesson deliberately follows one original direct-air arrangement with a belt and bag. Its pressure, flow and speed values are assigned, not a ranking against canister machines.'},
+    {title: 'A finite sample, not a pickup test', body: 'Each bound marker is released at a prescribed bristle encounter. Mobile markers advance along representative section-average routes and stop on the paper by construction. Their size, count and paths are teaching choices. Adhesion, inertia, gravity, blade impacts, filtration efficiency and changing bag loading are not predicted.'},
+    {title: 'A sealed fan eye', body: 'The ideal gate closes the annular eye around the shaft. With zero flow the running fan has its assigned 5 kPa shutoff difference. F = Δpπ(0.028² − 0.005²) gives 11.92 N. The brush chamber remains open to the carpet, so selected brush releases can occur without subsequent air transport. This is a simulated comparison, not an operating instruction.'},
+  ],
+  misconception: 'A spinning fan does not guarantee that a brush is turning or touching the carpet. A working brush does not guarantee air transport through a blocked path.',
+  limits: 'Original direct-air teaching apparatus, not a commercial replica or performance certification. Assigned fixed-speed fan: 5 kPa shutoff, 35 L/s free delivery. Air density 1.2 kg/m³ and viscosity 1.8 × 10⁻⁵ Pa·s; steady constant-density approximation. Head entry loss coefficient 2.5; 750 mm of 40 mm smooth duct with lumped bend coefficient 1.5. Clean paper and cover resistances 40,000 and 20,000 Pa·s/m³; selected bag multiplier 1–4 and loaded-cover multiplier 3. Darcy friction uses 64/Re, Blasius 0.3164/Re^0.25 and an explicit transition interpolation; all selectable flowing states are turbulent. Broad bag/cover section areas are 0.022 and 0.035 m²; outlet mixing area 0.01 m². Head raising opens perimeter gaps. Fan-eye gate is an ideal seal. Prescribed 9000 rpm motor and ideal nonslipping 3:1 belt; no torque, motor losses, speed response, startup, coasting, heating or electrical-power prediction. The selected brush releases and enlarged dust paths do not solve adhesion, real pickup rates, particle inertia, blade collisions, settling, fabric deformation or filtration efficiency. All selected markers that reach the paper are retained by construction. Drive and transport are slowed 300 times; 90 trace seconds represent 0.3 seconds at steady operation, with 3× playback. Cutaway faces reveal the intended enclosed path. Every changed setting starts a fresh sample; inspections preserve its state.',
+  sources: [
+    {title: 'Kirby: brush drive, height and bag troubleshooting', url: 'https://kirby.com/pages/frequently-asked-questions-for-kirby-owners'},
+    {title: 'Kirby: official belt and bag demonstrations', url: 'https://kirby.com/pages/how-to-videos'},
+    {title: 'Kirby: owner manuals and straight-suction comparisons', url: 'https://kirby.com/pages/owner-manuals'},
+    {title: 'US Department of Energy and AMCA: Improving Fan System Performance', url: 'https://www.energy.gov/sites/default/files/2014/05/f16/fan_sourcebook.pdf'},
+    {title: 'OpenStax College Physics 2e: pressure and power in fluid flow', url: 'https://openstax.org/books/college-physics-2e/pages/12-3-the-most-general-applications-of-bernoullis-equation'},
+    {title: 'US EPA: fabric filtration and pressure drop', url: 'https://www.epa.gov/air-emissions-monitoring-knowledge-base/monitoring-control-technique-fabric-filters'},
+  ],
+  quiz: {question: 'The belt is removed while the motor runs. What happens in this model?', options: ['The fan still carries loose markers, but the brush cannot free the selected bound sample.', 'The brush turns faster because the belt no longer resists it.', 'The bag creates airflow on its own.'], answer: 0, explanation: 'The fan shares the motor shaft. The separate brush shaft needs the belt to receive motion, so removing that connection stops the brush while airflow continues.'},
+};

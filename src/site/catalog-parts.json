@@ -1052,6 +1052,48 @@
       "parentId": "system"
     }
   ],
+  "upright-vacuum-cleaner": [
+    {
+      "id": "intake",
+      "name": "Floor head and brush drive",
+      "parentId": "system"
+    },
+    {
+      "id": "drive",
+      "name": "Motor and direct-air fan",
+      "parentId": "system"
+    },
+    {
+      "id": "collection",
+      "name": "Duct, bag and handle",
+      "parentId": "system"
+    },
+    {
+      "id": "floor",
+      "name": "Carpet and sample",
+      "parentId": "system"
+    },
+    {
+      "id": "air",
+      "name": "Airflow tracers",
+      "parentId": "system"
+    },
+    {
+      "id": "dust",
+      "name": "Conserved dust sample",
+      "parentId": "system"
+    },
+    {
+      "id": "fan-chart",
+      "name": "Fan and path curves",
+      "parentId": "system"
+    },
+    {
+      "id": "budget-chart",
+      "name": "Pressure-loss budget",
+      "parentId": "system"
+    }
+  ],
   "drinking-straw": [
     {
       "id": "glass",
