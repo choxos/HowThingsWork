@@ -134,7 +134,8 @@ export const publishedEntryIds = [
   "hairspring",
   "liquid-in-glass-thermometer",
   "maximum-minimum-thermometer",
-  "kinetic-quartz-watch"
+  "kinetic-quartz-watch",
+  "quartz-clock"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -237,6 +238,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'quartz-clock': ['electricity', 'magnetism', 'gears-and-belts'],
   'kinetic-quartz-watch': ['electricity', 'magnetism', 'gears-and-belts'],
   'mechanical-watch': ['gears-and-belts', 'springs'],
   'lever-escapement': ['levers', 'gears-and-belts', 'springs'],

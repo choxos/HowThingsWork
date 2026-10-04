@@ -4,7 +4,8 @@ import {createRobervalBalanceModel} from './roberval-balance-model.js';
 import {createPendulumClockModel} from './pendulum-clock-model.js';
 import {createWatchModel} from './watch-model.js';
 import {createLiquidThermometerModel, createSixThermometerModel} from './thermometer-models.js';
-import {createQuartzClockModel, createKineticWatchModel} from './quartz-models.js';
+import {createKineticWatchModel} from './quartz-models.js';
+import {createQuartzClockModel} from './quartz-clock-model.js';
 import {createWaterClockModel} from './water-clock-model.js';
 const names=['Bathroom scale','Platform scale','Roberval balance','Mechanical clock','Mechanical watch','Liquid-in-glass thermometer','Maximum-minimum thermometer','Kinetic quartz watch','Quartz clock','Water clock'];
 export function createTimeModel(name){

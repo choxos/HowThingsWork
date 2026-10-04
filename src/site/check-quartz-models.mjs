@@ -102,3 +102,6 @@ console.log(`PASS quartz models: ${t.count} checks, ${quartzClockLesson.tryIt.le
 await import('./check-kinetic-watch-physics.mjs');
 await import('./check-kinetic-watch-train.mjs');
 await import('./check-kinetic-watch-model.mjs');
+await import('./check-quartz-clock-physics.mjs');
+await import('./check-quartz-clock-train.mjs');
+await import('./check-quartz-clock-model.mjs');

@@ -71,7 +71,10 @@
     "check:maximum-minimum": "node src/site/check-maximum-minimum.mjs",
     "check:maximum-minimum-model": "node src/site/check-maximum-minimum-model.mjs",
     "check:kinetic-watch": "node src/site/check-kinetic-watch.mjs",
-    "check:kinetic-watch-model": "node src/site/check-kinetic-watch-physics.mjs && node src/site/check-kinetic-watch-train.mjs && node src/site/check-kinetic-watch-model.mjs"
+    "check:kinetic-watch-model": "node src/site/check-kinetic-watch-physics.mjs && node src/site/check-kinetic-watch-train.mjs && node src/site/check-kinetic-watch-model.mjs",
+    "check:quartz-clock": "node src/site/check-quartz-clock.mjs",
+    "check:quartz-clock-model": "node src/site/check-quartz-clock-physics.mjs && node src/site/check-quartz-clock-train.mjs && node src/site/check-quartz-clock-model.mjs",
+    "check:mobile-inspection": "node src/site/check-mobile-inspection.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

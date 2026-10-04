@@ -1487,6 +1487,23 @@
       "parentId": "system"
     }
   ],
+  "quartz-clock": [
+    {
+      "id": "movement",
+      "name": "Complete clock movement",
+      "parentId": "system"
+    },
+    {
+      "id": "timing",
+      "name": "Fifteen binary divisions",
+      "parentId": "system"
+    },
+    {
+      "id": "temperature-chart",
+      "name": "Temperature and clock rate",
+      "parentId": "system"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",

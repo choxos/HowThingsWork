@@ -304,6 +304,9 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   function onOutsideClick(event){
     if(disposed||!active||event.button>0||event.target===canvas)return;
     if(host.contains(event.target)&&event.target.closest('button,input,select,label,a'))return;
+    const layout=host.closest('.daily-layout'),tab=event.target.closest('.daily-operation-tabs [role="tab"]'),shortcut=event.target.closest('.daily-mobile-tools [data-jump-tab]');
+    // Lesson tabs and their mobile shortcuts change panels, not inspection.
+    if(layout&&((tab&&layout.contains(tab))||(shortcut&&shortcut.closest('.daily-mobile-tools').nextElementSibling===layout)))return;
     clearSelection();
   }
   function onEscape(event){if(event.key==='Escape'&&active&&!disposed)clearSelection();}
