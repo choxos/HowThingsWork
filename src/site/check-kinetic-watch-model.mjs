@@ -10,6 +10,12 @@ import {frameModel} from './machine-viewer.js';
 
 const t = tally(), model = createKineticWatchModel(), g = model.topology;
 const equal = (a, b, label) => {assert.deepEqual(a, b, label); t.add();};
+const poleAxis = rotor => {
+  const centers = rotor.children.slice(0, 2).map(mesh => {mesh.geometry.computeBoundingBox(); return mesh.geometry.boundingBox.getCenter(new THREE.Vector3());});
+  return centers[0].sub(centers[1]).normalize();
+};
+const generatingAxis = poleAxis(g.magnet);
+for (const rotor of [g.magnet, g.motorRotor]) t.near(poleAxis(rotor).distanceTo(new THREE.Vector3(0, 1, 0)), 0, 1e-12, 'Initial magnetic poles align with stationary iron poles');
 const expected = [
   [1.2, 0, true], [.02638365, 0, false], [.61424782, 1, true], [1.19998121, 10, true],
   [null, 10, true], [1.2, 0, true], [null, 0, true], [1.01001751, 59, true],
@@ -25,6 +31,8 @@ for (const history of [{...D, mode: 2, voltage: 0, motion: 1, minutes: .5}, {...
   if (expected[i][0] !== null) t.near(s.voltage, expected[i][0], .00000002, preset.title);
   t.ok(model.parts.some(p => p.id === preset.part)); t.ok(!/NaN|undefined|Infinity/.test(JSON.stringify(s.readings)));
   const angles = kineticTrainAngles(s);
+  const angle = g.magnet.rotation.z, projectionDerivative = generatingAxis.x * Math.cos(angle) - generatingAxis.y * Math.sin(angle);
+  t.near(-K.fluxLinkage * s.motion.magnetSpeed * projectionDerivative, s.motion.emf, 1e-10, 'Displayed pole direction gives the same Faraday emf as the physical model');
   for (const [name, arbor] of Object.entries(g.arbors)) t.near(arbor.rotation.z, angles[name], 1e-12);
   for (const [name, hand] of Object.entries(g.hands)) t.near(hand.rotation.z, angles[name] + (name === 'hour' ? 1.5 * Math.PI : 0), 1e-12);
   model.root.updateMatrixWorld(true);
@@ -39,6 +47,13 @@ for (const history of [{...D, mode: 2, voltage: 0, motion: 1, minutes: .5}, {...
   checkFinite(model.root, t); poses++; presets++;
 }
 for (const part of lesson.parts) t.ok(model.parts.some(p => p.name === part.name), part.name);
+for (const time of [0, .99, 1, 1.01, 1.02, 2, 9.999, 10]) {
+  model.reset({time, settings: {...D, motion: 0}});
+  const pulses = Math.floor(time);
+  t.near(g.motorRotor.rotation.z, pulses * Math.PI, 1e-12, 'Motor completes its ideal half-turn at the pulse checkpoint');
+  t.near(g.hands.seconds.rotation.z, pulses * Math.PI / 30, 1e-12, 'Physical seconds hand matches the completed-pulse readout');
+  equal(model.getState().stroke, model.getState().ticks);
+}
 for (const values of [{...D, mode: 2, motion: 0, voltage: 2.2}, {...D, mode: 2, motion: 1, minutes: .5, voltage: .6}, {...D, mode: 2, motion: 3, minutes: 20, voltage: 2.2}]) {
   model.reset({time: 21 * K.day, mode: 2, settings: values});
   const s = model.getState(), geometry = g.reserveLine.geometry, positions = geometry.attributes.position;

@@ -50,8 +50,8 @@ export function createKineticWatchModel() {
   const magnetPart = part('generating-magnet', 'Generating magnet', 'Its electrical angle is exactly the angle driven by the 400:1 gear train. The signed emf changes with both magnetic position and direction of rotation.', POSITION.generator.map(v => v * MM).concat(0), generator);
   const magnet = group(magnetPart); arbors.generator = magnet;
   const poleDisk = (radius, start) => {const s = new THREE.Shape().moveTo(0, 0).absarc(0, 0, radius, start, start + Math.PI, false); s.closePath(); return s;};
-  extrude(poleDisk(.7, -Math.PI / 2), .7, 'red', magnet, [0, 0, .7]);
-  extrude(poleDisk(.7, Math.PI / 2), .7, 'blue', magnet, [0, 0, .7]);
+  extrude(poleDisk(.7, 0), .7, 'red', magnet, [0, 0, .7]);
+  extrude(poleDisk(.7, Math.PI), .7, 'blue', magnet, [0, 0, .7]);
   shafts.push(disk(.08, 3.9, [0, 0, 1.9], 'ink', magnet));
   const generatorCoil = part('generating-coil', 'Generating winding and iron poles', 'A closed iron return path couples the spinning magnet to a stationary multilayer winding. Visible turns show the winding bundle, not its complete microscopic wire count.', [0, 0, 0], generator);
   const gx = POSITION.generator[0], gy = POSITION.generator[1];
@@ -98,8 +98,8 @@ export function createKineticWatchModel() {
   const motor = part('motor', 'Quartz-controlled stepping motor', 'This second magnet is a motor, not the generator. Alternating coil pulses advance it by half a turn for each divided crystal second. Asymmetric stator gaps set the direction.', [0, 0, 0], handTrain);
   const motorRotor = part('motor-rotor', 'Stepping rotor and pinion', 'One completed electrical pulse advances this rotor by 180°. The first two gear pairs reduce its motion thirtyfold for the seconds hand.', POSITION.motor.map(v => v * MM).concat(0), motor);
   arbors.motor = motorRotor;
-  extrude(poleDisk(.7, -Math.PI / 2), .6, 'red', motorRotor, [0, 0, .6]);
-  extrude(poleDisk(.7, Math.PI / 2), .6, 'blue', motorRotor, [0, 0, .6]);
+  extrude(poleDisk(.7, 0), .6, 'red', motorRotor, [0, 0, .6]);
+  extrude(poleDisk(.7, Math.PI), .6, 'blue', motorRotor, [0, 0, .6]);
   shafts.push(disk(.1, 3.2, [0, 0, .2], 'ink', motorRotor));
   const motorStator = part('motor-coil', 'Motor winding and stator', 'A wound iron core leads to two magnetic poles around the rotor. The circuit reverses pulse polarity each second; a small asymmetry selects the same stepping direction each time.', [0, 0, 0], motor);
   box([1.4, .36, .6], [6.06, -5, .9], 'metal', motorStator);

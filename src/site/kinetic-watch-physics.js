@@ -175,7 +175,7 @@ export function createKineticTimeline(input = {}) {
     const mean = kineticMeanElectrical(state.voltage, active ? plan.motionFrequency : 0);
     const energy = .5 * K.capacitance * state.voltage ** 2, initialEnergy = .5 * K.capacitance * initial.voltage ** 2;
     const ticks = Math.floor(state.clock + 1e-9), phase = Math.max(0, state.clock - ticks);
-    const stroke = state.running && ticks > state.epochClock && plan.values.mode !== 2 ? ticks - 1 + Math.min(1, phase / .02) : ticks;
+    const stroke = ticks;
     const supply = state.running ? plan.current : 0, protectedCharge = state.voltage >= K.maximum - 1e-9;
     return {...plan, ...state, motion, active, instant, mean, ticks, phase, stroke,
       energy, level: energy / plan.maximumEnergy, reserve: state.running ? Math.max(0, state.voltage - K.stop) * K.capacitance / (plan.current + K.leakage) : 0,

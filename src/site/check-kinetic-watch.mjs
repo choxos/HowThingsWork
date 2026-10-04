@@ -51,6 +51,8 @@ try {
   assert.equal(await page.locator('[data-control]').count(), 5);
   assert.ok(await page.locator('[data-control="mode"]').isVisible(), 'Time-scale selector visible immediately');
   await laws(D, 0); await capture('opening'); await page.screenshot({path: `${output}/opening-page.png`});
+  await page.locator('[data-step]').click(); await page.getByRole('button', {name: 'Read the watch face', exact: true}).click();
+  await laws(D, 1); await capture('first-pulse'); await reset();
   for (const [i, p] of lesson.tryIt.entries()) {
     await preset(i);
     for (const [key, next] of Object.entries(p.values)) near(Number(await page.locator(`[data-control="${key}"]`).inputValue()), next, 1e-10);
