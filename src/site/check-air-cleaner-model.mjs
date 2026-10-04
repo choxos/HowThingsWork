@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {createAirCleanerModel} from './air-cleaner-model.js';
 import {AIR_CLEANER_DEFAULTS as D, PRECIPITATOR as P, FILTER, ROOM, sampleAirCleaner} from './air-cleaner-physics.js';
 import {MM, point, CELL, PARTICLES, PANEL, PLEAT_DEPTH, particleRoute} from './air-cleaner-geometry.js';
-import {airCleanerLesson as lesson, electrostaticPrecipitatorLesson, ionizerLesson} from './air-cleaner-lessons.js';
+import {airCleanerLesson as lesson, electrostaticPrecipitatorLesson} from './air-cleaner-lessons.js';
 import {tally,checkFinite,checkDisposal} from './model-check-kit.mjs';
 import {createPartExplosion} from './part-explosion.js';
 import {frameModel} from './machine-viewer.js';
@@ -93,7 +93,9 @@ for(let mode=0;mode<3;mode++)for(let size=0;size<7;size++)for(let fan=0;fan<4;fa
 }
 for(const mode of[0,1,2]){reset({mode},2400);const positions=p.dots.map(d=>d.position.toArray());m.advance(10);assert.deepEqual(p.dots.map(d=>d.position.toArray()),positions,'finished markers cannot respawn');checkFinite(m.root,t);}
 let trials=0;
-for(const l of[lesson,electrostaticPrecipitatorLesson,ionizerLesson])for(const trial of l.tryIt)for(const prior of[{mode:0,fan:0},{mode:2,size:6,voltage:0,room:90}]){
+// The dedicated ionizer model owns its charge-state chart and all ionizer presets.
+// check-ionizer-model.mjs verifies those routes; the shared physics remains covered here.
+for(const l of[lesson,electrostaticPrecipitatorLesson])for(const trial of l.tryIt)for(const prior of[{mode:0,fan:0},{mode:2,size:6,voltage:0,room:90}]){
   reset(prior,3500);m.reset(trial.initialState);m.update(trial.values);const s=m.getState();assert.equal(s.clock,trial.initialState.time);assert.deepEqual(s.values,{...D,...trial.values});t.ok(m.parts.some(p=>p.id===trial.part),'valid trial target');trials++;
 }
 t.near(reset({},1200).remaining,.11460570416994742,1e-12,'default twenty-minute result from independently checked collection');t.near(reset({mode:0},1200).efficiency,.3407447459562568,1e-12,'34 percent filter lesson answer');t.near(reset({size:0}).efficiency,.12352994278612904,1e-12,'about 12 percent tiny-particle answer');

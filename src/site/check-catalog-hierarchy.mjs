@@ -107,6 +107,8 @@ for (const id of ['vacuum-cleaner', 'upright-vacuum-cleaner', 'aerosol-spray-can
   assert(families.some(family => family.entry.id === id), `${id} is an accepted whole machine`);
 }
 const airCleaner = families.find(family => family.entry.id === 'air-cleaner');
-assert.deepEqual(catalogMachineComponents(airCleaner.components).map(entry => entry.id), ['electrostatic-precipitator'], 'Only the reviewed complete electrical cell is nested below the air cleaner');
+assert.deepEqual(catalogMachineComponents(airCleaner.components).map(entry => entry.id), ['electrostatic-precipitator', 'ionizer'], 'Only reviewed complete electrical subsystems are nested below the air cleaner');
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'electrostatic-precipitator')).map(family => family.entry.id), ['air-cleaner'], 'A component-only search preserves the parent cleaner');
 assert.deepEqual(tags('electrostatic-precipitator'), ['electricity', 'pressure-power']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'ionizer')).map(family => family.entry.id), ['air-cleaner'], 'An ionizer-only search preserves its parent cleaner');
+assert.deepEqual(tags('ionizer'), ['electricity', 'pressure-power']);

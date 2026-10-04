@@ -1737,6 +1737,53 @@
       "parentId": "system"
     }
   ],
+  "ionizer": [
+    {
+      "id": "body",
+      "name": "Cabinet and sealed air channel",
+      "parentId": "system"
+    },
+    {
+      "id": "prefilter",
+      "name": "Coarse inlet screen",
+      "parentId": "system"
+    },
+    {
+      "id": "carbon",
+      "name": "Porous carbon cartridge",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Fan-assisted ionizer outlet",
+      "parentId": "system"
+    },
+    {
+      "id": "power",
+      "name": "Needle supply and connection",
+      "parentId": "system"
+    },
+    {
+      "id": "particles",
+      "name": "Single-pass particle cohort",
+      "parentId": "system"
+    },
+    {
+      "id": "flow",
+      "name": "Airflow direction",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Room particle account",
+      "parentId": "system"
+    },
+    {
+      "id": "charge-chart",
+      "name": "Neutral and charged room particles",
+      "parentId": "system"
+    }
+  ],
   "kinetic-quartz-watch": [
     {
       "id": "movement",

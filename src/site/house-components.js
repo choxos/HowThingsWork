@@ -14,6 +14,7 @@ import {quartzOscillatorLesson} from './quartz-oscillator-lesson.js';
 import {createQuartzOscillatorModel} from './quartz-oscillator-model.js';
 import {electrostaticPrecipitatorLesson, ionizerLesson} from './air-cleaner-lessons.js';
 import {createElectrostaticPrecipitatorModel} from './electrostatic-precipitator-model.js';
+import {createIonizerModel} from './ionizer-model.js';
 import {joystickLesson, videoGamesConsoleLesson} from './games-controller-lessons.js';
 import {headTrackingLesson} from './vr-headset-lessons.js';
 import {capillaryActionLesson} from './pens-lessons.js';
@@ -132,7 +133,7 @@ export const houseComponents={
  'RGB subpixels':{machine:'LCD screen',part:'subpixels',isolate:false,view:'front',lesson:rgbSubpixelsLesson,intro:rgbSubpixelsLesson.simple},
  'OLED display':{machine:'LCD screen',part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
  'Electrostatic precipitator':{machine:'Air cleaner',createModel:createElectrostaticPrecipitatorModel,part:'stage',isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},
- 'Ionizer':{machine:'Air cleaner',part:'charger',values:{mode:2},isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
+ 'Ionizer':{machine:'Air cleaner',createModel:createIonizerModel,part:'fan',isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
  'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzOscillatorModel,part:'circuit',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
  'Piezoelectricity':{machine:'Quartz clock',createModel:createPiezoelectricityModel,part:'apparatus',isolate:false,view:'iso',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
  'Infrared signaling':{machine:'Remote control',part:'signal',view:'front',isolate:false,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
