@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {THERMOMETRIC_LIQUIDS} from './liquid-thermometer-physics.js';
+import {WATER} from './water-clock-physics.js';
+import {SPIN} from './spin-dryer-physics.js';
 const families=[["electronic","electronicLessons","createElectronicModel"],['daily-life','dailyLifeLessons','createDailyLifeMachine'],['kitchen','kitchenLessons','createKitchenModel'],['time','timeLessons','createTimeModel'],['utility','utilityLessons','createUtilityModel'],['safety','safetyLessons','createSafetyModel'],['cleaning','cleaningLessons','createCleaningModel'],['heating','heatingLessons','createHeatingModel'],['study','studyLessons','createStudyModel'],['play','playLessons','createPlayModel']];
 const {houseComponents}=await import("./house-components.js");
 const lessons={},factories=[];
@@ -22,9 +25,28 @@ function finiteState(model,name=model.root.userData.machine){
   assert.ok(delays.every(delay=>delay>=0),`${name}: remaining melt delays cannot be negative or NaN`);
   assert.deepEqual(Array.isArray(timeToMelt)?timeToMelt:[timeToMelt],delays,`${name}: melt delay follows temperature, current and open elements`);
   finite(rest,`${name}.state`);
+ }else if(model.root.userData.machine==='Liquid-in-glass thermometer'){
+  const {phaseTime,...rest}=state,{initial,surroundings,response,liquid}=state.values;
+  const freezing=THERMOMETRIC_LIQUIDS[liquid].freezing;
+  const expected=surroundings<freezing?response*Math.log((initial-surroundings)/(freezing-surroundings)):Infinity;
+  assert.ok(phaseTime>=0,`${name}: freezing time cannot be negative or NaN`);
+  assert.equal(phaseTime,expected,`${name}: freezing occurs only when the surroundings are below the phase boundary`);
+  finite(rest,`${name}.state`);
+ }else if(model.root.userData.machine==='Water clock'&&state.values.design===2){
+  const {full,...rest}=state;
+  assert.ok(state.rise>=0,`${name}: inflow rise cannot be negative or NaN`);
+  assert.equal(state.rise===0,state.values.rate===0,`${name}: the receiver rises only with an open inlet`);
+  assert.equal(full,state.rise?(WATER.overflowLevel-WATER.initialLevel)/state.rise:Infinity,`${name}: a closed inlet never fills the receiver`);
+  finite(rest,`${name}.state`);
+ }else if(model.root.userData.machine==='Spin dryer'){
+  const {holding,...rest}=state;
+  assert.ok(state.pressure>=0&&state.w>=0,`${name}: pressure and angular speed cannot be negative or NaN`);
+  assert.equal(state.pressure===0,state.w===0,`${name}: rotational pressure vanishes only at rest`);
+  assert.equal(holding,state.pressure>0?2*SPIN.tension*SPIN.wetting/state.pressure:Infinity,`${name}: finite capillary threshold requires rotational pressure`);
+  finite(rest,`${name}.state`);
  }else finite(state,`${name}.state`);
 }
-// Only documented open/no-trip/no-melt sentinels are accepted, in their valid states.
+// Only documented sentinels are accepted, in their valid physical states.
 {
  const state={tripped:false,total:.5,exposure:0,timeToTrip:Infinity,loopResistance:Infinity,values:{fault:0,earth:1,resistance:.2}};
  const model={root:{userData:{machine:'Protective earth wire'}},getState:()=>state};
@@ -47,6 +69,35 @@ for(const machine of ['Fuse','Consumer unit']){
  assert.throws(()=>finiteState({...model,getState:()=>({...state,...(machine==='Fuse'?{current:2}:{currents:[.5,2]})})}),assert.AssertionError);
  assert.throws(()=>finiteState({...model,getState:()=>({...state,...(machine==='Fuse'?{melted:true}:{blown:[false,true]})})}),assert.AssertionError);
 }
+const sentinelCases=[
+ {machine:'Liquid-in-glass thermometer',field:'phaseTime',
+  state:{values:{liquid:1,initial:20,surroundings:0,response:60},phaseTime:Infinity},
+  active:{values:{liquid:0,initial:20,surroundings:-50,response:60},phaseTime:60*Math.log(70/(-38.84+50))},
+  invalid:[{values:{liquid:0,initial:20,surroundings:-50,response:60}}]},
+ {machine:'Water clock',field:'full',
+  state:{values:{design:2,rate:0},rise:0,full:Infinity},
+  active:{values:{design:2,rate:100},rise:.02,full:(WATER.overflowLevel-WATER.initialLevel)/.02},
+  invalid:[{values:{design:0,rate:0}},{values:{design:2,rate:100}},{rise:.02},{rise:-.02}]},
+ {machine:'Spin dryer',field:'holding',
+  state:{w:0,pressure:0,holding:Infinity},
+  active:{w:100,pressure:52000,holding:2*SPIN.tension*SPIN.wetting/52000},
+  invalid:[{w:100},{pressure:52000},{pressure:-1},{w:-1}]},
+];
+let sentinelChecks=0;
+for(const {machine,field,state,active,invalid} of sentinelCases){
+ const check=value=>{sentinelChecks++;finiteState({root:{userData:{machine}},getState:()=>value});};
+ check(state);check(active);
+ for(const value of [NaN,-Infinity,-1,0,42])assert.throws(()=>check({...state,[field]:value}),assert.AssertionError);
+ for(const value of [NaN,Infinity,-Infinity,-1,0])assert.throws(()=>check({...active,[field]:value}),assert.AssertionError);
+ for(const value of [NaN,Infinity,-Infinity]){
+  assert.throws(()=>check({...state,unexpected:{nested:[value]}}),assert.AssertionError);
+  assert.throws(()=>check({...active,unexpected:{nested:[value]}}),assert.AssertionError);
+ }
+ for(const change of invalid)assert.throws(()=>check({...state,...change}),assert.AssertionError);
+ assert.throws(()=>finiteState({root:{userData:{machine:'Another model'}},getState:()=>state}),assert.AssertionError);
+ sentinelChecks++;
+}
+console.log(`PASS: ${sentinelChecks} thermometer, water-clock and spin-dryer sentinel contract probes.`);
 for(const [name,lesson] of Object.entries(lessons)){
  const model=create(name);assert.ok(model,`Missing model: ${name}`);assert.ok(lesson.steps.length&&lesson.parts.length&&lesson.tryIt.length&&lesson.limits,`Incomplete lesson: ${name}`);
  for(const e of lesson.tryIt)model.update(e.values);
