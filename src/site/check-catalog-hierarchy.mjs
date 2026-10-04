@@ -114,3 +114,10 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 assert.deepEqual(tags('ionizer'), ['electricity', 'pressure-power']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'voltage-multiplier')).map(family => family.entry.id), ['air-cleaner'], 'A multiplier-only search preserves its parent cleaner');
 assert.deepEqual(tags('voltage-multiplier'), ['electricity']);
+
+const robotVacuum = families.find(family => family.entry.id === 'robot-vacuum-cleaner');
+assert(robotVacuum, 'Robot vacuum is a whole machine');
+assert.equal(catalogMachineComponents(robotVacuum.components).length, 0, 'Robot mechanisms remain inspectable parts, not separate catalog entries');
+assert.deepEqual(tags('robot-vacuum-cleaner'), ['using-bits', 'sensors-and-detectors', 'rotating-wheels', 'pressure-power', 'electricity']);
+assert.equal(catalog.groups.find(group => group.id === 'robot-vacuum-cleaner').room, 'Laundry and cleaning');
+assert.equal(catalog.groups.find(group => group.id === 'robot-vacuum-cleaner').place, 'home');

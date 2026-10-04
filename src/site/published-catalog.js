@@ -146,7 +146,8 @@ export const publishedEntryIds = [
   "air-cleaner",
   "electrostatic-precipitator",
   "ionizer",
-  "voltage-multiplier"
+  "voltage-multiplier",
+  "robot-vacuum-cleaner"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -249,6 +250,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'robot-vacuum-cleaner': ['using-bits', 'sensors-and-detectors', 'rotating-wheels', 'pressure-power', 'electricity'],
   'voltage-multiplier': ['electricity'],
   'ionizer': ['electricity', 'pressure-power'],
   'electrostatic-precipitator': ['electricity', 'pressure-power'],

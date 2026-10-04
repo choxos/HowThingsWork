@@ -3986,6 +3986,28 @@
       "parentId": "system"
     }
   ],
+  "robot-vacuum-cleaner": [
+    {
+      "id": "floor",
+      "name": "Room and coverage map",
+      "parentId": "system"
+    },
+    {
+      "id": "robot",
+      "name": "Robot vacuum",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Compare cleaning strategies",
+      "parentId": "system"
+    },
+    {
+      "id": "dock",
+      "name": "Powered charging dock",
+      "parentId": "system"
+    }
+  ],
   "hairspring": [
     {
       "id": "movement",
