@@ -4,7 +4,7 @@ import {fixed} from './format.js';
 import {lineObject, textLabel, surface} from './scene-kit.js';
 import {robotGeometry} from './robot-vacuum-geometry.js';
 import {ROBOT, ROOM, FURNITURE, DROP, START, GRID} from './robot-vacuum-room.js';
-import {cleaningPlan, STRATEGY_OPTIONS, ROOM_OPTIONS, ROBOT_DEFAULTS, ROBOT_DOMAINS, SESSION_MINUTES, INITIAL_CHARGE, RUN_WATTS} from './robot-vacuum-physics.js';
+import {cleaningPlan, cleaningPose, STRATEGY_OPTIONS, ROOM_OPTIONS, ROBOT_DEFAULTS, ROBOT_DOMAINS, SESSION_MINUTES, INITIAL_CHARGE, RUN_WATTS} from './robot-vacuum-physics.js';
 import {robotMission, sampleRobot, missionTime, missionPlayTime, MISSION} from './robot-vacuum-mission.js';
 
 const SCALE = 7, TAU = 2 * Math.PI;
@@ -32,7 +32,7 @@ function roomGeometry(kit, system) {
   const stairs = kit.part('stairs', 'Open stairwell', 'The floor ends at this opening. Downward sensors detect missing reflected light and stop the robot before a wheel crosses the edge.', [0, 0, 0], floorPart);
   stairs.userData.explosionExcluded = true;
   for (let i = 0; i < 4; i++) kit.box(p([DROP.x1 - DROP.x0, .035, .2]), roomPoint(2, DROP.y0 + .1 + i * .2, -.1 - i * .12), 'wood', stairs);
-  const trailPart = kit.part('trail', 'Recent path', 'The recent center path, in blue. Gold floor cells are cleaning-head passes, which stop accumulating on the return trip.', [0, 0, 0], floorPart);
+  const trailPart = kit.part('trail', 'Recent cleaning path', 'Blue shows the last minute of cleaning travel and stays fixed after cleaning ends. The separate red line shows the planned return route.', [0, 0, 0], floorPart);
   trailPart.userData.explosionExcluded = true;
   const trail = lineObject(302, 0x2f6690, trailPart);
   const routePart = kit.part('return-route', 'Planned return route', 'An ideal known-map planner checks clearance along every straight segment. It does not teleport through furniture. The final approach follows the dock beacon.', [0, 0, 0], floorPart);
@@ -108,7 +108,8 @@ export function createRobotVacuumModel() {
     const to = Math.min(plan.path.length, Math.floor(s.cleanTime / ROOM.every)), from = Math.max(0, to - 300), positions = scene.trail.geometry.attributes.position.array;
     let count = 0;
     for (let i = from; i < to; i++) positions.set(roomPoint(plan.path[i].x, plan.path[i].y, .003), count++ * 3);
-    positions.set(roomPoint(now.x, now.y, .003), count++ * 3); scene.trail.geometry.setDrawRange(0, count); scene.trail.geometry.attributes.position.needsUpdate = true; scene.trail.geometry.computeBoundingSphere();
+    const cleaningEndPose = cleaningPose(plan, s.cleanTime);
+    positions.set(roomPoint(cleaningEndPose.x, cleaningEndPose.y, .003), count++ * 3); scene.trail.geometry.setDrawRange(0, count); scene.trail.geometry.attributes.position.needsUpdate = true; scene.trail.geometry.computeBoundingSphere();
     scene.routePart.visible = clock >= s.cleanEnd && clock < s.dockedAt;
     mission.route.forEach((point, i) => scene.route.geometry.attributes.position.array.set(roomPoint(point.x, point.y, .004), i * 3));
     scene.route.geometry.setDrawRange(0, mission.route.length); scene.route.geometry.attributes.position.needsUpdate = true; scene.route.geometry.computeBoundingSphere();

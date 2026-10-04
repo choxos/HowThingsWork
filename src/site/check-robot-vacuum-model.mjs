@@ -81,6 +81,15 @@ for (const settings of [{}, {charge: 0}, {dockPower: 0}]) {
   const replay = model.replayState(); model.reset(replay); near(model.getState().clock, 0, 'completion replay starts at zero'); assert.deepEqual(model.getState().values, replay.settings);
   model.advance(3); t.ok(model.getState().clock > 0, 'replay advances');
 }
+// A cleaning trail must not draw an invented shortcut toward the returning robot.
+for (const settings of [{}, {charge: 0}, {room: 2, strategy: 2}]) {
+  const mission = robotMission(settings); model.reset({settings, time: mission.cleanEnd});
+  const trail = Array.from(p.trail.geometry.attributes.position.array), count = p.trail.geometry.drawRange.count;
+  for (const time of [mission.cleanEnd + 1, mission.dockedAt - 1, mission.end]) {
+    model.reset({settings, time}); assert.deepEqual(Array.from(p.trail.geometry.attributes.position.array), trail, 'cleaning trace freezes at cleaning cutoff');
+    assert.equal(p.trail.geometry.drawRange.count, count); t.add(2);
+  }
+}
 // Contacts are geometrically aligned at the dock, with surfaces touching.
 model.reset({time: 900}); model.root.updateMatrixWorld(true);
 const contactMeshes = p.contacts.children, robotPads = contactMeshes.map(mesh => new THREE.Box3().setFromObject(mesh)).sort((a, b) => a.min.x - b.min.x);
