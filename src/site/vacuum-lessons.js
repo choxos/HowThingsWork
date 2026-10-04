@@ -2,7 +2,7 @@ import {VACUUM_DEFAULTS} from './vacuum-physics.js';
 
 const trial = part => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...VACUUM_DEFAULTS, ...values}, reset: true, part, isolate: false, view: 'front'});
 const cleanerTrial = trial('system'), nozzleTrial = trial('nozzle'), floorTrial = trial('floor'), chartTrial = trial('charts');
-const canisterTrial = trial('canister'), brushTrial = trial('brush'), baseTrial = trial('base'), ductTrial = trial('duct');
+const brushTrial = trial('brush'), baseTrial = trial('base'), ductTrial = trial('duct');
 
 const sources = [
   {title: 'OpenStax College Physics 2e: power in fluid flow, pressure times flow rate', url: 'https://openstax.org/books/college-physics-2e/pages/12-3-the-most-general-applications-of-bernoullis-equation'},
@@ -10,52 +10,7 @@ const sources = [
   {title: 'OpenStax College Physics 2e: drag forces', url: 'https://openstax.org/books/college-physics-2e/pages/5-2-drag-forces'},
 ];
 
-export const vacuumCleanerLesson = {
-  simple: 'How does a vacuum cleaner pick up dirt, and why does a full bag make it worse?',
-  overview: 'A fan in the canister flings air out, leaving the air inside below the room’s pressure. The room’s air pushes in through the only way open: the nozzle, the hose, a dust bag and a filter. Fast air sweeping across the floor drags grains along and carries them into the bag. Every piece of that path uses up some of the fan’s pressure, so what cleans the floor is how fast the air moves there, not how hard the fan pulls. Try a full bag, the crevice tool and a sock over the nozzle.',
-  steps: [
-    {title: 'Lower the pressure', body: 'The motor spins a fan tens of thousands of times a minute. It flings air out of the canister, leaving the air inside below the room’s pressure.'},
-    {title: 'Let the room push air in', body: 'The room’s air pushes in through the nozzle’s narrow slot, speeding up to squeeze through.'},
-    {title: 'Drag the dirt along', body: 'Air rushing across a grain drags on it. Fast enough, the drag beats the grain’s weight and the air carries it off up the hose.'},
-    {title: 'Catch it in the bag', body: 'The bag is far wider than the hose, so the air slows to under a meter a second, drops its grains and passes through the paper.'},
-    {title: 'Clean the air and let it out', body: 'A fine filter catches what got through the bag. The air passes the fan and leaves past the motor, warmed by its losses.'},
-  ],
-  parts: [
-    {name: 'Nozzle', role: 'The floor head’s slot, the crevice tool, or a blocked opening.'},
-    {name: 'Hose and wand', role: 'Carry the fast air and its dirt to the canister.'},
-    {name: 'Dust bag', role: 'Slows the air and keeps the dirt.'},
-    {name: 'Exhaust filter', role: 'Catches fine dust the bag lets through.'},
-    {name: 'Fan and motor', role: 'Make the pressure difference that drives the air.'},
-    {name: 'Moving air', role: 'Dots moving at the air’s speed in each piece.'},
-    {name: 'Dirt on the floor', role: 'Sand, rice or carpet dust, lifted or left.'},
-    {name: 'Charts', role: 'The fan against the path, and the pressure along the way.'},
-  ],
-  tryIt: [
-    cleanerTrial('Clean up sand', 'Switch it on with the floor head over sand.', 'The fan draws 35.24 L of air a second in through the slot at 23.5 m/s. A 1 mm grain of sand falls through still air at 7.01 m/s, so air at 10.5 m/s lifts it, and this air carries it off.'),
-    chartTrial('Where the suction goes', 'Watch the pressure along the path.', 'The fan lowers the pressure by 8.51 kPa, but only 0.83 kPa of it works at the slot: the hose uses 1.69, the bag 4.23 and the filter 1.76.'),
-    chartTrial('A full bag', 'Fill the bag to 100%.', 'The fan now pulls 14.92 kPa instead of 8.51, yet the flow falls to 25.52 L/s and only 0.43 kPa works at the slot: 11.1 W of air power there instead of 29.2 W. More suction, less cleaning.', {bag: 100}),
-    floorTrial('Rice and a full bag', 'Try rice with the bag 100% full.', 'A 5 mm grain of rice needs air at 20.4 m/s. The full bag leaves 17.0 m/s at the slot, and the rice stays put; an empty bag gives 23.5 m/s and lifts it.', {bag: 100, debris: 1}),
-    nozzleTrial('The crevice tool', 'Fit the crevice tool.', 'Its slot is a tenth as wide, but the flow falls only to 20.86 L/s, so the air rushes in at 104.3 m/s and 13.05 kPa works at the tip: 272.2 W of air power where the floor head had 29.2 W.', {nozzle: 1}),
-    nozzleTrial('Block the nozzle', 'Put a sock over the floor head.', 'The flow stops, and the fan’s whole 22.00 kPa holds the sock on with 33.0 N. The motor draws 610 W instead of 1,041 W: with no air to move, the fan does less work.', {nozzle: 2}),
-    canisterTrial('A clogged filter', 'Clog the exhaust filter.', 'It now uses 4.82 kPa instead of 1.76, and the flow falls to 32.11 L/s. The slot’s 21.4 m/s still lifts sand.', {filter: 1}),
-    floorTrial('Dust in carpet', 'Try dust in carpet.', 'Specks 0.05 mm across fall at only 0.18 m/s, but they cling to the fibers. Air at 23.5 m/s slides past and leaves them: a plain floor head cannot beat the carpet.', {debris: 2}),
-  ],
-  deeper: [
-    {title: 'Suction is not cleaning', body: 'The fan’s pressure is greatest when nothing moves: 22 kPa with a sock over the nozzle, and nothing is picked up. Dirt moves only where air moves fast across it, so what matters at the floor is the air power there, pressure times flow.'},
-    {title: 'Why the bag is big', body: 'Air rushing along the hose slows to under a meter a second in the bag, whose cross-section is nearly 50 times the hose’s. Most grains drop out, and the paper catches the rest.'},
-    {title: 'Turbulent air in the hose', body: 'At 43.8 m/s in a 32 mm hose, the Reynolds number is about 93,000. The air tumbles, and friction on the wall uses up 1.69 kPa over the 2.6 m.'},
-    {title: 'Less work, not more, when blocked', body: 'A blocked fan only churns the air trapped in it. The motor has less to do, so it speeds up and its note rises: the opposite of straining.'},
-  ],
-  misconception: 'A vacuum cleaner does not pull dirt up by suction. Its fan lowers the pressure inside, the room’s air pushes in through the nozzle, and that fast-moving air drags the dirt along. More suction with less air, as with a full bag, cleans worse.',
-  limits: 'Illustrative canister cleaner: a fan that seals at 22 kPa and runs out at 45 L/s, 45% efficient at best, with 60 W of motor losses; a floor head with a 250 mm slot 6 mm high; a crevice tool 25 by 8 mm; 2.6 m of 32 mm hose and wand, treated as smooth; a bag and filter losing 120 and 50 Pa for each liter a second. A grain lifts when the slot’s air moves one and a half times as fast as the grain falls. Not modeled: the motor slowing under load, leaks at the head, the bag filling as it works, the hose’s corrugations, and brush heads. Dots move 15 mm a second for each meter a second of air; grains are drawn larger than life.',
-  sources,
-  quiz: {
-    question: 'Why does a vacuum cleaner with a full bag pick up less, even though its fan pulls harder?',
-    options: ['The bag uses up most of the pressure, so less air moves through the nozzle.', 'A full bag is too heavy for the fan to lift.', 'Dirt in the bag leaks back out of the nozzle.'],
-    answer: 0,
-    explanation: 'A fan’s pressure rises as its flow falls. With the bag taking most of that pressure, the air at the slot slows below what the dirt needs.',
-  },
-};
+export {vacuumCleanerLesson} from './vacuum-cleaner-lesson.js';
 
 export const uprightVacuumLesson = {
   simple: 'How does an upright vacuum cleaner get dust out of carpet?',

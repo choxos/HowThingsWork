@@ -139,7 +139,8 @@ export const publishedEntryIds = [
   "quartz-oscillator",
   "piezoelectricity",
   "water-clock",
-  "spin-dryer"
+  "spin-dryer",
+  "vacuum-cleaner"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -242,6 +243,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'vacuum-cleaner': ['pressure-power', 'rotating-wheels'],
   'spin-dryer': ['rotating-wheels', 'pressure-power', 'springs'],
   'water-clock': ['floating', 'pressure-power', 'gears-and-belts'],
   'piezoelectricity': ['electricity'],

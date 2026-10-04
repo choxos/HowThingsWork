@@ -4,37 +4,8 @@ import {fixed} from './format.js';
 import {lineObject, chartText} from './scene-kit.js';
 import {sampleVacuum, losses, fanPressure, CREVICE, NOZZLE_OPTIONS, DEBRIS, PATHS, VACUUM_DEFAULTS, VACUUM_DOMAINS} from './vacuum-physics.js';
 
-// ---------------------------------------------------------------------------
-// Vacuum cleaners: a canister cleaner with its hose and wand, and a classic
-// upright with its fan in the floor head and its bag on the handle, cut open.
-//
-// Scale: one millimeter is 0.002 scene units for every length: the slots, the
-// 2.6 m of hose and wand, the 0.6 m of duct and fill tube, the bags and fans.
-// The drawn hose and duct are fitted to exactly the lengths the physics uses.
-// Grains are drawn larger than life so they show: sand 6 mm across, rice 10 mm,
-// dust specks 3 mm.
-//
-// Time: real time, ten seconds of running. The fans are drawn turning twice a
-// second and the brush roll three times, not at their real thousands of rpm.
-// Dots stand for the air and move along its path at 15 mm a second for each
-// meter a second of the air's true speed in that piece, so they crowd where
-// the air is slow, as in the bag. Lifted grains are drawn rising into the slot,
-// once a cycle, at an illustrative pace.
-//
-// Colors: hose, wand, duct and nozzles are drawn see-through so the air inside
-// them shows. The exhaust filter, or the upright's cloth cover, goes from pale green
-// when clean to gray when clogged. The dust in the bag fills it as far as the
-// setting says. The upright's cloth cover is drawn swollen by a quarter of its
-// width for each 10 kPa inside it, far more than real cloth stretches.
-//
-// Charts, beside each cleaner, not to its scale: the fan's pressure rise
-// against flow (red) and the pressure the air path uses up (blue), 0 to 50 L/s
-// across and 0 to 22 kPa up, crossing at the dot where the cleaner runs; and
-// the pressure along the air's path (gold), from the room through each piece
-// in turn and back to the room, from 22 kPa below the room's pressure to 12 kPa
-// above it, with the room's pressure as the ink line.
-// ---------------------------------------------------------------------------
-
+// The upright cleaner remains an unpublished draft with its original physics.
+// The independently reviewed canister model is re-exported below.
 const MM = 0.002;
 const TAU = Math.PI * 2;
 const PACE = 15;
@@ -252,79 +223,6 @@ function buildCleaner(spec) {
   return result;
 }
 
-// The canister cleaner, drawn from the side with the floor head at the left.
-const WAND_END = Object.freeze([-900, 180, 0]), HANDLE = Object.freeze([-650, 780, 0]);
-export const WAND_LENGTH = Math.hypot(HANDLE[0] - WAND_END[0], HANDLE[1] - WAND_END[1]);
-export const HOSE_RADIUS = 16;
-const hosePoints = x => [HANDLE, [-610, 830, 0], [-545, 700, 0], [-480, 380, 0], [-440, 150, 0], [-400, 60, 0], [-340, 30, 0], [-260, 22, 0], [x - 300, 22, 0], [x - 190, 30, 0], [x - 100, 80, 0], [x - 40, 170, 0], [x, 200, 0]];
-/** Where the canister's inlet sits: far enough along the floor that hose and wand make 2.6 m. */
-export const CANISTER_X = fitLength(hosePoints, PATHS.canister.length * 1000 - WAND_LENGTH, 0, 2000);
-const CANISTER_CREVICE = Object.freeze({base: WAND_END, direction: unit([WAND_END[0] - HANDLE[0], WAND_END[1] - HANDLE[1], 0])});
-export const BAG_AREA = 0.04;
-
-function drawCanister(kit, system, covers) {
-  const X = CANISTER_X, box = (size, center, color, parent) => kit.box(size.map(v => v * MM), scaled(center), color, parent);
-  const nozzle = kit.part('nozzle', 'Nozzle', 'The floor head, riding with its front lip 6 mm off the floor so the air rushes in along a 250 mm slot; the crevice tool, a slot 25 by 8 mm; or the floor head with a sock sucked over it.', [0, 0, 0], system);
-  const head = seeThrough(box([70, 36, 250], [-930, 24, 0], 'ink', nozzle), 0.55);
-  const neck = seeThrough(kit.rod(scaled([-930, 42, 0]), scaled(WAND_END), 14 * MM, 'ink', nozzle), 0.45);
-  const tool = drawCrevice(kit, CANISTER_CREVICE, nozzle);
-  const sock = box([90, 8, 270], [-930, 4, 0], 'red', nozzle);
-
-  const hose = kit.part('hose', 'Hose and wand', `A ${fixed(WAND_LENGTH, 0)} mm metal wand and a flexible hose: 2.6 m of 32 mm tube from the nozzle to the canister. The air rushes along it at up to 44 m/s, and friction on its wall uses up part of the suction.`, [0, 0, 0], system);
-  const wand = seeThrough(kit.rod(scaled(WAND_END), scaled(HANDLE), HOSE_RADIUS * MM, 'metal', hose), 0.45);
-  const hoseTube = seeThrough(kit.tube(hosePoints(X).map(scaled), HOSE_RADIUS * MM, 'ink', hose), 0.4);
-
-  const body = kit.part('canister', 'Canister: bag, filter and fan', 'The body, cut open. The air enters the paper dust bag, slows to under a meter a second and leaves its dirt behind, passes the fine exhaust filter, is flung out by the fan, and leaves past the motor, carrying its heat.', [0, 0, 0], system);
-  box([420, 10, 280], [X + 210, 65, 0], 'leaf', body);
-  box([420, 10, 280], [X + 210, 335, 0], 'leaf', body);
-  box([420, 260, 8], [X + 210, 200, -136], 'leaf', body);
-  covers.push(box([420, 260, 8], [X + 210, 200, 136], 'leaf', body));
-  box([8, 260, 280], [X + 4, 200, 0], 'leaf', body);
-  box([8, 260, 280], [X + 416, 200, 0], 'leaf', body);
-  for (const [x, z] of [[70, 150], [350, 150], [70, -150], [350, -150]]) kit.disk(30 * MM, 20 * MM, scaled([X + x, 30, z]), 'ink', body);
-  const bag = seeThrough(box([200, 200, 200], [X + 120, 200, 0], 'cream', body), 0.45);
-  const dust = box([196, 1, 196], [X + 120, 100, 0], 'ink', body);
-  const filter = box([12, 220, 220], [X + 238, 200, 0], 'metal', body);
-  filter.material = filter.material.clone();
-  const fan = new THREE.Group();
-  fan.position.set(...scaled([X + 285, 200, 0]));
-  body.add(fan);
-  for (let i = 0; i < 7; i++) { const blade = box([8, 56, 18], [0, 0, 0], 'gold', fan); blade.geometry.translate(0, 30 * MM, 0); blade.rotation.x = i * TAU / 7; }
-  kit.sphere(12 * MM, [0, 0, 0], 'ink', fan);
-  const motor = kit.cylinder(55 * MM, 100 * MM, scaled([X + 350, 200, 0]), 'gold', body);
-  motor.rotation.z = Math.PI / 2;
-
-  const hoseSamples = curveOf(hosePoints(X)).getSpacedPoints(80).map(v => v.toArray());
-  const shared = [
-    {points: [WAND_END, HANDLE], area: 'hose'},
-    {points: hoseSamples, area: 'hose'},
-    {points: [hoseSamples.at(-1), [X + 232, 200, 0]], area: BAG_AREA},
-    {points: [[X + 232, 200, 0], [X + 250, 200, 0]], area: BAG_AREA},
-    {points: [[X + 250, 200, 0], [X + 285, 200, 0]], area: Math.PI * 0.025 ** 2},
-    {points: [[X + 285, 200, 0], [X + 300, 285, 0], [X + 414, 285, 0]], area: 0.004},
-    {points: [[X + 414, 285, 0], [X + 470, 285, 0]], area: 0.028},
-  ];
-  const routes = [
-    [{points: [[-965, 3, 0], [-930, 10, 0]], area: 'slot'}, {points: [[-930, 10, 0], [-930, 42, 0], WAND_END], area: 'hose'}, ...shared],
-    [{points: [tipOf(CANISTER_CREVICE), WAND_END], area: 'slot'}, ...shared],
-  ];
-  return {
-    routes,
-    mouths: [[-965, 3, 0], tipOf(CANISTER_CREVICE)],
-    topology: {nozzle, head, neck, tool, sock, hose, wand, hoseTube, hoseSamples, body, bag, dust, filter, fan, motor, X},
-    update(s, time) {
-      const height = Math.max(1e-3, s.values.bag / 100 * 190);
-      dust.scale.y = height;
-      dust.position.y = (100 + height / 2) * MM;
-      filter.material.color.set(FILTER_COLORS[s.values.filter]);
-      fan.rotation.x = TAU * FAN_TURNS * time;
-      head.visible = neck.visible = s.values.nozzle !== 1;
-      tool.visible = s.values.nozzle === 1;
-      sock.visible = s.values.nozzle === 2;
-    },
-  };
-}
-
 // The upright, drawn from the side moving left, its handle leaning back.
 export const LEAN = 18 * Math.PI / 180;
 const UP = Object.freeze([Math.sin(LEAN), Math.cos(LEAN), 0]), ACROSS = Object.freeze([Math.cos(LEAN), -Math.sin(LEAN), 0]);
@@ -407,20 +305,7 @@ function drawUpright(kit, system, covers) {
   };
 }
 
-export function createVacuumCleanerModel() {
-  return buildCleaner({
-    kind: 'canister',
-    name: 'Vacuum cleaner',
-    summary: 'A fan in the canister lowers the pressure inside, so the room’s air rushes in through the nozzle, along the hose and wand, through a dust bag and a fine filter, and out past the motor. Drawn at true size, the canister cut open.',
-    filterLabel: 'Exhaust filter',
-    filterHelp: 'The fine filter between the bag and the fan.',
-    floor: {x: -1000, width: 460, grains: -1000},
-    fanChart: {left: CANISTER_X - 250, bottom: 470},
-    profileChart: {left: CANISTER_X + 170, bottom: 470},
-    actions: [{label: 'Inspect: the bag, filter and fan', part: 'canister'}],
-    draw: drawCanister,
-  });
-}
+export {createVacuumCleanerModel} from './vacuum-cleaner-model.js';
 
 export function createUprightVacuumModel() {
   return buildCleaner({

@@ -317,7 +317,8 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   host.querySelector('.daily-part-path').addEventListener('click',event=>{const button=event.target.closest('[data-parent]');if(button)selectPart(button.dataset.parent||null);});
   function setView(view){
     const distance=radius*2.7,directions={iso:[radius*1.3,radius*.85,radius*2],front:[0,radius*.15,distance],side:[distance,radius*.15,0],back:[0,radius*.15,-distance],top:[0,distance,.001],bottom:[0,-distance,.001]};
-    camera.position.copy(orbit?.target||new THREE.Vector3()).add(new THREE.Vector3(...(directions[view]||directions.iso)));
+    const custom=model.partViewDirections?.[selected]?.[view]??model.viewDirections?.[view];
+    camera.position.copy(orbit?.target||new THREE.Vector3()).add(new THREE.Vector3(...(custom?custom.map(n=>n*radius):(directions[view]||directions.iso))));
     orbit?.update();draw();
   }
   function resetView(){restoreAssembly();overviewZoom=1.15;if(orbit){orbit.minZoom=overviewZoom;orbit.maxZoom=3;}camera.zoom=overviewZoom;orbit?.target.set(0,0,0);camera.updateProjectionMatrix();setView(openingView);}

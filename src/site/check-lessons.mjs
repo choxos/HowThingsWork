@@ -42,6 +42,18 @@ const views = new Set(['iso', 'front', 'side', 'back', 'top', 'bottom', 'in', 'o
 const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
 
+function checkViewDirections(where, model) {
+ const partIds = new Set(model.parts.map(part => part.id));
+ const directions = [[where, model.viewDirections], ...Object.entries(model.partViewDirections || {}).map(([part, value]) => {
+  check(partIds.has(part), `${where}: camera names missing part "${part}"`);
+  return [`${where}: ${part}`, value];
+ })];
+ for (const [scope, settings] of directions) for (const [view, direction] of Object.entries(settings || {})) {
+  check(['iso', 'front', 'side', 'back', 'top', 'bottom'].includes(view), `${scope}: camera names unknown angle "${view}"`);
+  check(Array.isArray(direction) && direction.length === 3 && direction.every(Number.isFinite) && Math.hypot(...direction) > 0, `${scope}: camera "${view}" needs a finite nonzero direction`);
+ }
+}
+
 function checkControlValues(where, model, values) {
  const byKey = new Map(model.controls.map(control => [control.key, control]));
  for (const [key, value] of Object.entries(values || {})) {
@@ -62,6 +74,7 @@ for (const [name, lesson] of Object.entries(lessons)) {
  const model = create(name);
  check(model, `${name}: no model`);
  if (!model) continue;
+ checkViewDirections(name, model);
  const partIds = new Set(model.parts.map(part => part.id));
 
  for (const [index, experiment] of lesson.tryIt.entries()) {
@@ -130,6 +143,7 @@ for (const [name, component] of Object.entries(houseComponents)) {
  const model = component.createModel?.() || create(component.machine);
  check(model, `${name}: machine "${component.machine}" has no model`);
  if (!model) continue;
+ checkViewDirections(name, model);
  const partIds = new Set(model.parts.map(part => part.id));
  check(partIds.has(component.part), `${name}: no part "${component.part}" in ${component.machine}`);
  if (component.view !== undefined) check(views.has(component.view), `${name}: no view "${component.view}"`);

@@ -1015,6 +1015,43 @@
       "parentId": "system"
     }
   ],
+  "vacuum-cleaner": [
+    {
+      "id": "intake",
+      "name": "Head, wand and hose",
+      "parentId": "system"
+    },
+    {
+      "id": "collection",
+      "name": "Case, bag and filter",
+      "parentId": "system"
+    },
+    {
+      "id": "drive",
+      "name": "Motor, shaft and blower",
+      "parentId": "system"
+    },
+    {
+      "id": "air",
+      "name": "Moving air tracers",
+      "parentId": "system"
+    },
+    {
+      "id": "dust",
+      "name": "Loose dust and retained sample",
+      "parentId": "system"
+    },
+    {
+      "id": "fan-chart",
+      "name": "Fan and flow-resistance curves",
+      "parentId": "system"
+    },
+    {
+      "id": "budget-chart",
+      "name": "Pressure-loss budget",
+      "parentId": "system"
+    }
+  ],
   "drinking-straw": [
     {
       "id": "glass",
