@@ -8,7 +8,9 @@ import {createRefrigerantCompressorModel} from './refrigerant-compressor-model.j
 import {refrigerantCompressorLesson} from './refrigerator-lessons.js';
 import {anchorEscapementLesson} from './pendulum-clock-lessons.js';
 import {leverEscapementLesson, hairspringLesson} from './watch-lessons.js';
-import {quartzOscillatorLesson, piezoelectricityLesson} from './quartz-lessons.js';
+import {piezoelectricityLesson} from './quartz-lessons.js';
+import {quartzOscillatorLesson} from './quartz-oscillator-lesson.js';
+import {createQuartzOscillatorModel} from './quartz-oscillator-model.js';
 import {createQuartzClockModel as createQuartzDemonstrationModel} from './quartz-models.js';
 import {electrostaticPrecipitatorLesson, ionizerLesson} from './air-cleaner-lessons.js';
 import {joystickLesson, videoGamesConsoleLesson} from './games-controller-lessons.js';
@@ -130,7 +132,7 @@ export const houseComponents={
  'OLED display':{machine:'LCD screen',part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
  'Electrostatic precipitator':{machine:'Air cleaner',part:'collector',values:{mode:1},isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},
  'Ionizer':{machine:'Air cleaner',part:'charger',values:{mode:2},isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
- 'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzDemonstrationModel,part:'fork',isolate:true,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
+ 'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzOscillatorModel,part:'circuit',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
  'Piezoelectricity':{machine:'Quartz clock',createModel:createQuartzDemonstrationModel,part:'plate',isolate:true,view:'front',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
  'Infrared signaling':{machine:'Remote control',part:'signal',view:'front',isolate:false,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
  'Diode':{machine:'Remote control',part:'junction',view:'front',isolate:false,lesson:diodeLesson,intro:diodeLesson.simple},

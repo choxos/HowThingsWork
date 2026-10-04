@@ -19,7 +19,7 @@ const playbackIcons={
 const playbackIcon=kind=>`<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${playbackIcons[kind]}</svg>`;
 const within = (value,min,max) => Math.max(min,Math.min(max,value));
 
-export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='Back to room',initialView}={}) {
+export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='Back to room',initialView,displayName=name}={}) {
   const model=providedModel||createDailyLifeMachine(name);
   if(!model)throw new Error('This lesson has no model.');
   const openingView=initialView||model.initialView||'iso';
@@ -47,7 +47,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   const partsByObject=new Map(model.parts.map(part=>[part.object,part]));
   const pointerRay=new THREE.Raycaster(),popupPoint=new THREE.Vector3(),instanceMatrix=new THREE.Matrix4();
   const canvas=renderer?.domElement;
-  if(canvas){canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Interactive 3D ${name}. Drag the object to move it; drag outside it to rotate. Shift and arrow keys move. Arrow keys rotate. Plus and minus zoom without separating parts. Pinch or scroll out to separate parts; pinch or scroll in to reassemble. Home resets the view.`);wrap.append(canvas);}else{wrap.innerHTML='<p class="daily-no-3d">3D is unavailable in this browser. You can still use the controls, read what changes, and explore every part below.</p>';host.querySelector('.daily-camera').hidden=true;host.querySelector('.daily-view-hint').hidden=true;separation.hidden=true;}
+  if(canvas){canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Interactive 3D ${displayName}. Drag the object to move it; drag outside it to rotate. Shift and arrow keys move. Arrow keys rotate. Plus and minus zoom without separating parts. Pinch or scroll out to separate parts; pinch or scroll in to reassemble. Home resets the view.`);wrap.append(canvas);}else{wrap.innerHTML='<p class="daily-no-3d">3D is unavailable in this browser. You can still use the controls, read what changes, and explore every part below.</p>';host.querySelector('.daily-camera').hidden=true;host.querySelector('.daily-view-hint').hidden=true;separation.hidden=true;}
   const orbit=canvas?new OrbitControls(camera,canvas):null;
   if(orbit){orbit.enableDamping=false;orbit.enablePan=true;orbit.screenSpacePanning=true;orbit.enableZoom=false;orbit.minZoom=1.15;orbit.maxZoom=3;orbit.minPolarAngle=.05;orbit.maxPolarAngle=Math.PI-.05;}
   if(orbit)bindObjectDragging(canvas,camera,()=>explosion?.root||model.root,orbit);

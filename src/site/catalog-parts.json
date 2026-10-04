@@ -1504,6 +1504,28 @@
       "parentId": "system"
     }
   ],
+  "quartz-oscillator": [
+    {
+      "id": "circuit",
+      "name": "Complete oscillator circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "envelope",
+      "name": "Amplitude over eight seconds",
+      "parentId": "system"
+    },
+    {
+      "id": "waveform",
+      "name": "Four-cycle vibration trace",
+      "parentId": "system"
+    },
+    {
+      "id": "energy",
+      "name": "Where the energy goes",
+      "parentId": "system"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",

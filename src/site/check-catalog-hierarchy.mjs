@@ -86,6 +86,7 @@ assert.deepEqual(tags('kinetic-quartz-watch'), ['electricity', 'magnetism', 'gea
 
 const quartzClock = families.find(family => family.entry.id === 'quartz-clock');
 assert(quartzClock, 'Battery quartz clock is a whole machine, not a kinetic-watch component');
-assert.equal(catalogMachineComponents(quartzClock.components).length, 0, 'Ordinary clock parts stay inside its viewer');
+assert.deepEqual(catalogMachineComponents(quartzClock.components).map(entry => entry.id), ['quartz-oscillator'], 'Only the complete oscillator subsystem appears below its clock');
 assert.deepEqual(tags('quartz-clock'), ['electricity', 'magnetism', 'gears-and-belts']);
-assert(!entries.some(entry => ['quartz-oscillator', 'piezoelectricity'].includes(entry.id)), 'Unreviewed component lessons remain private previews');
+assert.deepEqual(tags('quartz-oscillator'), ['electricity']);
+assert(!entries.some(entry => entry.id === 'piezoelectricity'), 'Unreviewed piezoelectricity lesson remains a private preview');
