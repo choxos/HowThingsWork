@@ -142,7 +142,8 @@ export const publishedEntryIds = [
   "spin-dryer",
   "vacuum-cleaner",
   "upright-vacuum-cleaner",
-  "aerosol-spray-can"
+  "aerosol-spray-can",
+  "air-cleaner"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -245,6 +246,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'air-cleaner': ['electricity', 'pressure-power', 'rotating-wheels'],
   'aerosol-spray-can': ['pressure-power', 'exploiting-heat', 'springs'],
   'upright-vacuum-cleaner': ['pressure-power', 'gears-and-belts', 'rotating-wheels'],
   'vacuum-cleaner': ['pressure-power', 'rotating-wheels'],

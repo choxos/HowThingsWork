@@ -1,135 +1,75 @@
 import {AIR_CLEANER_DEFAULTS} from './air-cleaner-physics.js';
-
-const trial = part => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...AIR_CLEANER_DEFAULTS, ...values}, reset: true, part, isolate: false, view: 'front'});
-const towerTrial = trial('system'), chartTrial = trial('charts'), filterTrial = trial('filter'), collectorTrial = trial('collector'), chargerTrial = trial('charger'), particleTrial = trial('particles');
-
-const epa = {
-  guide: {title: 'US EPA: guide to air cleaners in the home', url: 'https://www.epa.gov/indoor-air-quality-iaq/guide-air-cleaners-home'},
-  hepa: {title: 'US EPA: what is a HEPA filter?', url: 'https://www.epa.gov/indoor-air-quality-iaq/what-hepa-filter'},
-  ionizers: {title: 'US EPA: ionizers and other ozone-generating air cleaners', url: 'https://www.epa.gov/indoor-air-quality-iaq/what-are-ionizers-and-other-ozone-generating-air-cleaners'},
-  precipitators: {title: 'US EPA: electrostatic precipitators', url: 'https://www.epa.gov/air-emissions-monitoring-knowledge-base/monitoring-control-technique-electrostatic-precipitators'},
+const trial=(title,instruction,observe,values={},time=0,part='system',isolate=false)=>{const settings={...AIR_CLEANER_DEFAULTS,...values};return{title,instruction,observe,values:settings,reset:true,initialState:{time,settings},part,isolate,view:'front'};};
+const sources=[
+  {title:'US EPA: guide to air cleaners in the home',url:'https://www.epa.gov/indoor-air-quality-iaq/guide-air-cleaners-home'},
+  {title:'US EPA: electrostatic precipitator mechanisms and equations',url:'https://www.epa.gov/sites/default/files/2020-07/documents/cs6ch3.pdf'},
+  {title:'Vosburgh et al.: fibrous filtration equations',url:'https://stacks.cdc.gov/view/cdc/47892/cdc_47892_DS1.pdf'},
+  {title:'Cheng: filtration theory and inertial collection',url:'https://stacks.cdc.gov/view/cdc/218757/cdc_218757_DS1.pdf'},
+  {title:'US EPA: ionizers and ozone',url:'https://www.epa.gov/indoor-air-quality-iaq/what-are-ionizers-and-other-ozone-generating-air-cleaners'},
+];
+const limits='An original teaching device, not a tested product. Regulated airflow is assigned at 0, 60, 120 or 200 m³/h; fan pressure, power and RPM are not predicted. Particles are identical spheres of density 1,000 kg/m³. The electrostatic cell has 45 plates, 44 clear 6 mm channels, 100 mm length, 200 mm width and 3 kV between alternating plates. Charging uses an assigned 25 mm exposure zone, 560,000 V/m mean field, 5 × 10¹⁴ ions/m³ and dielectric constant 2.5; a Poisson charge spread and uniform plug flow are approximations. Electrostatic room clearing uses a fixed one-pass efficiency without residual-charge carryover between passes. Fan off disables processing and high voltage. The uncharged fibrous mat has 10 µm fibers, 10% solidity, 2 mm thickness and 1.2 m² area; it has no HEPA qualification. The room is well mixed, initially neutral, with no new particle source, 2.5 m ceiling and 0.5 air changes per hour of particle-free ventilation. Charging-only mode assumes a 20 V/m effective collecting field at room surfaces and a 10-minute charge-relaxation half-time. Carbon gas capacity, screen capture of lint, fine-particle capture outside the selected stage, loading, reentrainment, ozone and health outcomes are not calculated. Markers are enlarged and slowed; they form one finite cohort and do not estimate exact efficiency. One second of playback advances one simulated minute.';
+export const airCleanerLesson={
+  simple:'How can an electric field pull tiny particles out of moving air, and why does cleaning a room take repeated passes?',
+  overview:'Follow air through a cutaway cleaner. A coarse screen comes first. Positive wires charge particles, then alternate plates push them onto grounded collecting surfaces. A porous carbon cartridge and an axial fan complete the path. Compare this electrostatic cell with a fibrous cartridge and with an outlet ionizer that has no internal collector. The room account shows where every fraction of the original particles goes.',
+  steps:[
+    {title:'Move room air through an open path',body:'The supported fan draws air through the left screen, sealed cartridge frames and carbon, then discharges it through the right guard. Its prescribed airflow lets you compare capture methods under the same flow.'},
+    {title:'Charge before collecting',body:'In electrostatic mode the positive wires transfer charge to passing particles. A particle with no charge has no electrical drift in this model.'},
+    {title:'Drift across a clear channel',body:'Positive particles move away from the positive plates toward grounded plates. Collection depends on their charge, distance from a collecting surface and time inside the channel.'},
+    {title:'Keep captured particles out of the room',body:'Captured markers stay on a plate or the fibrous mat. Uncaptured markers leave once through the outlet. The 32 markers show individual paths; the room calculation uses the full idealized efficiency.'},
+    {title:'Count repeated room passes',body:'Not all room air crosses the cleaner at once. The clean air delivery rate is airflow times single-pass retention. Ventilation and settling also remove particles, so they have separate entries in the account.'},
+  ],
+  parts:[
+    {name:'Coarse inlet screen',role:'Open mesh for hair and lint.'},
+    {name:'Charging electrodes',role:'Positive wires in electrostatic mode; a negative outlet needle in charging-only mode.'},
+    {name:'Electrostatic collecting cell',role:'Clear channels between positive and grounded plates.'},
+    {name:'Pleated fibrous cartridge',role:'An uncharged filter comparison that replaces the electrostatic cell.'},
+    {name:'Porous carbon cartridge',role:'A supported porous gas-adsorbing stage; gas removal is outside this experiment.'},
+    {name:'Axial fan and outlet',role:'A supported motor, pitched blades and open discharge passage.'},
+    {name:'High-voltage supply and connections',role:'Power and return connections for the selected electrodes.'},
+  ],
+  tryIt:[
+    trial('Follow the air','Open the fresh electrostatic trial and press Play.','Air enters at the screen on the left, crosses the cell and leaves the fan on the right. Gold markers have acquired positive charge. The room clock and slowed marker passage use different time scales.'),
+    trial('Charge and collect','Inspect the cell at the 15-minute checkpoint.','Positive particles finish on grounded collecting plates. Alternate gold plates repel them. The calculated single-pass retention for 0.3 µm particles is about 89%.',{},900,'collector'),
+    trial('Keep what was caught','Open the 30-minute checkpoint, then advance another five minutes.','Captured markers stay on their collecting surfaces. Returned markers stay outside the cohort; none teleport back to the inlet.',{},1800,'stage'),
+    trial('Switch high voltage off','Open the 20-minute trial with the fan running and high voltage off.','Air still moves at 200 m³/h, but the unpowered plates have zero modeled electrical capture. Room clearing matches the baseline from ventilation and settling.',{voltage:0},1200),
+    trial('More time in the cell','Compare the 20-minute trial at 60 m³/h with the 200 m³/h trial.','Slower air gives particles longer to charge and drift, improving single-pass capture. Yet the lower throughput reduces clean air delivery and leaves more particles in the room.',{fan:1},1200),
+    trial('Stop the fan','Open the 20-minute trial with the fan off.','The marker cohort stays upstream. The cleaner delivers no clean air; only the unchanged ventilation and settling processes clear the room.',{fan:0},1200),
+    trial('Particles that miss a charge','Inspect the 20-minute trial with 0.01 µm particles.','Most acquire no charge in the assigned distribution. About 12% are retained in one pass, so high airflow alone does not guarantee high clean air delivery.',{size:0},1200),
+    trial('Larger particles','Inspect 3 µm particles after 20 minutes.','The larger spheres acquire much more charge and are almost all collected in this ideal cell. Gravity also removes them faster in the room; the account keeps those two effects separate.',{size:6},1200),
+    trial('A larger room','Compare a 90 m³ room after 20 minutes with the default 30 m³ room.','The cleaner still processes 200 m³/h, but that is only 2.22 room volumes per hour instead of 6.67. The larger room retains a greater airborne fraction.',{room:90},1200),
+    trial('Fibers instead of plates','Open the 20-minute fibrous-filter trial.','The electrostatic cell is replaced by a sealed pleated cartridge. This assigned uncharged mat retains about 34% of 0.3 µm particles per pass. This number does not describe every filter or a HEPA product.',{mode:0},1200,'stage'),
+    trial('Small particles diffuse to fibers','Compare 0.01 µm particles in the fibrous cartridge.','Brownian motion carries these tiny particles to fibers even though they fit between them. The assigned mat retains almost all of them in one pass.',{mode:0,size:0},1200,'filter'),
+    trial('Large particles meet fibers','Compare 3 µm particles in the fibrous cartridge.','Interception and inertia make this size much easier to collect than the intermediate size in this mat. The filter works through contact with fibers, not a simple hole-size cutoff.',{mode:0,size:6},1200,'filter'),
+    trial('A filter needs no high voltage','Open the unpowered fibrous-filter comparison.','The same 200 m³/h airflow and unchanged mat produce the same retention. The mechanical filter does not require an energized charging supply.',{mode:0,voltage:0},1200),
+    trial('Charge without a collector','Open the charging-only mode at ten minutes.','Both internal collecting cartridges are absent. A negative needle charges particles at the outlet, but this cabinet retains none. The room starts neutral and charges gradually on repeated passes.',{mode:2},600),
+    trial('Where ionized particles go','Inspect the charging-only room account after one hour.','Particles can deposit on room surfaces or lose their charge. Those deposited particles are not collected inside the cabinet. Results depend on the assigned field and charge-relaxation assumptions.',{mode:2},3600,'charts',true),
+    trial('Finish and replay','Open the completed electrostatic trial, then press Play again.','The room and particle cohort restart from their initial state using the same settings. Inspection buttons preserve the current checkpoint.',{},3600),
+  ],
+  deeper:[
+    {title:'Two distinct jobs: charging and collection',body:'Giving a particle charge does not remove it. In the cell, charge makes the particle drift across a short channel toward a lower-potential plate. In a charging-only device, deposition occurs elsewhere and depends on the room and surrounding surfaces.'},
+    {title:'Retention and clean air delivery',body:'A high retained fraction can accompany a low airflow. Multiplying the two gives clean air delivery for a chosen particle size. The room calculation then divides by volume and follows repeated passes. It assumes good mixing and no new pollution source.'},
+    {title:'A fibrous mat is not just a sieve',body:'Diffusion brings small particles into contact with fibers. Interception catches particles whose centers follow the air but whose edges touch a fiber. Inertia prevents some larger particles from following curved streamlines. The assigned correlations illustrate this size dependence; they do not certify a filter grade.'},
+    {title:'Carbon and gases',body:'A carbon cartridge uses adsorption on internal surfaces to retain some gases. Its gas capacity, saturation and suitability for a particular gas need separate data. The particle curves here make no gas-removal claim.'},
+    {title:'Ionizers and ozone',body:'Ionizers can deposit charged particles on room surfaces, where some can later become airborne again. Some devices also produce ozone. Neither ozone production nor health benefit is predicted by this model.'},
+  ],
+  misconception:'Charging, collecting and destroying particles are different things. The collector transfers particles to a surface; it does not make their material disappear. A smaller airborne fraction alone does not tell you where the particles went.',
+  limits,sources,
+  quiz:{question:'Why can slower airflow improve single-pass capture but clean a room more slowly?',options:['Each pass lasts longer, but fewer cubic meters pass through each hour.','A slower fan gives particles more mass.','Single-pass capture and clean air delivery are always identical.'],answer:0,explanation:'Retention is a fraction. Clean air delivery is that fraction multiplied by airflow. Both affect room clearing.'},
 };
-
-export const airCleanerLesson = {
-  simple: 'How does an air cleaner catch particles far smaller than the gaps in its filter?',
-  overview: 'An air cleaner is a fan that pushes room air through something that catches particles. A HEPA filter is not a sieve: the gaps between its fibers are far wider than the smoke particles it stops. Tiny particles jitter into fibers, middling ones brush against them, heavy ones cannot turn with the air, and in between lies a size the filter finds hardest. How fast a room clears depends as much on how much air the fan moves as on how well the filter catches. Try the sizes, the fan speed, and the other two ways of catching.',
-  steps: [
-    {title: 'Draw the air in', body: 'The fan pulls room air through the grille and a coarse pre-filter that stops hair and lint.'},
-    {title: 'Slow it down', body: 'The filter mat is pleated so a large area fits in the frame, and the air creeps through it at a few centimeters a second.'},
-    {title: 'Catch the particles', body: 'Small particles wander into fibers by diffusion, middling ones touch fibers by interception, and heavy ones crash into fibers by impaction. Once touching, they stick.'},
-    {title: 'Blow the clean air back', body: 'The fan returns the air to the room, where it mixes with the rest and dilutes what is left.'},
-  ],
-  parts: [
-    {name: 'Tower', role: 'Grilles in and out, and the housing between.'},
-    {name: 'Pre-filter', role: 'Stops hair and lint.'},
-    {name: 'HEPA-grade filter', role: 'A pleated mat of fine glass fibers.'},
-    {name: 'Activated carbon', role: 'Holds some gas molecules; no help with particles.'},
-    {name: 'Ionizing wires', role: 'Charge particles in the electrostatic cell.'},
-    {name: 'Collector plates', role: 'Catch charged particles.'},
-    {name: 'Fan', role: 'Moves the air.'},
-    {name: 'Particles', role: 'Caught or sent back into the room.'},
-    {name: 'Charts', role: 'What gets through, and how the room clears.'},
-  ],
-  tryIt: [
-    towerTrial('Catch smoke', 'Run the cleaner on high.', 'The filter lets through only 1.9 in every 100,000 particles of this size, catching 99.998%, so the fan’s 200 m³ an hour is almost all clean air: 6.67 times the room’s air each hour.'),
-    chartTrial('The room clears', 'Watch the room over the hour.', 'Half the particles are gone in 5.8 min, and 90.8% in 20 min. Without the cleaner, fresh air alone would still leave 84.5%.'),
-    chartTrial('The hardest size', 'Find the highest point on the chart.', 'Particles 0.18 µm across get through most, and still 99.985% are caught. Smaller ones are caught better by diffusion, larger ones by interception and impaction.'),
-    filterTrial('Tiny particles', 'Choose the smallest particles.', 'Particles 0.01 µm across dart about so much that fibers they pass catch them, and essentially none get through.', {size: 0}),
-    filterTrial('How fibers catch', 'Look at one fiber’s catch.', 'For 0.3 µm particles, a single fiber catches 17.8% of those heading for it by interception, 7.2% by diffusion and 2.7% by impaction, and the 0.4 mm mat puts many fibers in each particle’s way.'),
-    chartTrial('Turn the fan down', 'Set the fan to low.', 'Slower air lets diffusion catch even more, 99.9999%, but 60 m³ an hour clears the room slowly: half in 16.6 min. The power falls from 62.1 W to 6.6 W.', {fan: 0}),
-    collectorTrial('Plates instead', 'Switch to the electrostatic precipitator.', 'Its plates catch 82.7% of the 0.3 µm particles, so it delivers 165.4 m³ of clean air an hour, for 5.7 W instead of 62.1 W.', {mode: 1}),
-    chargerTrial('An ionizer alone', 'Switch to the ionizer without plates.', 'It charges the particles but catches none. Drifting to the walls at 2.43 µm/s, they leave 59.2% in the air after an hour, against 60.3% with no cleaner at all.', {mode: 2}),
-  ],
-  deeper: [
-    {title: 'Not a sieve', body: 'The gaps between fibers are many times wider than a smoke particle. Particles are caught because they touch a fiber and stick, held by van der Waals forces, not because they are too big to pass.'},
-    {title: 'The most penetrating size', body: 'Diffusion weakens as particles grow while interception and impaction strengthen, so the catch dips in between. For this filter at full speed the dip falls at 0.18 µm, which is why filters are tested near that size.'},
-    {title: 'Clean air delivery rate', body: 'What matters for a room is the clean air delivered: the air moved times the share caught. A near-perfect filter behind a weak fan can lose to a leakier one moving more air.'},
-    {title: 'Carbon for gases', body: 'Particles and gases are different problems. Activated carbon holds some gas molecules on its enormous inner surface until it fills; a particle filter does nothing for them.'},
-  ],
-  misconception: 'A HEPA filter does not work like a sieve with holes smaller than the particles. Its gaps are wide; particles are caught when they touch fibers, and the very smallest particles are caught best.',
-  limits: 'Illustrative filter: glass fibers 0.6 µm across, 4% solid and 0.4 mm thick, pleated into 1.85 m², by single-fiber filtration theory as Hinds gives it; unit-density spheres; a 30 m³ room with 12 m² of floor and 64 m² of surfaces, fresh air half a room’s worth an hour, and the air perfectly mixed. The electrostatic cell charges particles at 560,000 V/m with 5 × 10¹⁴ ions per m³ and catches them on plates 6 mm apart and 100 mm long at 5 kV; the ionizer’s room field is taken as 20 V/m. Not modeled: particles bouncing off fibers, filters loading up, charge leaking away, ozone, and gases. The hour plays sixty times faster than real time.',
-  sources: [epa.guide, epa.hepa, epa.ionizers],
-  quiz: {
-    question: 'Which particles does a HEPA filter find hardest to catch?',
-    options: ['Middling ones, around 0.1 to 0.3 µm across.', 'The very smallest ones.', 'The largest ones.'],
-    answer: 0,
-    explanation: 'The smallest are caught by diffusion and the largest by interception and impaction. In between, both are weak, so a middling size gets through most.',
-  },
+export const electrostaticPrecipitatorLesson={
+  simple:'How do charged particles cross an air channel and stay on a collecting plate?',
+  overview:'A two-stage cell first charges particles, then moves them across open channels toward lower-potential collecting plates. This component shares the air-cleaner experiment. Compare powered and unpowered plates, airflow and particle size.',
+  steps:airCleanerLesson.steps.slice(1,4),parts:airCleanerLesson.parts.filter(p=>['Charging electrodes','Electrostatic collecting cell','High-voltage supply and connections'].includes(p.name)),
+  tryIt:[airCleanerLesson.tryIt[1],airCleanerLesson.tryIt[3],airCleanerLesson.tryIt[4],airCleanerLesson.tryIt[6],airCleanerLesson.tryIt[7]],
+  deeper:[airCleanerLesson.deeper[0],airCleanerLesson.deeper[1]],misconception:'The positive deflecting plates are not the collecting surfaces for positive particles. The grounded plates are at lower potential and receive the captured particles.',limits,sources,
+  quiz:{question:'Where do positive particles drift in this collector?',options:['Toward the grounded plates, away from the positive plates.','Toward the most positive plate.','Along the electric field only if the fan is off.'],answer:0,explanation:'Positive charge experiences force along the electric field, toward lower potential. Airflow simultaneously carries it along the channel.'},
 };
-
-export const electrostaticPrecipitatorLesson = {
-  simple: 'How can electricity pull smoke out of the air without a filter?',
-  overview: 'A two-stage electrostatic precipitator first charges the particles, then pulls them onto plates. Thin wires at high voltage make a corona that fills the air with ions, and passing particles pick up charge. Between closely spaced plates at 5 kV, the charged particles drift sideways across the stream and stick. The air meets almost no resistance, so the fan works lightly, but how much is caught depends on the charge, the time between the plates, and the particle’s size.',
-  steps: [
-    {title: 'Make ions', body: 'The field at a thin wire is so intense that it tears air molecules into ions, a faint glow called a corona.'},
-    {title: 'Charge the particles', body: 'Ions driven along the field lines, and ions wandering by chance, stick to passing particles.'},
-    {title: 'Drift across', body: 'Between the plates, the field pulls each charged particle sideways while the air carries it along.'},
-    {title: 'Stick and stay', body: 'Particles that reach a plate stay there until the plates are washed.'},
-  ],
-  parts: [
-    {name: 'Ionizing wires', role: 'Make the ions that charge particles.'},
-    {name: 'Collector plates', role: 'Pull charged particles out of the stream.'},
-    {name: 'Fan', role: 'Moves the air through the open channels.'},
-    {name: 'Particles', role: 'Caught on a plate or carried back out.'},
-    {name: 'Charts', role: 'What gets through at each size, and how the room clears.'},
-  ],
-  tryIt: [
-    collectorTrial('Charge and collect', 'Switch to the electrostatic precipitator.', 'A 0.3 µm particle picks up 24.9 charges and drifts toward a plate at 10.11 cm/s, and 82.7% are caught in one pass.', {mode: 1}),
-    collectorTrial('More time between the plates', 'Set the fan to low.', 'The air crosses the 100 mm plates at 27.78 cm/s instead of 92.59 cm/s, and 99.81% are caught.', {mode: 1, fan: 0}),
-    chartTrial('Too small to charge', 'Choose the smallest particles.', 'A 0.01 µm particle carries 0.13 charges on average, so 87.5% carry none at all and pass straight through: only 12.5% are caught.', {mode: 1, size: 0}),
-    collectorTrial('Large particles', 'Pick bigger particles.', 'A 1 µm particle takes on 195.9 charges, mostly by field charging, and 95.8% are caught.', {mode: 1, size: 4}),
-    chargerTrial('Two ways to charge', 'Look at the ionizing wires.', 'At 0.3 µm, field charging supplies 13.1 charges and diffusion charging 11.8: ions driven along the field lines and ions wandering by chance.', {mode: 1}),
-    towerTrial('Light on the fan', 'Compare the power.', 'Open channels cost the fan only 25 Pa, so the cleaner draws 5.7 W, 1.05 W of it for the corona.', {mode: 1}),
-  ],
-  deeper: [
-    {title: 'Field charging and diffusion charging', body: 'Large particles gather ions carried along the field lines until their own charge turns the field away, a limit that grows with the square of their size. Small particles gain charge mostly from ions that bump into them by chance, which is slow and weak.'},
-    {title: 'The Deutsch equation', body: 'If the air between the plates is well stirred, each short stretch catches the same share of what reaches it, so the share let through falls exponentially with plate length and drift speed, and rises with air speed.'},
-    {title: 'Ozone', body: 'A corona that makes ions also makes some ozone, an irritating gas. Two-stage cells for rooms run at modest voltages to keep it low.'},
-  ],
-  misconception: 'An electrostatic precipitator does not destroy particles; it moves them. They stay on the plates until someone washes them off, and dirty plates catch less.',
-  limits: 'Illustrative two-stage cell: ionizing wires at 7 kV charging particles in a 25 mm zone at 560,000 V/m with 5 × 10¹⁴ ions per m³; plates 6 mm apart and 100 mm long at 5 kV across 0.06 m² of channels; unit-density spheres with a dielectric constant of 2.5, their charges spread as a Poisson distribution. Not modeled: charge leaking away, particles bouncing off or blowing off the plates, ozone, and the plates loading up. The hour plays sixty times faster than real time.',
-  sources: [epa.precipitators, epa.ionizers, epa.guide],
-  quiz: {
-    question: 'Why does a precipitator catch the very smallest particles poorly?',
-    options: ['Most of them never pick up a charge.', 'They are too heavy to drift.', 'The plates are too far apart for them to fit.'],
-    answer: 0,
-    explanation: 'A 0.01 µm particle carries on average far less than one charge, so most carry none and the field cannot move them.',
-  },
-};
-
-export const ionizerLesson = {
-  simple: 'Does charging the particles in a room clean its air?',
-  overview: 'An ionizer sends ions into the air from a sharp needle at high voltage. Particles pick up charge, but with no plates nearby they have to find a wall, a floor or a curtain on their own, pushed only by weak fields in the room. Charging alone removes very little; what an ionizer does remove ends up as grime on nearby surfaces, and some ionizers also make ozone.',
-  steps: [
-    {title: 'Make ions at a needle', body: 'The field at the needle’s sharp tip tears air molecules into ions.'},
-    {title: 'Charge the particles', body: 'Ions stick to particles in the air that passes the needle.'},
-    {title: 'Wait for a wall', body: 'With no plates, charged particles drift slowly toward walls, floor and furniture, and most stay airborne far longer than in a filter.'},
-  ],
-  parts: [
-    {name: 'Ionizing wires', role: 'Here a single needle at the outlet.'},
-    {name: 'Fan', role: 'Moves air past the needle.'},
-    {name: 'Particles', role: 'Charged, then back into the room.'},
-    {name: 'Charts', role: 'The room clearing with and without the ionizer.'},
-  ],
-  tryIt: [
-    chargerTrial('Charge without catching', 'Switch to the ionizer without plates.', 'The particles carry 24.9 charges each, just as in the precipitator, but nothing inside the cleaner catches them.', {mode: 2}),
-    chartTrial('Drift to the walls', 'Run for an hour.', 'In a room field of 20 V/m they drift at only 2.43 µm/s, so after an hour 59.2% remain, against 60.3% with no cleaner.', {mode: 2}),
-    chartTrial('Compare a filter', 'Switch to the HEPA filter.', 'The same fan pushing air through a filter leaves 0.08% after an hour.', {mode: 0}),
-    particleTrial('Big particles settle anyway', 'Pick the largest particles.', 'Particles 10 µm across fall out of the air by themselves: half are gone in 8.1 min, and the ionizer only brings that down from 8.5 min.', {mode: 2, size: 6}),
-    chargerTrial('Tiny particles', 'Pick the smallest particles.', 'At 0.01 µm, 87.5% of the particles pick up no charge at all.', {mode: 2, size: 0}),
-  ],
-  deeper: [
-    {title: 'Why the drift is so slow', body: 'A charged particle moves through air at its mobility times the field. Room fields are thousands of times weaker than between a precipitator’s plates, so the drift is millimeters an hour instead of centimeters a second.'},
-    {title: 'Where the dirt goes', body: 'Particles that do leave the air settle on the nearest surfaces, often as dark marks on walls near the unit.'},
-    {title: 'Ozone', body: 'Some ionizers make ozone, which irritates lungs and does not clean the air of particles.'},
-  ],
-  misconception: 'More ions do not mean cleaner air. Charging particles only helps if something then catches them; without plates or a filter, most stay in the air you breathe.',
-  limits: 'Illustrative ionizer: particles charged as in the precipitator’s 25 mm zone, then drifting to the room’s 64 m² of surfaces in a field taken as 20 V/m, as if every particle in a 30 m³ room carried that charge, which flatters the ionizer. Fresh air half a room’s worth an hour. Not modeled: ozone, charged particles clumping together, deposits near the unit, and charge leaking away.',
-  sources: [epa.ionizers, epa.guide],
-  quiz: {
-    question: 'Why does an ionizer without plates remove so few particles?',
-    options: ['Nothing strong pulls the charged particles out of the air.', 'The ions cancel each other out.', 'Charged particles grow too big to move.'],
-    answer: 0,
-    explanation: 'The fields in a room are weak, so charged particles drift toward walls extremely slowly and mostly stay airborne.',
-  },
+export const ionizerLesson={
+  simple:'What changes when particles are charged but the device has no collecting plates?',
+  overview:'The fan-assisted comparison puts a sharp negative needle at the outlet and removes the internal particle collectors. Particles can gain charge on each pass. Charge can later relax, and some particles deposit on room surfaces. Many real ionizers have no fan; this is a controlled classroom comparison.',
+  steps:[{title:'Pass the needle',body:'Particles in the airflow can acquire negative charge near the needle.'},{title:'Return to the room',body:'No collecting plate or fibrous cartridge retains them inside the cabinet.'},{title:'Track charged and neutral particles',body:'The room begins neutral. Repeated passes add charge gradually; relaxation removes charge without removing the particle. Deposition and ventilation remove particles into separate accounts.'}],
+  parts:airCleanerLesson.parts.filter(p=>['Charging electrodes','Axial fan and outlet','High-voltage supply and connections'].includes(p.name)),
+  tryIt:[airCleanerLesson.tryIt[13],airCleanerLesson.tryIt[14],trial('Needle off','Open the one-hour unpowered-needle comparison.','The cleaner retains no particles and provides no extra electric deposition. Room clearing equals the ventilation-and-settling baseline.',{mode:2,voltage:0},3600,'charts',true),airCleanerLesson.tryIt[9]],
+  deeper:[airCleanerLesson.deeper[0],airCleanerLesson.deeper[4]],misconception:'A charged particle can still be airborne. Charging is not destruction or guaranteed collection, and these particle calculations do not establish a health benefit.',limits,sources,
+  quiz:{question:'Does losing its charge remove a particle from the room air?',options:['No. It becomes neutral but can remain airborne.','Yes. Its mass vanishes with the charge.','Yes. Every neutral particle falls instantly.'],answer:0,explanation:'Charge state and particle location are different accounts. Relaxation moves particles from the charged compartment into the neutral compartment.'},
 };

@@ -1633,6 +1633,58 @@
       "parentId": "system"
     }
   ],
+  "air-cleaner": [
+    {
+      "id": "body",
+      "name": "Cabinet and sealed air channel",
+      "parentId": "system"
+    },
+    {
+      "id": "prefilter",
+      "name": "Coarse inlet screen",
+      "parentId": "system"
+    },
+    {
+      "id": "stage",
+      "name": "Particle-removal stage",
+      "parentId": "system"
+    },
+    {
+      "id": "carbon",
+      "name": "Porous carbon cartridge",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Axial fan and outlet",
+      "parentId": "system"
+    },
+    {
+      "id": "power",
+      "name": "High-voltage supply and connections",
+      "parentId": "system"
+    },
+    {
+      "id": "particles",
+      "name": "Single-pass particle cohort",
+      "parentId": "system"
+    },
+    {
+      "id": "flow",
+      "name": "Airflow direction",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Room particle account",
+      "parentId": "system"
+    },
+    {
+      "id": "size-chart",
+      "name": "Single-pass capture by size",
+      "parentId": "system"
+    }
+  ],
   "kinetic-quartz-watch": [
     {
       "id": "movement",
