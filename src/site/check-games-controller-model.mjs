@@ -498,12 +498,23 @@ const machineClaims = {
   },
 };
 const joystickClaims = {
-  'Two yokes': s => ({'23': tiltOf(s.motion.start).alpha / DEG, '16.7': startYoke(s)}),
-  'Spring against friction': s => ({'11.5': SPRING * TRAVEL * 1000, '2.5': FRICTION * 1000, '5': FRICTION / SPRING / DEG}),
-  'Snapping back': s => ({'8.13': firstSwing(s), '13.2': ms(s.motion.run.swings[0].d), '2.72': restTilt(s)}),
-  'Eased back': s => ({'5.00': restTilt(s), '7,160': s.rest.report[0], '7,864': s.values.deadzone / 100 * GAME.full, '24': s.values.deadzone}),
-  'The potentiometers': s => ({'2.72': restTilt(s), '1.494': s.rest.volts[0], '1.650': wiper(0), '10': s.bits, '463': s.rest.codes[0], '512': adcCode(wiper(0), s.bits)}),
-  'A square gate': s => ({'31.0': tiltOf(s.motion.start).alpha / DEG, '141.4': fullShare(s)}),
+  'Release and follow the signal': () => ({}),
+  'One axis at the gate': s => ({'23': startYoke(s), '0': s.motion.start[1] / DEG}),
+  'Two yokes on a diagonal': s => ({'23': tiltOf(s.motion.start).alpha / DEG, '16.7': startYoke(s)}),
+  'A square gate': s => ({'23': startYoke(s), '31': tiltOf(s.motion.start).alpha / DEG}),
+  'The return spring': () => ({'11.5': SPRING * TRAVEL * 1000}),
+  'The first overshoot': s => ({'8.13': firstSwing(s), '13.2': ms(s.motion.run.swings[0].d)}),
+  'Rest after a sharp release': s => ({'2.72': restTilt(s)}),
+  'Ease the stick back': s => ({'5.00': restTilt(s)}),
+  'Voltage without changing track current': s => ({'1.494': s.rest.volts[0], '1.650': wiper(0), '0.33': STICK.supply / 10000 * 1000}),
+  'Coarser conversion': s => ({'256': 2 ** s.bits, '0.225': s.step.angle / DEG}),
+  'Finer conversion': s => ({'4,096': 2 ** s.bits, '8': BITS[0]}),
+  'Limit the diagonal command': s => ({'100': s.full.mapped.normalized * 100}),
+  'Ignore an unwanted resting report': s => ({'21.9': s.rest.share * 100, '24': s.values.deadzone}),
+  'Reduce the dead zone': () => ({}),
+  'Remove the dead zone': s => ({'21.9': s.rest.share * 100}),
+  'Trace the powered inputs': () => ({}),
+  'Read the final result': () => ({}),
 };
 const consoleClaims = {
   'Polls': s => ({'125': s.rate, '8': ms(s.poll), '1.2': ms(s.press.reported - s.press.registered), '4.0': ms(s.latency.parts.poll)}),
@@ -522,11 +533,10 @@ const additionalClaims = {
 };
 const orderedClaims = Object.fromEntries(gamesControllerLesson.tryIt.map(trial => [trial.title,machineClaims[trial.title] || additionalClaims[trial.title] || (()=>({}))]));
 checkTrialNumbers(gamesControllerLesson, orderedClaims, values => padPlan(values), t);
-checkTrialNumbers(joystickLesson, joystickClaims, values => padPlan(values), t);
+checkTrialNumbers(joystickLesson, joystickClaims, values => padPlan(values), t, model);
 checkTrialNumbers(videoGamesConsoleLesson, consoleClaims, values => padPlan(values), t);
 const square = padPlan({release: 1, gate: 1});
-checkQuotedText(joystickLesson.deeper.map(item => item.body).join(' '), {[`${fixed(BAND / TRAVEL * 100, 1)}% of the ${fixed(TRAVEL / DEG, 0)}° travel`]: '21.7% of the 23° travel'}, t);
-checkQuotedText(joystickLesson.steps.map(step => step.body).join(' '), {[`stops it at ${fixed(TRAVEL / DEG, 0)}° in every direction`]: 'stops it at 23° in every direction'}, t);
+checkQuotedText(joystickLesson.steps.map(step => step.body).join(' '), {[`limits total tilt to ${fixed(TRAVEL / DEG, 0)}°`]: 'limits total tilt to 23°'}, t);
 checkQuotedText(videoGamesConsoleLesson.deeper.map(item => item.body).join(' '), {[`that is ${fixed(1000 / 60, 1)} ms`]: 'that is 16.7 ms'}, t);
 checkQuotedText(videoGamesConsoleLesson.quiz.explanation, {[`a poll adds ${fixed(ms(defaults.latency.parts.poll), 1)} ms on average`]: 'a poll adds 4.0 ms on average', [`${fixed(ms(defaults.latency.parts.frame), 1)} ms of waiting and ${fixed(ms(defaults.frame), 1)} ms of drawing`]: '8.3 ms of waiting and 16.7 ms of drawing'}, t);
 

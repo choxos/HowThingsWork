@@ -16,6 +16,7 @@ import {electrostaticPrecipitatorLesson, ionizerLesson} from './air-cleaner-less
 import {createElectrostaticPrecipitatorModel} from './electrostatic-precipitator-model.js';
 import {createIonizerModel} from './ionizer-model.js';
 import {joystickLesson, videoGamesConsoleLesson} from './games-controller-lessons.js';
+import {createJoystickModel} from './joystick-model.js';
 import {headTrackingLesson} from './vr-headset-lessons.js';
 import {capillaryActionLesson} from './pens-lessons.js';
 import {cdLesson, dvdLesson, cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
@@ -143,7 +144,7 @@ export const houseComponents={
  'Ionization smoke detector':{machine:'Smoke detector',part:'ions',values:{size:0.1},view:'front',isolate:false,lesson:ionizationDetectorLesson,intro:ionizationDetectorLesson.simple},
  'Optical smoke detector':{machine:'Smoke detector',part:'chamber',values:{size:3},view:'front',isolate:false,lesson:opticalDetectorLesson,intro:opticalDetectorLesson.simple},
  'Passive infrared movement detector':{machine:'Active burglar alarm',part:'lens',isolate:false,view:'front',values:{mode:1},lesson:passiveInfraredLesson,intro:passiveInfraredLesson.simple},
- 'Joystick':{machine:'Games controller',part:'joystick',isolate:false,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},
+ 'Joystick':{machine:'Games controller',createModel:createJoystickModel,part:'rig',isolate:true,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},
  'Video games console':{machine:'Games controller',part:'console',isolate:false,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
  'Phonemes':{machine:'Speech recognition',part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
  'Head tracking':{machine:'Virtual reality headset',part:'imu',isolate:false,view:'top',lesson:headTrackingLesson,intro:headTrackingLesson.simple},

@@ -1,7 +1,7 @@
 import {PAD_DEFAULTS, padPlan, CLOCKS, FEEDBACK} from './games-controller-physics.js';
 
 const trial = part => (title, instruction, observe, settings = {}) => { const values = {...PAD_DEFAULTS,...settings}; return {title,instruction,observe,values,initialState:{settings:values,time:0},reset:true,part,isolate:true,view:'front'}; };
-const joystickTrial = trial('joystick'), potsTrial = trial('pots'), timelineTrial = trial('timeline'), mapTrial = trial('map'), adcTrial = trial('adc'), bounceTrial = trial('bounce'), latencyTrial = trial('latency'), screenTrial = trial('screen'), consoleTrial = trial('console');
+const bounceTrial = trial('bounce'), latencyTrial = trial('latency'), consoleTrial = trial('console');
 
 export const sources = {
   xinput: {title: 'Microsoft Learn: getting started with XInput (dead zones)', url: 'https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput'},
@@ -79,42 +79,63 @@ export const gamesControllerLesson = {
   quiz:{question:'Why can turning up display delay postpone the ring without postponing the rumble command?',options:['The game sends feedback when it accepts the press, before the delayed frame is visible.','The motors read the monitor’s pixels.','The controller skips debounce whenever rumble is enabled.'],answer:0,explanation:'Input reaches the game first. The return command and the rendered frame then follow separate paths with different delays.'},
 };
 
+const joystickExperiment = (title, instruction, observe, time, part = 'rig', overrides = {}) => {
+  const values = Object.fromEntries(['release', 'gate', 'bits', 'deadzone'].map(key => [key, overrides[key] ?? PAD_DEFAULTS[key]]));
+  return {title, instruction, observe, values, initialState: {settings: values, time: typeof time === 'function' ? time(padPlan(values)) - CLOCKS.start : time}, reset: true, part, isolate: true, view: 'front'};
+};
+
 export const joystickLesson = {
-  simple: 'How does a thumbstick measure where it points, and why does it never quite return to center?',
-  overview: 'A thumbstick is a lever on a ball pivot. Two slotted yokes at right angles turn with its tilt, each moving the wiper of a potentiometer, so two voltages say where the stick points. A spring under the lever’s foot pushes it back toward center, but friction in the gimbal fights the spring, so a released stick settles anywhere within a few degrees of center. Flick it, ease it back, and change its gate to see what the controller measures.',
+  simple: 'How do two sensors measure one thumbstick, and why can the same resting position produce different game commands?',
+  overview: 'Follow a thumbstick from its supported pivot to two voltage-divider sensors and a powered ADC board. Releasing the stick lets the assigned spring and friction model bring it to rest. The electronics sample the voltages, produce two numbers and apply a dead zone. Compare the mechanical position with the command that reaches the game.',
   steps: [
-    {title: 'Tilt the lever', body: 'The lever pivots on a ball. The gate, an opening in the module’s top, stops it at 23° in every direction.'},
-    {title: 'Turn the yokes', body: 'Each yoke has a slot along it. Tilt along the slot slides the lever through it; tilt across the slot turns the yoke.'},
-    {title: 'Read the potentiometers', body: 'Each yoke turns a wiper along a resistive track, a voltage divider whose wiper voltage follows the yoke’s angle.'},
-    {title: 'Spring back, and stop short', body: 'The spring pushes the lever toward center and friction resists. Wherever the spring’s push falls below friction, the lever stays.'},
+    {title: 'Limit the tilt', body: 'The ball pivot supports the lever. A round gate limits total tilt to 23°. The alternative square gate permits both yokes to reach 23°, allowing more diagonal tilt.'},
+    {title: 'Resolve two directions', body: 'Perpendicular slotted yokes turn with the two components of tilt. Each shaft is supported and coupled to its own potentiometer wiper.'},
+    {title: 'Divide the voltage', body: 'Both 10 kΩ tracks have 3.3 V across their fixed ends. Moving a wiper changes its output voltage while total track current stays constant.'},
+    {title: 'Sample and digitize', body: 'The two center terminals connect to separate ADC inputs. The ideal converter samples every millisecond; more bits divide the voltage range into finer bins.'},
+    {title: 'Return and interpret', body: 'The assigned spring restores the lever while friction can hold it off center. The game ignores reports inside its chosen dead zone and rescales the remaining range.'},
   ],
   parts: [
-    {name: 'Thumbstick', role: 'Lever, ball pivot, yokes, gate and spring.'},
-    {name: 'Potentiometers', role: 'One on each yoke.'},
-    {name: 'Stick over time', role: 'The stick’s true tilt and its reports.'},
-    {name: 'Stick map', role: 'The reports as a map of the stick.'},
+    {name: 'Lever, frame and spring', role: 'A supported pivot, two slotted yokes, a finite gate and a spring-loaded return plate.'},
+    {name: 'Potentiometers', role: 'Two resistive tracks and moving wipers measure the yoke angles.'},
+    {name: 'Test board and supports', role: 'Hold the module and ADC together on an illustrative fixture.'},
+    {name: 'Insulated sensor wiring', role: 'Separate supply, ground and the two sensor signals.'},
+    {name: 'Two-channel ADC', role: 'Turns sampled voltages into numbers.'},
+    {name: 'Measurements', role: 'Motion, gate map, conversion steps and the resulting game command.'},
   ],
   tryIt: [
-    joystickTrial('Two yokes', 'Choose to flick the stick up and right.', 'Tilted 23° toward the upper right, the lever turns each yoke only 16.7°: each yoke feels just the part of the tilt across its slot.', {release: 1}),
-    joystickTrial('Spring against friction', 'Look at the thumbstick.', 'The spring pushes with 11.5 mN m at full tilt and friction resists with 2.5 mN m, so the spring wins only beyond 5° from center.'),
-    timelineTrial('Snapping back', 'Press Play and watch the stick over time.', 'Let go at the gate, the lever swings 8.13° past center in 13.2 ms, then settles 2.72° on the far side.'),
-    timelineTrial('Eased back', 'Choose to ease the stick back from the right.', 'Eased back, it stops at 5.00° and reads 7,160, just under the 7,864 of a 24% dead zone.', {release: 2}),
-    potsTrial('The potentiometers', 'Press Play and look at the potentiometers.', 'Resting 2.72° to the left, the X wiper sits at 1.494 V instead of 1.650 V at center, and the 10-bit ADC reads 463 instead of 512.'),
-    mapTrial('A square gate', 'Flick the stick up and right into a square gate.', 'In the square gate’s corner the lever tilts 31.0°, and the reports reach 141.4% of full travel.', {release: 1, gate: 1}),
+    joystickExperiment('Release and follow the signal', 'Press Play to release the stick, then inspect any part without changing the moment.', 'The lever, yokes, wipers and spring move together. Voltage, ADC code, report and game command update at their stated clocks.', 0),
+    joystickExperiment('One axis at the gate', 'Inspect the held lever just before it moves back.', 'The X yoke is at 23° while the Y yoke remains at 0°. The two wiper voltages differ even though there is only one lever.', .02, 'stick-mechanism'),
+    joystickExperiment('Two yokes on a diagonal', 'Compare the same round gate with a diagonal release.', 'Total lever tilt is still 23°, but each yoke turns about 16.7°. Both wipers move.', .02, 'stick-mechanism', {release: 1}),
+    joystickExperiment('A square gate', 'Inspect the square opening and the lever at its corner.', 'Both yokes reach 23°, so total lever tilt reaches about 31°. The shape of the mechanical stop changes the reachable directions.', .02, 'joystick', {release: 1, gate: 1}),
+    joystickExperiment('The return spring', 'Inspect the loaded spring and plate, then press Play.', 'The lever foot stays in contact with the moving plate. The assigned restoring torque is about 11.5 mN m at full axial travel; this value is not measured from the drawn spring.', .02, 'return-spring'),
+    joystickExperiment('The first overshoot', 'Inspect the first turning point after a sharp release.', 'With these assigned dynamics, the stick has swung 8.13° past center after 13.2 ms. Resume to see friction and damping bring it to rest.', p => p.motion.run.half, 'stick-mechanism'),
+    joystickExperiment('Rest after a sharp release', 'Inspect the settled position and the two sensors.', 'The model rests 2.72° to the left. The X output is below its neutral voltage; resting off center is a modeled outcome, not a rule for every real stick.', .14, 'stick-mechanism'),
+    joystickExperiment('Ease the stick back', 'Compare the end of a slow hand-guided return.', 'The chosen friction model holds the lever at 5.00° on the original side. The way it was released changed its resting position.', .14, 'stick-mechanism', {release: 2}),
+    joystickExperiment('Voltage without changing track current', 'Inspect both wipers after the sharp release has settled.', 'The X divider is about 1.494 V while Y remains at 1.650 V. Each complete track still carries 0.33 mA; its moving contact measures a voltage.', .14, 'pots'),
+    joystickExperiment('Coarser conversion', 'Inspect the conversion staircase with 8 bits.', 'There are 256 possible codes. Around the resting angle, each step spans about 0.225° of yoke rotation.', .14, 'adc', {bits: 0}),
+    joystickExperiment('Finer conversion', 'Compare the same resting position with 12 bits.', 'There are 4,096 possible codes, sixteen times as many as at 8 bits. Smaller steps do not change the mechanical resting angle.', .14, 'adc', {bits: 2}),
+    joystickExperiment('Limit the diagonal command', 'Read the command while the stick is held at the square gate corner.', 'The two-axis report can exceed 100% in magnitude, but the game command is clamped to 100%. The arrow shows a command, not a force.', .02, 'response', {release: 1, gate: 1}),
+    joystickExperiment('Ignore an unwanted resting report', 'Inspect the response after easing the stick back.', 'The resting report is about 21.9% of full magnitude. A 24% dead zone suppresses it, leaving no commanded movement.', .14, 'response', {release: 2}),
+    joystickExperiment('Reduce the dead zone', 'Compare the same resting stick with a 20% threshold.', 'The report now falls outside the threshold. A small command remains after rescaling, even though the stick has not moved.', .14, 'response', {release: 2, deadzone: 20}),
+    joystickExperiment('Remove the dead zone', 'Compare again with a zero threshold.', 'The unchanged resting report now gives about 21.9% command. A dead zone filters input; it does not recenter the mechanism.', .14, 'response', {release: 2, deadzone: 0}),
+    joystickExperiment('Trace the powered inputs', 'Inspect the test board and its connections.', 'Both fixed track ends reach supply and ground, while the two center terminals reach separate ADC inputs. Insulated wires use different heights at crossings.', .14, 'test-electronics'),
+    joystickExperiment('Read the final result', 'Inspect the completed observation, then press Play to repeat.', 'The result names the resting tilt and remaining game command. Replay keeps the selected settings and starts again from the held gate position.', .32),
   ],
   deeper: [
-    {title: 'Potentiometers and Hall sensors', body: 'Most analog sticks use potentiometers, whose wipers wear as they rub along their tracks. Hall-effect sensors, which measure a magnet’s field without touching it, came back in the 2020s as a sturdier choice.'},
-    {title: 'Return precision', body: 'The module’s datasheet promises the lever returns within 5° of center, and rates it for 2,000,000 movements. A game’s dead zone has to cover that 5°, which is 21.7% of the 23° travel.'},
-    {title: 'Drift', body: 'If a controller takes its neutral position while the stick is held off center, or the stick wears, the game reads the center as a push and the character walks by itself. Players call it drift.'},
+    {title: 'Tolerance is not a required offset', body: 'The cited module specifies a ±5° return tolerance. That is an allowed bound, not a promise to stop five degrees away. It does not determine stiffness, friction, inertia or damping. The return dynamics in this demonstration are assigned separately.'},
+    {title: 'Mechanical center and electrical center', body: 'A centered lever need not map to exactly zero after quantization and calibration. This ideal model maps ADC bin midpoints without center calibration; real calibration and sensor variation can change the relationship.'},
+    {title: 'A dead zone is a tradeoff', body: 'A threshold can suppress unwanted small reports, but also discards small intentional movements. Microsoft recommends testing multiple controllers because the required dead zone varies between units. No single angular tolerance fixes the correct threshold for every controller.'},
+    {title: 'Sampling holds an older measurement', body: 'The wipers move continuously. The ADC samples every 1 ms, the example host receives a report every 8 ms and the game updates its command at 60 Hz. The motion chart separates true tilt, received reports and game-frame samples.'},
+    {title: 'Voltage-divider loading', body: 'The ideal ADC draws no wiper current. A real input that loads the divider changes its output voltage. The cited module is intended for a high-impedance ADC connection; this lesson does not simulate that loading or electrical noise.'},
   ],
-  misconception: 'A spring does not return a stick exactly to center. It returns it until friction can hold it, and that can be several degrees away.',
-  limits,
-  sources: [sources.alps, sources.stick, sources.potentiometer, sources.xinput],
+  misconception: 'More ADC bits improve voltage resolution. They do not change the spring, remove friction or guarantee a centered resting position.',
+  limits: 'Illustrative potentiometer thumbstick and powered test fixture, not a commercial module replica or production schematic. The 23° axial travel and 10 kΩ tracks use representative specifications. The spring, Coulomb friction, inertia and damping are assigned reduced dynamics along a radial path in yoke-angle space; the drawn cam and coil do not determine that torque law. Round and square gates, supported shafts, wiper contact and spring contact are modeled geometrically. Ideal 3.3 V tracks span the middle 80% of supply; loading, noise, wear, calibration and a center-push switch are omitted. Three prescribed releases compare axial, diagonal and eased motion. The ADC samples every 1 ms, reports arrive every 8 ms and a 60 Hz game clock applies the selected dead zone. The response arrow is normalized game command, not force or physical displacement. The 300 ms observation plays 50 times slower. External supply electronics and the rest of the controller are omitted; inspect the Games controller lesson for button and rumble mechanisms.',
+  sources: [sources.alps, sources.adc, sources.xinput],
   quiz: {
-    question: 'Why does a released thumbstick stop a little off center?',
-    options: ['Near center the spring’s push is too weak to beat friction in the gimbal.', 'The potentiometers push it away from center.', 'The gate holds it off center.'],
+    question: 'Why can a finer ADC still report an off-center stick after release?',
+    options: ['It measures the resting position more finely without changing the mechanical return.', 'Its extra bits push the lever away from center.', 'A finer ADC disables the return spring.'],
     answer: 0,
-    explanation: 'The spring’s push shrinks toward center. Inside the band where it is weaker than friction, nothing moves the lever any further.',
+    explanation: 'Resolution changes the size of voltage steps. The same assigned spring and friction still determine the resting lever position.',
   },
 };
 

@@ -4030,6 +4030,38 @@
       "parentId": "system"
     }
   ],
+  "joystick": [
+    {
+      "id": "stick-mechanism",
+      "name": "Thumbstick and sensors",
+      "parentId": "rig"
+    },
+    {
+      "id": "timeline",
+      "name": "Stick over time",
+      "parentId": "rig"
+    },
+    {
+      "id": "map",
+      "name": "Stick map",
+      "parentId": "rig"
+    },
+    {
+      "id": "adc",
+      "name": "ADC close up",
+      "parentId": "rig"
+    },
+    {
+      "id": "test-electronics",
+      "name": "Power and digitizing",
+      "parentId": "rig"
+    },
+    {
+      "id": "response",
+      "name": "Game response",
+      "parentId": "rig"
+    }
+  ],
   "robot-vacuum-cleaner": [
     {
       "id": "floor",
