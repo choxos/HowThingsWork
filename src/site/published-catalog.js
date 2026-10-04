@@ -136,7 +136,8 @@ export const publishedEntryIds = [
   "maximum-minimum-thermometer",
   "kinetic-quartz-watch",
   "quartz-clock",
-  "quartz-oscillator"
+  "quartz-oscillator",
+  "piezoelectricity"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -239,6 +240,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'piezoelectricity': ['electricity'],
   'quartz-oscillator': ['electricity'],
   'quartz-clock': ['electricity', 'magnetism', 'gears-and-belts'],
   'kinetic-quartz-watch': ['electricity', 'magnetism', 'gears-and-belts'],

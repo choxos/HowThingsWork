@@ -89,4 +89,8 @@ assert(quartzClock, 'Battery quartz clock is a whole machine, not a kinetic-watc
 assert.deepEqual(catalogMachineComponents(quartzClock.components).map(entry => entry.id), ['quartz-oscillator'], 'Only the complete oscillator subsystem appears below its clock');
 assert.deepEqual(tags('quartz-clock'), ['electricity', 'magnetism', 'gears-and-belts']);
 assert.deepEqual(tags('quartz-oscillator'), ['electricity']);
-assert(!entries.some(entry => entry.id === 'piezoelectricity'), 'Unreviewed piezoelectricity lesson remains a private preview');
+const piezoelectricity = families.find(family => family.entry.id === 'piezoelectricity');
+assert(piezoelectricity, 'Piezoelectricity is an independent idea, not a smaller clock machine');
+assert.equal(catalogMachineComponents(piezoelectricity.components).length, 0);
+assert.deepEqual(tags('piezoelectricity'), ['electricity']);
+assert(!entries.some(entry => entry.id === 'water-clock'), 'Unreviewed water clock remains a private preview');

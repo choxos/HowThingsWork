@@ -76,7 +76,9 @@
     "check:quartz-clock-model": "node src/site/check-quartz-clock-physics.mjs && node src/site/check-quartz-clock-train.mjs && node src/site/check-quartz-clock-model.mjs",
     "check:mobile-inspection": "node src/site/check-mobile-inspection.mjs",
     "check:quartz-oscillator": "node src/site/check-quartz-oscillator.mjs",
-    "check:quartz-oscillator-model": "node src/site/check-quartz-oscillator-physics.mjs && node src/site/check-quartz-oscillator-model.mjs"
+    "check:quartz-oscillator-model": "node src/site/check-quartz-oscillator-physics.mjs && node src/site/check-quartz-oscillator-model.mjs",
+    "check:piezoelectricity": "node src/site/check-piezoelectricity.mjs",
+    "check:piezoelectricity-model": "node src/site/check-piezoelectricity-physics.mjs && node src/site/check-piezoelectricity-model.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

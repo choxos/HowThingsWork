@@ -1526,6 +1526,23 @@
       "parentId": "system"
     }
   ],
+  "piezoelectricity": [
+    {
+      "id": "apparatus",
+      "name": "Connected piezoelectric experiment",
+      "parentId": "system"
+    },
+    {
+      "id": "trace",
+      "name": "Voltage over the complete experiment",
+      "parentId": "system"
+    },
+    {
+      "id": "energy",
+      "name": "Work, stored energy and heat",
+      "parentId": "system"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",

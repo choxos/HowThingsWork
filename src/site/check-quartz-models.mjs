@@ -107,3 +107,5 @@ await import('./check-quartz-clock-train.mjs');
 await import('./check-quartz-clock-model.mjs');
 await import('./check-quartz-oscillator-physics.mjs');
 await import('./check-quartz-oscillator-model.mjs');
+await import('./check-piezoelectricity-physics.mjs');
+await import('./check-piezoelectricity-model.mjs');
