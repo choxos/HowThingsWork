@@ -148,7 +148,8 @@ export const publishedEntryIds = [
   "ionizer",
   "voltage-multiplier",
   "robot-vacuum-cleaner",
-  "washing-machine"
+  "washing-machine",
+  "friction-drive-toy"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -251,6 +252,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'friction-drive-toy': ['rotating-wheels', 'gears-and-belts', 'friction', 'wheel-and-axle'],
   'washing-machine': ['rotating-wheels', 'exploiting-heat', 'pressure-power', 'springs', 'electricity'],
   'robot-vacuum-cleaner': ['using-bits', 'sensors-and-detectors', 'rotating-wheels', 'pressure-power', 'electricity'],
   'voltage-multiplier': ['electricity'],
@@ -319,7 +321,7 @@ const groups = drafts.groups.map(group => ({
   relatedStudies: [],
 })).filter(group => group.items.length);
 const descriptions = {
-  home: 'Explore kitchen tools, laundry, measuring, locks, sewing, and electrical protection.',
+  home: 'Explore kitchen tools, laundry, toys, measuring, locks, sewing, and electrical protection.',
   workshop: 'Follow motors, 3D printing, ignition, and crash-sensing mechanisms.',
   discovery: 'Explore sensors, seismic measurements, inertial navigation, telescopes, and microscopes.',
   park: 'Explore binocular prisms, upright images, and stereo depth.',

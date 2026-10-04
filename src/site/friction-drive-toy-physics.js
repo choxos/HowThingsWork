@@ -32,15 +32,12 @@ import {validateControls, validTime} from './physics-kit.js';
 // the toy or the toy's own motion keeps the flywheel turning decides which way
 // the gears lose their 20%.
 //
-// Every stage has constant accelerations, so the whole run is solved exactly,
-// stage by stage, and an energy ledger is kept: the hand's work equals the
-// motion energy of the toy on the floor and of the flywheel, plus the heat of
-// skidding, of the gears, of the bearings and of rolling. The hand takes back the
-// toy's motion energy each time it lifts it.
-//
-// Not modeled: air drag, a few percent of the rolling loss at these speeds; the
-// wheels' own inertia; the hand's push beyond its speed and press; bouncing and
-// steering.
+// Floor stages have constant accelerations. Each airborne return is a prescribed
+// cubic horizontal path and a smooth vertical lift. The hand changes the body's
+// kinetic and potential energy while the flywheel coasts against its bearings.
+// Their exact integrals keep one continuous energy ledger through every phase.
+// Wheel/gear inertia other than the flywheel, air drag, bouncing, steering and
+// pitch/load transfer are omitted. Both axles carry half the assigned normal load.
 
 export const TOY = Object.freeze({mass: 0.12, wheel: 0.015, flywheel: Object.freeze({radius: 0.01, thickness: 0.004, density: 7850}), efficiency: 0.8, bearing: 4e-5, stroke: 0.15, back: 0.3, lift: 0.02, g: 9.81});
 export const FLOORS = Object.freeze([
@@ -52,7 +49,7 @@ export const RATIOS = Object.freeze([6, 12, 24]);
 /** Tooth counts of the two stages for each ratio, [driving gear, driven pinion], the bigger step first so the middle shaft's gear clears the rear axle. */
 export const GEARS = Object.freeze({6: Object.freeze([[24, 8], [16, 8]]), 12: Object.freeze([[32, 8], [24, 8]]), 24: Object.freeze([[48, 8], [32, 8]])});
 export const RATIO_OPTIONS = Object.freeze(RATIOS.map((ratio, value) => Object.freeze({value, label: `${ratio} to 1`})));
-export const RELEASE_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'Set it down still'}), Object.freeze({value: 1, label: 'Let go mid-push'})]);
+export const RELEASE_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'Set it down still'}), Object.freeze({value: 1, label: 'Release while moving'})]);
 export const TOY_DEFAULTS = Object.freeze({speed: 1.5, pushes: 3, press: 4, gearing: 1, floor: 1, release: 0});
 export const TOY_DOMAINS = Object.freeze({speed: [0.5, 2.5, 0.25], pushes: [1, 6, 1], press: [0, 20, 2], gearing: [0, 2, 1], floor: [0, 2, 1], release: [0, 1, 1]});
 
@@ -71,25 +68,13 @@ export function toyPlan(input = {}) {
   const N = RATIOS[gearing], ground = FLOORS[floor], m = TOY.mass, g = TOY.g, eta = TOY.efficiency;
   const felt = feltMass(N), bearing = TOY.bearing * N / TOY.wheel, rolling = ground.rolling * m * g;
   const phases = [], energy = {hand: 0, skid: 0, gears: 0, bearing: 0, rolling: 0}, lifts = [];
-  let t = 0, x = 0, u = 0, turned = 0;
-
-  // One stage of constant accelerations. av and au are the toy's and the
-  // flywheel's accelerations in toy terms; force is the floor's grip on the
-  // rear wheels; drive says whether the floor drives the flywheel or the
-  // flywheel drives the floor; hand is the hand's push on the toy.
+  let t = 0, x = 0, u = 0, turned = 0, frontTurned = 0;
   const add = phase => {
-    const {d, v0, av, u0, au} = phase, onFloor = phase.kind !== 'lifted';
-    const record = {...phase, t0: t, x0: x, u0, turned0: turned, energy0: {...energy}, onFloor};
+    const record = {...phase, t0: t, x0: x, turned0: turned, frontTurned0: frontTurned, energy0: {...energy}, onFloor: phase.kind !== 'lifted'};
     phases.push(record);
-    const dx = v0 * d + av * d * d / 2, du = u0 * d + au * d * d / 2;
-    if (onFloor) {
-      energy.rolling += rolling * dx;
-      energy.skid += phase.force * Math.abs((u0 - v0) * d + (au - av) * d * d / 2);
-      energy.gears += phase.force * (phase.drive === 'floor' ? 1 - eta : 1 / eta - 1) * du;
-      energy.hand += phase.hand * dx;
-    }
-    energy.bearing += bearing * du;
-    t += d; x += dx; u = u0 + au * d; turned += du;
+    const end = phaseAt({felt, bearing, rolling}, record, record.d);
+    Object.assign(energy, end.energy);
+    t += record.d; x = end.x; u = end.u; turned = end.turned; frontTurned = end.frontTurned;
     return record;
   };
   const params = {N, felt, bearing, rolling, eta, V, A: V * V / (2 * TOY.stroke), T: 2 * TOY.stroke / V};
@@ -110,14 +95,8 @@ export function toyPlan(input = {}) {
     pushSpeeds.push(u);
     const last = k === pushes - 1;
     if (last && release === 1) break;
-    // Lift: the hand takes back the toy's motion energy.
-    energy.hand -= m * V * V / 2;
     lifts.push(t);
-    if (last) { x = TOY.stroke; break; }
-    const spinning = Math.min(TOY.back, u * felt / bearing), back = -TOY.stroke / TOY.back;
-    add({kind: 'lifted', stage: `Carrying back ${k + 1}`, d: spinning, v0: back, av: 0, u0: u, au: -bearing / felt, force: 0, drive: 'none', hand: 0, load: 0, press});
-    if (spinning < TOY.back) { u = 0; add({kind: 'lifted', stage: `Carrying back ${k + 1}`, d: TOY.back - spinning, v0: back, av: 0, u0: 0, au: 0, force: 0, drive: 'none', hand: 0, load: 0, press}); }
-    x = 0;
+    add({kind: 'lifted', stage: last ? 'Lift and set down' : `Carrying back ${k + 1}`, d: TOY.back, v0: V, u0: u, au: -bearing / felt, x1: last ? x : 0, force: 0, drive: 'none', hand: 0, load: 0, press: 0});
   }
 
   // Let go.
@@ -151,25 +130,46 @@ export function toyPlan(input = {}) {
   return plan;
 }
 
-/** The toy at a moment of its run: position, speeds, how far its wheels have turned, and the energy ledger so far. */
+/** Exact hand-guided path: match the final push speed, lift, and touch down at rest. */
+export function carryPose(phase, elapsed) {
+  const s = Math.max(0, Math.min(phase.d, elapsed)), q = s / phase.d, d = phase.d;
+  const delta = phase.x1 - phase.x0, a = 3 * delta - 2 * phase.v0 * d, b = -2 * delta + phase.v0 * d;
+  const x = phase.x0 + phase.v0 * s + a * q * q + b * q * q * q;
+  const v = phase.v0 + (2 * a * q + 3 * b * q * q) / d;
+  const height = TOY.lift * Math.sin(Math.PI * q) ** 2;
+  const vy = TOY.lift * Math.PI / d * Math.sin(2 * Math.PI * q);
+  return {x, v, height, vy};
+}
+
+/** Integrate a recorded phase, including hand work while the toy is carried. */
+export function phaseAt(plan, phase, elapsed) {
+  const s = Math.max(0, Math.min(phase.d, elapsed)), {v0, av = 0, u0, au} = phase;
+  const spinning = au < 0 ? Math.min(s, u0 / -au) : s;
+  const du = u0 * spinning + au * spinning * spinning / 2, u = Math.max(0, u0 + au * s);
+  const dx = v0 * s + av * s * s / 2, pose = phase.onFloor ? {x: phase.x0 + dx, v: v0 + av * s, height: 0, vy: 0} : carryPose(phase, s);
+  const energy = {...phase.energy0}, motion = TOY.mass * (pose.v ** 2 + pose.vy ** 2) / 2, potential = TOY.mass * TOY.g * pose.height;
+  if (phase.onFloor) {
+    energy.rolling += plan.rolling * dx;
+    energy.skid += phase.force * Math.abs(du - dx);
+    energy.gears += phase.force * (phase.drive === 'floor' ? 1 - TOY.efficiency : 1 / TOY.efficiency - 1) * du;
+    energy.hand += phase.hand * dx;
+  } else energy.hand += motion + potential - TOY.mass * phase.v0 ** 2 / 2;
+  energy.bearing += plan.bearing * du;
+  return {...pose, u, energy, motion, potential, flywheel: plan.felt * u * u / 2, turned: phase.turned0 + du, frontTurned: phase.frontTurned0 + (phase.onFloor ? dx : phase.v0 * s), frontRimSpeed: phase.onFloor ? pose.v : phase.v0};
+}
+
+/** Continuous state from the recorded floor and carry phases. */
 export function toyAt(plan, time) {
+  validTime(time);
   const clock = Math.max(0, Math.min(plan.duration, time));
   let phase = plan.phases[0];
   for (const candidate of plan.phases) if (candidate.t0 <= clock) phase = candidate;
-  const s = Math.min(phase.d, clock - phase.t0), {v0, av, u0, au} = phase, m = TOY.mass, eta = TOY.efficiency;
-  const dx = v0 * s + av * s * s / 2, du = u0 * s + au * s * s / 2, energy = {...phase.energy0};
-  if (phase.onFloor) {
-    energy.rolling += plan.rolling * dx;
-    energy.skid += phase.force * Math.abs((u0 - v0) * s + (au - av) * s * s / 2);
-    energy.gears += phase.force * (phase.drive === 'floor' ? 1 - eta : 1 / eta - 1) * du;
-    energy.hand += phase.hand * dx;
-  }
-  energy.bearing += plan.bearing * du;
-  const v = v0 + av * s, u = u0 + au * s;
+  const state = phaseAt(plan, phase, clock - phase.t0), complete = clock >= plan.duration, ready = clock === 0;
   return {
-    clock, phase, stage: phase.stage, kind: phase.kind, x: phase.x0 + dx, v, u, turned: phase.turned0 + du, height: phase.onFloor ? 0 : TOY.lift,
-    skidding: phase.onFloor && Math.abs(u - v) > 1e-9, energy, motion: phase.onFloor ? m * v * v / 2 : 0, flywheel: plan.felt * u * u / 2, rpm: rpmOf(u, plan.ratio),
-    press: phase.press, force: phase.force, drive: phase.drive,
+    ...state, clock, phase, complete, stage: complete ? 'Stopped' : ready ? 'Ready' : phase.stage, kind: complete ? 'stopped' : ready ? 'ready' : phase.kind,
+    skidding: !complete && !ready && phase.onFloor && Math.abs(state.u - state.v) > 1e-9,
+    rpm: rpmOf(state.u, plan.ratio), press: complete ? 0 : phase.press, force: complete || ready ? 0 : phase.force, drive: complete || ready ? 'none' : phase.drive,
+    frontRimSpeed: complete ? 0 : state.frontRimSpeed,
   };
 }
 

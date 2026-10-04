@@ -128,3 +128,10 @@ assert.equal(catalogMachineComponents(washingMachine.components).length, 0, 'Was
 assert.deepEqual(tags('washing-machine'), ['rotating-wheels', 'exploiting-heat', 'pressure-power', 'springs', 'electricity']);
 assert.equal(catalog.groups.find(group => group.id === 'washing-machine').room, 'Laundry and cleaning');
 assert.equal(catalog.groups.find(group => group.id === 'washing-machine').place, 'home');
+
+const frictionDriveToy = families.find(family => family.entry.id === 'friction-drive-toy');
+assert(frictionDriveToy, 'Friction-drive toy is a whole machine');
+assert.equal(catalogMachineComponents(frictionDriveToy.components).length, 0, 'Toy gears, wheels and shafts remain ordinary inspectable parts');
+assert.deepEqual(tags('friction-drive-toy'), ['rotating-wheels', 'gears-and-belts', 'friction', 'wheel-and-axle']);
+assert.equal(catalog.groups.find(group => group.id === 'friction-drive-toy').room, 'Play and everyday objects');
+assert.equal(catalog.groups.find(group => group.id === 'friction-drive-toy').place, 'home');

@@ -1,288 +1,113 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface, solidArrow, chartText, textLabel} from './scene-kit.js';
-import {toyPlan, toyAt, TOY, FLOORS, RATIOS, GEARS, RATIO_OPTIONS, RELEASE_OPTIONS, TOY_DEFAULTS, TOY_DOMAINS} from './friction-drive-toy-physics.js';
+import {lineObject, chartText, textLabel} from './scene-kit.js';
+import {toyPlan, toyAt, phaseAt, TOY, FLOORS, RATIOS, GEARS, RATIO_OPTIONS, RELEASE_OPTIONS, TOY_DEFAULTS, TOY_DOMAINS} from './friction-drive-toy-physics.js';
+import {toyGeometry, MM, trainAngles, FLOOR, FLOOR_COLORS} from './friction-drive-toy-geometry.js';
 
-// ---------------------------------------------------------------------------
-// Friction-drive toy: a toy car cut open to show its gear train and flywheel,
-// pushed along a floor that slides past beneath it, then let go.
-//
-// Scale: one millimeter is 0.02 scene units for every length: the toy 120 mm
-// long on wheels 30 mm across, the gears (module 0.5 mm, 3 mm thick) and the
-// flywheel 20 mm across and 4 mm thick. The toy stays put and the floor moves:
-// 250 mm of it is drawn, its seams 50 mm apart, with a gold line on every half
-// meter from where the pushes start. The shell below the cabin is cut away and
-// the cabin drawn see-through. Lifted, the toy rises its true 20 mm.
-//
-// Time: the run plays at a quarter of real speed. Every wheel and gear is drawn
-// at its true angle, geared to the wheels, which turn by how far their rims
-// have run, so a skid shows as wheels turning faster or slower than the floor
-// moves. A part turning more than ten times a second as drawn is shown as a
-// blurred disk, since a screen cannot show it turning.
-//
-// Colors: the press is an orange arrow on the hand. Charts, above the toy, not
-// to its scale: the toy's speed on the floor (red) and the flywheel's speed in
-// toy terms (gold), 0 to 2.5 m/s up over the run, with a line for now; and one
-// bar sharing out the work the hand has done: flywheel (gold), the toy's motion
-// (red), skidding (clay), gears and bearings (gray), rolling (blue).
-// ---------------------------------------------------------------------------
-
-const MM = 0.02;
-const TAU = Math.PI * 2;
-const SLOW = 4;
-const MODULE = 0.5;
-const BLUR = 10;
-export const AXLE = Object.freeze({rear: -35, front: 35, height: 15, track: 29});
-export const LAYOUT = Object.freeze({first: Math.PI / 3, second: 0, frontZ: 0, backZ: -4.5, flywheelZ: 4, thickness: 3});
-export const CHART = Object.freeze({left: 40, width: 140, bottom: 80, height: 60, top: 2.5, bar: 146, barHeight: 8, z: -60});
-export const FLOOR = Object.freeze({half: 125, spacing: 50, width: 120, mark: 500});
-export const FLOOR_COLORS = Object.freeze([0xd9d4c7, 0xb98b5a, 0x7f8f6a]);
-export const SHARE_COLORS = Object.freeze([0xe3b45e, 0xc14f39, 0xb0735a, 0x6f7a73, 0x2f6690]);
-export const pitchRadius = teeth => teeth * MODULE / 2;
+export {shafts, trainAngles, pitchRadius, AXLE, LAYOUT, FLOOR, FLOOR_COLORS} from './friction-drive-toy-geometry.js';
+export const SLOW = 4, BLUR = 10;
+export const SHARE_COLORS = Object.freeze([0xb8862f,0xc14f39,0x547a54,0xb0735a,0x6f7a73,0x2f6690]);
+export const drawnTurns = (rim, factor) => Math.abs(rim) / TOY.wheel * factor / SLOW / (2 * Math.PI);
 const wrap = value => ((value + FLOOR.half) % (2 * FLOOR.half) + 2 * FLOOR.half) % (2 * FLOOR.half) - FLOOR.half;
 
-/** Centers, in millimeters in the toy's side plane, of the rear axle, the middle shaft and the flywheel's shaft. */
-export function shafts(ratio) {
-  const [[T1, t1], [T2, t2]] = GEARS[ratio], axle = [AXLE.rear, AXLE.height], d1 = pitchRadius(T1) + pitchRadius(t1), d2 = pitchRadius(T2) + pitchRadius(t2);
-  const middle = [axle[0] + d1 * Math.cos(LAYOUT.first), axle[1] + d1 * Math.sin(LAYOUT.first)];
-  return {axle, middle, flywheel: [middle[0] + d2 * Math.cos(LAYOUT.second), middle[1] + d2 * Math.sin(LAYOUT.second)], d1, d2};
-}
-
-/** Drawn angles of the gear train for a wheel angle, each driven gear set so its teeth fall in its driver's gaps along their line of centers. */
-export function trainAngles(ratio, wheel) {
-  const [[T1, t1], [T2, t2]] = GEARS[ratio], a = LAYOUT.first, b = LAYOUT.second;
-  const pinion = -(T1 / t1) * wheel + a + Math.PI - Math.PI / t1;
-  const second = pinion - (a + Math.PI - Math.PI / t1) + b;
-  return {axleGear: wheel + a, pinion, second, flywheel: -(T2 / t2) * (second - b) + b + Math.PI - Math.PI / t2};
-}
-
-/** How many turns a second a part turning with speed factor k times the wheels makes as drawn. */
-export const drawnTurns = (rim, factor) => Math.abs(rim) / TOY.wheel * factor / SLOW / TAU;
-
-function gearShape(teeth) {
-  const R = pitchRadius(teeth) * MM, tip = R + MODULE * MM, root = R - 1.25 * MODULE * MM, step = TAU / teeth, shape = new THREE.Shape();
-  for (let i = 0; i < teeth; i++) {
-    const a = i * step;
-    [[root, a - step / 2], [root, a - step / 4], [tip, a - step / 8], [tip, a + step / 8], [root, a + step / 4]].forEach(([radius, angle], j) => shape[i === 0 && j === 0 ? 'moveTo' : 'lineTo'](radius * Math.cos(angle), radius * Math.sin(angle)));
+function toyCharts(kit, system) {
+  const charts=kit.part('charts','Speed and energy charts','Separate close-ups compare floor speed, driven-wheel rim speed and the full energy account.',[8,0,0],system);charts.userData.explosionExcluded=true;
+  const speed=kit.part('speed-chart','Floor speed and driven-wheel speed','The red curve is speed while touching the floor. The gold curve is rear-wheel rim speed, also flywheel speed divided by the gear ratio. A difference means skidding.',[0,2,0],charts);
+  const energy=kit.part('energy-chart','Where the hand work goes','Net hand work equals flywheel energy, body motion, raised-body energy and the accumulated losses.',[0,-2,0],charts);
+  for(const p of [speed,energy])kit.box([4.8,3.4,.03],[0,.1,-.05],'cream',p);
+  const point=(x,y)=>[-1.7+x*3.4,-.9+y*2.1,0];
+  kit.rod(point(0,0),point(1,0),.008,'ink',speed);kit.rod(point(0,0),point(0,1),.008,'ink',speed);
+  chartText(speed,point,{title:'Push, lift, release and coast',size:.28,x:{min:0,max:1,title:'Physical time · seconds',ticks:[[0,'0']]},y:{min:0,max:1,title:'Speed · m/s',ticks:[[0,'0'],[.5,'1.25'],[1,'2.5']]},legend:[['On the floor',0xc14f39],['Driven wheel rim',0xb8862f]],legendAt:[.96,.97]});
+  const endText=textLabel(speed,'',{height:.26,width:.8,position:[1.7,-1.08,.03]});
+  const toyLine=lineObject(5000,0xc14f39,speed),wheelLine=lineObject(5000,0xb8862f,speed),cursor=lineObject(2,0x374736,speed);
+  textLabel(energy,'Follow the energy',{height:.28,position:[0,1.48,.03]});
+  const workText=textLabel(energy,'',{height:.25,width:4.3,position:[0,1.07,.03]});
+  const shares=SHARE_COLORS.map(color=>{const mesh=kit.box([1,.32,.03],[0,.64,0],'cream',energy);mesh.material=mesh.material.clone();mesh.material.color.set(color);return mesh;});
+  const labels=['Flywheel rotation','Toy motion','Raised toy','Skidding heat','Gears and bearings','Rolling loss'],numbers=[];
+  for(let i=0;i<labels.length;i++){
+    textLabel(energy,labels[i],{height:.25,align:'left',color:'#'+SHARE_COLORS[i].toString(16).padStart(6,'0'),position:[-1.8,.18-i*.29,.03]});
+    numbers.push(textLabel(energy,'',{height:.25,width:1.15,position:[1.45,.18-i*.29,.03]}));
   }
-  shape.closePath();
-  return shape;
+  return {charts,speed,energy,point,endText,toyLine,wheelLine,cursor,shares,numbers,workText};
 }
-
-export function createFrictionDriveToyModel() {
-  const kit = houseModel('Friction-drive toy'), {root, part, control, finish, covers} = kit;
-  const mm = value => value * MM, at = (x, y, z) => [mm(x), mm(y), mm(z)];
-  const system = part('system', 'Friction-drive toy', 'A toy car whose rear wheels spin a small steel flywheel through gears. Pressed down and pushed along the floor, it stores energy in the flywheel; let go, the flywheel drives it on. Drawn at true size, cut open, with the floor sliding past beneath it.', [0, 0, 0]);
-
-  const body = part('body', 'Body', 'The plastic body, 120 mm long and 50 mm wide. Its lower shell is cut away to show the gears and flywheel, and its cabin is drawn see-through.', [0, 0, 0], system);
-  covers.push(kit.box([mm(120), mm(24), mm(50)], at(0, 28, 0), 'clay', body));
-  const cabin = kit.box([mm(60), mm(14), mm(44)], at(-5, 47, 0), 'clay', body);
-  cabin.material = cabin.material.clone();
-  cabin.material.transparent = true;
-  cabin.material.opacity = 0.25;
-  cabin.material.depthWrite = false;
-  for (const side of [-1, 1]) kit.box([mm(110), mm(3), mm(4)], at(0, 9.5, side * 20), 'wood', body);
-
-  const wheelsPart = part('wheels', 'Wheels', 'Four wheels 30 mm across. The rear pair drive the gears, so a skid shows as the wheels turning faster or slower than the floor slides by.', [0, 0, 0], system);
-  const wheels = [];
-  for (const x of [AXLE.rear, AXLE.front]) {
-    kit.rod(at(x, AXLE.height, -AXLE.track), at(x, AXLE.height, AXLE.track), mm(1.5), 'metal', wheelsPart);
-    for (const side of [-1, 1]) {
-      const wheel = new THREE.Group();
-      wheel.position.set(...at(x, AXLE.height, side * AXLE.track));
-      wheelsPart.add(wheel);
-      kit.disk(mm(TOY.wheel * 1000), mm(8), [0, 0, 0], 'ink', wheel);
-      kit.disk(mm(7), mm(9), [0, 0, 0], 'gold', wheel);
-      kit.box([mm(2), mm(12), mm(9.5)], at(0, 6, 0), 'cream', wheel);
-      wheels.push(wheel);
-    }
-  }
-
-  const gearsPart = part('gears', 'Gear train', 'Two stages of gears, module 0.5 mm, that turn the flywheel 6, 12 or 24 times as fast as the wheels. Each driven gear turns the other way from its driver.', [0, 0, 0], system);
-  const sets = Object.fromEntries(RATIOS.map(ratio => {
-    const set = new THREE.Group(), [[T1, t1], [T2, t2]] = GEARS[ratio], centers = shafts(ratio);
-    gearsPart.add(set);
-    const gear = (teeth, center, z, color) => {
-      const group = new THREE.Group();
-      group.position.set(mm(center[0]), mm(center[1]), mm(z));
-      set.add(group);
-      const geometry = new THREE.ExtrudeGeometry(gearShape(teeth), {depth: mm(LAYOUT.thickness), bevelEnabled: false});
-      geometry.translate(0, 0, -mm(LAYOUT.thickness) / 2);
-      const sharp = surface(kit, geometry, color, group), blur = kit.disk(mm(pitchRadius(teeth) + MODULE), mm(LAYOUT.thickness), [0, 0, 0], color, group);
-      blur.material = blur.material.clone();
-      blur.material.transparent = true;
-      blur.material.opacity = 0.45;
-      blur.material.depthWrite = false;
-      return {group, sharp, blur, teeth};
-    };
-    kit.rod(at(centers.middle[0], centers.middle[1], -7.5), at(centers.middle[0], centers.middle[1], 1.5), mm(0.8), 'metal', set);
-    kit.rod(at(centers.flywheel[0], centers.flywheel[1], -7.5), at(centers.flywheel[0], centers.flywheel[1], 7.5), mm(0.8), 'metal', set);
-    return [ratio, {set, centers, axleGear: gear(T1, centers.axle, LAYOUT.frontZ, 'gold'), pinion: gear(t1, centers.middle, LAYOUT.frontZ, 'metal'), second: gear(T2, centers.middle, LAYOUT.backZ, 'gold'), flywheelPinion: gear(t2, centers.flywheel, LAYOUT.backZ, 'metal')}];
-  }));
-
-  const flywheelPart = part('flywheel', 'Flywheel', 'A steel disk 20 mm across and 4 mm thick on the fastest shaft. At 12 to 1 it feels at the wheels like 316 g of extra mass, more than twice the whole toy.', [0, 0, 0], system);
-  const flywheel = new THREE.Group();
-  flywheelPart.add(flywheel);
-  const flywheelDisk = kit.disk(mm(TOY.flywheel.radius * 1000), mm(TOY.flywheel.thickness * 1000), [0, 0, 0], 'metal', flywheel);
-  const flywheelMarks = [0, 1].map(k => kit.box([mm(3), mm(3), mm(4.2)], at(6 * Math.cos(k * Math.PI), 6 * Math.sin(k * Math.PI), 0), 'ink', flywheel));
-  const flywheelBlur = kit.disk(mm(TOY.flywheel.radius * 1000), mm(TOY.flywheel.thickness * 1000 + 0.2), [0, 0, 0], 'metal', flywheel);
-  flywheelBlur.material = flywheelBlur.material.clone();
-  flywheelBlur.material.transparent = true;
-  flywheelBlur.material.opacity = 0.5;
-  flywheelBlur.material.depthWrite = false;
-
-  const handPart = part('hand', 'Hand and press', 'The hand that pushes the toy, pressing it onto the floor so its wheels grip, and lifts it back between pushes. The orange arrow is the press, 2.5 mm long for every newton.', [0, 0, 0], system);
-  const palm = kit.box([mm(60), mm(12), mm(40)], at(-5, 60, 0), 'cream', handPart);
-  const press = solidArrow(kit, 0xd9822b, handPart, mm(1.6));
-  press.userData.setDirection(new THREE.Vector3(0, -1, 0));
-
-  const floorPart = part('floor', 'Floor', 'The floor, sliding past beneath the toy: seams every 50 mm, and a gold line every half meter from where the pushes start.', [0, 0, 0], system);
-  const base = kit.box([mm(2 * FLOOR.half), mm(2), mm(FLOOR.width)], at(0, -1, 0), 'cream', floorPart);
-  base.material = base.material.clone();
-  const seams = Array.from({length: 2 * FLOOR.half / FLOOR.spacing}, () => kit.box([mm(1.2), mm(0.3), mm(FLOOR.width)], at(0, 0.15, 0), 'ink', floorPart));
-  const mark = kit.box([mm(4), mm(0.5), mm(FLOOR.width)], at(0, 0.25, 0), 'gold', floorPart);
-
-  const charts = part('charts', 'Charts', 'The toy’s speed on the floor (red) and the flywheel’s speed in toy terms (gold) over the run, and a bar sharing out the work the hand has done. Not to the toy’s scale.', [0, 0, 0], system);
-  const chartPoint = (seconds, speed, duration) => at(CHART.left + seconds / duration * CHART.width, CHART.bottom + Math.max(0, Math.min(1, speed / CHART.top)) * CHART.height, CHART.z);
-  kit.rod(at(CHART.left, CHART.bottom, CHART.z), at(CHART.left + CHART.width, CHART.bottom, CHART.z), mm(0.6), 'ink', charts);
-  kit.rod(at(CHART.left, CHART.bottom, CHART.z), at(CHART.left, CHART.bottom + CHART.height, CHART.z), mm(0.6), 'ink', charts);
-  const toyLine = lineObject(600, 0xc14f39, charts), flywheelLine = lineObject(600, 0xe3b45e, charts), cursor = lineObject(2, 0x374736, charts);
-  // The run's length follows the settings, so the time axis ends in a number redrawn with them.
-  chartText(charts, (share, speed) => at(CHART.left + share * CHART.width, CHART.bottom + speed / CHART.top * CHART.height, CHART.z), {
-    title: 'Speed over the run', size: mm(6),
-    x: {min: 0, max: 1, title: 'Seconds', ticks: [[0, '0']]},
-    y: {min: 0, max: CHART.top, title: 'm/s', ticks: [[0, '0'], [1.25, '1.25'], [2.5, '2.5']]},
-    legend: [['The toy', 0xc14f39], ['The flywheel, in toy terms', 0xb8862f]],
-  });
-  const runEnd = textLabel(charts, '', {height: mm(6), width: mm(24), position: at(CHART.left + CHART.width, CHART.bottom - 6.6, CHART.z + 0.6)});
-  textLabel(charts, 'Where the hand’s work has gone', {height: mm(6), align: 'left', position: at(CHART.left, CHART.bar + CHART.barHeight + 5, CHART.z + 0.6)});
-  ['In the flywheel', 'In the moving toy', 'Lost skidding', 'Lost in gears and bearings', 'Lost rolling'].forEach((text, k) => textLabel(charts, text, {height: mm(5), align: 'left', color: `#${SHARE_COLORS[k].toString(16).padStart(6, '0')}`, position: at(CHART.left + CHART.width + 6, CHART.bar + CHART.barHeight - 4 + (2 - k) * 6, CHART.z + 0.6)}));
-  const shares = SHARE_COLORS.map(color => {
-    const segment = kit.box([1, mm(CHART.barHeight), mm(2)], at(CHART.left, CHART.bar + CHART.barHeight / 2, CHART.z), 'cream', charts);
-    segment.material = segment.material.clone();
-    segment.material.color.set(color);
-    return segment;
-  });
-
-  control('speed', 'Push speed', ...TOY_DOMAINS.speed, TOY_DEFAULTS.speed, 'm/s', 'How fast each push moves the toy by its end.');
-  control('pushes', 'Pushes', ...TOY_DOMAINS.pushes, TOY_DEFAULTS.pushes, '', 'How many pushes before letting go.');
-  control('press', 'Press down', ...TOY_DOMAINS.press, TOY_DEFAULTS.press, 'N', 'How hard the hand presses the toy onto the floor while pushing.');
-  control('gearing', 'Gearing', ...TOY_DOMAINS.gearing, TOY_DEFAULTS.gearing, '', 'How many times faster than the wheels the flywheel turns.', RATIO_OPTIONS.map(({value, label}) => ({value, label})));
-  control('floor', 'Floor', ...TOY_DOMAINS.floor, TOY_DEFAULTS.floor, '', 'Slippery tiles, a wooden floor, or carpet.', FLOORS.map(({value, label}) => ({value, label})));
-  control('release', 'Letting go', ...TOY_DOMAINS.release, TOY_DEFAULTS.release, '', 'Set it down still after the last push, or let go of it moving.', RELEASE_OPTIONS.map(({value, label}) => ({value, label})));
-
-  let clock = 0, lastClock = 0, disposed = false, chartKey = '';
-  const result = finish(values => {
-    const plan = toyPlan(values), now = toyAt(plan, clock), ratio = plan.ratio, released = clock >= plan.releaseAt.t && plan.releaseAt.t > 0 && clock > 0;
-    const key = JSON.stringify(plan.values);
-    if (key !== chartKey) {
-      chartKey = key;
-      runEnd.userData.setText(fixed(plan.duration, 1));
-      const toyPoints = toyLine.geometry.attributes.position.array, flywheelPoints = flywheelLine.geometry.attributes.position.array;
-      for (let i = 0; i < 600; i++) {
-        const sample = toyAt(plan, plan.duration * i / 599);
-        toyPoints.set(chartPoint(sample.clock, sample.phase.onFloor ? sample.v : 0, plan.duration), i * 3);
-        flywheelPoints.set(chartPoint(sample.clock, sample.u, plan.duration), i * 3);
+export function createFrictionDriveToyModel(){
+  const kit=houseModel('Friction-drive toy'),system=kit.part('system','Friction-drive toy and measurements','Charge a flywheel through the rear wheels, then watch its energy drive the toy to a stop.');
+  const hardware=toyGeometry(kit,system),chart=toyCharts(kit,system);
+  kit.control('speed','Push speed',...TOY_DOMAINS.speed,TOY_DEFAULTS.speed,'m/s','End speed of each 150 mm push; changing a setting restarts the experiment.',undefined,{primary:true});
+  kit.control('pushes','Pushes',...TOY_DOMAINS.pushes,TOY_DEFAULTS.pushes,'','Lift and return between pushes. Repeated slipping pushes can add speed; gripping pushes already reach the chosen speed.');
+  kit.control('press','Press down',...TOY_DOMAINS.press,TOY_DEFAULTS.press,'N','Downward force increases available rear-wheel traction.');
+  kit.control('gearing','Gear ratio',...TOY_DOMAINS.gearing,TOY_DEFAULTS.gearing,'','Flywheel revolutions per rear-wheel revolution.',RATIO_OPTIONS.map(({value,label})=>({value,label})),{primary:true});
+  kit.control('floor','Floor',...TOY_DOMAINS.floor,TOY_DEFAULTS.floor,'','Each surface uses assigned grip, skid and rolling-resistance coefficients.',FLOORS.map(({value,label})=>({value,label})));
+  kit.control('release','Release method',...TOY_DOMAINS.release,TOY_DEFAULTS.release,'','Lift and set down at rest, or release while still moving at the end of the final push.',RELEASE_OPTIONS.map(({value,label})=>({value,label})));
+  let clock=0,lastClock=0,key='',restoring=false,disposed=false;
+  const result=kit.finish(values=>{
+    const next=JSON.stringify(values);
+    if(next!==key){
+      if(!restoring)clock=0;key=next;
+      const plan=toyPlan(values),points=[];
+      for(const phase of plan.phases){
+        const count=Math.max(2,Math.ceil(phase.d/.02));
+        for(let i=0;i<=count;i++){const s=phaseAt(plan,phase,phase.d*i/count);points.push([phase.t0+phase.d*i/count,phase.onFloor?s.v:0,s.u]);}
       }
-      for (const line of [toyLine, flywheelLine]) { line.geometry.attributes.position.needsUpdate = true; line.geometry.computeBoundingSphere(); }
-      base.material.color.set(FLOOR_COLORS[plan.values.floor]);
+      if(points.length>5000)throw new RangeError('Toy chart capacity exceeded');
+      points.forEach(([t,v,u],i)=>{
+        chart.toyLine.geometry.attributes.position.array.set(chart.point(t/plan.duration,v/2.5),i*3);
+        chart.wheelLine.geometry.attributes.position.array.set(chart.point(t/plan.duration,u/2.5),i*3);
+      });
+      for(const line of [chart.toyLine,chart.wheelLine]){line.geometry.setDrawRange(0,points.length);line.geometry.attributes.position.needsUpdate=true;line.geometry.computeBoundingSphere();}
+      chart.endText.userData.setText(fixed(plan.duration,1));hardware.base.material.color.set(FLOOR_COLORS[values.floor]);
     }
-
-    // The toy: lifted or on the floor, its wheels turned by how far their rims have run.
-    const lift = mm(now.height * 1000), wheel = -now.turned / TOY.wheel, angles = trainAngles(ratio, wheel);
-    for (const group of [body, wheelsPart, gearsPart, flywheelPart, handPart]) group.position.y = lift;
-    wheels.forEach(item => { item.rotation.z = wheel; });
-    const [[T1, t1]] = GEARS[ratio];
-    for (const [each, set] of Object.entries(sets)) {
-      set.set.visible = Number(each) === ratio;
-      if (Number(each) !== ratio) continue;
-      const turning = {axleGear: [angles.axleGear, 1], pinion: [angles.pinion, T1 / t1], second: [angles.second, T1 / t1], flywheelPinion: [angles.flywheel, ratio]};
-      for (const [name, [angle, factor]] of Object.entries(turning)) {
-        const item = set[name], blurred = drawnTurns(now.u, factor) > BLUR;
-        item.group.rotation.z = angle;
-        item.sharp.visible = !blurred;
-        item.blur.visible = blurred;
+    const plan=toyPlan(values),now=toyAt(plan,clock);clock=now.clock;
+    const wheel=-now.turned/TOY.wheel,frontWheel=-now.frontTurned/TOY.wheel,angles=trainAngles(plan.ratio,wheel);
+    hardware.machine.position.y=hardware.hand.position.y=now.height*1000*MM;
+    hardware.wheels.forEach(item=>{item.group.rotation.z=item.front?frontWheel:wheel;});
+    for(const [ratio,set]of Object.entries(hardware.sets)){
+      const active=Number(ratio)===plan.ratio;set.nodes.forEach(g=>{g.visible=active;});if(!active)continue;
+      const first=GEARS[ratio][0][0]/GEARS[ratio][0][1];
+      for(const [name,angle,factor]of [['axleGear',angles.axleGear,1],['pinion',angles.pinion,first],['second',angles.second,first],['flywheelPinion',angles.flywheel,plan.ratio]]){
+        const g=set[name];g.group.rotation.z=angle;const blur=drawnTurns(now.u,factor)>BLUR;g.sharp.visible=!blur;g.blur.visible=blur;
       }
-      flywheel.position.set(mm(set.centers.flywheel[0]), mm(set.centers.flywheel[1]), mm(LAYOUT.flywheelZ));
+      set.flywheel.rotation.z=angles.flywheel;const blur=drawnTurns(now.u,plan.ratio)>BLUR;set.disk.visible=!blur;set.marks.forEach(m=>{m.visible=!blur;});set.blur.visible=blur;
     }
-    flywheel.rotation.z = angles.flywheel;
-    const spinning = drawnTurns(now.u, ratio) > BLUR;
-    flywheelDisk.visible = !spinning;
-    flywheelMarks.forEach(mark => { mark.visible = !spinning; });
-    flywheelBlur.visible = spinning;
-
-    // The hand holds the toy until it lets go, pressing while it pushes.
-    const holding = !released, pressing = holding && (clock === 0 || now.kind === 'pushing');
-    handPart.visible = holding;
-    const arrow = pressing ? 2.5 * plan.values.press : 0;
-    press.userData.setLength(mm(arrow));
-    press.position.set(mm(-5), mm(66 + arrow), 0);
-
-    // The floor slides back as the toy moves forward.
-    const along = now.x * 1000;
-    seams.forEach((seam, k) => seam.position.set(mm(wrap(k * FLOOR.spacing - along)), mm(0.15), 0));
-    const markPlace = ((FLOOR.mark / 2 - along) % FLOOR.mark + FLOOR.mark) % FLOOR.mark - FLOOR.mark / 2;
-    mark.visible = markPlace >= -FLOOR.half && markPlace < FLOOR.half;
-    mark.position.set(mm(markPlace), mm(0.25), 0);
-
-    // Charts.
-    cursor.geometry.attributes.position.array.set([...chartPoint(now.clock, 0, plan.duration), ...chartPoint(now.clock, CHART.top, plan.duration)]);
-    cursor.geometry.attributes.position.needsUpdate = true;
-    const e = now.energy, parts = [now.flywheel, now.motion, e.skid, e.gears + e.bearing, e.rolling], total = parts.reduce((sum, value) => sum + value, 0);
-    let left = CHART.left;
-    shares.forEach((segment, k) => {
-      const width = total > 1e-12 ? parts[k] / total * CHART.width : 0;
-      segment.visible = width > 1e-9;
-      segment.scale.x = mm(Math.max(width, 1e-6));
-      segment.position.x = mm(left + width / 2);
-      left += width;
-    });
-
-    const onFloor = now.phase.onFloor, grip = now.kind === 'lifted' ? 'In the air' : now.skidding ? 'Skidding' : clock === 0 || clock >= plan.duration ? 'At rest' : 'Gripping';
-    const gripHint = plan.grips ? `A push needs ${fixed(plan.need, 2)} N of grip, and pressing with ${fixed(plan.values.press, 0)} N the floor gives up to ${fixed(plan.supply, 2)} N: the wheels grip once the hand catches up with them.` : `A push needs ${fixed(plan.need, 2)} N of grip, but pressing with ${fixed(plan.values.press, 0)} N the floor gives only ${fixed(plan.supply, 2)} N: the wheels skid.`;
-    const rolledSoFar = Math.max(0, now.x - plan.releaseAt.x);
-    return {
-      state: {...plan, now, released, wheel, angles, blurred: spinning, lift, arrow, along},
-      readings: [
-        r('Your result', clock === 0 ? `Ready · ${plan.values.pushes} ${plan.values.pushes === 1 ? 'push' : 'pushes'}, then let go; press Play` : clock >= plan.duration ? `Rolled ${fixed(plan.rolled, 2)} m after letting go, stopping ${fixed(plan.duration - plan.releaseAt.t, 1)} s later` : `${now.stage} · ${fixed(now.clock, 2)} s`),
-        r('Toy', `${fixed(onFloor ? now.v : 0, 2)} m/s on the floor`, released ? `${fixed(rolledSoFar, 2)} m since letting go.` : 'Held by the hand.'),
-        r('Flywheel', `${fixed(now.rpm, 0)} rpm, ${fixed(now.u, 2)} m/s in toy terms`, `Feels like ${fixed(plan.felt * 1000, 0)} g of extra mass at the wheels; lifted, it would whirr for ${fixed(now.u * plan.felt / plan.bearing, 1)} s.`),
-        r('Wheels', grip, gripHint),
-        r('Energy', `${fixed(now.flywheel, 3)} J in the flywheel, ${fixed(now.motion, 3)} J in the toy’s motion`, `The hand has put in ${fixed(e.hand, 3)} J: ${fixed(e.skid, 3)} J lost skidding, ${fixed(e.gears + e.bearing, 3)} J in the gears and bearings, ${fixed(e.rolling, 3)} J rolling.`),
-      ],
-    };
+    const released=clock>=plan.releaseAt.t,holding=!released,pressing=holding&&(clock===0||now.kind==='pushing');
+    hardware.hand.visible=holding;hardware.press.userData.setLength((pressing?values.press*2.5:0)*MM);hardware.press.position.set(-5*MM,(65+(pressing?values.press*2.5:0))*MM,0);
+    const along=now.x*1000;
+    hardware.seams.forEach((seam,i)=>{seam.position.x=wrap(i*FLOOR.spacing-along)*MM;});
+    const markPlace=Math.round(along/FLOOR.mark)*FLOOR.mark-along;hardware.mark.visible=markPlace>=-FLOOR.half&&markPlace<FLOOR.half;hardware.mark.position.x=markPlace*MM;
+    chart.cursor.geometry.attributes.position.array.set([...chart.point(clock/plan.duration,0),...chart.point(clock/plan.duration,1)]);chart.cursor.geometry.attributes.position.needsUpdate=true;chart.cursor.geometry.computeBoundingSphere();
+    const e=now.energy,parts=[now.flywheel,now.motion,now.potential,e.skid,e.gears+e.bearing,e.rolling],total=parts.reduce((a,b)=>a+b,0);
+    let left=-1.7;
+    chart.shares.forEach((segment,i)=>{const width=total>1e-12?3.4*parts[i]/total:0;segment.visible=width>1e-10;segment.scale.x=Math.max(1e-8,width);segment.position.x=left+width/2;left+=width;chart.numbers[i].userData.setText(fixed(parts[i],3)+' J');});
+    chart.workText.userData.setText('Net hand work: '+fixed(e.hand,3)+' J');
+    const resultText=now.complete?'Stopped · '+fixed(plan.rolled,2)+' m after release':clock===0?'Ready · push, lift, release and coast':now.stage+' · '+fixed(clock,2)+' s';
+    const contact=now.complete||clock===0?'At rest':!now.phase.onFloor?'Lifted clear of the floor':now.skidding?'Rear wheels skidding':'Rolling without slip';
+    return {state:{...plan,now,complete:now.complete,clock,released,wheel,frontWheel,angles},readings:[
+      r('Your result',resultText,now.complete?'Both axles and the flywheel have stopped. Play repeats the selected settings.':'Playback runs at one quarter of physical speed. Inspection preserves this state.'),
+      r('Toy speed',fixed(now.phase.onFloor?now.v:0,2)+' m/s on the floor',released?fixed(Math.max(0,now.x-plan.releaseAt.x),2)+' m since release.':'During a carry the hand guides the toy; it is not driving along the floor.'),
+      r('Flywheel',fixed(now.rpm,0)+' rpm',fixed(plan.ratio,0)+' flywheel turns for each rear-wheel turn. Its equivalent inertia at the wheel rims is '+fixed(plan.felt*1000,0)+' g.'),
+      r('Wheel contact',contact,'Front rims roll at body speed on the floor. Rear rim speed is '+fixed(now.u,2)+' m/s; a difference shows slip.'),
+      r('Grip during a push',fixed(plan.need,2)+' N needed · '+fixed(plan.supply,2)+' N available',plan.grips?'After touchdown slip settles, the floor can maintain rolling grip.':'The assigned static limit is too small; a push slips and charges the flywheel less.'),
+      r('Power direction',now.drive==='floor'?'Rear wheels → flywheel':now.drive==='flywheel'?'Flywheel → rear wheels':'No power through the gear mesh',!now.phase.onFloor?'The flywheel coasts against its bearings while the hand carries the toy.':'The same train transmits power in both directions.'),
+      r('Stored energy',fixed(now.flywheel,3)+' J in the flywheel',fixed(now.motion,3)+' J body motion; '+fixed(now.potential,3)+' J raised-body energy.'),
+      r('Energy balance',fixed(e.hand,3)+' J net hand work',fixed(e.skid+e.gears+e.bearing+e.rolling,3)+' J accumulated losses. Net hand work includes energy returned to the hand during a carry.'),
+      r('After release',now.complete?fixed(plan.rolled,2)+' m · '+fixed(plan.duration-plan.releaseAt.t,2)+' s':'Run to a stop to measure the outcome','Range depends on charging, release speed, traction and assigned losses; it is not a product measurement.'),
+    ]};
   });
-
-  const render = result.update;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(result.getState().duration, clock + dt / SLOW); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = lastClock = 0; return render(result.defaults); };
-  result.actions = [
-    {label: 'Inspect: the gear train', part: 'gears', view: 'front', replay: false, run() { clock = 0.08; return render(); }},
-    {label: 'Inspect: the flywheel', part: 'flywheel', view: 'front', replay: false, run() { clock = result.getState().params.T; return render(); }},
-    {label: 'Inspect: the skid as it starts', part: 'wheels', view: 'front', replay: false, run() { clock = result.getState().releaseAt.t + 0.05; return render(); }},
-    {label: 'Inspect: the charts', part: 'charts', view: 'front', replay: false, run() { clock = result.getState().duration; return render(); }},
-  ];
-  result.playback = {
-    label: 'Push and let go',
-    description: 'The pushes and the run, at a quarter of real speed.',
-    stepLabel: 'Advance half a second',
-    advance: result.advance,
-    step: () => result.advance(0.5 * SLOW),
-    complete: () => clock >= result.getState().duration,
-    blocked: () => false,
-  };
-
-  root.rotation.set(0.45, -0.55, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, body, cabin, wheelsPart, wheels, gearsPart, sets, flywheelPart, flywheel, flywheelDisk, flywheelMarks, flywheelBlur, handPart, palm, press, floorPart, base, seams, mark, charts, toyLine, flywheelLine, cursor, shares, MM, SLOW, BLUR, MODULE};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  const render=result.update;
+  result.advance=dt=>{if(Number.isFinite(dt)&&dt>0)clock+=dt/SLOW;return render();};
+  result.animate=time=>{const dt=Number.isFinite(time)?Math.max(0,time-lastClock):0;if(Number.isFinite(time))lastClock=time;return result.advance(dt);};
+  result.reset=(initial={})=>{clock=Number.isFinite(initial.time)?Math.max(0,initial.time):0;lastClock=0;restoring=true;try{return render({...result.defaults,...(initial.settings||{})});}finally{restoring=false;}};
+  result.replayState=()=>({settings:result.getState().values,time:0});
+  const inspect=(label,part,isolate=false,view='front')=>({label,part,isolate,view,replay:false,run:()=>result.update()});
+  result.actions=[inspect('Inspect: complete experiment','experiment'),inspect('Inspect: toy car','machine'),inspect('Inspect: supported gears','transmission',true),inspect('Inspect: flywheel and bearings','storage',true),inspect('Inspect: wheels and axles','running-gear',true),inspect('Read the speed chart','speed-chart',true),inspect('Read the energy chart','energy-chart',true)];
+  result.playback={label:'Push and let go',description:'One quarter of physical speed. Rapid gears are blurred; pause near the start to inspect their teeth.',stepLabel:'Advance one tenth of a second',advance:result.advance,step:()=>result.advance(.1*SLOW),complete:()=>result.getState().complete,blocked:()=>false};
+  result.initialPart=result.autoFramePart='machine';result.initialView='front';result.initialCutaway=true;result.frameVisibleOnly=true;result.framePadding=.63;result.selectionOutline=false;result.transparentBackground=true;
+  result.partViewDirections={};
+  for(const p of result.parts)result.partViewDirections[p.id]={front:[.55,1.1,3],back:[-.55,.5,-3],side:[3,.3,0],top:[0,3,0],bottom:[0,-3,0]};
+  for(const id of ['charts','speed-chart','energy-chart']){result.partViewDirections[id]={front:[0,0,3]};Object.assign(result.parts.find(p=>p.id===id),{framePadding:.43,maxZoom:150});}
+  result.thumbnailOmit=[hardware.hand,hardware.floor,chart.charts];
+  result.topology={system,...hardware,...chart,MM,SLOW,BLUR};
+  const dispose=result.dispose;result.dispose=()=>{if(!disposed){disposed=true;dispose();}};
   return result;
 }

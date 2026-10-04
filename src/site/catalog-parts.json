@@ -959,6 +959,18 @@
       "parentId": "system"
     }
   ],
+  "friction-drive-toy": [
+    {
+      "id": "experiment",
+      "name": "Toy, hand and floor",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Speed and energy charts",
+      "parentId": "system"
+    }
+  ],
   "window-shade": [
     {
       "id": "window",
