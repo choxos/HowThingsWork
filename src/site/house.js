@@ -27,10 +27,10 @@ import {createKitchenModel} from './kitchen-models.js';
 const allLessons={...electronicLessons,...dailyLifeLessons,...kitchenLessons,...timeLessons,...utilityLessons,...safetyLessons,...cleaningLessons,...heatingLessons,...studyLessons,...playLessons};
 import {mountDailyLifeViewer} from './daily-life-viewer.js';
 export function createHouseModel(name){return createElectronicModel(name)||createDailyLifeMachine(name)||createKitchenModel(name)||createTimeModel(name)||createUtilityModel(name)||createSafetyModel(name)||createCleaningModel(name)||createHeatingModel(name)||createStudyModel(name)||createPlayModel(name);}
-const roomTiles={'Kitchen':[0,0],'Measuring and time':[50,0],'Sewing corner':[100,0],'Water and plumbing':[0,50],'Cleaning cupboard':[50,50],'Play and everyday objects':[100,50],'Study':[0,100],'Safety corner':[50,100],'Heating and cooling':[100,100]};
+const roomTiles={'Kitchen':[0,0],'Measuring and time':[50,0],'Sewing corner':[100,0],'Water and plumbing':[0,50],'Laundry and cleaning':[50,50],'Play and everyday objects':[100,50],'Study':[0,100],'Safety corner':[50,100],'Heating and cooling':[100,100]};
 // Pin centers in percent of the house picture; on a phone the labels wrap, so neighbors keep at least a label's width apart.
 const roomPositions=[[22,68],[79,32],[60,65],[23,32],[57,35],[81,68],[44,78],[44,56],[85,53],[91,43]];
-const roomLabels=['Entrance hall','Kitchen','Time & measuring','Sewing','Water & plumbing','Cleaning','Play','Study','Safety','Heating'];
+const roomLabels=['Entrance hall','Kitchen','Time & measuring','Sewing','Water & plumbing','Laundry','Play','Study','Safety','Heating'];
 const thumbnail='<svg viewBox="0 0 360 300" aria-hidden="true"></svg>';
 
 
@@ -42,7 +42,7 @@ const roomNotes={
  'Measuring and time':'Find out how motion becomes a measurement, and how repeating motion keeps time.',
  'Sewing corner':'Follow one stitch from the needle to the bobbin, then watch the cloth move.',
  'Water and plumbing':'Trace the water from the tap through valves, tanks, and meters.',
- 'Cleaning cupboard':'Discover how moving air, water, and electric charge carry dirt away.',
+ 'Laundry and cleaning':'Follow spinning water, moving air, and electric charge through laundry and cleaning equipment.',
  'Play and everyday objects':'Look inside the toys and controllers that turn your actions into movement.',
  Study:'Explore writing, screens, signals, and the machines that work with information.',
  'Safety corner':'Trace household circuits, switching, metering, and electrical protection.',

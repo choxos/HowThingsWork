@@ -1,229 +1,218 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, chartText} from './scene-kit.js';
-import {sampleSpin, spinPlan, shaking, omegaOf, SPIN, SPIN_DEFAULTS, SPIN_DOMAINS} from './spin-dryer-physics.js';
+import {lineObject, chartText, textLabel} from './scene-kit.js';
+import {spinPlan, sampleSpinPlan, rotationAt, speedAt, shaking, omegaOf, dropFlight, SPIN as S, SPIN_DEFAULTS as D, SPIN_DOMAINS, EXPERIMENTS} from './spin-dryer-physics.js';
 
-// ---------------------------------------------------------------------------
-// Spin dryer: cabinet on springs, outer tub, perforated drum, laundry, motor
-// and drain, with its front and side cut away.
-//
-// Scale: one millimeter is 0.004 scene units for every length, including the
-// cabinet's shaking, drawn at its true amplitude.
-//
-// Time: the three-minute spin plays six times faster than real time. The drum
-// is drawn turning once a second at 2,800 rpm and slower in proportion, not at
-// its real speed; the cabinet is drawn swaying four times a second at
-// its true amplitude, not at the drum's speed. The flying drops stand for water
-// leaving the laundry and are more numerous the faster it leaves.
-//
-// Colors: the laundry goes from dark gray-blue, soaked, to cream, as dry as
-// spinning can make it.
-//
-// Charts, beside the cabinet: the water left in the laundry over the spin, 0 to
-// 185 s across and 0 to 160% up, with the level the speed allows in gray; and
-// the cabinet's shaking against drum speed, 0 to 3,000 rpm across and 0 to 5
-// mm up, with a dot for now. Not to the dryer's scale.
-// ---------------------------------------------------------------------------
-
-const MM = 0.004;
-const TAU = Math.PI * 2;
-const DRUM = {radius: SPIN.radius * 1000, height: 260, bottom: 200};
-const LAYER = SPIN.layer * 1000;
-const SPEED_UP = 6;
-const DROPS = 48;
-const WET = new THREE.Color(0x4f6272), DRY = new THREE.Color(0xf0dfaf);
-const MOISTURE_CHART = {left: 470, bottom: 420, width: 240, height: 200};
-const SHAKE_CHART = {left: 470, bottom: 120, width: 240, height: 200};
-const JUG = {x: 330, radius: 90, height: 180};
-const END = SPIN.duration + 5;
-
-export const laundryColor = moisture => WET.clone().lerp(DRY, clamp01((SPIN.soaked - moisture) / (SPIN.soaked - SPIN.bound)));
-const clamp01 = x => Math.max(0, Math.min(1, x));
-export const moisturePoint = (t, moisture) => [(MOISTURE_CHART.left + t / END * MOISTURE_CHART.width) * MM, (MOISTURE_CHART.bottom + clamp01(moisture / 1.6) * MOISTURE_CHART.height) * MM, 0];
-export const shakePoint = (rpm, amplitude) => [(SHAKE_CHART.left + rpm / 3000 * SHAKE_CHART.width) * MM, (SHAKE_CHART.bottom + clamp01(amplitude * 1000 / 5) * SHAKE_CHART.height) * MM, 0];
-/** Drawn angle of the drum: a turn a second at 2,800 rpm, in proportion to its speed through the run-up. */
-export const drawnDrumAngle = (rpm, time) => {
-  const ramp = SPIN.ramp, t = Math.min(time, SPIN.duration), rate = TAU * rpm / 2800;
-  return rate * (t <= ramp ? t * t / (2 * ramp) : ramp / 2 + (t - ramp));
-};
-export const swayAt = (amplitude, time) => amplitude * Math.sin(TAU * 4 * time);
-/** Height of water in the jug, in millimeters, for this many kilograms. */
-export const jugLevel = kilograms => kilograms / 1000 / (Math.PI * ((JUG.radius - 2) / 1000) ** 2) * 1000;
+export const MM = .004;
+export const G = Object.freeze({drumBottom: 250, drumHeight: 320, tubFloor: 230, tubHeight: 365, platform: 115, springBase: 25, springTop: 110, jugX: 340, jugRadius: 95, jugFloor: 6, jugHeight: 200, panelCount: 24, holeRadius: 7, loadHeightPerKg: 70});
+const TAU = 2 * Math.PI, BLUE = 0x477f9b, WET = new THREE.Color(0x4f6272), DRY = new THREE.Color(0xeddca9);
+const point = a => a.map(n => n * MM);
+export const laundryColor = moisture => WET.clone().lerp(DRY, Math.max(0, Math.min(1, (S.soaked - moisture) / (S.soaked - S.residual))));
+export const waterChartPoint = (t, kg) => point([-130 + t / S.duration * 260, -100 + kg / 6 * 210, 0]);
+export const shakeChartPoint = (rpm, amplitude) => point([-130 + rpm / 3000 * 260, -100 + amplitude / .018 * 210, 0]);
+export const jugLevel = mass => mass / S.density * 1e9 / (Math.PI * G.jugRadius ** 2);
+const lathe = (profile, start = 0, span = TAU) => new THREE.LatheGeometry(profile.map(([x, y]) => new THREE.Vector2(x * MM, y * MM)), 96, start, span);
+function surface(kit, geometry, color, parent) {
+  const m = kit.cylinder(1, 1, [0, 0, 0], color, parent); m.geometry.dispose(); m.geometry = geometry; m.material = m.material.clone(); m.material.side = THREE.DoubleSide; return m;
+}
+/** A genuinely perforated metal panel, bent onto a cylindrical drum. */
+export function drumPanelGeometry() {
+  const radius = 148, half = radius * Math.PI / G.panelCount, depth = 2, vertices = [];
+  const bend = (u, y, d) => [(radius + d) * Math.cos(u / radius) * MM, y * MM, -(radius + d) * Math.sin(u / radius) * MM];
+  const quad = (a, b, c, d) => {vertices.push(...a, ...b, ...c, ...a, ...c, ...d);};
+  // Subdivide each perforated cell before bending. Long triangles across a
+  // curved sheet would otherwise cut into the laundry and create false facets.
+  const corners = [-1, 1].flatMap(x => [-1, 1].map(y => (Math.atan2(y * 20, x * half) + TAU) % TAU));
+  const angles = [...new Set([...Array.from({length: 64}, (_, i) => i * TAU / 64), ...corners])].sort((a, b) => a - b);
+  for (let row = 0; row < 7; row++) {
+    const cy = 30 + row * 40;
+    const ring = (angle, mix) => {const x = Math.cos(angle), y = Math.sin(angle), outer = Math.min(half / Math.max(1e-15, Math.abs(x)), 20 / Math.max(1e-15, Math.abs(y))), r = G.holeRadius + mix * (outer - G.holeRadius); return [r * x, cy + r * y];};
+    for (let i = 0; i < angles.length; i++) {
+      const a = angles[i], b = angles[(i + 1) % angles.length];
+      for (let band = 0; band < 4; band++) {
+        const p = ring(a, band / 4), q = ring(b, band / 4), r = ring(b, (band + 1) / 4), t = ring(a, (band + 1) / 4);
+        quad(bend(...p, 0), bend(...q, 0), bend(...r, 0), bend(...t, 0));
+        quad(bend(...t, depth), bend(...r, depth), bend(...q, depth), bend(...p, depth));
+      }
+      const p = ring(a, 0), q = ring(b, 0); quad(bend(...p, 0), bend(...p, depth), bend(...q, depth), bend(...q, 0));
+    }
+  }
+  for (const [bottom, top] of [[0, 10], [290, G.drumHeight]]) for (let i = 0; i < 12; i++) {
+    const a = -half + 2 * half * i / 12, b = -half + 2 * half * (i + 1) / 12;
+    for (const d of [0, depth]) quad(bend(a, bottom, d), bend(b, bottom, d), bend(b, top, d), bend(a, top, d));
+  }
+  const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere(); return geometry;
+}
 
 export function createSpinDryerModel() {
-  const kit = houseModel('Spin dryer'), {root, part, control, finish, covers} = kit;
-  const system = part('system', 'Spin dryer', 'A perforated drum spins wet laundry so fast that water is flung out through its holes. The drum hangs in a tub on springs, so an unbalanced load shakes the cabinet. Drawn at true size, front and side cut away.', [0, 0, 0]);
+  const kit = houseModel('Spin dryer'), {root, part, control} = kit;
+  const system = part('system', 'Spin dryer', 'A supported vertical-axis drum extracts water into a separate collector. Front panels are cut away for inspection. Choose a timed extraction or a separate steady vibration experiment.');
+  const box = (size, pos, color, parent) => kit.box(point(size), point(pos), color, parent);
+  const cylinder = (radius, height, pos, color, parent) => kit.cylinder(radius * MM, height * MM, point(pos), color, parent);
+  const rod = (a, b, radius, color, parent) => kit.rod(point(a), point(b), radius * MM, color, parent);
+  const label = (parent, text, pos, height = 13, width) => {const m = textLabel(parent, text, {position: point(pos), height: height * MM, ...(width ? {width: width * MM} : {})}); m.raycast = () => {}; return m;};
+  const setRod = (m, a, b) => {const av = new THREE.Vector3(...point(a)), bv = new THREE.Vector3(...point(b)), delta = bv.clone().sub(av); m.position.copy(av).add(bv).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.clone().normalize()); m.scale.y = delta.length() / m.geometry.parameters.height;};
+  const frame = part('frame', 'Fixed cabinet and base', 'The cabinet stays on the floor. Its front and right panels are omitted so the supported tub, drum and drive can be inspected.', [0, 0, 0], system);
+  box([440, 20, 440], [0, 10, 0], 'cream', frame);
+  for (const x of [-205, 205]) {box([18, 610, 18], [x, 325, -205], 'metal', frame); box([35, 5, 35], [x, 22.5, -150], 'ink', frame);}
+  box([430, 610, 6], [0, 325, -217], 'cream', frame);
+  box([430, 14, 18], [0, 628, -205], 'metal', frame);
+  for (const x of [-170, 170]) for (const z of [-170, 170]) cylinder(20, 10, [x, -5, z], 'ink', frame);
 
-  const cabinet = part('cabinet', 'Cabinet', 'The steel case, 420 mm wide and 620 mm tall. It sways at its true amplitude when the load is unbalanced.', [0, 0, 0], system);
-  const shell = new THREE.Group();
-  cabinet.add(shell);
-  kit.box([420 * MM, 20 * MM, 420 * MM], [0, 10 * MM, 0], 'cream', shell);
-  kit.box([420 * MM, 620 * MM, 8 * MM], [0, 310 * MM, -206 * MM], 'cream', shell);
-  kit.box([8 * MM, 620 * MM, 420 * MM], [-206 * MM, 310 * MM, 0], 'cream', shell);
-  covers.push(kit.box([8 * MM, 620 * MM, 420 * MM], [206 * MM, 310 * MM, 0], 'cream', shell));
-  covers.push(kit.box([420 * MM, 620 * MM, 8 * MM], [0, 310 * MM, 206 * MM], 'cream', shell));
-  kit.box([420 * MM, 12 * MM, 420 * MM], [0, 626 * MM, 0], 'cream', shell);
+  const lid = part('lid', 'Lid and rotation interlock', 'Closing the lid enables the prescribed spin. Opening it before a fresh trial prevents rotation. The lid is drawn with a cutaway; this is not a model of safely opening a running appliance.', [0, 628 * MM, -205 * MM], system);
+  const lidHinge = new THREE.Group(); lid.add(lidHinge);
+  box([430, 8, 100], [0, 6, 45], 'cream', lidHinge);
+  rod([-205, 0, 0], [205, 0, 0], 5, 'metal', lid);
+  const latch = box([24, 16, 16], [205, -8, 0], 'gold', lid); latch.material = latch.material.clone();
+  const lidText = label(lidHinge, 'Lid closed · cutaway', [0, 28, 30], 13, 250);
 
-  const springs = part('springs', 'Suspension springs', 'Four springs hold the tub and drum, 25 kg with the cabinet’s moving parts. They let the drum settle round its spinning load instead of shaking the floor.', [0, 0, 0], system);
-  const coils = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => kit.spring([sx * 150 * MM, 20 * MM, sz * 150 * MM], 14 * MM, 150 * MM, 7, springs, 2.5 * MM));
+  const assembly = part('assembly', 'Supported tub and drive assembly', 'Tub, motor, shaft and drum share a moving platform. In the vibration experiment this complete 25 kg equivalent assembly moves together on an ideal isotropic spring and damper support.', [0, 0, 0], system);
+  const mounts = part('mounts', 'Platform and bearing supports', 'The platform carries the motor and the outer tub. Two sealed bearings constrain the shaft while allowing the drum to rotate.', [0, 0, 0], assembly);
+  box([350, 10, 350], [0, 110, 0], 'metal', mounts);
+  for (const x of [-145, 145]) for (const z of [-110, 110]) rod([x, 115, z], [x, 224, z], 6, 'metal', mounts);
+  const bearings = [];
+  for (const y of [216, 232]) {const b = surface(kit, lathe([[7, -4], [15, -4], [15, 4], [7, 4], [7, -4]]), 'ink', mounts); b.position.y = y * MM; bearings.push(b);}
+  for (const side of [-1, 1]) {rod([side * 75, 115, 0], [side * 75, 216, 0], 5, 'metal', mounts); box([65, 12, 35], [side * 47.5, 216, 0], 'metal', mounts);}
+  const motor = part('motor', 'Motor and connected shaft', 'The motor housing is fixed to the moving platform. Its rotor shaft passes through supported bearings and a tub-floor seal, then directly turns the drum. Speed is prescribed; motor torque and electrical losses are not calculated.', [0, 0, 0], assembly);
+  const motorBody = cylinder(58, 90, [0, 160, 0], 'gold', motor);
+  const shaft = cylinder(6, 139, [0, 184.5, 0], 'metal', motor);
+  const shaftMark = box([5, 30, 3], [6, 193, 0], 'clay', motor);
+  const rotor = new THREE.Group(); motor.add(rotor); rotor.add(shaft, shaftMark);
 
-  const tub = part('tub', 'Outer tub and drain', 'A plastic tub around the drum catches the flung water and runs it down the drain spout into the jug.', [0, 0, 0], system);
-  const tubWall = kit.cylinder(185 * MM, 300 * MM, [0, (DRUM.bottom + 130) * MM, 0], 'blue', tub);
-  tubWall.material = tubWall.material.clone();
-  tubWall.material.transparent = true;
-  tubWall.material.opacity = 0.2;
-  tubWall.material.depthWrite = false;
-  kit.rod([0, (DRUM.bottom - 20) * MM, 0], [JUG.x * MM, (JUG.height + 10) * MM, 0], 8 * MM, 'metal', tub);
-  const jug = kit.cylinder(JUG.radius * MM, JUG.height * MM, [JUG.x * MM, JUG.height / 2 * MM, 0], 'blue', tub);
-  jug.material = jug.material.clone();
-  jug.material.transparent = true;
-  jug.material.opacity = 0.25;
-  jug.material.depthWrite = false;
-  const collected = kit.cylinder((JUG.radius - 2) * MM, 1, [JUG.x * MM, 0, 0], 'blue', tub);
-
-  const drum = part('drum', 'Perforated drum', 'A steel drum 300 mm across, pierced with holes. At 2,800 rpm its wall moves at 44 m/s, and the water feels over 1,300 times its weight.', [0, DRUM.bottom * MM, 0], system);
-  const spinner = new THREE.Group();
-  drum.add(spinner);
-  const drumWall = kit.cylinder(DRUM.radius * MM, DRUM.height * MM, [0, DRUM.height / 2 * MM, 0], 'metal', spinner);
-  drumWall.material = drumWall.material.clone();
-  drumWall.material.transparent = true;
-  drumWall.material.opacity = 0.3;
-  drumWall.material.depthWrite = false;
-  for (let row = 0; row < 6; row++) for (let i = 0; i < 18; i++) {
-    const a = TAU * (i + row / 2) / 18;
-    kit.sphere(4 * MM, [DRUM.radius * Math.sin(a) * MM, (30 + row * 40) * MM, DRUM.radius * Math.cos(a) * MM], 'ink', spinner);
+  const springs = part('springs', 'Springs and dampers', 'Four supports connect the fixed base to the moving platform. The calculation uses equivalent horizontal stiffness 40 kN/m and adjustable viscous damping, not a stress analysis of these coils.', [0, 0, 0], system);
+  const springData = [];
+  for (const x of [-150, 150]) for (const z of [-150, 150]) {
+    box([30, 5, 30], [x, 22.5, z], 'ink', frame);
+    box([30, 5, 30], [x, 102.5, z], 'ink', mounts);
+    const coil = kit.spring([0, 0, 0], 10 * MM, 80 * MM, 6, springs, 1.8 * MM);
+    springData.push({coil, bottom: [x, 25, z], top: [x, 105, z]});
   }
-  kit.cylinder(20 * MM, 40 * MM, [0, -20 * MM, 0], 'ink', drum);
+  const dampers = [];
+  for (const [a, b] of [[[-215, 65, 0], [-160, 105, 0]], [[215, 65, 0], [160, 105, 0]], [[0, 65, -215], [0, 105, -160]], [[0, 65, 215], [0, 105, 160]]]) {
+    rod([a[0], 20, a[2]], a, 5, 'metal', frame);
+    dampers.push({a, b, tube: rod(a, b, 5, 'gold', springs), piston: rod(a, b, 2.5, 'metal', springs)});
+  }
 
-  const laundry = part('laundry', 'Laundry', 'Wet cotton pressed into a layer 40 mm thick against the drum wall. Its color shows how much water is left: dark when soaked, cream when spun as dry as the speed allows. The dark lump is the unbalanced part of the load.', [0, DRUM.bottom * MM, 0], system);
-  const layerGeometry = new THREE.LatheGeometry([[DRUM.radius - LAYER, 10], [DRUM.radius - 2, 10], [DRUM.radius - 2, DRUM.height - 20], [DRUM.radius - LAYER, DRUM.height - 20], [DRUM.radius - LAYER, 10]].map(([x, y]) => new THREE.Vector2(x * MM, y * MM)), 48);
-  const layerMesh = kit.cylinder(1, 1, [0, 0, 0], 'cream', laundry);
-  layerMesh.geometry.dispose();
-  layerMesh.geometry = layerGeometry;
-  layerMesh.material = layerMesh.material.clone();
-  layerMesh.material.side = THREE.DoubleSide;
-  const lumpHolder = new THREE.Group();
-  laundry.add(lumpHolder);
-  const lump = kit.sphere(1, [(DRUM.radius - 20) * MM, DRUM.height / 2 * MM, 0], 'ink', lumpHolder);
+  const tub = part('tub', 'Outer tub and shaft seal', 'The outer tub catches departing water. Its front half is cut away. A sealed central bearing keeps water out of the motor; the floor feeds a descending outlet.', [0, G.tubFloor * MM, 0], assembly);
+  const tubWall = surface(kit, lathe([[8, 0], [185, 0], [185, G.tubHeight], [188, G.tubHeight], [188, -6], [8, -6], [8, 0]], Math.PI / 2, Math.PI), 'blue', tub);
+  const tubSupportRing = surface(kit, lathe([[175, -6], [188, -6], [188, 0], [175, 0], [175, -6]]), 'blue', tub);
+  const seal = surface(kit, lathe([[6.2, -4], [7, -4], [7, 4], [6.2, 4], [6.2, -4]]), 'ink', tub);
 
-  const water = part('water', 'Flying water', 'Drops leaving the laundry through the drum’s holes, more of them the faster water leaves.', [0, DRUM.bottom * MM, 0], system);
-  const drops = Array.from({length: DROPS}, (_, i) => { const drop = kit.sphere(3 * MM, [0, 0, 0], 'blue', water); drop.userData.angle = TAU * i / DROPS; drop.userData.height = 30 + (i * 37) % 200; return drop; });
+  const drum = part('drum', 'Perforated drum', 'A 300 mm drum has real openings through its metal wall. The bottom and rim retain the load. A removable ideal sleeve closes the openings in the sealed-wall experiment.', [0, G.drumBottom * MM, 0], assembly);
+  const spinner = new THREE.Group(); drum.add(spinner);
+  const panelGeometry = drumPanelGeometry(), panels = [];
+  for (let i = 0; i < G.panelCount; i++) {const m = surface(kit, panelGeometry, 'metal', spinner); m.rotation.y = TAU * i / G.panelCount; panels.push(m);}
+  cylinder(150, 4, [0, -2, 0], 'metal', spinner);
+  cylinder(15, 18, [0, -13, 0], 'metal', spinner);
+  const rim = surface(kit, lathe([[145, 0], [151, 0], [151, 7], [145, 7], [145, 0]]), 'metal', spinner); rim.position.y = (G.drumHeight - 7) * MM;
+  const sleeve = surface(kit, lathe([[150.2, 0], [151.2, 0], [151.2, G.drumHeight], [150.2, G.drumHeight], [150.2, 0]]), 'clay', spinner);
+  const drumStripe = box([5, 3, 6], [149, G.drumHeight + 1, 0], 'gold', spinner);
 
-  const motor = part('motor', 'Motor', 'Turns the drum through its shaft. Most of its work goes into stirring air and turning bearings: 150 W at full speed.', [0, 90 * MM, 0], system);
-  kit.cylinder(60 * MM, 90 * MM, [0, 0, 0], 'gold', motor);
-  kit.rod([0, 45 * MM, 0], [0, 110 * MM, 0], 10 * MM, 'metal', motor);
+  const laundry = part('laundry', 'Wet fabric load', 'This synthetic fabric example starts with 1.5 kg of water per kilogram of dry load. Occupied height grows with the dry load; color lightens as water is removed. The orange marker indicates an imbalance in the separate vibration test.', [0, G.drumBottom * MM, 0], assembly);
+  const laundryRotor = new THREE.Group(); laundry.add(laundryRotor);
+  const layerMesh = surface(kit, lathe([[110, 0], [147.8, 0], [147.8, 1], [110, 1], [110, 0]]), WET.getHex(), laundryRotor); layerMesh.position.y = 4 * MM;
+  const seams = Array.from({length: 12}, (_, i) => {const a = i * TAU / 12; return rod([111 * Math.cos(a), 0, -111 * Math.sin(a)], [147 * Math.cos(a), 0, -147 * Math.sin(a)], .6, 'cream', laundryRotor);});
+  const lump = kit.sphere(10 * MM, [128 * MM, 0, 0], 'clay', laundryRotor);
 
-  const charts = part('charts', 'Charts', 'The water left in the laundry over the spin, and how much the cabinet shakes at each drum speed. Not to the dryer’s scale.', [0, 0, 0], system);
-  const axis = (a, b) => kit.rod(a, b, 1 * MM, 'ink', charts);
-  axis(moisturePoint(0, 0), moisturePoint(END, 0));
-  axis(moisturePoint(0, 0), moisturePoint(0, 1.6));
-  axis(shakePoint(0, 0), shakePoint(3000, 0));
-  axis(shakePoint(0, 0), shakePoint(0, 0.005));
-  const moistureLine = lineObject(Math.round(END / SPIN.every) + 1, 0x2f6690, charts), allowedLine = lineObject(Math.round(END / SPIN.every) + 1, 0x9aa7ad, charts);
-  const shakeLine = lineObject(61, 0xc14f39, charts), moistureCursor = lineObject(2, 0x374736, charts), shakeDot = kit.sphere(6 * MM, [0, 0, 0], 'red', charts);
-  chartText(charts, moisturePoint, {
-    title: 'Water left in the laundry', size: 12 * MM,
-    x: {min: 0, max: END, title: 'Seconds of spinning', ticks: [[0, '0'], [Math.round(END / 2), String(Math.round(END / 2))], [END, String(END)]]},
-    y: {min: 0, max: 1.6, title: 'Water for each kg of cotton', ticks: [[0, '0'], [0.8, '0.8 kg'], [1.6, '1.6 kg']]},
-    legend: [['Left in the laundry', 0x2f6690], ['Driest the speed allows', 0x7a8b83]], legendAt: [END, 1.45],
-  });
-  chartText(charts, shakePoint, {
-    title: 'Cabinet shaking against drum speed', size: 12 * MM,
-    x: {min: 0, max: 3000, title: 'Drum speed (rpm)', ticks: [[0, '0'], [1500, '1,500'], [3000, '3,000']]},
-    y: {min: 0, max: 0.005, title: 'Swing (mm)', ticks: [[0, '0'], [0.0025, '2.5'], [0.005, '5']]},
-    legend: [['Steady swing', 0xc14f39]],
-  });
+  const water = part('water', 'Departing water', 'Enlarged markers depart tangentially from real drum holes and stop at the outer tub. The top-view path is straight; gravity adds a tiny vertical fall. Transit is slowed with the rotor. Markers illustrate flow, not measured drop size or water volume.', [0, G.drumBottom * MM, 0], assembly);
+  const drops = Array.from({length: 36}, (_, i) => {const m = kit.sphere(2.2 * MM, [0, 0, 0], BLUE, water); m.userData.hole = i % G.panelCount; m.userData.row = i % 3; return m;});
+  const tangentGuide = lineObject(2, BLUE, water); tangentGuide.raycast = () => {};
+
+  const drain = part('drain', 'Descending outlet channel', 'An open channel descends from the tub to a collection jug. Water no longer touches the laundry after entering the collector. Transit storage is neglected in the water balance.', [0, 0, 0], assembly);
+  const channelA = [182, 230, 0], channelB = [G.jugX, 205, 0];
+  const length = Math.hypot(channelB[0] - channelA[0], channelB[1] - channelA[1]), channelAngle = Math.atan2(channelB[1] - channelA[1], channelB[0] - channelA[0]);
+  const channel = new THREE.Group(); channel.position.set(...point(channelA)); channel.rotation.z = channelAngle; drain.add(channel);
+  box([length, 2, 22], [length / 2, -1, 0], 'metal', channel);
+  for (const z of [-12, 12]) box([length, 14, 2], [length / 2, 6, z], 'metal', channel);
+  const channelFlow = rod([0, 2, 0], [length, 2, 0], 1.2, BLUE, channel);
+  const outletDrop = rod(channelB, [G.jugX, 7, 0], 1.2, BLUE, drain);
+  const collector = part('collector', 'Collected water and fixed scale', 'The jug has 95 mm internal radius and 200 mm working depth. Its fixed marks show liters. Retained water plus collected water equals the initial water; the largest trial fits without clipping or discarding water.', [G.jugX * MM, 0, 0], system);
+  const jugWall = surface(kit, lathe([[0, 0], [98, 0], [98, 206], [95, 206], [95, 6], [0, 6]], .55, TAU - 1.1), 'blue', collector);
+  const jugWater = surface(kit, lathe([[0, 0], [95, 0], [95, 1], [0, 1]], .55, TAU - 1.1), BLUE, collector); jugWater.position.y = G.jugFloor * MM;
+  jugWater.material.transparent = true; jugWater.material.opacity = .78; jugWater.material.depthWrite = false; jugWater.material.polygonOffset = true; jugWater.material.polygonOffsetFactor = -1; jugWater.material.polygonOffsetUnits = -2;
+  const jugMarks = [];
+  for (let liters = 0; liters <= 5; liters++) {const y = G.jugFloor + jugLevel(liters); jugMarks.push(rod([98, y, 0], [106, y, 0], .7, 'ink', collector)); label(collector, String(liters), [117, y, 0], 11);}
+  label(collector, 'liters', [116, 203, 0], 11);
+
+  const chart = part('chart', 'Water balance through the cycle', 'Two traces account for the initial water: water retained in the fabric and water collected outside it. These are calculated results for the illustrative fabric, not measured cotton performance.', [700 * MM, 330 * MM, 0], system);
+  const shakeChart = part('shake-chart', 'Steady vibration versus speed', 'The exact steady amplitude of the equivalent spring-damper assembly. This is not a startup trajectory. The full 0–18 mm scale contains every permitted imbalance and damping setting.', [700 * MM, 330 * MM, 0], system);
+  for (const c of [chart, shakeChart]) {c.userData.inspectionOnly = c === chart ? 'chart' : 'shake-chart'; c.userData.explosionExcluded = true; box([370, 335, 1], [0, 0, -2], 'cream', c).material = new THREE.MeshBasicMaterial({color: 0xf8f5e9});}
+  for (const [parent, map, xmax, ymax] of [[chart, waterChartPoint, 200, 6], [shakeChart, shakeChartPoint, 3000, .018]]) {kit.rod(map(0, 0), map(xmax, 0), .7 * MM, 'ink', parent); kit.rod(map(0, 0), map(0, ymax), .7 * MM, 'ink', parent);}
+  chartText(chart, waterChartPoint, {title: 'Account for all the water', size: 13 * MM, x: {min: 0, max: 200, title: 'Cycle time (s)', ticks: [[0, '0'], [100, '100'], [200, '200']]}, y: {min: 0, max: 6, title: 'Water mass (kg)', ticks: [[0, '0'], [3, '3'], [6, '6']]}, legend: [['Retained', BLUE], ['Collected', 0xae8056]]});
+  chartText(shakeChart, shakeChartPoint, {title: 'Steady response, not run-up', size: 13 * MM, x: {min: 0, max: 3000, title: 'Fixed speed (rpm)', ticks: [[0, '0'], [1500, '1,500'], [3000, '3,000']]}, y: {min: 0, max: .018, title: 'Orbit radius (mm)', ticks: [[0, '0'], [.009, '9'], [.018, '18']]}, legend: [['Steady amplitude', 0xc14f39]]});
+  const waterLine = lineObject(201, BLUE, chart), collectedLine = lineObject(201, 0xae8056, chart), waterCursor = kit.sphere(3 * MM, [0, 0, 0], 'clay', chart);
+  const shakeLine = lineObject(602, 0xc14f39, shakeChart), shakeCursor = kit.sphere(3 * MM, [0, 0, 0], 'clay', shakeChart);
+  const chartNow = label(chart, '', [0, -155, 2], 11, 340), shakeNow = label(shakeChart, '', [0, -155, 2], 11, 340);
 
   const specs = {
-    rpm: ['Drum speed', 'rpm', null, 'The top speed the drum reaches after its 20 s run-up.'],
-    load: ['Laundry', 'kg dry', null, 'How much cotton, weighed dry. It starts soaked with 1.5 kg of water for each kilogram.'],
-    imbalance: ['Unbalanced lump', 'kg', null, 'Wet laundry bunched on one side of the drum.'],
+    experiment: ['Experiment', '', EXPERIMENTS, 'Choose extraction or a separate fixed-speed vibration experiment. Each changed setting starts a fresh trial.'],
+    rpm: ['Drum speed', 'rpm', null, 'Cycle target speed, or held speed in the vibration experiment. Zero leaves the drum still.'],
+    load: ['Dry fabric load', 'kg', null, 'Each kilogram starts with 1.5 kg of water. Occupied height increases with load. The synthetic fabric parameters stay fixed.'],
+    wall: ['Drum openings', '', [{value: 1, label: 'Perforated wall'}, {value: 0, label: 'Sealed wall'}], 'An ideal sleeve can close every hole. No exit means no extraction even while the drum turns.'],
+    lid: ['Lid before starting', '', [{value: 1, label: 'Closed'}, {value: 0, label: 'Open'}], 'The open-lid interlock blocks rotation. Changing this setting restarts the trial; it does not open a running machine.'],
+    imbalance: ['Off-center equivalent mass', 'kg', null, 'A fixed equivalent mass at 130 mm radius excites the whole supported assembly. It is not an additional fabric load.'],
+    damping: ['Damping ratio', '', null, 'Fraction of critical damping. More damping lowers the steady response near resonance.'],
   };
-  for (const [name, [min, max, step]] of Object.entries(SPIN_DOMAINS)) {
-    const [label, unit, , help] = specs[name];
-    control(name, label, min, max, step, SPIN_DEFAULTS[name], unit, help);
-  }
-
-  let clock = 0, lastClock = 0, disposed = false, chartKey = '';
-  const result = finish(values => {
-    const s = sampleSpin(values, clock), fullRate = omegaOf(values.rpm);
-    shell.position.x = swayAt(s.amplitude, clock) * 1000 * MM;
-    spinner.rotation.y = drawnDrumAngle(values.rpm, clock);
-    lumpHolder.rotation.y = spinner.rotation.y;
-    lump.visible = values.imbalance > 0;
-    lump.scale.setScalar(Math.max(1e-3, Math.cbrt(values.imbalance / 1000 * 3 / (4 * Math.PI)) * 1000) * MM);
-    layerMesh.material.color.copy(laundryColor(s.moisture));
-    const draining = Math.max(0, s.moisture - s.equilibriumNow), shown = Math.round(DROPS * clamp01(draining / 0.3));
-    drops.forEach((drop, i) => {
-      const travel = ((clock * 3 + i * 0.37) % 1), radius = DRUM.radius + travel * 30;
-      drop.visible = i < shown && s.w > 0;
-      drop.position.set(radius * Math.sin(drop.userData.angle + spinner.rotation.y) * MM, drop.userData.height * MM, radius * Math.cos(drop.userData.angle + spinner.rotation.y) * MM);
-    });
-    const removedNow = (SPIN.soaked - s.moisture) * values.load, level = Math.max(1e-3, Math.min(JUG.height - 2, jugLevel(removedNow)));
-    collected.scale.y = level * MM;
-    collected.position.y = (level / 2 + 1) * MM;
-
-    const key = JSON.stringify(values);
-    if (key !== chartKey) {
-      chartKey = key;
-      const moisture = moistureLine.geometry.attributes.position.array, allowed = allowedLine.geometry.attributes.position.array;
-      s.samples.forEach((sample, i) => { moisture.set(moisturePoint(sample.t, sample.moisture), i * 3); allowed.set(moisturePoint(sample.t, sample.eq), i * 3); });
-      for (const line of [moistureLine, allowedLine]) { line.geometry.attributes.position.needsUpdate = true; line.geometry.computeBoundingSphere(); }
-      const shake = shakeLine.geometry.attributes.position.array;
-      for (let i = 0; i <= 60; i++) shake.set(shakePoint(i * 50, shaking(values.imbalance, omegaOf(i * 50)).amplitude), i * 3);
-      shakeLine.geometry.attributes.position.needsUpdate = true;
-      shakeLine.geometry.computeBoundingSphere();
+  for (const [key, [min, max, step]] of Object.entries(SPIN_DOMAINS)) {const [title, unit, options, help] = specs[key]; control(key, title, min, max, step, D[key], unit, help, options, {primary: key === 'experiment', ...(['load', 'wall'].includes(key) ? {visibleWhen: v => v.experiment === 0} : ['imbalance', 'damping'].includes(key) ? {visibleWhen: v => v.experiment === 1} : {})});}
+  let clock = 0, initialTime = null, preparedSettings = null, key = '', lastClock = 0, plan, disposed = false, chartSpeeds = [];
+  const result = kit.finish(values => {
+    const nextKey = JSON.stringify(values);
+    if (nextKey !== key) {
+      key = nextKey; plan = spinPlan(values); clock = initialTime ?? 0; lastClock = 0;
+      for (const [line, field] of [[waterLine, 'moisture'], [collectedLine, 'collected']]) {plan.samples.forEach((s, i) => line.geometry.attributes.position.array.set(waterChartPoint(s.t, field === 'moisture' ? s.moisture * values.load : s.collected), i * 3)); line.geometry.attributes.position.needsUpdate = true; line.geometry.computeBoundingSphere();}
+      const peakRpm = shaking(values.imbalance, 0, values.damping).peakW * 60 / TAU;
+      chartSpeeds = [...Array.from({length: 601}, (_, i) => i * 5), peakRpm].sort((a, b) => a - b);
+      chartSpeeds.forEach((rpm, i) => shakeLine.geometry.attributes.position.array.set(shakeChartPoint(rpm, shaking(values.imbalance, omegaOf(rpm), values.damping).amplitude), i * 3)); shakeLine.geometry.attributes.position.needsUpdate = true; shakeLine.geometry.computeBoundingSphere();
     }
-    moistureCursor.geometry.attributes.position.array.set([...moisturePoint(clock, 0), ...moisturePoint(clock, 1.6)]);
-    moistureCursor.geometry.attributes.position.needsUpdate = true;
-    shakeDot.position.set(...shakePoint(s.rpmNow, s.amplitude));
-
-    const g = s.w * s.w * SPIN.radius / SPIN.g;
-    const outcome = clock === 0 ? 'Ready · press Play to spin' : s.complete ? `Done · ${fixed(s.final * 100, 1)}% water left, ${fixed(s.removed, 3)} kg spun out` : `${fixed(s.rpmNow, 0)} rpm · laundry ${fixed(s.moisture * 100, 1)}% water`;
-    return {
-      state: {...s, removedNow, g},
-      readings: [
-        r('Your result', outcome),
-        r('Drum', `${fixed(s.rpmNow, 0)} rpm, ${fixed(g, 0)} times gravity at the wall`, `Its wall moves at ${fixed(s.w * SPIN.radius, 1)} m/s.`),
-        r('Pressing the water out', `${fixed(s.pressure / 1000, 1)} kPa at full speed`, `Pores wider than ${fixed(s.holding * 1e6, 2)} µm give up their water; narrower ones keep it.`),
-        r('Laundry', `${fixed(s.moisture * 100, 1)}% water`, `Water for each kilogram of cotton. Spinning at ${values.rpm} rpm can bring it down to ${fixed(s.equilibrium * 100, 1)}%.`),
-        r('Water spun out', `${fixed(removedNow, 3)} kg`),
-        r('Shaking', `${fixed(s.amplitude * 1000, 2)} mm`, s.amplitude > 0 ? `The lump pulls with ${fixed(s.force, 0)} N. The cabinet’s own natural speed is ${fixed(s.natural * 60 / TAU, 0)} rpm; passing it on the way up, it shook ${fixed(s.peak.amplitude * 1000, 2)} mm.` : 'A balanced load does not shake the cabinet.'),
-        r('Energy', `${fixed(s.energy / 1000, 1)} kJ used spinning`, `Evaporating the water it removes would take ${fixed(s.evaporationEnergy / 1e6, 2)} MJ.`),
-      ],
-    };
+    const s = sampleSpinPlan(plan, clock), [dx, dz] = s.displacement.map(n => n * 1000);
+    assembly.position.set(...point([dx, 0, dz])); spinner.rotation.y = rotor.rotation.y = laundryRotor.rotation.y = s.angle;
+    lidHinge.rotation.x = values.lid ? 0 : -Math.PI / 2; latch.material.color.setHex(values.lid ? 0x91aa7e : 0xc14f39); lidText.userData.setText(values.lid ? 'Lid closed · cutaway' : 'Lid open · rotation blocked');
+    const height = (s.steady ? D.load : values.load) * G.loadHeightPerKg; layerMesh.scale.y = height;
+    layerMesh.material.color.copy(laundryColor(s.moisture)); seams.forEach(m => {m.position.y = (height + 4.7) * MM;}); lump.position.y = (height + 9) * MM; lump.visible = s.steady && values.imbalance > 0; lump.scale.setScalar(.6 + values.imbalance * 2);
+    sleeve.visible = !s.steady && values.wall === 0;
+    for (const {coil, bottom, top} of springData) {const a = new THREE.Vector3(...point(bottom)), b = new THREE.Vector3(...point([top[0] + dx, top[1], top[2] + dz])), d = b.sub(a); coil.position.copy(a); coil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()); coil.scale.y = d.length() / (80 * MM);}
+    for (const {a, b, tube, piston} of dampers) {const end = [b[0] + dx, b[1], b[2] + dz], mid = a.map((n, i) => n + .6 * (end[i] - n)); setRod(tube, a, mid); setRod(piston, mid, end);}
+    const level = jugLevel(s.removed); jugWater.scale.y = Math.max(.0001, level); jugWater.visible = s.removed > 0;
+    channelFlow.visible = outletDrop.visible = !s.steady && s.rate > 1e-7; setRod(outletDrop, channelB, [G.jugX, G.jugFloor + Math.max(.01, level), 0]);
+    drops.forEach((drop, i) => {
+      // Scheduled emissions retain their release position and velocity. They
+      // never rotate with the drum after release. Very slow seepage is shown
+      // by the mass reading/channel rather than stretched ballistic markers.
+      const releasedAt = Math.floor((clock - i * 2) / 72) * 72 + i * 2;
+      const release = releasedAt >= 0 ? sampleSpinPlan(plan, releasedAt) : null;
+      const age = (clock - releasedAt) / S.cycleSlowdown;
+      const rowCount = Math.min(7, Math.max(1, Math.floor((height - 26) / 40) + 1));
+      const y = (30 + 40 * (i % rowCount)) / 1000;
+      const angle = TAU * drop.userData.hole / G.panelCount + (release?.angle ?? 0);
+      const path = dropFlight(release?.w ?? 0, angle, age, y);
+      drop.visible = !s.steady && !s.complete && Boolean(release && release.w >= 32 && release.rate > 1e-6 && age >= 0 && !path.caught);
+      drop.userData.flight = {releasedAt, age, angle, w: release?.w ?? 0, y, path};
+      if (drop.visible) drop.position.set(...point([path.x * 1000, path.y * 1000, path.z * 1000]));
+    });
+    tangentGuide.visible = !s.steady && s.rate > 1e-6 && s.w > 0;
+    if (tangentGuide.visible) {const a = dropFlight(s.w, s.angle, 0, .03), b = dropFlight(s.w, s.angle, Infinity, .03); tangentGuide.geometry.attributes.position.array.set([...point([a.x * 1000, a.y * 1000, a.z * 1000]), ...point([b.x * 1000, b.y * 1000, b.z * 1000])]); tangentGuide.geometry.attributes.position.needsUpdate = true; tangentGuide.geometry.computeBoundingSphere();}
+    waterCursor.position.set(...waterChartPoint(s.clock, s.retained)); shakeCursor.position.set(...shakeChartPoint(s.rpmNow, s.shake.amplitude));
+    chartNow.userData.setText(`${fixed(s.clock, 0)} s: ${fixed(s.retained, 3)} kg retained + ${fixed(s.removed, 3)} kg collected`);
+    shakeNow.userData.setText(`${fixed(s.rpmNow, 0)} rpm: ${fixed(s.shake.amplitude * 1000, 3)} mm orbit radius`);
+    const readings = [r('Your result', s.phase, s.steady ? 'A fixed-speed steady response, viewed in slow motion. No startup or water-extraction transient is implied.' : `${fixed(s.clock, 1)} of ${S.duration} s. Changing a setting starts a fresh load.`), r('Drum speed now', `${fixed(s.rpmNow, 0)} rpm`, s.steady ? 'Held speed in this experiment.' : '20 s acceleration, full speed until 180 s, then 20 s braking.'), r('Acceleration at the drum wall', `${fixed(s.gForce, 1)} g`, `Required inward acceleration ${fixed(s.w ** 2 * S.radius, 1)} m/s²; rim speed ${fixed(s.w * S.radius, 2)} m/s.`)];
+    if (s.steady) readings.push(r('Steady orbit radius', `${fixed(s.shake.amplitude * 1000, 3)} mm`, 'Radius, not peak-to-peak travel. The cabinet stays fixed while the complete supported assembly moves.'), r('Rotating force amplitude', `${fixed(s.shake.force, 2)} N`, `${fixed(values.imbalance, 2)} kg equivalent imbalance at 130 mm radius.`), r('Displacement phase lag', `${fixed(s.shake.lag * 180 / Math.PI, 2)}°`, 'Displacement lags the rotating force. At high speed they are almost opposite.'), r('Natural speed / peak-response speed', `${fixed(s.shake.natural * 60 / TAU, 2)} / ${fixed(s.shake.peakW * 60 / TAU, 2)} rpm`, 'The rotating force grows with speed squared, so its displacement maximum is slightly above the natural frequency.'), r('Peak steady orbit radius', `${fixed(s.shake.peakAmplitude * 1000, 3)} mm`, `Equivalent moving mass 25 kg; horizontal stiffness 40 kN/m; damping ratio ${fixed(values.damping, 2)}.`));
+    else readings.push(r('Illustrative remaining moisture', `${fixed(s.moisture * 100, 2)}%`, 'Water mass divided by dry fabric mass. These synthetic fabric parameters are not a prediction for cotton or a product.'), r('Water collected', `${fixed(s.removed, 3)} kg`, 'The liquid leaves through drum holes, reaches the outer tub and descends into the jug.'), r('Water balance', `${fixed(s.retained, 3)} + ${fixed(s.removed, 3)} = ${fixed(s.initialWater, 3)} kg`, 'Retained + collected = initial water. No evaporation or discarded water.'), r('Extraction rate now', `${fixed(s.rate * 1000, 3)} g/s`, values.wall ? 'Illustrative pressure-dependent drainage slows as mobile water runs out.' : 'The sealed wall blocks extraction.'), r('Rotating liquid pressure scale', `${fixed(s.pressure / 1000, 2)} kPa`, 'Ideal pressure difference across the fixed 40 mm layer. It is not a uniform measured pressure in real fabric.'), r('Illustrative capillary threshold', Number.isFinite(s.holding) ? `${fixed(s.holding * 1e6, 3)} µm` : 'No rotational pressure', 'The synthetic pore-volume distribution and retained floor define this example. No universal bound-water fraction is assumed.'));
+    return {state: s, readings};
   });
-
   const render = result.update;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(END, clock + dt * SPEED_UP); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = lastClock = 0; return render(result.defaults); };
-  const resonance = () => { const plan = spinPlan(result.getState().values); return Math.min(SPIN.ramp, plan.natural / omegaOf(plan.values.rpm) * SPIN.ramp); };
-  result.actions = [
-    {label: 'Inspect: passing the shaking speed', part: 'cabinet', view: 'front', replay: false, run() { clock = resonance(); return render(); }},
-    {label: 'Inspect: the drum at full speed', part: 'drum', view: 'front', replay: false, run() { clock = 40; return render(); }},
-    {label: 'Inspect: the charts after the spin', part: 'charts', view: 'front', replay: false, run() { clock = END; return render(); }},
-  ];
-  result.playback = {
-    label: 'Spin the laundry',
-    description: 'A 20 s run-up, the spin, and the stop, six times faster than real time.',
-    stepLabel: 'Advance ten seconds',
-    advance: result.advance,
-    step: () => result.advance(10 / SPEED_UP),
-    complete: () => clock >= END,
-    blocked: () => false,
-  };
-
-  root.rotation.set(0.25, -0.5, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {JUG, system, cabinet, shell, springs, coils, tub, collected, drum, spinner, laundry, layerMesh, lumpHolder, lump, water, drops, motor, charts, moistureLine, allowedLine, shakeLine, moistureCursor, shakeDot, MM, SPEED_UP, END, DROPS, DRUM};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  result.update = values => {const readings = render(values); if (preparedSettings && Object.entries(preparedSettings).every(([k, v]) => result.getState().values[k] === v)) {initialTime = null; preparedSettings = null;} return readings;};
+  result.advance = dt => {if (Number.isFinite(dt) && dt > 0) {initialTime = null; preparedSettings = null; clock = Math.min(plan.duration, clock + dt * (plan.values.experiment === 0 ? S.cycleSpeed : 1));} return render();};
+  result.animate = t => {const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt);};
+  result.reset = ({time = 0, settings} = {}) => {preparedSettings = {...(settings ?? result.defaults)}; const p = spinPlan(preparedSettings); if (!Number.isFinite(time) || time < 0 || time > p.duration) throw new RangeError('Invalid spin dryer checkpoint'); initialTime = time; key = ''; clock = lastClock = 0; return render(preparedSettings);};
+  result.replayState = () => ({time: 0, settings: result.getState().values});
+  const inspect = (title, id, view = 'iso', isolate = false, experiment = null) => ({label: title, part: id, view, isolate, replay: false, run: () => render(experiment !== null && result.getState().values.experiment !== experiment ? {experiment} : {})});
+  result.actions = [inspect('Inspect: complete dryer', 'system'), inspect('Inspect: drum holes', 'drum', 'iso', true), inspect('Inspect: fabric load', 'laundry', 'top', true), inspect('Inspect: motor and shaft', 'motor', 'front'), inspect('Inspect: supports and dampers', 'springs', 'iso'), inspect('Inspect: water departure from above', 'assembly', 'top', false, 0), inspect('Inspect: drain and collection', 'collector', 'front', false, 0), inspect('Compare retained and collected water', 'chart', 'front', true, 0), inspect('Compare steady vibration across speeds', 'shake-chart', 'front', true, 1)];
+  result.playback = {label: 'Run this experiment', description: 'Extraction: 200 s at six times real time. Vibration: twelve seconds of a slowed steady orbit. Presets open at named checkpoints.', stepLabel: 'Advance this experiment', advance: result.advance, step: () => result.advance(plan.values.experiment === 0 ? 10 / S.cycleSpeed : 1), complete: () => clock >= plan.duration, blocked: () => false};
+  result.autoFramePart = 'system'; result.initialPart = 'system'; result.initialView = 'iso'; result.frameVisibleOnly = true; result.framePadding = .67; result.selectionOutline = false; result.transparentBackground = true; result.thumbnailOmit = [chart, shakeChart];
+  result.followParts = ['assembly', 'drum', 'laundry', 'motor', 'tub'];
+  for (const p of result.parts) {p.maxZoom = 300; p.framePadding = ['chart', 'shake-chart'].includes(p.id) ? .57 : .67;}
+  result.topology = {system, frame, lid, lidHinge, assembly, mounts, bearings, motor, motorBody, rotor, shaft, springs, springData, dampers, tub, tubWall, tubSupportRing, seal, drum, spinner, panels, sleeve, drumStripe, laundry, laundryRotor, layerMesh, seams, lump, water, drops, tangentGuide, drain, channel, channelA, channelB, channelFlow, outletDrop, collector, jugWall, jugWater, jugMarks, chart, shakeChart, waterLine, collectedLine, waterCursor, shakeLine, shakeCursor, chartSpeeds: () => chartSpeeds, MM, G};
+  const dispose = result.dispose; result.dispose = () => {if (disposed) return; disposed = true; dispose();};
   return result;
 }

@@ -138,7 +138,8 @@ export const publishedEntryIds = [
   "quartz-clock",
   "quartz-oscillator",
   "piezoelectricity",
-  "water-clock"
+  "water-clock",
+  "spin-dryer"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -241,6 +242,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'spin-dryer': ['rotating-wheels', 'pressure-power', 'springs'],
   'water-clock': ['floating', 'pressure-power', 'gears-and-belts'],
   'piezoelectricity': ['electricity'],
   'quartz-oscillator': ['electricity'],
@@ -287,18 +289,19 @@ const entries = drafts.entries.filter(entry => allowed.has(entry.id)).map(entry 
 }));
 const names = new Set(entries.map(entry => entry.name));
 const rooms = {
+  'spin-dryer': 'Laundry and cleaning',
   'binoculars': 'Nature watching',
   '3d-printer': 'Tools and making',
   'seismograph': 'Earth science gallery',
 };
 const groups = drafts.groups.map(group => ({
   ...group,
-  room: rooms[group.id] || group.room,
+  room: rooms[group.id] || (group.room === 'Cleaning cupboard' ? 'Laundry and cleaning' : group.room),
   items: group.items.filter(name => names.has(name)),
   relatedStudies: [],
 })).filter(group => group.items.length);
 const descriptions = {
-  home: 'Explore kitchen tools, measuring, locks, sewing, and electrical protection.',
+  home: 'Explore kitchen tools, laundry, measuring, locks, sewing, and electrical protection.',
   workshop: 'Follow motors, 3D printing, ignition, and crash-sensing mechanisms.',
   discovery: 'Explore sensors, seismic measurements, inertial navigation, telescopes, and microscopes.',
   park: 'Explore binocular prisms, upright images, and stereo depth.',

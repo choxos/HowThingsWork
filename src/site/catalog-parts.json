@@ -922,6 +922,43 @@
       "parentId": "system"
     }
   ],
+  "spin-dryer": [
+    {
+      "id": "frame",
+      "name": "Fixed cabinet and base",
+      "parentId": "system"
+    },
+    {
+      "id": "lid",
+      "name": "Lid and rotation interlock",
+      "parentId": "system"
+    },
+    {
+      "id": "assembly",
+      "name": "Supported tub and drive assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "springs",
+      "name": "Springs and dampers",
+      "parentId": "system"
+    },
+    {
+      "id": "collector",
+      "name": "Collected water and fixed scale",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Water balance through the cycle",
+      "parentId": "system"
+    },
+    {
+      "id": "shake-chart",
+      "name": "Steady vibration versus speed",
+      "parentId": "system"
+    }
+  ],
   "window-shade": [
     {
       "id": "window",

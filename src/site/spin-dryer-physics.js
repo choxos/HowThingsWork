@@ -1,118 +1,107 @@
 import {validateControls, validTime, clamp} from './physics-kit.js';
 
-// Spin dryer: a perforated drum that flings water out of wet laundry, and the
-// sprung cabinet that an unbalanced load shakes.
-//
-// Units: SI inside. Readings convert to rpm, grams, percent, millimeters.
-//
-// Pressing the water out. The laundry lies as a layer 40 mm thick against the
-// drum wall, 150 mm from the axis. Spinning at w, the water in it feels a
-// pressure across the layer of rho w^2 (R^2 - (R - t)^2) / 2. Water sits in the
-// fabric's pores, held by capillary suction 2 gamma cos(theta) / r, with
-// gamma = 0.072 N/m and cos(theta) = 0.9. Pores wider than the radius where the
-// two balance empty; narrower ones keep their water. Pore radii follow a
-// log-normal spread around 5 µm with a spread of 1.2 in their logarithm.
-//
-// How wet. Soaked cotton holds 1.5 kg of water for each kilogram of fiber;
-// 0.45 kg of that sits inside the fibers themselves and cannot be spun out. The
-// rest is shared among the pores, so the water left at a speed is 0.45 plus
-// 1.05 times the share of pore space in pores too narrow to empty. The water
-// takes time to find its way out: it approaches that level with a time
-// constant of 15 s at a pressure of 100 kPa, shorter in proportion as the
-// pressure rises.
-//
-// The spin. The drum speeds up evenly for 20 s, holds its speed, and stops at
-// three minutes. Its motor works against windage and bearing drag of 150 W at
-// 2,800 rpm, rising as the cube of the speed.
-//
-// Shaking. An unbalanced lump of wet laundry at the drum wall pulls with m r w^2.
-// The cabinet, 25 kg on springs of 40 kN/m damped at a tenth of critical, moves
-// X = m r w^2 / sqrt((k - M w^2)^2 + (c w)^2), largest when the drum passes the
-// cabinet's own natural speed on the way up.
-//
-// Not modeled: water re-wetting the laundry, the layer's changing thickness,
-// air drag on the water, the motor's electrical losses, and the shaking's
-// effect on the drum's speed.
-
+// Original teaching apparatus, SI units. The pore-volume distribution and
+// drainage law are illustrative choices, not a fitted cotton/product model.
+// Extraction and steady forced vibration are deliberately separate experiments.
 export const SPIN = Object.freeze({
-  g: 9.81, radius: 0.15, layer: 0.04, density: 1000, tension: 0.072, wetting: 0.9, pore: 5e-6, spread: 1.2,
-  soaked: 1.5, bound: 0.45, drain: 15, reference: 1e5, ramp: 20, duration: 180, windage: 150, windageSpeed: 2800,
-  cabinet: 25, spring: 4e4, damping: 0.1, latent: 2.26e6, every: 1,
+  g: 9.81, radius: .15, layer: .04, tubRadius: .185, eccentricity: .13,
+  density: 1000, tension: .072, wetting: .9, pore: 5e-6, spread: 1.2,
+  soaked: 1.5, residual: .45, drain: 15, reference: 1e5,
+  ramp: 20, brakeStart: 180, duration: 200, steadyDuration: 12,
+  movingMass: 25, spring: 4e4, dt: .02, every: 1,
+  cycleSpeed: 6, cycleSlowdown: 2400, steadySlowdown: 200,
 });
-export const SPIN_DEFAULTS = Object.freeze({rpm: 2800, load: 2, imbalance: 0.1});
-export const SPIN_DOMAINS = Object.freeze({rpm: [500, 3000, 100], load: [1, 4, 0.5], imbalance: [0, 0.3, 0.05]});
-
-const TAU = Math.PI * 2;
+export const SPIN_DEFAULTS = Object.freeze({experiment: 0, rpm: 2800, load: 2, wall: 1, lid: 1, imbalance: .1, damping: .1});
+export const SPIN_DOMAINS = Object.freeze({experiment: [0, 1, 1], rpm: [0, 3000, 50], load: [1, 4, .5], wall: [0, 1, 1], lid: [0, 1, 1], imbalance: [0, .3, .05], damping: [.05, .4, .05]});
+export const EXPERIMENTS = [{value: 0, label: 'Spin and collect water'}, {value: 1, label: 'Steady vibration'}];
+const TAU = 2 * Math.PI;
 export const omegaOf = rpm => rpm * TAU / 60;
-/** Pressure across the laundry layer at a spin speed. */
-export const layerPressure = w => SPIN.density * w * w * (SPIN.radius ** 2 - (SPIN.radius - SPIN.layer) ** 2) / 2;
-/** The widest pore that can still hold its water against that pressure. */
+export const layerPressure = w => SPIN.density * w ** 2 * (SPIN.radius ** 2 - (SPIN.radius - SPIN.layer) ** 2) / 2;
 export const holdingRadius = pressure => pressure > 0 ? 2 * SPIN.tension * SPIN.wetting / pressure : Infinity;
-
-/** The standard normal distribution function, by the Abramowitz and Stegun rational approximation (error under 1.5e-7). */
+/** Standard normal CDF; absolute approximation error below 1.5e-7. */
 export function normalShare(z) {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = Math.exp(-z * z / 2) / Math.sqrt(TAU);
-  const tail = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const t = 1 / (1 + .2316419 * Math.abs(z)), d = Math.exp(-z * z / 2) / Math.sqrt(TAU);
+  const tail = d * t * (.319381530 + t * (-.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   return z >= 0 ? 1 - tail : tail;
 }
-
-/** Water left per kilogram of fiber once the pores have drained as far as a speed allows. */
+/** Synthetic pore-volume distribution: no universal fiber-bound fraction. */
 export function equilibriumMoisture(w) {
-  const r = holdingRadius(layerPressure(w));
-  const filled = Number.isFinite(r) ? normalShare((Math.log(r) - Math.log(SPIN.pore)) / SPIN.spread) : 1;
-  return SPIN.bound + (SPIN.soaked - SPIN.bound) * filled;
+  const radius = holdingRadius(layerPressure(w));
+  const share = Number.isFinite(radius) ? normalShare(Math.log(radius / SPIN.pore) / SPIN.spread) : 1;
+  return SPIN.residual + (SPIN.soaked - SPIN.residual) * share;
 }
-
-export const drainTime = w => { const pressure = layerPressure(w); return pressure > 0 ? SPIN.drain * SPIN.reference / pressure : Infinity; };
-export const speedAt = (rpm, time) => (time >= SPIN.duration ? 0 : omegaOf(rpm) * clamp(time / SPIN.ramp));
-export const windagePower = w => SPIN.windage * (w / omegaOf(SPIN.windageSpeed)) ** 3;
-
-export function shaking(imbalance, w) {
-  const f = SPIN, k = f.spring, M = f.cabinet, c = 2 * f.damping * Math.sqrt(k * M), force = imbalance * f.radius * w * w;
-  return {force, amplitude: force / Math.sqrt((k - M * w * w) ** 2 + (c * w) ** 2), natural: Math.sqrt(k / M)};
+export const drainTime = w => w > 0 ? SPIN.drain * SPIN.reference / layerPressure(w) : Infinity;
+/** Finite linear run-up and braking; no instantaneous stop. */
+export function speedAt(rpm, time) {
+  const top = omegaOf(rpm);
+  if (time <= SPIN.ramp) return top * clamp(time / SPIN.ramp);
+  if (time < SPIN.brakeStart) return top;
+  return top * clamp((SPIN.duration - time) / (SPIN.duration - SPIN.brakeStart));
 }
-
+/** Exact integral of the prescribed angular speed, including braking. */
+export function rotationAt(rpm, time) {
+  const t = Math.min(SPIN.duration, Math.max(0, time)), w = omegaOf(rpm);
+  if (t <= SPIN.ramp) return w * t * t / (2 * SPIN.ramp);
+  if (t <= SPIN.brakeStart) return w * (t - SPIN.ramp / 2);
+  const u = t - SPIN.brakeStart;
+  return w * (SPIN.brakeStart - SPIN.ramp / 2 + u - u * u / (2 * (SPIN.duration - SPIN.brakeStart)));
+}
+/** Steady response to rotating imbalance, not response during a speed ramp.
+ * M x'' + c x' + k x = m e w² cos(wt), with an identical quadrature axis.
+ * The same slowed phase drives the eccentric marker and displacement. */
+export function shaking(imbalance, w, damping = SPIN_DEFAULTS.damping) {
+  const mass = SPIN.movingMass, k = SPIN.spring, c = 2 * damping * Math.sqrt(k * mass);
+  const force = imbalance * SPIN.eccentricity * w * w, stiffness = k - mass * w * w;
+  const natural = Math.sqrt(k / mass), peakW = natural / Math.sqrt(1 - 2 * damping ** 2);
+  return {force, amplitude: force / Math.hypot(stiffness, c * w), lag: w > 0 ? Math.atan2(c * w, stiffness) : 0,
+    natural, peakW, peakAmplitude: imbalance * SPIN.eccentricity / (2 * mass * damping * Math.sqrt(1 - damping ** 2)), dampingCoefficient: c};
+}
+/** Drop just outside a hole, with purely tangential exit speed. Ignore air drag
+ * and radial exit speed. Gravity curves its vertical trajectory; its top-view
+ * path is straight. Return position relative to the drum axis in meters. */
+export function dropFlight(w, angle, age, height = 0) {
+  const hitTime = w > 0 ? Math.sqrt(SPIN.tubRadius ** 2 - SPIN.radius ** 2) / (SPIN.radius * w) : Infinity;
+  const t = Math.min(Math.max(0, age), hitTime), r = SPIN.radius;
+  return {x: r * Math.cos(angle) - r * w * t * Math.sin(angle), y: height - SPIN.g * t * t / 2,
+    z: -r * Math.sin(angle) - r * w * t * Math.cos(angle), hitTime, caught: age >= hitTime};
+}
+export const extractionRate = (moisture, w, open = true) => open && w > 0 ? Math.max(0, moisture - equilibriumMoisture(w)) / drainTime(w) : 0;
 const cache = new Map();
-
 export function spinPlan(input = {}) {
-  const values = validateControls(input, SPIN_DEFAULTS, SPIN_DOMAINS, 'spin dryer');
-  const key = JSON.stringify(values);
+  const values = validateControls(input, SPIN_DEFAULTS, SPIN_DOMAINS, 'spin dryer'), key = JSON.stringify(values);
   if (cache.has(key)) return cache.get(key);
-  const f = SPIN, dt = 0.01, samples = [];
-  let moisture = f.soaked, energy = 0, peak = {amplitude: 0, rpm: 0};
-  for (let n = 0; ; n++) {
-    const t = n * dt, w = speedAt(values.rpm, t), eq = equilibriumMoisture(w), tau = drainTime(w), shake = shaking(values.imbalance, w);
-    if (n % (f.every / dt) === 0) samples.push({t, w, moisture, eq, energy, amplitude: shake.amplitude, force: shake.force});
-    if (t >= f.duration + 5 - 1e-9) break;
-    if (shake.amplitude > peak.amplitude) peak = {amplitude: shake.amplitude, rpm: w * 60 / TAU};
-    if (moisture > eq && Number.isFinite(tau)) moisture = eq + (moisture - eq) * Math.exp(-dt / tau);
-    const accelerating = t < f.ramp ? values.load * (f.soaked + 1) * f.radius ** 2 * omegaOf(values.rpm) / f.ramp * w : 0;
-    energy += (windagePower(w) + accelerating) * dt;
+  const duration = values.experiment === 1 ? SPIN.steadyDuration : SPIN.duration;
+  const count = Math.round(SPIN.duration / SPIN.dt), moisture = new Float64Array(count + 1);
+  moisture[0] = SPIN.soaked;
+  const enabled = values.lid === 1 && values.wall === 1 && values.experiment === 0;
+  for (let i = 1; i <= count; i++) {
+    const w = values.lid ? speedAt(values.rpm, (i - .5) * SPIN.dt) : 0, eq = equilibriumMoisture(w);
+    moisture[i] = enabled && moisture[i - 1] > eq ? eq + (moisture[i - 1] - eq) * Math.exp(-SPIN.dt / drainTime(w)) : moisture[i - 1];
   }
-  const end = samples.find(sample => sample.t >= f.duration - 1e-9);
-  const removed = (f.soaked - end.moisture) * values.load;
-  const plan = {
-    values, samples, natural: shaking(0, 0).natural, peak, final: end.moisture, removed, spinEnergy: end.energy, evaporationEnergy: removed * f.latent,
-    gForce: omegaOf(values.rpm) ** 2 * f.radius / f.g, pressure: layerPressure(omegaOf(values.rpm)), holding: holdingRadius(layerPressure(omegaOf(values.rpm))),
-    equilibrium: equilibriumMoisture(omegaOf(values.rpm)), running: shaking(values.imbalance, omegaOf(values.rpm)),
-  };
-  if (cache.size > 24) cache.delete(cache.keys().next().value);
+  const plan = {values, duration, moisture, final: moisture[count], samples: []};
+  for (let t = 0; t <= SPIN.duration; t += SPIN.every) plan.samples.push({t, moisture: moisture[Math.round(t / SPIN.dt)], collected: values.load * (SPIN.soaked - moisture[Math.round(t / SPIN.dt)])});
+  if (cache.size >= 24) cache.delete(cache.keys().next().value);
   cache.set(key, plan);
   return plan;
 }
-
-export function sampleSpin(input = {}, time = 0) {
+export function sampleSpinPlan(plan, time = 0) {
   validTime(time);
-  const plan = spinPlan(input), clock = Math.min(SPIN.duration + 5, time), index = Math.min(plan.samples.length - 2, Math.floor(clock / SPIN.every));
-  const a = plan.samples[index], b = plan.samples[index + 1], u = clamp((clock - a.t) / (b.t - a.t));
-  const now = {...plan, clock};
-  for (const key of ['moisture', 'energy']) now[key] = a[key] + (b[key] - a[key]) * u;
-  now.w = speedAt(plan.values.rpm, clock);
-  const shake = shaking(plan.values.imbalance, now.w);
-  now.force = shake.force;
-  now.amplitude = shake.amplitude;
-  now.equilibriumNow = equilibriumMoisture(now.w);
-  now.rpmNow = now.w * 60 / TAU;
-  now.complete = clock >= SPIN.duration + 5;
-  return now;
+  const v = plan.values, steady = v.experiment === 1, clock = Math.min(time, plan.duration);
+  const w = v.lid ? steady ? omegaOf(v.rpm) : speedAt(v.rpm, clock) : 0;
+  const index = Math.min(plan.moisture.length - 1, Math.floor(clock / SPIN.dt)), u = clock - index * SPIN.dt;
+  let moisture = plan.moisture[index];
+  // Integrate the fractional interval with the same exponential midpoint law.
+  const midW = v.lid ? speedAt(v.rpm, index * SPIN.dt + u / 2) : 0, eq = equilibriumMoisture(midW);
+  if (!steady && v.wall && v.lid && moisture > eq && u > 0) moisture = eq + (moisture - eq) * Math.exp(-u / drainTime(midW));
+  const removed = v.load * (SPIN.soaked - moisture), retained = v.load * moisture;
+  const shake = shaking(v.imbalance, w, v.damping);
+  const angle = steady ? w * clock / SPIN.steadySlowdown : rotationAt(v.lid ? v.rpm : 0, clock) / SPIN.cycleSlowdown;
+  const displacement = steady ? [shake.amplitude * Math.cos(angle - shake.lag), -shake.amplitude * Math.sin(angle - shake.lag)] : [0, 0];
+  const blocked = v.lid === 0 ? 'Lid open: interlock prevents rotation' : v.rpm === 0 ? 'Zero speed: drum remains still' : !steady && v.wall === 0 ? 'Sealed drum: no exit for water' : '';
+  const phase = blocked || (steady ? 'Steady vibration at fixed speed' : clock === 0 ? 'Ready to spin' : clock < SPIN.ramp ? 'Accelerating' : clock < SPIN.brakeStart ? 'Spinning and collecting' : clock < SPIN.duration ? 'Braking' : 'Stopped: collected water stays outside');
+  return {values: v, clock, duration: plan.duration, complete: clock >= plan.duration, steady, phase, blocked,
+    w, rpmNow: w * 60 / TAU, gForce: w * w * SPIN.radius / SPIN.g, angle, displacement, shake,
+    moisture, retained, removed, initialWater: v.load * SPIN.soaked, rate: steady ? 0 : v.load * extractionRate(moisture, w, Boolean(v.lid && v.wall)),
+    pressure: layerPressure(w), holding: holdingRadius(layerPressure(w)), equilibrium: equilibriumMoisture(w), final: plan.final};
 }
+export const sampleSpin = (input = {}, time = 0) => sampleSpinPlan(spinPlan(input), time);
