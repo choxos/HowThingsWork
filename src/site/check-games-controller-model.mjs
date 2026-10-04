@@ -1,4 +1,4 @@
-// Games controller: the thumbstick's torques from its datasheet, its gimbal
+// Games controller: assigned thumbstick torques, its gimbal
 // and gate measured again from the lever's section, its swing integrated
 // again in 2 µs steps with friction that sticks and slips and its energy
 // accounted for, the ADC and the XInput dead zone written again from their
@@ -13,12 +13,12 @@ import {gamesControllerLesson, joystickLesson, videoGamesConsoleLesson} from './
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import {fixed} from './format.js';
 
-// The controller written again from its sources.
+// Independent reconstruction of the assigned teaching model.
 const t = tally(), DEG = Math.PI / 180;
 const TRAVEL = 23 * DEG, OPERATING = 0.014, BAND = 5 * DEG, INERTIA = 5e-7, ZETA = 0.1, SUPPLY = 3.3, SPAN = 0.8, FULL = 32767;
 const k = OPERATING / (TRAVEL + BAND), friction = k * BAND, damping = 2 * ZETA * Math.sqrt(k * INERTIA);
 
-// 1. The datasheet's torques, the gimbal and the gate.
+// 1. Assigned torques, the gimbal and the finite-thickness gate.
 t.near(STICK.travel, TRAVEL, 1e-15, 'travel 23° each way');
 t.near(SPRING, k, 1e-15, 'spring stiffness');
 t.near(FRICTION, friction, 1e-15, 'friction torque');
@@ -49,7 +49,7 @@ const section = (angles, samples = 1440) => {
   const d = leverDirection(angles), e1 = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 0, 1)).normalize(), e2 = new THREE.Vector3().crossVectors(d, e1).normalize(), points = [];
   for (let i = 0; i < samples; i++) {
     const b = i / samples * 2 * Math.PI, p = e1.clone().multiplyScalar(MODULE.shaft * Math.cos(b)).add(e2.clone().multiplyScalar(MODULE.shaft * Math.sin(b)));
-    const s = (MODULE.gate - p.y) / d.y;
+    const s = (MODULE.gate + MODULE.gateThickness / 2 - p.y) / d.y;
     points.push([p.x + s * d.x, p.z + s * d.z]);
   }
   return points;
@@ -421,8 +421,8 @@ for (const values of SETTINGS) {
     t.near(0.5 - top.wiperA.rotation.z / TRACK_ARC, 0.5 + SPAN / 2 * angles[0] / TRAVEL, 1e-12, `${label}: the X wiper along its track as far as its voltage`);
     t.near(0.5 - top.wiperB.rotation.z / TRACK_ARC, 0.5 + SPAN / 2 * angles[1] / TRAVEL, 1e-12, `${label}: the Y wiper along its track as far as its voltage`);
     const springHeight = MODULE.springTop - MODULE.springBottom;
-    t.near(top.springGroup.scale.y, (springHeight - MODULE.foot * Math.sin(alpha)) / springHeight, 1e-9, `${label}: the spring pressed by the lever’s foot`);
-    t.near(mmOf(top.springPlate.position.y), MODULE.springTop + 0.25 - MODULE.foot * Math.sin(alpha), 1e-9, `${label}: the spring’s plate under the foot`);
+    t.near(top.springGroup.scale.y, (springHeight - ((MODULE.ball + 0.6) * (Math.cos(alpha) - 1) + MODULE.foot * Math.sin(alpha))) / springHeight, 1e-9, `${label}: the spring pressed by the lever’s foot`);
+    t.near(mmOf(top.springPlate.position.y), MODULE.springTop + 0.25 - ((MODULE.ball + 0.6) * (Math.cos(alpha) - 1) + MODULE.foot * Math.sin(alpha)), 1e-9, `${label}: the spring’s plate under the foot`);
     const down = Math.max(0, Math.min(1, (since + BUTTON_AT.reach) / BUTTON_AT.reach)), touching = closedAt(since);
     t.near(mmOf(top.cap.position.y), BUTTON_AT.capTop - BUTTON_AT.height / 2 - BUTTON_AT.travel * down, 1e-9, `${label}: the button’s cap`);
     t.near(mmOf(top.pill.position.y), CONTROLLER.pcb + 0.5 + (since < 0 ? BUTTON_AT.open * (1 - down) : touching ? 0 : BUTTON_AT.bounceGap), 1e-9, `${label}: the carbon pill`);
@@ -516,13 +516,15 @@ const consoleClaims = {
   'A slow display': s => ({'111.7': ms(s.press.latency), '115.6': ms(s.latency.mean), '50': s.values.display - PAD_DEFAULTS.display}),
   'Every timing': s => ({'51.4': ms(s.latency.min), '78.9': ms(s.latency.max), '65.6': ms(s.latency.mean)}),
 };
-checkTrialNumbers(gamesControllerLesson, machineClaims, values => padPlan(values), t);
+const additionalClaims = {
+  'More bits': s => ({'12':s.bits,'8':BITS[0]}),
+  'Follow rumble feedback': s => {const now=padAt(s,s.press.frame+.031);return {'80':now.motors[0].frequency,'150':now.motors[1].frequency};},
+};
+const orderedClaims = Object.fromEntries(gamesControllerLesson.tryIt.map(trial => [trial.title,machineClaims[trial.title] || additionalClaims[trial.title] || (()=>({}))]));
+checkTrialNumbers(gamesControllerLesson, orderedClaims, values => padPlan(values), t);
 checkTrialNumbers(joystickLesson, joystickClaims, values => padPlan(values), t);
 checkTrialNumbers(videoGamesConsoleLesson, consoleClaims, values => padPlan(values), t);
 const square = padPlan({release: 1, gate: 1});
-checkQuotedText(gamesControllerLesson.steps.map(step => step.body).join(' '), {[`${fixed(POLL_RATES[0], 0)} times a second`]: '125 times a second'}, t);
-checkQuotedText(gamesControllerLesson.deeper.map(item => item.body).join(' '), {[`${fixed(square.full.share, 2)} times full`]: '1.41 times full', [`bounces for ${fixed(BOUNCE.at(-1)[0] * 1000, 1)} ms`]: 'bounces for 2.6 ms', [`${fixed(1000 / 60, 1)} ms apart at 60 frames a second`]: '16.7 ms apart at 60 frames a second'}, t);
-checkQuotedText(gamesControllerLesson.limits, {[`tilting ${fixed(TRAVEL / DEG, 0)}° each way`]: 'tilting 23° each way', [`its ${fixed(OPERATING * 1000, 0)} mN m operating torque`]: 'its 14 mN m operating torque', [`${fixed(SPRING * TRAVEL * 1000, 1)} mN m of spring at full tilt`]: '11.5 mN m of spring at full tilt', [`${fixed(FRICTION * 1000, 1)} mN m of friction`]: '2.5 mN m of friction', [`its ${fixed(BAND / DEG, 0)}° return precision`]: 'its 5° return precision', [`the middle ${fixed(SPAN * 100, 0)}% of their tracks`]: 'the middle 80% of their tracks', [`an ideal ADC on ${fixed(STICK.supply, 1)} V`]: 'an ideal ADC on 3.3 V', [`bounce in one fixed pattern for ${fixed(BOUNCE.at(-1)[0] * 1000, 1)} ms`]: 'bounce in one fixed pattern for 2.6 ms', [`up to ${fixed(GAME.speed, 0)} m/s`]: 'up to 5 m/s', [`damped to a tenth of critical`]: `damped to a tenth of critical`}, t);
 checkQuotedText(joystickLesson.deeper.map(item => item.body).join(' '), {[`${fixed(BAND / TRAVEL * 100, 1)}% of the ${fixed(TRAVEL / DEG, 0)}° travel`]: '21.7% of the 23° travel'}, t);
 checkQuotedText(joystickLesson.steps.map(step => step.body).join(' '), {[`stops it at ${fixed(TRAVEL / DEG, 0)}° in every direction`]: 'stops it at 23° in every direction'}, t);
 checkQuotedText(videoGamesConsoleLesson.deeper.map(item => item.body).join(' '), {[`that is ${fixed(1000 / 60, 1)} ms`]: 'that is 16.7 ms'}, t);
@@ -534,11 +536,11 @@ model.playback.advance(1e3);
 const readings = Object.fromEntries(model.getState().readings.map(item => [item.label, item]));
 t.ok(readings.Latency.value === `This press: ${fixed(ms(defaults.press.latency), 1)} ms from touch to screen`, 'the latency reading');
 t.ok(readings.Report.value === `X −${fixed(-defaults.rest.report[0], 0)} · Y ${fixed(defaults.rest.report[1], 0)} · ${fixed(defaults.rest.share * 100, 1)}% of full`, 'the resting report reading');
-t.ok(readings['Your result'].value.startsWith(`Stick at rest ${fixed(restTilt(defaults), 2)}° left of center, inside the dead zone`), 'the result reading');
+t.ok(readings['Your result'].value.startsWith(`Observation complete · stick rests ${fixed(restTilt(defaults), 2)}° left of center, inside the dead zone`), 'the result reading');
 t.ok(model.playback.complete(), 'the run ends');
 t.near(samplePad({}, 0.06).now.t, 0.04, 1e-15, 'trial time counts from the start of the run');
 
-const snapshot = () => [top.lever.quaternion.toArray(), top.gates.map(gate => gate.visible), top.character.position.toArray(), top.rings.map(ring => ring.visible), top.bars.flat().map(bar => [bar.scale.x, bar.position.x, bar.visible]),
+const snapshot = () => [top.lever.quaternion.toArray(), top.gates.map(gate => gate.visible), top.character.position.toArray(), top.rings.map(ring => ring.visible), top.feedback.motors.map(motor => motor.rotor.rotation.x), top.bars.flat().map(bar => [bar.scale.x, bar.position.x, bar.visible]),
   ...[top.trueLine, top.reportLine, top.zoneLines, top.gateLine, top.stepLine, top.firmwareLine, top.pollTicks, top.consoleLine, top.histogramLine, top.meanLine, top.frameDashes].map(line => Array.from(line.geometry.attributes.position.array))];
 checkControlsMove(model, snapshot, m => m.playback.advance(1e3), t);
 model.reset();

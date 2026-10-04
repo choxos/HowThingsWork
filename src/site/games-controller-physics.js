@@ -15,13 +15,12 @@ import {validateControls, validTime} from './physics-kit.js';
 // covers the middle 80% of its track, so a yoke turned by theta puts
 // 3.3 V (1/2 + 0.4 theta / 23°) on the wiper.
 //
-// A spring centers the lever against friction in the gimbal. The datasheet asks
-// 14 mN m to move the lever and promises it returns within 5° of center. Taken
-// as the torque to push it at full tilt and the band where friction can hold it,
-// they give a spring of 11.5 mN m at full tilt against 2.5 mN m of friction. The
-// lever and cap, 5e-7 kg m^2 about the pivot, are damped to a tenth of critical.
-// The motion is worked in the yokes' angles, along the line the stick is let go
-// on.
+// Assigned reduced mechanical model: a linear spring and Coulomb friction act
+// along one radial coordinate in yoke-angle space. The chosen full-travel
+// torque is 14 mN m and the static holding band is 5 degrees, giving 11.5 mN m
+// of spring torque at full travel and 2.5 mN m of friction. These are teaching
+// assumptions, not measurements inferred from a manufacturer's tolerance.
+// Assigned generalized inertia is 5e-7 kg m^2 and damping is a tenth of critical.
 //
 // Let go at the gate, the stick swings back and forth. Each swing between two
 // moments of rest is solved exactly, friction's constant torque shifting its
@@ -49,10 +48,10 @@ import {validateControls, validTime} from './physics-kit.js';
 // Over every timing: the controller's scans, the console's polls and the game's
 // frames run on separate clocks, so a press is equally likely to fall anywhere
 // between scans, a poll anywhere between scans, and a report anywhere between
-// frames. Polls come a whole number of scans apart, so for each of 1,000 press
-// timings and each scan a poll can fall on, the console's view is found exactly;
-// the poll's fraction of a scan and the wait for a frame are uniform, and their
-// spread is added exactly.
+// frames. Polls come a whole number of scans apart, so within each scan-phase
+// contact-transition interval and for each scan a poll can fall on, the console's
+// view is constant apart from that interval's uniformly distributed phase.
+// Integrating it with the poll and frame waits gives the complete distribution.
 //
 // Not modeled: the potentiometers' wear, noise and nonlinearity, the ADC's own
 // errors, calibration, wireless links, the operating system's scheduling,
@@ -72,10 +71,20 @@ export const RELEASE_OPTIONS = Object.freeze(['Flick right and let go', 'Flick u
 export const GATE_OPTIONS = Object.freeze(['Round gate', 'Square gate'].map((label, value) => Object.freeze({value, label})));
 export const BITS_OPTIONS = Object.freeze(BITS.map((bits, value) => Object.freeze({value, label: `${bits} bits`})));
 export const POLL_OPTIONS = Object.freeze(['125 Hz', '250 Hz', '1,000 Hz'].map((label, value) => Object.freeze({value, label})));
-export const PAD_DEFAULTS = Object.freeze({release: 0, gate: 0, bits: 1, deadzone: 24, debounce: 5, polling: 0, display: 30});
-export const PAD_DOMAINS = {release: [0, 2, 1], gate: [0, 1, 1], bits: [0, 2, 1], deadzone: [0, 40, 2], debounce: [1, 8, 1], polling: [0, 2, 1], display: [0, 80, 10]};
-export const LATENCY_STEPS = 1000;
+export const PAD_DEFAULTS = Object.freeze({release: 0, gate: 0, bits: 1, deadzone: 24, debounce: 5, polling: 0, display: 30, rumble: 1});
+export const PAD_DOMAINS = {release: [0, 2, 1], gate: [0, 1, 1], bits: [0, 2, 1], deadzone: [0, 40, 2], debounce: [1, 8, 1], polling: [0, 2, 1], display: [0, 80, 10], rumble: [0, 1, 1]};
+export const RUMBLE_OPTIONS = Object.freeze(['Off', 'On'].map((label, value) => Object.freeze({value, label})));
+// Assigned motor response, not a measured product. Two cylindrical eccentric
+// weights rotate about x; their centers move in the yz plane. The driver ramps
+// up, holds speed and brakes. We calculate mount force, not shell displacement.
+export const FEEDBACK = Object.freeze({transfer: 0.001, rise: 0.02, hold: 0.04, fall: 0.03, density: 8800});
+export const RUMBLE_MOTORS = Object.freeze([
+  {id: 'low-motor', radius: 0.003, length: 0.008, eccentricity: 0.004, frequency: 80},
+  {id: 'high-motor', radius: 0.002, length: 0.005, eccentricity: 0.003, frequency: 150},
+].map(motor => Object.freeze({...motor, mass: Math.PI * motor.radius ** 2 * motor.length * FEEDBACK.density})));
 export const HISTOGRAM = Object.freeze({bin: 0.002, bins: 80});
+const phaseEdges = [...new Set([0, CLOCKS.scan, ...BOUNCE.flat().filter(Number.isFinite).map(t => Math.round((t % CLOCKS.scan) * 1e12) / 1e12)])].sort((a, b) => a - b);
+export const SCAN_PHASE_INTERVALS = Object.freeze(phaseEdges.slice(0, -1).map((lo, i) => Object.freeze([lo, phaseEdges[i + 1]])));
 
 // The stick.
 export const yokeAngles = (alpha, phi) => [Math.atan(Math.tan(alpha) * Math.cos(phi)), Math.atan(Math.tan(alpha) * Math.sin(phi))];
@@ -130,6 +139,49 @@ export const wiper = angle => STICK.supply * (0.5 + STICK.span / 2 * angle / STI
 export const adcCode = (volts, bits) => Math.max(0, Math.min(2 ** bits - 1, Math.floor(volts / STICK.supply * 2 ** bits)));
 export const toReport = (code, bits) => Math.max(-32768, Math.min(32767, Math.round((code + 0.5 - 2 ** (bits - 1)) / (STICK.span * 2 ** (bits - 1)) * GAME.full)));
 
+/** A high-impedance ADC reads the wiper; total track current stays constant. */
+export function potentiometer(angle) {
+  const volts = wiper(angle), resistance = 10000;
+  return {volts, resistance, lower: resistance * volts / STICK.supply, upper: resistance * (1 - volts / STICK.supply), current: STICK.supply / resistance};
+}
+
+/** Illustrative report layout: little-endian signed X and Y, then button bit 0. */
+export function reportBytes(axes, pressed) {
+  return [axes[0] & 255, (axes[0] >> 8) & 255, axes[1] & 255, (axes[1] >> 8) & 255, pressed ? 1 : 0];
+}
+
+/** Prescribed smooth ERM speed and exact reaction on its stationary mount. */
+export function motorAt(motor, elapsed, enabled = true) {
+  if (!Number.isFinite(elapsed)) throw new RangeError('Motor time must be finite');
+  const {rise, hold, fall} = FEEDBACK, omega = 2 * Math.PI * motor.frequency;
+  let angle = 0, speed = 0, acceleration = 0, phase = enabled ? 'waiting' : 'off';
+  if (enabled && elapsed > 0) {
+    const ramp = Math.min(elapsed, rise);
+    angle = omega * (ramp / 2 - rise * Math.sin(Math.PI * ramp / rise) / (2 * Math.PI));
+    if (elapsed < rise) {
+      speed = omega * (1 - Math.cos(Math.PI * elapsed / rise)) / 2;
+      acceleration = omega * Math.PI * Math.sin(Math.PI * elapsed / rise) / (2 * rise);
+      phase = 'accelerating';
+    } else {
+      angle += omega * Math.min(elapsed - rise, hold);
+      if (elapsed < rise + hold) { speed = omega; phase = 'running'; }
+      else {
+        const brake = Math.min(elapsed - rise - hold, fall);
+        angle += omega * (brake / 2 + fall * Math.sin(Math.PI * brake / fall) / (2 * Math.PI));
+        if (elapsed < rise + hold + fall) {
+          speed = omega * (1 + Math.cos(Math.PI * brake / fall)) / 2;
+          acceleration = -omega * Math.PI * Math.sin(Math.PI * brake / fall) / (2 * fall);
+          phase = 'braking';
+        } else phase = 'stopped';
+      }
+    }
+  }
+  const radial = motor.mass * motor.eccentricity * speed * speed, tangential = -motor.mass * motor.eccentricity * acceleration;
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const force = [0, radial * c - tangential * s, radial * s + tangential * c];
+  return {angle, speed, acceleration, frequency: speed / (2 * Math.PI), phase, radial, tangential, force, magnitude: Math.hypot(radial, tangential)};
+}
+
 /** A round dead zone as the XInput documentation applies it: clamp to 32,767, subtract the dead zone, divide by what is left. */
 export function deadZone(x, y, zone) {
   const magnitude = Math.hypot(x, y), inner = zone * GAME.full;
@@ -182,26 +234,44 @@ export function twoWaits(x, a, b) {
   return 1 - (p + q - x) ** 2 / (2 * p * q);
 }
 
+/** Integral of the CDF of two uniform waits, with stable pieces near the tails. */
+export function integratedTwoWaits(x, a, b) {
+  const [p, q] = a <= b ? [a, b] : [b, a];
+  if (x <= 0) return 0;
+  if (x >= p + q) return x - (p + q) / 2;
+  if (x < p) return x ** 3 / (6 * p * q);
+  if (x < q) return (x * x / 2 - p * x / 2 + p * p / 6) / q;
+  return x - (p + q) / 2 + (p + q - x) ** 3 / (6 * p * q);
+}
+
+/** CDF including the uniform scan phase within one contact-transition interval. */
+export function threeWaits(x, a, b, width) {
+  if (x <= 0) return 0;
+  if (x >= a + b + width) return 1;
+  return Math.max(0, Math.min(1, (integratedTwoWaits(x, a, b) - integratedTwoWaits(x - width, a, b)) / width));
+}
+
 const latencies = new Map();
 
 /** The time from pressing the button to its result on screen, over every timing of the three clocks. */
 export function latencyOver(n, polling, display) {
   const key = `${n}|${polling}|${display}`;
   if (latencies.has(key)) return latencies.get(key);
-  const ms = CLOCKS.scan, frame = CLOCKS.frame, lag = display / 1000, P = Math.round(1 / POLL_RATES[polling] / ms), weight = 1 / (LATENCY_STEPS * P);
+  const ms = CLOCKS.scan, frame = CLOCKS.frame, lag = display / 1000, P = Math.round(1 / POLL_RATES[polling] / ms);
   const histogram = new Float64Array(HISTOGRAM.bins);
   let registered = 0, seen = 0, low = Infinity, high = -Infinity, firmwareDoubles = 0, consoleDoubles = 0;
-  for (let i = 0; i < LATENCY_STEPS; i++) {
-    const f = (i + 0.5) / LATENCY_STEPS * ms, bounce = debounce(f, n);
-    registered += bounce.registered / LATENCY_STEPS;
-    if (bounce.presses > 1) firmwareDoubles += 1 / LATENCY_STEPS;
+  for (const [lo, hi] of SCAN_PHASE_INTERVALS) {
+    const width = hi - lo, f = (lo + hi) / 2, bounce = debounce(f, n), weight = width / (ms * P);
+    registered += bounce.registered * width / ms;
+    if (bounce.presses > 1) firmwareDoubles += width / ms;
     for (let offset = 0; offset < P; offset++) {
       const view = consoleView(bounce.changes, offset, P), scan = f + view.first * ms;
       seen += scan * weight;
-      low = Math.min(low, scan);
-      high = Math.max(high, scan);
+      low = Math.min(low, lo + view.first * ms);
+      high = Math.max(high, hi + view.first * ms);
       if (view.presses > 1) consoleDoubles += weight;
-      for (let b = 0; b < HISTOGRAM.bins; b++) histogram[b] += weight * (twoWaits((b + 1) * HISTOGRAM.bin - scan - frame - lag, ms, frame) - twoWaits(b * HISTOGRAM.bin - scan - frame - lag, ms, frame));
+      const base = lo + view.first * ms + frame + lag;
+      for (let b = 0; b < HISTOGRAM.bins; b++) histogram[b] += weight * (threeWaits((b + 1) * HISTOGRAM.bin - base, ms, frame, width) - threeWaits(b * HISTOGRAM.bin - base, ms, frame, width));
     }
   }
   const result = Object.freeze({
@@ -209,7 +279,7 @@ export function latencyOver(n, polling, display) {
     parts: Object.freeze({debounce: registered, poll: seen + ms / 2 - registered, frame: frame / 2, render: frame, display: lag}),
     firmwareDoubles, consoleDoubles, histogram: Object.freeze(Array.from(histogram)),
   });
-  if (latencies.size > 64) latencies.delete(latencies.keys().next().value);
+  if (latencies.size >= 256) latencies.delete(latencies.keys().next().value);
   latencies.set(key, result);
   return result;
 }
@@ -271,6 +341,7 @@ export function padPlan(input = {}) {
 
 /** Everything the controller, console and screen show at a moment of the run. */
 export function padAt(plan, time) {
+  if (!Number.isFinite(time)) throw new RangeError('Controller time must be finite');
   const t = Math.max(plan.startTime, Math.min(plan.duration, time)), stick = stickAt(plan.motion, t);
   const scanned = plan.scanAt(t), polled = plan.pollAt(t), sample = plan.read(scanned), report = plan.read(plan.scanAt(polled));
   let frame = null, shown = null;
@@ -279,9 +350,14 @@ export function padAt(plan, time) {
     if (item.shown <= t + 1e-12) shown = item;
   }
   const {press} = plan, since = t - press.t, scan = Math.floor((since - press.firstScan) / CLOCKS.scan + 1e-9), heard = press.events.filter(event => event.t <= t + 1e-12);
+  const firmware = scan >= 0 && stateAfter(press.bounce.changes, scan), consolePressed = Boolean(heard.at(-1)?.pressed);
+  const feedbackAt = press.frame + FEEDBACK.transfer;
   return {
     t, stick, scanned, polled, sample, report, frame, shown, since,
-    contact: contactClosed(since), firmware: scan >= 0 && stateAfter(press.bounce.changes, scan), console: Boolean(heard.at(-1)?.pressed),
+    contact: contactClosed(since), firmware, console: consolePressed,
+    buttonVolts: contactClosed(since) ? 0 : STICK.supply,
+    packet: reportBytes(report.report, consolePressed), feedbackAt,
+    motors: RUMBLE_MOTORS.map(motor => motorAt(motor, t - feedbackAt, Boolean(plan.values.rumble))),
     heard: heard.filter(event => event.pressed).length, onScreen: shown ? shown.presses : 0,
   };
 }

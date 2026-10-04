@@ -149,7 +149,8 @@ export const publishedEntryIds = [
   "voltage-multiplier",
   "robot-vacuum-cleaner",
   "washing-machine",
-  "friction-drive-toy"
+  "friction-drive-toy",
+  "games-controller"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -252,6 +253,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'games-controller': ['making-bits', 'using-bits', 'springs', 'rotating-wheels', 'electricity'],
   'friction-drive-toy': ['rotating-wheels', 'gears-and-belts', 'friction', 'wheel-and-axle'],
   'washing-machine': ['rotating-wheels', 'exploiting-heat', 'pressure-power', 'springs', 'electricity'],
   'robot-vacuum-cleaner': ['using-bits', 'sensors-and-detectors', 'rotating-wheels', 'pressure-power', 'electricity'],

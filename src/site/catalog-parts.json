@@ -3998,6 +3998,38 @@
       "parentId": "system"
     }
   ],
+  "games-controller": [
+    {
+      "id": "experiment",
+      "name": "Complete experiment",
+      "parentId": "system"
+    },
+    {
+      "id": "timeline",
+      "name": "Stick over time",
+      "parentId": "system"
+    },
+    {
+      "id": "map",
+      "name": "Stick map",
+      "parentId": "system"
+    },
+    {
+      "id": "adc",
+      "name": "ADC close up",
+      "parentId": "system"
+    },
+    {
+      "id": "bounce",
+      "name": "Press close up",
+      "parentId": "system"
+    },
+    {
+      "id": "latency",
+      "name": "Where the time goes",
+      "parentId": "system"
+    }
+  ],
   "robot-vacuum-cleaner": [
     {
       "id": "floor",

@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {chartText, lineObject, surface, textLabel} from './scene-kit.js';
-import {padPlan, padAt, gatePoint, tiltOf, wiper, adcCode, toReport, contactClosed, STICK, SPRING, FRICTION, CLOCKS, BOUNCE, GAME, HISTOGRAM, RELEASE_OPTIONS, GATE_OPTIONS, BITS_OPTIONS, POLL_OPTIONS, PAD_DEFAULTS, PAD_DOMAINS} from './games-controller-physics.js';
+import {controllerFeedback} from './games-controller-feedback.js';
+import {padPlan, padAt, gatePoint, tiltOf, wiper, adcCode, toReport, contactClosed, STICK, SPRING, FRICTION, CLOCKS, BOUNCE, GAME, HISTOGRAM, RELEASE_OPTIONS, GATE_OPTIONS, BITS_OPTIONS, POLL_OPTIONS, RUMBLE_OPTIONS, PAD_DEFAULTS, PAD_DOMAINS} from './games-controller-physics.js';
 
 // ---------------------------------------------------------------------------
 // Games controller: a gamepad lying on a desk with its top shell cut away, its
@@ -10,7 +11,7 @@ import {padPlan, padAt, gatePoint, tiltOf, wiper, adcCode, toReport, contactClos
 // console's monitor, and five charts behind them.
 //
 // Scale: one millimeter is 0.02 scene units for the controller (164 mm across),
-// its thumbstick module (a lever 17 mm to the cap, tilting 23° each way in a
+// its thumbstick module (a lever 20 mm to the cap, tilting 23° each way in a
 // gimbal, its gate 9 mm above the pivot) and its button. The console and the
 // monitor, a 24-inch screen, are drawn at a fifth of their size so the
 // thumbstick can still be framed; their part text says so. The charts are not
@@ -40,21 +41,21 @@ const UP = new THREE.Vector3(0, 1, 0);
 export const SMALL = 0.2;
 export const CONTROLLER = Object.freeze({x: -25, z: 40, base: 12, top: 32, pcb: 14});
 export const STICK_AT = Object.freeze({x: -63, y: 22, z: 32});
-export const MODULE = Object.freeze({shaft: 2, gate: 9, cap: 17, capRadius: 10, capThickness: 4, ball: 2.5, foot: 2.5, springBottom: -6.5, springTop: -3.6, yokeA: 6, yokeB: 7.5, slot: 2.3, potOffset: 9.5, track: 3});
-export const GATE_RADIUS = MODULE.gate * Math.tan(STICK.travel) + MODULE.shaft / Math.cos(STICK.travel);
+export const MODULE = Object.freeze({shaft: 2, gate: 9, gateThickness: 1, cap: 20, capRadius: 10, capThickness: 4, ball: 2.5, foot: 2.5, springBottom: -6.5, springTop: -3.6, yokeA: 6, yokeB: 7.5, slot: 2.8, potOffset: 9.5, track: 3});
+export const GATE_RADIUS = (MODULE.gate + MODULE.gateThickness / 2) * Math.tan(STICK.travel) + MODULE.shaft / Math.cos(STICK.travel);
 export const TRACK_ARC = 2 * STICK.travel / STICK.span;
 export const BUTTON_AT = Object.freeze({x: 15, z: 32, capTop: 35, travel: 2, radius: 5, height: 6, open: 1.5, bounceGap: 0.25, reach: 0.003});
 export const CONSOLE_AT = Object.freeze({x: 110, z: 20, size: [275, 60, 215]});
 export const MONITOR_AT = Object.freeze({x: 110, z: -30, bottom: 26, display: [531, 299], meter: 500, start: [-40, -10]});
 export const CHARTS = Object.freeze({
   z: -70,
-  timeline: Object.freeze({x: -146, y: 179, w: 186, h: 60, v0: -1, v1: 1.5}),
+  timeline: Object.freeze({x: -146, y: 179, w: 126, h: 60, v0: -1, v1: 1.5}),
   map: Object.freeze({x: 60, y: 179, w: 60, h: 60, range: 1.5}),
   adc: Object.freeze({x: -154, y: 88, w: 64, h: 70, half: DEG}),
   bounce: Object.freeze({x: -75, y: 88, w: 120, h: 70, t0: -0.001, t1: 0.014}),
   latency: Object.freeze({x: 60, y: 88, w: 80, h: 70, t1: 0.16, scale: 250}),
 });
-export const COLORS = Object.freeze({stick: 0x2f6690, report: 0xc14f39, gate: 0xe3b45e, zone: 0xce825f, axis: 0x374736, faint: 0x9aa39a, lit: 0x5ed17a, led: 0xff3b2f, dark: 0x3a2a28, frameLit: 0xffd35a, display: 0x1d2a33, grid: 0x3c5664});
+export const COLORS = Object.freeze({stick: 0x2f6690, report: 0xc14f39, gate: 0x89601c, zone: 0x914626, axis: 0x374736, faint: 0x667466, lit: 0x5ed17a, led: 0xff3b2f, dark: 0x3a2a28, frameLit: 0xffd35a, display: 0x1d2a33, grid: 0x3c5664});
 export const SHARE_COLORS = Object.freeze([0xe3b45e, 0xc14f39, 0x2f6690, 0x91aa7e, 0xce825f]);
 
 /** The lever's direction for yoke angles: x to the right, up on the stick away from the player. */
@@ -78,8 +79,8 @@ export function controllerOutline() {
   return shape;
 }
 
-const flat = (shape, depth) => {
-  const geometry = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled: false, curveSegments: 24});
+const flat = (shape, depth, curveSegments = 24) => {
+  const geometry = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled: false, curveSegments});
   geometry.rotateX(-Math.PI / 2);
   geometry.scale(MM, MM, MM);
   return geometry;
@@ -94,23 +95,35 @@ export function createGamesControllerModel() {
   const kit = houseModel('Games controller'), {root, part, control, finish, covers} = kit;
   const mm = value => value * MM, at = (x, y, z) => [mm(x), mm(y), mm(z)];
   const system = part('system', 'Games controller, console and screen', 'A gamepad on a desk, its top shell cut away, wired to a console and its monitor. Let go of the thumbstick and press the button to follow both from the thumb to the screen.', [0, 0, 0]);
+  const experiment = part('experiment', 'Complete experiment', 'Follow the controller’s input to the game, then the game’s feedback command back to the motors.', [0, 0, 0], system);
+  const machine = part('machine', 'Games controller', 'A simplified wired gamepad with one active thumbstick, one button and two rumble motors. Other buttons and a second stick are omitted.', [0, 0, 0], experiment);
+  const category = (id, name, description) => { const group = part(id, name, description, [0, 0, 0], machine); group.userData.explosionCategory = true; return group; };
 
   // The controller's shell: the bottom half, and the top half as a cover with holes for the stick and the button.
-  const body = part('body', 'Controller shell', 'The gamepad’s plastic shell, 164 mm across. The top half is cut away to show the thumbstick module, the button and the circuit board.', [0, 0, 0], system);
-  const bottomShell = surface(kit, flat(controllerOutline(), CONTROLLER.base), 'ink', body);
+  const body = category('body', 'Controller shell', 'A hollow shell, 164 mm across, carries the board and motor mounts. Cutaway removes the side walls and top panel so every mechanism can be inspected.');
+  const bottomShell = surface(kit, flat(controllerOutline(), 2), 'ink', body);
   bottomShell.position.set(mm(CONTROLLER.x), 0, mm(CONTROLLER.z));
+  const wallOutline = controllerOutline(), inner = new THREE.Path();
+  const innerPoints = controllerOutline().getPoints(48).map(p => new THREE.Vector2(p.x * 0.965, p.y * 0.95));
+  inner.setFromPoints(innerPoints.reverse()); wallOutline.holes.push(inner);
+  const walls = surface(kit, flat(wallOutline, 28), 0x55605a, body);
+  walls.position.set(mm(CONTROLLER.x), mm(2), mm(CONTROLLER.z)); covers.push(walls);
   const topOutline = controllerOutline();
-  for (const [x, radius] of [[STICK_AT.x - CONTROLLER.x, 11], [BUTTON_AT.x - CONTROLLER.x, 6.5]]) {
+  for (const [x, radius] of [[STICK_AT.x - CONTROLLER.x, 13.2], [BUTTON_AT.x - CONTROLLER.x, 6.5]]) {
     const hole = new THREE.Path();
     hole.absarc(x, CONTROLLER.z - STICK_AT.z, radius, 0, Math.PI * 2, true);
     topOutline.holes.push(hole);
   }
-  const topShell = surface(kit, flat(topOutline, CONTROLLER.top - CONTROLLER.base), 0x55605a, body);
-  topShell.position.set(mm(CONTROLLER.x), mm(CONTROLLER.base), mm(CONTROLLER.z));
+  const portHole = new THREE.Path(); portHole.moveTo(-5, 32); portHole.lineTo(-5, 38); portHole.lineTo(5, 38); portHole.lineTo(5, 32); portHole.closePath(); topOutline.holes.push(portHole);
+  const topShell = surface(kit, flat(topOutline, 2), 0x55605a, body);
+  topShell.position.set(mm(CONTROLLER.x), mm(30), mm(CONTROLLER.z));
   covers.push(topShell);
+  const boardSupports = [];
+  for (const x of [-76, 26]) for (const z of [19, 57]) boardSupports.push(kit.cylinder(mm(2), mm(10.4), at(x, 7.2, z), 'cream', body));
 
   // The thumbstick module, built about its pivot.
-  const joystick = part('joystick', 'Thumbstick', 'The stick’s lever pivots on a ball in a gimbal: two slotted yokes at right angles, each turned only by tilt across its slot. A spring under the lever’s foot centers it, friction in the gimbal fights the spring, and the gate stops the lever at 23°. Drawn at true size.', at(STICK_AT.x, STICK_AT.y, STICK_AT.z), system);
+  const stickMechanism = category('stick-mechanism', 'Thumbstick and sensors', 'Supported perpendicular yokes turn two potentiometers. The lever’s foot compresses a return spring.');
+  const joystick = part('joystick', 'Thumbstick', 'The stick’s lever pivots in two supported slotted yokes. The round gate limits tilt to 23°; the square gate limits each yoke to 23°, allowing greater diagonal tilt. The dimensions are illustrative, not a copy of a commercial module.', at(STICK_AT.x, STICK_AT.y, STICK_AT.z), stickMechanism);
   kit.box([mm(18), mm(1.5), mm(18)], at(0, MODULE.springBottom - 0.75, 0), 'metal', joystick);
   for (const [x, z] of [[-8.25, -8.25], [8.25, -8.25], [-8.25, 8.25], [8.25, 8.25]]) kit.box([mm(1.5), mm(15.5), mm(1.5)], at(x, (MODULE.springBottom + MODULE.gate) / 2, z), 'metal', joystick);
   const gatePlate = holeShape => {
@@ -121,14 +134,17 @@ export function createGamesControllerModel() {
     plate.lineTo(-9, 9);
     plate.closePath();
     plate.holes.push(holeShape);
-    const geometry = flat(plate, 1);
+    const geometry = flat(plate, MODULE.gateThickness, 256);
     geometry.translate(0, -mm(0.5), 0);
     const mesh = surface(kit, geometry, 'metal', joystick);
     mesh.position.y = mm(MODULE.gate);
     return mesh;
   };
   const roundHole = new THREE.Path();
-  roundHole.absarc(0, 0, GATE_RADIUS, 0, Math.PI * 2, true);
+  // Circumscribed polygon: triangulation must not intrude into the nominal
+  // circular clearance. Maximum excess radius is below 0.00012 mm.
+  const roundSegments = 512, meshRadius = GATE_RADIUS / Math.cos(Math.PI / roundSegments);
+  roundHole.setFromPoints(Array.from({length:roundSegments+1},(_,i)=>{const angle=(.5-i)*2*Math.PI/roundSegments;return new THREE.Vector2(meshRadius*Math.cos(angle),meshRadius*Math.sin(angle));}));
   const squareHole = new THREE.Path();
   squareHole.moveTo(-GATE_RADIUS, -GATE_RADIUS);
   squareHole.lineTo(-GATE_RADIUS, GATE_RADIUS);
@@ -137,83 +153,141 @@ export function createGamesControllerModel() {
   squareHole.closePath();
   const gates = [gatePlate(roundHole), gatePlate(squareHole)];
 
-  const lever = new THREE.Group();
-  joystick.add(lever);
+  const lever = part('stick-lever','Thumb cap and lever','The cap and shaft tilt together about the ball center. The foot presses the spring plate.',[0,0,0],joystick);
   kit.sphere(mm(MODULE.ball), [0, 0, 0], 'metal', lever);
   kit.cylinder(mm(MODULE.shaft), mm(MODULE.cap), at(0, MODULE.cap / 2, 0), 'ink', lever);
   kit.cylinder(mm(MODULE.capRadius), mm(MODULE.capThickness), at(0, MODULE.cap, 0), 'clay', lever);
   const capRim = kit.ring(mm(7), mm(0.8), at(0, MODULE.cap + MODULE.capThickness / 2, 0), 'wood', lever);
   capRim.rotation.x = Math.PI / 2;
-  kit.cylinder(mm(MODULE.foot), mm(0.6), at(0, -MODULE.ball - 0.3, 0), 'metal', lever);
+  const foot = surface(kit, new THREE.CylinderGeometry(mm(MODULE.foot),mm(MODULE.foot),mm(0.6),128), 'metal', lever);
+  foot.position.set(...at(0,-MODULE.ball-0.3,0));
 
-  const yokeA = new THREE.Group(), yokeB = new THREE.Group();
-  joystick.add(yokeA, yokeB);
+  const yokeA = part('x-yoke','X-axis yoke and shaft','Its slot permits motion along the other axis while its supported shaft turns the X potentiometer.',[0,0,0],joystick);
+  const yokeB = part('y-yoke','Y-axis yoke and shaft','This perpendicular slotted yoke turns the Y potentiometer.',[0,0,0],joystick);
   for (const side of [-1, 1]) {
     const arcA = surface(kit, new THREE.TorusGeometry(mm(MODULE.yokeA), mm(0.5), 6, 32, Math.PI), 'gold', yokeA);
     arcA.rotation.y = Math.PI / 2;
     arcA.position.x = mm(side * MODULE.slot);
-    kit.rod(at(0, 0, side * (MODULE.yokeA - 0.5)), at(0, 0, side * (MODULE.yokeA + 1.5)), mm(1), 'gold', yokeA);
+    kit.rod(at(-MODULE.slot, 0, side * MODULE.yokeA), at(MODULE.slot, 0, side * MODULE.yokeA), mm(0.5), 'gold', yokeA);
+    kit.rod(at(0, 0, side * (MODULE.yokeA - 0.5)), at(0, 0, side > 0 ? 11.6 : -9), mm(0.7), 'gold', yokeA);
     const arcB = surface(kit, new THREE.TorusGeometry(mm(MODULE.yokeB), mm(0.5), 6, 32, Math.PI), 'wood', yokeB);
     arcB.position.z = mm(side * MODULE.slot);
-    kit.rod(at(side * (MODULE.yokeB - 0.5), 0, 0), at(side * (MODULE.yokeB + 1.5), 0, 0), mm(1), 'wood', yokeB);
+    kit.rod(at(side * MODULE.yokeB, 0, -MODULE.slot), at(side * MODULE.yokeB, 0, MODULE.slot), mm(0.5), 'wood', yokeB);
+    kit.rod(at(side * (MODULE.yokeB - 0.5), 0, 0), at(side > 0 ? 11.6 : -9, 0, 0), mm(0.7), 'wood', yokeB);
   }
+  const bearings = [];
+  for (const axis of ['x', 'z']) for (const side of [-1, 1]) {
+    const pos = axis === 'x' ? [side * 8.25, 0, 0] : [0, 0, side * 8.25];
+    const bearing = kit.ring(mm(1.15), mm(0.35), at(...pos), 'metal', joystick);
+    if (axis === 'x') bearing.rotation.y = Math.PI / 2; bearings.push(bearing);
+    kit.box(at(1.5, 5.75, 1.5), at(pos[0], -4.375, pos[2]), 'metal', joystick);
+  }
+  const ballSeat = kit.ring(mm(2.75), mm(0.25), [0, 0, 0], 'metal', joystick); ballSeat.rotation.x = Math.PI / 2;
+  for (const side of [-1, 1]) kit.rod(at(side * 2.75, 0, 0), at(side * 6.5, -6.5, 0), mm(0.4), 'metal', joystick);
 
+  const springAssembly = part('return-spring','Return spring and plate','A seated coil presses a plate against the lever foot. The displayed spring stays in contact; its compression illustrates the assigned restoring torque.',[0,0,0],joystick);
   const springGroup = new THREE.Group();
   springGroup.position.y = mm(MODULE.springBottom);
-  joystick.add(springGroup);
-  kit.spring([0, 0, 0], mm(2.2), mm(MODULE.springTop - MODULE.springBottom), 3, springGroup, mm(0.3));
-  const springPlate = kit.cylinder(mm(3.2), mm(0.5), at(0, MODULE.springTop + 0.25, 0), 'metal', joystick);
+  springAssembly.add(springGroup);
+  kit.spring(at(0, 0.3, 0), mm(2.2), mm(MODULE.springTop - MODULE.springBottom - 0.6), 3, springGroup, mm(0.3));
+  for (const y of [0.3,MODULE.springTop-MODULE.springBottom-0.3]) {const end=kit.ring(mm(2.2),mm(0.3),at(0,y,0),'metal',springGroup);end.rotation.x=Math.PI/2;}
+  const springPlate = kit.cylinder(mm(3.2), mm(0.5), at(0, MODULE.springTop + 0.25, 0), 'metal', springAssembly);
+  const frame = part('stick-frame','Gate, frame and bearings','The frame mounts to the board, supports four shaft bearings and seats the pivot. Only the selected round or square gate is shown.',[0,0,0],joystick);
+  for (const child of [...joystick.children]) if (![lever,yokeA,yokeB,springAssembly,frame].includes(child)) frame.add(child);
 
   // The two potentiometers on the module's sides, their tracks spanning the lever's travel and 20% more.
-  const pots = part('pots', 'Potentiometers', 'Each yoke turns the wiper of a 10 kΩ potentiometer along its resistive track, so the wiper’s voltage says how far that yoke has turned. The lever’s 23° each way covers the middle 80% of the track. Drawn at true size.', at(STICK_AT.x, STICK_AT.y, STICK_AT.z), system);
-  const potFace = (group, housing, color) => {
-    kit.box(housing, [0, 0, -mm(1.7)], 'leaf', group);
-    const track = surface(kit, new THREE.TorusGeometry(mm(MODULE.track), mm(0.35), 6, 24, TRACK_ARC), 'ink', group);
+  const pots = part('pots', 'Potentiometers', 'Each yoke turns a wiper along a 10 kΩ track. Its voltage changes with angle while total track current stays 0.33 mA at 3.3 V. The high-impedance ADC draws negligible wiper current.', at(STICK_AT.x, STICK_AT.y, STICK_AT.z), stickMechanism);
+  const potFace = (group, id, color) => {
+    const casingShape = new THREE.Shape(), bore = new THREE.Path();
+    casingShape.setFromPoints([[-4.5,-4.5],[4.5,-4.5],[4.5,4.5],[-4.5,4.5],[-4.5,-4.5]].map(p => new THREE.Vector2(...p)));
+    bore.absarc(0, 0, 0.85, 0, 2 * Math.PI, true); casingShape.holes.push(bore);
+    const casingGeometry = new THREE.ExtrudeGeometry(casingShape, {depth: 3, bevelEnabled: false}); casingGeometry.translate(0,0,-3.2); casingGeometry.scale(MM,MM,MM);
+    surface(kit, casingGeometry, 'leaf', group);
+    const trackPart = part(`${id}-track`,`${id==='x-pot'?'X':'Y'} resistive track`,'The two fixed ends connect to ground and 3.3 V. The wiper follows the voltage along this 10 kΩ track.',[0,0,0],group);
+    const track = surface(kit, new THREE.TorusGeometry(mm(MODULE.track), mm(0.35), 6, 24, TRACK_ARC), 'ink', trackPart);
     track.rotation.z = Math.PI / 2 - TRACK_ARC / 2;
-    const wiperArm = new THREE.Group();
+    const wiperArm = part(`${id}-wiper`,`${id==='x-pot'?'X':'Y'} sensor wiper`,'The shaft rotates this conducting arm across the resistive track. Its center terminal sends the divided voltage to the ADC.',[0,0,0],group);
     wiperArm.position.z = mm(0.4);
     group.add(wiperArm);
     kit.box([mm(0.6), mm(3.2), mm(0.4)], at(0, 1.6, 0), color, wiperArm);
     kit.disk(mm(0.9), mm(0.5), [0, 0, 0], color, wiperArm);
     for (const x of [-2.5, 0, 2.5]) kit.rod(at(x, -4.5, -1.7), at(x, -8, -1.7), mm(0.35), 'metal', group);
+    for (const side of [-1, 1]) {
+      const angle = Math.PI / 2 - side * TRACK_ARC / 2, x = MODULE.track * Math.cos(angle), y = MODULE.track * Math.sin(angle);
+      kit.tube([at(x,y,0),at(side * 3.7,2,0),at(side * 3.7,-3.5,0),at(side * 2.5,-4.5,-1.7)],mm(0.15),'gold',group);
+    }
+    kit.rod(at(0,-0.8,0),at(0,-4.5,-1.7),mm(0.15),'gold',group);
     return wiperArm;
   };
-  const potA = new THREE.Group(), potB = new THREE.Group();
+  const potA = part('x-pot','X potentiometer','Three pins connect the two track ends and the moving wiper to the circuit board.',[0,0,0],pots);
+  const potB = part('y-pot','Y potentiometer','The perpendicular sensor measures the other yoke angle.',[0,0,0],pots);
   potA.position.z = mm(MODULE.potOffset + 1.7);
   potB.position.x = mm(MODULE.potOffset + 1.7);
   potB.rotation.y = Math.PI / 2;
   pots.add(potA, potB);
-  const wiperA = potFace(potA, [mm(9), mm(9), mm(3)], 'gold'), wiperB = potFace(potB, [mm(9), mm(9), mm(3)], 'wood');
+  const wiperA = potFace(potA, 'x-pot', 'gold'), wiperB = potFace(potB, 'y-pot', 'wood');
 
   // The button: cap, rubber dome, carbon pill and the two pads on the board.
-  const button = part('button', 'Button and contacts', 'Pressing the cap collapses a rubber dome until the carbon pill under it bridges two pads on the board. The pads light while the pill touches them: its first touches bounce for 2.6 ms. Drawn at true size.', at(BUTTON_AT.x, 0, BUTTON_AT.z), system);
-  const cap = kit.cylinder(mm(BUTTON_AT.radius), mm(BUTTON_AT.height), at(0, BUTTON_AT.capTop - BUTTON_AT.height / 2, 0), 'red', button);
-  const dome = surface(kit, new THREE.CylinderGeometry(mm(4), mm(6), mm(15), 24, 1, true), 'cream', button, true);
+  const buttons = category('buttons', 'Button input', 'A guided cap and rubber contact close a pull-up input circuit.');
+  const button = part('button', 'Button and contacts', 'Pressing the cap flexes the rubber dome and bridges two board pads with a carbon pill. The assigned contact trace bounces for 2.6 ms; actual switches have different bounce patterns.', at(BUTTON_AT.x, 0, BUTTON_AT.z), buttons);
+  const capPart = part('button-cap','Button cap','The guided cap travels down 2 mm when pressed.',[0,0,0],button);
+  const rubber = part('button-rubber','Rubber dome and stem','The flexible dome returns the button. A central rubber stem transfers the cap’s press to the conductive pill.',[0,0,0],button);
+  const carbon = part('button-carbon','Carbon contact pill','This conductive pill bridges the two pads when pressed. The assigned trace includes short separations during bounce.',[0,0,0],button);
+  const contacts = part('button-pads','Input and ground pads','One pad connects to a pulled-up input; the other to ground. The pill closes the circuit between them.',[0,0,0],button);
+  const cap = kit.cylinder(mm(BUTTON_AT.radius), mm(BUTTON_AT.height), at(0, BUTTON_AT.capTop - BUTTON_AT.height / 2, 0), 'red', capPart);
+  const dome = surface(kit, new THREE.CylinderGeometry(mm(4), mm(6), mm(15), 24, 1, true), 'cream', rubber, true);
   dome.material.transparent = true;
   dome.material.opacity = 0.45;
   dome.material.depthWrite = false;
-  const pill = kit.cylinder(mm(2.2), mm(0.6), at(0, CONTROLLER.pcb + 0.5 + BUTTON_AT.open, 0), 'ink', button);
-  const pads = [-1.5, 1.5].map(x => kit.box([mm(2.6), mm(0.2), mm(5.5)], at(x, CONTROLLER.pcb + 0.1, 0), 'gold', button));
+  const pill = kit.cylinder(mm(2.2), mm(0.6), at(0, CONTROLLER.pcb + 0.5 + BUTTON_AT.open, 0), 'ink', carbon);
+  const buttonStem = kit.cylinder(mm(1.5), mm(1), [0,0,0], 'cream', rubber);
+  const buttonGuide = kit.ring(mm(5.6),mm(0.4),at(0,30,0),'cream',button); buttonGuide.rotation.x=Math.PI/2;
+  for (const x of [-6,6]) for (const z of [-6,6]) kit.rod(at(x,14,z),at(x,30,z),mm(0.45),'cream',button);
+  const pads = [-1.5, 1.5].map(x => kit.box([mm(2.6), mm(0.2), mm(5.5)], at(x, CONTROLLER.pcb + 0.1, 0), 'gold', contacts));
   const padMaterial = pads[0].material.clone();
   pads.forEach(pad => { pad.material = padMaterial; });
 
   // The circuit board, its microcontroller and the light that shows the firmware's verdict.
-  const electronics = part('electronics', 'Circuit board', 'The microcontroller samples both potentiometers and the button every millisecond, debounces the button, and answers the console’s polls with a report. Its light shows when the firmware calls the button pressed.', [0, 0, 0], system);
-  kit.box([mm(110), mm(1.6), mm(44)], at(CONTROLLER.x, CONTROLLER.pcb - 0.8, 38), 'leaf', electronics);
-  kit.box([mm(8), mm(1.5), mm(8)], at(-24, CONTROLLER.pcb + 0.75, 44), 'ink', electronics);
+  const electronics = category('electronics', 'Circuit board', 'The microcontroller samples the wipers and active-low button every millisecond, debounces the button, and reports. Gold paths indicate connections, not a production PCB layout.');
+  const boardPart = part('board','Printed circuit board','An insulating board supports the electronics and connects their terminals.',[0,0,0],electronics);
+  const chipPart = part('microcontroller','Microcontroller and ADC','Samples two voltages, checks the button, debounces it and constructs input reports.',[0,0,0],electronics);
+  const board = kit.box([mm(110), mm(1.6), mm(44)], at(CONTROLLER.x, CONTROLLER.pcb - 0.8, 38), 'leaf', boardPart);
+  const chip = kit.box([mm(8), mm(1.5), mm(8)], at(-24, CONTROLLER.pcb + 0.75, 44), 'ink', chipPart);
   const led = own(kit.box([mm(2.4), mm(1.2), mm(1.6)], at(-14, CONTROLLER.pcb + 0.6, 48), 'red', electronics), COLORS.dark);
 
-  const cable = part('cable', 'Cable', 'A USB cable. The console asks the controller for a report 125, 250 or 1,000 times a second, and the controller answers with its latest sample.', [0, 0, 0], system);
-  kit.tube([at(CONTROLLER.x, 20, CONTROLLER.z - 41), at(-10, 8, -12), at(40, 4, -8), at(CONSOLE_AT.x - 27.5, 6, CONSOLE_AT.z)], mm(1.5), 'ink', cable);
+  const port = kit.box(at(9, 4, 5), at(CONTROLLER.x, 31, 5), 'metal', electronics);
+  const traces = [], trace = points => { const object = kit.tube(points.map(p => at(...p)), mm(0.18), 'gold', electronics); traces.push(object); return object; };
+  // Signal paths reach the actual potentiometer pins and the button pads.
+  trace([[-63,14.2,41.5],[-55,14.2,47],[-28,14.2,47]]);
+  trace([[-53.5,14.2,32],[-45,14.2,35],[-28,14.2,41]]);
+  trace([[16.5,14.2,32],[8,14.2,39],[-20,14.2,41]]);
+  trace([[13.5,14.2,32],[13.5,14.2,21],[-67,14.2,21],[-67,14.2,41.5],[-65.5,14.2,41.5]]);
+  trace([[-53.5,14.2,34.5],[-53.5,14.2,21]]);
+  trace([[-60.5,14.2,41.5],[-60.5,14.2,53],[-14,14.2,53],[-14,14.2,44]]);
+  trace([[-53.5,14.2,29.5],[-42,14.2,29.5],[-42,14.2,53]]);
+  const regulator = kit.box(at(4,1.2,4),at(-36,14.6,22),'ink',electronics);
+  trace([[-25,29,5],[-25,18,10],[-36,14.2,20]]);
+  trace([[-36,14.2,24],[-36,14.2,53],[-14,14.2,53]]);
+  trace([[-38,14.2,22],[-38,14.2,21]]);
+  trace([[-23,29,5],[-23,18,14],[-23,14.2,40]]);
+  trace([[-27,29,5],[-27,18,14],[-27,14.2,40]]);
+  trace([[-29,29,5],[-29,18,14],[-29,14.2,21]]);
+  const pullup = kit.box(at(2,0.8,4),at(5,14.6,38),'cream',electronics);
+  trace([[5,14.2,36],[5,14.2,32],[16.5,14.2,32]]); trace([[5,14.2,40],[5,14.2,53],[-14,14.2,53]]);
+  const feedback = controllerFeedback(kit, machine, MM);
+  trace([[-5,14.2,48],[-5,14.2,46],[-14,14.2,46],[-14,14.2,53]]);
+  trace([[-2,14.2,48],[-2,14.2,21]]);
+  const cable = part('cable', 'USB cable', 'The host supplies power and polls for input. Reports go to the console; a separate output command returns to the rumble driver. Connector and traces are simplified.', [0, 0, 0], experiment); cable.userData.explosionExcluded = true;
+  kit.tube([at(CONTROLLER.x,34,5),at(CONTROLLER.x,38,-5),at(-10,8,-12),at(40,4,-8),at(CONSOLE_AT.x-27.5,6,CONSOLE_AT.z)],mm(1.5),'ink',cable);
 
   // The console and its monitor, at a fifth of their size.
-  const consolePart = part('console', 'Console', 'The console polls the controller, turns every change in its reports into events, and runs the game 60 frames a second: at the start of each frame the game takes the latest report. The light flashes at each frame’s start. Drawn at a fifth of its size.', at(CONSOLE_AT.x, 0, CONSOLE_AT.z), system);
+  const consolePart = part('console', 'Console', 'This illustrative game queues observed report edges between frames and runs at 60 frames a second. Real input APIs may instead expose only the latest state. The light marks frame starts. Drawn at one fifth scale.', at(CONSOLE_AT.x, 0, CONSOLE_AT.z), experiment); consolePart.userData.explosionExcluded = true;
   const [cw, ch, cd] = CONSOLE_AT.size.map(value => value * SMALL);
   kit.box([mm(cw), mm(ch), mm(cd)], at(0, ch / 2, 0), 'ink', consolePart);
   const frameLight = own(kit.box([mm(6), mm(1.6), mm(0.8)], at(-15, ch / 2, cd / 2 + 0.4), 'gold', consolePart), COLORS.dark);
   kit.box([mm(2), mm(1.6), mm(0.8)], at(18, ch / 2, cd / 2 + 0.4), 'leaf', consolePart);
 
-  const screen = part('screen', 'Monitor', 'A 24-inch monitor, drawn at a fifth of its size, showing the game: the character walks as the game reads the stick, and a ring appears around it for each press the game has heard, one frame after the game handles it plus the display’s own lag.', at(MONITOR_AT.x, 0, MONITOR_AT.z), system);
+  const screen = part('screen', 'Monitor', 'A 24-inch monitor at one fifth scale. The character moves from the sampled stick direction; one ring appears for each observed press. The assigned pipeline draws for one frame, then adds the selected display delay.', at(MONITOR_AT.x, 0, MONITOR_AT.z), experiment); screen.userData.explosionExcluded = true;
   const [dw, dh] = MONITOR_AT.display.map(value => value * SMALL), displayY = MONITOR_AT.bottom + dh / 2 + 2;
   kit.box([mm(44), mm(2.4), mm(32)], at(0, 1.2, 0), 'ink', screen);
   kit.box([mm(6), mm(MONITOR_AT.bottom), mm(4)], at(0, MONITOR_AT.bottom / 2, -4), 'ink', screen);
@@ -230,10 +304,15 @@ export function createGamesControllerModel() {
   screen.add(character);
   kit.disk(mm(3), mm(0.4), [0, 0, 0], 'red', character);
   const rings = [5, 7].map(radius => kit.ring(mm(radius), mm(0.45), [0, 0, 0], 'gold', character));
+  kit.tube([at(110,6,-1.5),at(135,5,-5),at(138,12,-35),at(110,35,-32)],mm(1),'ink',cable);
 
   // The charts, in a plane behind the desk, not to scale.
   const Z = CHARTS.z, P = (x, y) => [mm(x), mm(y), mm(Z)];
-  const chart = (id, label, description) => part(id, label, description, [0, 0, 0], system);
+  const charts = new THREE.Group(); charts.name='Measurements'; system.add(charts); charts.userData.explosionExcluded = true;
+  // Diagrams occupy the experiment's envelope but appear only in their own
+  // inspection. They cannot change the home camera or clutter reassembly.
+  charts.scale.setScalar(.3); charts.position.z=mm(30);
+  const chart = (id, label, description) => {const group=part(id,label,description,[0,0,0],charts);group.userData.inspectionOnly=id;return group;};
   const setLine = (line, points) => {
     const array = line.geometry.attributes.position.array, room = array.length / 3, n = Math.min(points.length, room);
     for (let i = 0; i < room; i++) array.set(P(...points[Math.min(i, n - 1)]), i * 3);
@@ -296,49 +375,52 @@ export function createGamesControllerModel() {
   const histogramLine = lineObject(2 * HISTOGRAM.bins + 2, COLORS.stick, latency), meanLine = lineObject(2, COLORS.report, latency), latencyCursor = lineObject(2, COLORS.axis, latency);
 
   // The charts' words: titles, axes, and a key beside or inside each chart.
-  const TEXT = mm(3.5), css = color => `#${color.toString(16).padStart(6, '0')}`;
+  const TEXT = mm(12), labelColors = new Map([[0xe3b45e,0x89601c],[0x91aa7e,0x4b643c],[0xce825f,0x914626]]);
+  const css = color => `#${(labelColors.get(color) ?? color).toString(16).padStart(6, '0')}`;
   const words = (parent, text, x, y, options = {}) => textLabel(parent, text, {height: TEXT, position: [mm(x), mm(y), mm(Z + 0.4)], ...options});
-  const key = (parent, x, top, entries) => entries.forEach(([text, color], i) => words(parent, text, x, top - 4 * i, {align: 'left', color: css(color)}));
+  const key = (parent, x, top, entries) => entries.forEach(([text, color], i) => words(parent, text, x, top - 13.8 * i, {align: 'left', color: css(color)}));
   const percent = [[-1, '−100%'], [0, '0'], [1, '100%']];
   chartText(timeline, (t, v) => P(tx(t), ty(v)), {
     title: 'Stick over time', size: TEXT,
-    x: {min: CLOCKS.start, max: CLOCKS.duration, title: 'ms after letting go', ticks: [[0, '0'], [0.1, '100'], [0.2, '200'], [0.3, '300']]},
-    y: {min: T.v0, max: T.v1, title: 'Tilt, share of full travel', ticks: percent},
-    legend: [['True tilt', COLORS.stick], ['Reports', COLORS.report], ['What the game reads', COLORS.axis], ['Dead zone', COLORS.zone]],
+    x: {min: CLOCKS.start, max: CLOCKS.duration, title: 'Time after release (ms)', ticks: [[0, '0'], [0.1, '100'], [0.2, '200'], [0.3, '300']]},
+    y: {min: T.v0, max: T.v1, title: 'Share of full travel', ticks: percent},
   });
+  for (const [i,[label,color]] of [['Tilt',COLORS.stick],['Report',COLORS.report],['Game',COLORS.axis],['Dead zone',COLORS.zone]].entries()) words(timeline,label,T.x+4+(i%2)*65,T.y-46-Math.floor(i/2)*14,{align:'left',color:css(color)});
   chartText(map, (a, b) => P(mx(a), my(b)), {
     title: 'Stick map', size: TEXT,
     x: {min: -M.range, max: M.range, title: 'X report', ticks: percent},
     y: {min: -M.range, max: M.range, title: 'Y report', ticks: percent},
   });
-  key(map, M.x + M.w + 3, M.y + M.h - 2, [['Gate sweep', COLORS.gate], ['Full magnitude', COLORS.faint], ['Dead zone', COLORS.zone], ['Reports this run', COLORS.stick], ['Report now', COLORS.report], ['Ring: true stick', COLORS.stick]]);
+  key(map, M.x + M.w + 5, M.y + M.h - 2, [['Gate', COLORS.gate], ['Limit', COLORS.faint], ['Dead zone', COLORS.zone], ['Trail', COLORS.stick], ['Report', COLORS.report], ['Stick', COLORS.stick]]);
   chartText(adc, (u, v) => P(A.x + u * A.w, A.y + v * A.h), {
     title: 'ADC close up', size: TEXT,
     x: {min: 0, max: 1, title: 'X yoke angle', ticks: [[0, '−1°'], [0.5, 'rest'], [1, '+1°']]},
     y: {min: 0, max: 1, title: 'X report'},
-    legend: [['Perfect', COLORS.stick], ['ADC steps', COLORS.report]], legendAt: [0.5, 1],
+    legend: [['Ideal', COLORS.stick], ['Steps', COLORS.report]], legendAt: [0.6, 1],
   });
   chartText(bounce, (tau, v) => P(bx(tau), B.y + v * B.h), {
     title: 'Press close up', size: TEXT,
-    x: {min: B.t0, max: B.t1, title: 'ms after first touch', ticks: [[0, '0'], [0.005, '5'], [0.01, '10']]},
+    x: {min: B.t0, max: B.t1, title: 'Since touch (ms)', ticks: [[0, '0'], [0.005, '5'], [0.01, '10']]},
     y: {min: 0, max: 1},
   });
-  for (const [row, text, color] of [['contact', 'Contacts', COLORS.gate], ['scans', 'Scans', COLORS.axis], ['firmware', 'Firmware', COLORS.report], ['console', 'Console', COLORS.stick]]) words(bounce, text, B.x + 2, ROWS[row][1] + 3, {align: 'left', height: mm(3), color: css(color)});
+  for (const [row, text, color] of [['contact', 'Contact', COLORS.gate], ['scans', 'Scan', COLORS.axis], ['firmware', 'Filter', COLORS.report], ['console', 'Report', COLORS.stick]]) words(bounce, text, B.x - 5, (ROWS[row][0]+ROWS[row][1])/2, {align: 'right', color: css(color)});
   chartText(latency, (seconds, v) => P(lx(seconds), L.y + v * L.h), {
     title: 'Where the time goes', size: TEXT,
-    x: {min: 0, max: L.t1, title: 'ms from first touch to screen', ticks: [0, 40, 80, 120, 160].map(n => [n / 1000, String(n)])},
+    x: {min: 0, max: L.t1, title: 'Touch to screen (ms)', ticks: [0, 40, 80, 120, 160].map(n => [n / 1000, String(n)])},
     y: {min: 0, max: 1},
   });
-  words(latency, 'This press, then the average', L.x + 2, L.y + 65.5, {align: 'left', height: mm(3)});
-  key(latency, L.x + L.w + 3, L.y + L.h - 2, [['Debouncing', SHARE_COLORS[0]], ['Poll wait', SHARE_COLORS[1]], ['Frame wait', SHARE_COLORS[2]], ['Drawing', SHARE_COLORS[3]], ['Display lag', SHARE_COLORS[4]]]);
+  words(latency, 'This', L.x - 5, L.y + 58, {align:'right'});
+  words(latency, 'Mean', L.x - 5, L.y + 48, {align:'right'});
+  key(latency, L.x + L.w + 5, L.y + L.h - 2, [['Filter', SHARE_COLORS[0]], ['Poll', SHARE_COLORS[1]], ['Frame', SHARE_COLORS[2]], ['Render', SHARE_COLORS[3]], ['Display', SHARE_COLORS[4]]]);
 
-  control('release', 'Letting go', ...PAD_DOMAINS.release, PAD_DEFAULTS.release, '', 'Flick the stick to its gate and let go, or ease it back with the thumb.', RELEASE_OPTIONS.map(({value, label}) => ({value, label})));
-  control('gate', 'Gate', ...PAD_DOMAINS.gate, PAD_DEFAULTS.gate, '', 'The shape of the opening that stops the lever.', GATE_OPTIONS.map(({value, label}) => ({value, label})));
+  control('release', 'Letting go', ...PAD_DOMAINS.release, PAD_DEFAULTS.release, '', 'Choose the release motion. Changing any setting restarts the experiment.', RELEASE_OPTIONS.map(({value, label}) => ({value, label})), {primary:true});
+  control('gate', 'Gate', ...PAD_DOMAINS.gate, PAD_DEFAULTS.gate, '', 'The shape of the opening that stops the lever.', GATE_OPTIONS.map(({value, label}) => ({value, label})), {primary:true});
   control('bits', 'ADC resolution', ...PAD_DOMAINS.bits, PAD_DEFAULTS.bits, '', 'How many bits the controller’s ADC gives each reading.', BITS_OPTIONS.map(({value, label}) => ({value, label})));
   control('deadzone', 'Dead zone', ...PAD_DOMAINS.deadzone, PAD_DEFAULTS.deadzone, '%', 'The share of full travel around the center that the game ignores.');
   control('debounce', 'Debounce', ...PAD_DOMAINS.debounce, PAD_DEFAULTS.debounce, 'scans', 'How many scans in a row must agree before the firmware believes the button.');
   control('polling', 'Polling rate', ...PAD_DOMAINS.polling, PAD_DEFAULTS.polling, '', 'How often the console asks the controller for a report.', POLL_OPTIONS.map(({value, label}) => ({value, label})));
   control('display', 'Display lag', ...PAD_DOMAINS.display, PAD_DEFAULTS.display, 'ms', 'How long the monitor takes to show a frame it has been sent.');
+  control('rumble', 'Rumble feedback', ...PAD_DOMAINS.rumble, PAD_DEFAULTS.rumble, '', 'The first press accepted by the game triggers one motor pulse. Display delay does not delay this return command.', RUMBLE_OPTIONS.map(({value,label})=>({value,label})));
 
   // What changes only with the settings: the charts' curves, bars and outlines, and the gate plate.
   const signedShare = (report, unit) => Math.sign(report[0] * unit[0] + report[1] * unit[1]) * Math.hypot(report[0], report[1]) / GAME.full;
@@ -451,11 +533,14 @@ export function createGamesControllerModel() {
     setLine(meanLine, [[lx(spread.mean), L.y + 2], [lx(spread.mean), L.y + 40]]);
   };
 
-  let clock = CLOCKS.start, lastClock = 0, disposed = false;
+  let clock = CLOCKS.start, lastClock = 0, disposed = false, settingsKey = '', restoring = false;
   const sideOf = (s, release) => (s < 0 ? (release === 1 ? 'down and to the left of' : 'left of') : (release === 1 ? 'up and to the right of' : 'right of'));
   const ms = (seconds, digits = 1) => fixed(seconds * 1000, digits), minus = (value, digits) => `${value < 0 ? '−' : ''}${fixed(Math.abs(value), digits)}`;
   const result = finish(values => {
+    const nextKey = JSON.stringify(values);
+    if (nextKey !== settingsKey) { if (!restoring) clock = CLOCKS.start; settingsKey = nextKey; }
     const plan = padPlan(values), now = padAt(plan, clock), {press, motion, latency: spread} = plan, release = plan.values.release;
+    clock = now.t;
     redraw(plan);
 
     // The stick: lever, yokes, wipers, and the spring pressed by the lever's foot.
@@ -465,7 +550,8 @@ export function createGamesControllerModel() {
     yokeB.rotation.x = -yAngle;
     wiperA.rotation.z = -xAngle;
     wiperB.rotation.z = -yAngle;
-    const dip = MODULE.foot * Math.sin(Math.acos(Math.min(1, direction.y))), springHeight = MODULE.springTop - MODULE.springBottom;
+    const tilt = Math.acos(Math.min(1, direction.y));
+    const dip = (MODULE.ball + 0.6) * (Math.cos(tilt) - 1) + MODULE.foot * Math.sin(tilt), springHeight = MODULE.springTop - MODULE.springBottom;
     springGroup.scale.y = (springHeight - dip) / springHeight;
     springPlate.position.y = mm(MODULE.springTop + 0.25 - dip);
 
@@ -477,8 +563,11 @@ export function createGamesControllerModel() {
     dome.position.y = mm(CONTROLLER.pcb + domeHeight / 2);
     const gap = since < 0 ? BUTTON_AT.open * (1 - travel) : now.contact ? 0 : BUTTON_AT.bounceGap;
     pill.position.y = mm(CONTROLLER.pcb + 0.5 + gap);
+    const stemBottom = CONTROLLER.pcb + 0.8 + gap, stemTop = BUTTON_AT.capTop - BUTTON_AT.height - BUTTON_AT.travel * travel;
+    buttonStem.scale.y = stemTop - stemBottom; buttonStem.position.y = mm((stemTop + stemBottom) / 2);
     padMaterial.color.set(now.contact ? COLORS.lit : COLORS.gate);
     led.material.color.set(now.firmware ? COLORS.led : COLORS.dark);
+    feedback.update(now.motors);
 
     // The console's frame light and the game on the monitor.
     const intoFrame = ((now.t - CLOCKS.framePhase) % CLOCKS.frame + CLOCKS.frame) % CLOCKS.frame;
@@ -505,18 +594,22 @@ export function createGamesControllerModel() {
 
     const restTilt = tiltOf([motion.unit[0] * motion.rest.s, motion.unit[1] * motion.rest.s]).alpha / DEG, restPlace = `${fixed(restTilt, 2)}° ${sideOf(motion.rest.s, release)} center, ${plan.rest.mapped.normalized > 0 ? 'outside' : 'inside'} the dead zone`;
     const stickStage = now.t < 0 ? 'stick held at the gate' : now.stick.moving ? (now.stick.held ? 'thumb easing the stick back' : 'stick swinging back') : 'stick at rest';
-    const buttonStage = now.t < press.t - BUTTON_AT.reach ? 'button up' : now.t < press.t ? 'button going down' : now.t < press.registered ? 'contacts bouncing' : now.t < press.reported ? 'firmware says pressed' : now.t < press.frame ? 'console has the press' : now.t < press.photon ? 'frame on its way to the screen' : 'press on screen';
+    const buttonStage = now.t < press.t - BUTTON_AT.reach ? 'button up' : now.t < press.t ? 'button going down' : now.t < press.t + BOUNCE.at(-1)[0] ? 'contacts bouncing' : now.t < press.registered ? 'contacts settled; firmware counting scans' : now.t < press.reported ? 'firmware says pressed' : now.t < press.frame ? 'console has the press' : now.t < press.photon ? 'frame on its way to the screen' : 'press on screen';
     const gateReach = phi => Math.hypot(...gatePoint(plan.values.gate, phi).map(angle => toReport(adcCode(wiper(angle), plan.bits), plan.bits))) / GAME.full;
     const speed = now.frame ? now.frame.mapped.normalized * GAME.speed : 0, zone = plan.values.deadzone / 100, N = plan.values.debounce;
     return {
       state: {...plan, now, clock, direction, dip, travel, gap, character: [characterX, characterY], restTilt},
       readings: [
-        r('Your result', clock <= CLOCKS.start ? `Ready · ${RELEASE_OPTIONS[release].label}, and press the button 40 ms later; press Play` : clock >= CLOCKS.duration ? `Stick at rest ${restPlace} · the press reached the screen after ${ms(press.latency)} ms` : `${ms(now.t)} ms · ${stickStage} · ${buttonStage}`),
-        r('Stick', `${fixed(tiltOf(now.stick.angles).alpha / DEG, 2)}° from center · ${now.t < 0 ? 'held at the gate' : now.stick.moving ? (now.stick.held ? 'eased back' : 'swinging') : 'at rest'}`, `Its spring gives ${fixed(SPRING * STICK.travel * 1000, 1)} mN m at full tilt against ${fixed(FRICTION * 1000, 1)} mN m of friction, so friction can hold it anywhere within ${fixed(STICK.returnBand / DEG, 0)}° of center. This time it comes to rest ${restPlace}, ${ms(motion.rest.t)} ms after letting go.`),
+        r('Your result', clock <= CLOCKS.start ? `Ready · ${RELEASE_OPTIONS[release].label}, and press the button 40 ms later; press Play` : clock >= CLOCKS.duration ? `Observation complete · stick rests ${restPlace} · press reached the screen after ${ms(press.latency)} ms` : `${ms(now.t)} ms · ${stickStage} · ${buttonStage}`, clock >= CLOCKS.duration ? `Playback stops at 300 ms. The button remains held${plan.rest.creep > 0 ? ' and the character would keep creeping' : ''}. Play repeats the selected settings.` : 'Playback is 50 times slower than physical time. Inspection preserves the current moment.'),
+        r('Stick', `${fixed(tiltOf(now.stick.angles).alpha / DEG, 2)}° from center · ${now.t < 0 ? 'held at the gate' : now.stick.moving ? (now.stick.held ? 'eased back' : 'swinging') : 'at rest'}`, `The assigned reduced model gives ${fixed(SPRING * STICK.travel * 1000, 1)} mN m of spring torque at full travel against ${fixed(FRICTION * 1000, 1)} mN m of friction. It stops ${restPlace}, ${ms(motion.rest.t)} ms after release. These are illustrative dynamics, not manufacturer measurements.`),
+        r('Wiper voltages', `X ${fixed(now.sample.volts[0],3)} V · Y ${fixed(now.sample.volts[1],3)} V`, 'Latest sampled voltages. Each 10 kΩ track carries 0.33 mA across 3.3 V; its high-impedance wiper input measures voltage rather than track current.'),
+        r('ADC codes', `X ${now.sample.codes[0]} · Y ${now.sample.codes[1]} · ${plan.bits} bits`, `${2 ** plan.bits} possible codes. Each voltage bin is ${fixed(1000 * STICK.supply / 2 ** plan.bits,3)} mV wide. The report uses bin midpoints without neutral calibration.`),
         r('Report', `X ${minus(report[0], 0)} · Y ${minus(report[1], 0)} · ${fixed(Math.hypot(...report) / GAME.full * 100, 1)}% of full`, `${plan.bits} bits: one step of the ADC is ${fixed(plan.step.angle / DEG, 3)}° of tilt, ${fixed(plan.step.report, 0)} in the report. Pushed to the gate, the stick reads ${fixed(gateReach(0) * 100, 1)}% straight out and ${fixed(gateReach(Math.PI / 4) * 100, 1)}% on the diagonals.`),
+        r('Report bytes', now.packet.map(byte=>byte.toString(2).padStart(8,'0')).join(' '), 'Illustrative five-byte layout: signed X low/high, signed Y low/high, then button bit 0. This is not a claim about a specific commercial controller’s packet.'),
         r('Game', !now.frame ? 'Waiting for its first frame' : speed > 0 ? `Character moving at ${fixed(speed, 2)} m/s` : 'Inside the dead zone: the character stands still', `Dead zone ${fixed(plan.values.deadzone, 0)}%, ${fixed(zone * GAME.full, 0)} of 32,767; the XInput documentation suggests 7,849 for a left stick. At rest this stick reads ${fixed(plan.rest.share * 100, 1)}%${plan.rest.creep > 0 ? `, outside the dead zone, so the character creeps at ${fixed(plan.rest.creep, 2)} m/s` : ', inside the dead zone'}.`),
         r('Button', `${since < -BUTTON_AT.reach ? 'Up' : since < 0 ? 'Going down' : now.contact ? 'Contacts closed' : 'Contacts apart'} · firmware ${now.firmware ? 'pressed' : 'released'} · console heard ${now.heard} ${now.heard === 1 ? 'press' : 'presses'}`, `Needing ${N} closed ${N === 1 ? 'scan' : 'scans'} in a row, the firmware calls it pressed ${ms(press.registered - press.t)} ms after the contacts first touch${press.bounce.presses > 1 ? `, and counts ${press.bounce.presses} presses` : ''}. Over every timing it ${spread.firmwareDoubles > 0 ? `counts a second press ${fixed(spread.firmwareDoubles * 100, 0)}% of the time` : 'never counts a second press'}, and polling at ${fixed(plan.rate, 0)} Hz the console ${spread.consoleDoubles > 0 ? `hears one ${fixed(spread.consoleDoubles * 100, 0)}% of the time` : 'never hears one'}.`),
         r('Latency', `This press: ${ms(press.latency)} ms from touch to screen`, `Over every timing: ${ms(spread.min)} to ${ms(spread.max)} ms, ${ms(spread.mean)} ms on average. Debouncing ${ms(spread.parts.debounce)}, waiting for a poll ${ms(spread.parts.poll)}, waiting for a frame ${ms(spread.parts.frame)}, drawing it ${ms(spread.parts.render)}, and the display ${ms(spread.parts.display, 0)}.`),
+        r('Rumble feedback', !plan.values.rumble ? 'Off · both motors stationary' : `Left ${fixed(now.motors[0].frequency,0)} Hz · right ${fixed(now.motors[1].frequency,0)} Hz · ${now.motors[0].phase}`, `Mount forces: ${fixed(now.motors[0].magnitude,2)} N and ${fixed(now.motors[1].magnitude,2)} N. Arrows show rotating force, not shell motion. The first game press starts the assigned pulse after a 1 ms return transfer.`),
       ],
     };
   });
@@ -524,14 +617,10 @@ export function createGamesControllerModel() {
   const render = result.update;
   result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(CLOCKS.duration, clock + dt / SLOW); return render(); };
   result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = CLOCKS.start; lastClock = 0; return render(result.defaults); };
-  result.actions = [
-    {label: 'Inspect: the gimbal', part: 'joystick', view: 'front', replay: false, run() { clock = 0.005; return render(); }},
-    {label: 'Inspect: the potentiometers', part: 'pots', view: 'front', replay: false, run() { clock = 0.005; return render(); }},
-    {label: 'Inspect: the bounce', part: 'bounce', view: 'front', replay: false, run() { clock = CLOCKS.press + 0.001; return render(); }},
-    {label: 'Inspect: the stick map', part: 'map', view: 'front', replay: false, run() { clock = CLOCKS.duration; return render(); }},
-    {label: 'Inspect: where the time goes', part: 'latency', view: 'front', replay: false, run() { clock = CLOCKS.duration; return render(); }},
-  ];
+  result.reset = (initial = {}) => { clock = CLOCKS.start + (Number.isFinite(initial.time) ? Math.max(0, initial.time) : 0); lastClock = 0; restoring = true; try { return render({...result.defaults,...(initial.settings || {})}); } finally { restoring = false; } };
+  result.replayState = () => ({settings:result.getState().values,time:0});
+  const inspect = (label, part, isolate = true) => ({label,part,isolate,view:'front',replay:false,run:()=>render()});
+  result.actions = [inspect('Inspect: complete experiment','experiment'),inspect('Inspect: controller','machine'),inspect('Inspect: the gimbal','joystick'),inspect('Inspect: return spring','return-spring'),inspect('Inspect: the potentiometers','pots'),inspect('Inspect: button contacts','button'),inspect('Inspect: rumble motors','feedback'),inspect('Inspect: low-frequency motor','low-motor'),inspect('Inspect: high-frequency motor','high-motor'),inspect('Read: stick over time','timeline'),inspect('Read: stick map','map'),inspect('Read: ADC steps','adc'),inspect('Read: button bounce','bounce'),inspect('Read: timing breakdown','latency')];
   result.playback = {
     label: 'Let go and press',
     description: 'The stick let go at the gate and the button pressed 40 ms later, fifty times slower than real time.',
@@ -542,16 +631,21 @@ export function createGamesControllerModel() {
     blocked: () => false,
   };
 
-  root.rotation.set(0.4, -0.35, 0);
-  result.initialPart = 'system';
+  result.initialPart = result.autoFramePart = 'experiment';
   result.initialView = 'front';
+  result.initialCutaway = true;
+  result.initialIsolated = true;
   result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  // The console alone is a plain box; framed with its monitor, it shows what it drives.
-  result.frameBoundsForPart = id => (id === 'console' ? new THREE.Box3().setFromObject(screen) : null);
+  result.framePadding = 0.78;
   result.selectionOutline = false;
   result.transparentBackground = true;
-  result.topology = {system, body, bottomShell, topShell, joystick, gates, lever, yokeA, yokeB, springGroup, springPlate, pots, potA, potB, wiperA, wiperB, button, cap, dome, pill, pads, padMaterial, electronics, led, cable, consolePart, frameLight, screen, display, grid, character, rings, displayY, dw, dh, timeline, zoneLines, trueLine, reportLine, frameDashes, frameTicks, timelineCursor, map, zoneCircle, gateLine, trail, reportDot, stickDot, adc, idealLine, stepLine, sampleDot, bounce, scanTicks, firmwareLine, pollTicks, consoleLine, bounceCursor, latency, bars, histogramLine, meanLine, latencyCursor, ROWS, tx, ty, mx, my, bx, lx, adcWindow: () => adcWindow, trailPolls: () => trailPolls, MM, SLOW};
+  result.partViewDirections = {};
+  for (const p of result.parts) {p.maxZoom=180;result.partViewDirections[p.id] = {front:[.65,1.6,3],back:[-.65,1.4,-3],side:[3,1,0],top:[0,3,0],bottom:[0,-3,0]};}
+  result.partViewDirections.pots.front=[2.5,1.2,2.5];
+  result.parts.find(p=>p.id==='experiment').framePadding=.62;
+  for (const id of ['timeline','map','adc','bounce','latency','screen']) { result.partViewDirections[id] = {front:[0,0,3]}; Object.assign(result.parts.find(p=>p.id===id), {framePadding:.62,maxZoom:180}); }
+  result.thumbnailOmit = [charts,cable,consolePart,screen];
+  result.topology = {system, experiment, machine, charts, body, bottomShell, walls, topShell, boardSupports, stickMechanism, joystick, frame, bearings, ballSeat, gates, lever, foot, yokeA, yokeB, springAssembly, springGroup, springPlate, pots, potA, potB, wiperA, wiperB, button, cap, dome, pill, buttonStem, buttonGuide, pads, padMaterial, electronics, board, chip, led, port, regulator, traces, pullup, feedback, cable, consolePart, frameLight, screen, display, grid, character, rings, displayY, dw, dh, timeline, zoneLines, trueLine, reportLine, frameDashes, frameTicks, timelineCursor, map, zoneCircle, gateLine, trail, reportDot, stickDot, adc, idealLine, stepLine, sampleDot, bounce, scanTicks, firmwareLine, pollTicks, consoleLine, bounceCursor, latency, bars, histogramLine, meanLine, latencyCursor, ROWS, tx, ty, mx, my, bx, lx, adcWindow: () => adcWindow, trailPolls: () => trailPolls, MM, SLOW};
   const dispose = result.dispose;
   result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;

@@ -1,68 +1,82 @@
-import {PAD_DEFAULTS} from './games-controller-physics.js';
+import {PAD_DEFAULTS, padPlan, CLOCKS, FEEDBACK} from './games-controller-physics.js';
 
-const trial = part => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...PAD_DEFAULTS, ...values}, reset: true, part, isolate: false, view: 'front'});
+const trial = part => (title, instruction, observe, settings = {}) => { const values = {...PAD_DEFAULTS,...settings}; return {title,instruction,observe,values,initialState:{settings:values,time:0},reset:true,part,isolate:true,view:'front'}; };
 const joystickTrial = trial('joystick'), potsTrial = trial('pots'), timelineTrial = trial('timeline'), mapTrial = trial('map'), adcTrial = trial('adc'), bounceTrial = trial('bounce'), latencyTrial = trial('latency'), screenTrial = trial('screen'), consoleTrial = trial('console');
 
 export const sources = {
   xinput: {title: 'Microsoft Learn: getting started with XInput (dead zones)', url: 'https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput'},
   alps: {title: 'ALPS Alpine: RKJXV122400R thumbstick module specifications', url: 'https://tech.alpsalpine.com/e/products/detail/RKJXV122400R/'},
-  stick: {title: 'Wikipedia: Analog stick', url: 'https://en.wikipedia.org/wiki/Analog_stick'},
-  potentiometer: {title: 'Wikipedia: Potentiometer', url: 'https://en.wikipedia.org/wiki/Potentiometer'},
-  adc: {title: 'Wikipedia: Analog-to-digital converter (resolution)', url: 'https://en.wikipedia.org/wiki/Analog-to-digital_converter'},
-  bounce: {title: 'Wikipedia: Switch (contact bounce and debouncing)', url: 'https://en.wikipedia.org/wiki/Switch'},
-  hid: {title: 'Wikipedia: USB human interface device class (polling)', url: 'https://en.wikipedia.org/wiki/USB_human_interface_device_class'},
-  lag: {title: 'Wikipedia: Lag (video games)', url: 'https://en.wikipedia.org/wiki/Lag_(video_games)'},
-  displayLag: {title: 'Wikipedia: Display lag', url: 'https://en.wikipedia.org/wiki/Display_lag'},
+  stick: {title: 'ALPS Alpine: thumbstick travel and return specifications', url: 'https://tech.alpsalpine.com/e/products/detail/RKJXV122400R/'},
+  potentiometer: {title: 'ALPS Alpine: voltage-divider and high-impedance ADC connection', url: 'https://tech.alpsalpine.com/e/products/detail/RKJXV122400R/'},
+  adc: {title: 'Analog Devices: analog-to-digital conversion and quantization', url: 'https://wiki.analog.com/university/courses/electronics/text/chapter-20'},
+  bounce: {title: 'Texas Instruments: debounce a switch', url: 'https://www.ti.com/document-viewer/lit/html/SCEA094'},
+  hid: {title: 'USB-IF: Human Interface Device specification, input and output reports', url: 'https://www.usb.org/sites/default/files/hid1_12.pdf'},
+  lag: {title: 'Microsoft Learn: frame-based input and button state', url: 'https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput'},
+  displayLag: {title: 'Microsoft Learn: frame-based input processing', url: 'https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput'},
+  rumble: {title: 'Precision Microdrives: eccentric rotating mass motor characteristics', url: 'https://www.precisionmicrodrives.com/ab-004'},
 };
 
-const limits = 'Illustrative controller: a thumbstick module like ALPS Alpine’s RKJXV, tilting 23° each way, its 14 mN m operating torque split into 11.5 mN m of spring at full tilt and 2.5 mN m of friction to match its 5° return precision; a lever and cap of 5 × 10⁻⁷ kg m² about the pivot, damped to a tenth of critical; potentiometers covering the middle 80% of their tracks; an ideal ADC on 3.3 V, scanned every millisecond; contacts that bounce in one fixed pattern for 2.6 ms; a console that hears every change in its reports; and a game at 60 frames a second whose character walks at up to 5 m/s. Not modeled: potentiometer wear, noise and calibration, the thumb itself, wireless links, the operating system, and scan-out down the screen. The console and monitor are drawn at a fifth of their size, and the run plays fifty times slower than real time.';
+const limits = 'Illustrative wired gamepad with one active stick, one button and two rumble motors. The 23° axial travel and 10 kΩ tracks are representative specifications; the geometry is not a commercial module replica. Assigned dynamics use a linear spring and Coulomb friction along a radial coordinate in yoke-angle space, with 11.5 mN m spring torque at full axial travel, 2.5 mN m friction, generalized inertia 5 × 10⁻⁷ kg m² and one tenth critical damping. These are not manufacturer measurements. The drawn spring illustrates restoring action; its cam geometry does not determine the assigned linear torque law. Tracks span the middle 80% of a 3.3 V divider. An ideal ADC scans every millisecond; midpoint report mapping omits neutral calibration. One assigned contact trace bounces for 2.6 ms. Observed report edges are queued until the next 60 Hz game frame, which takes one frame to draw before the chosen display delay. The first accepted press sends one feedback command with an assigned 1 ms transfer, then motors ramp for 20 ms, hold for 40 ms and brake for 30 ms. Their assigned speed curves and dense weights determine mount force; driver electrical dynamics, carrier mass, hand loading and shell vibration are omitted. Console and monitor are drawn at one fifth scale. The 300 ms observation plays 50 times slower and ends with the button still held. Other buttons, a second stick, wear, noise, wireless links, operating-system scheduling and display scan-out are omitted.';
+
+const experiment = (title, instruction, observe, time, part = 'experiment', settings = {}) => {
+  const values = {...PAD_DEFAULTS,...settings}, plan = padPlan(values);
+  return {title,instruction,observe,values,initialState:{settings:values,time:typeof time === 'function' ? time(plan) - CLOCKS.start : time},reset:true,part,isolate:true,view:'front'};
+};
 
 export const gamesControllerLesson = {
-  simple: 'How does a thumb on a stick become a character moving on a screen, and why does a press take a sixteenth of a second to show?',
-  overview: 'A games controller measures where its thumbstick points with two potentiometers, turns their voltages into numbers, and answers the console when it asks. A spring pulls the stick back toward center, but friction in its gimbal can hold it a few degrees off, so games ignore a dead zone around the center. The button’s contacts bounce before they settle, so the controller waits for its scans to agree. Then the game waits for its next frame, and the screen adds its own delay. Let go of the stick, press the button, and follow both all the way to the screen.',
+  simple: 'How does a thumbstick move a game character, why does a button response take time, and how does the game send a rumble back?',
+  overview: 'Two potentiometers turn stick direction into voltages. An ADC turns those voltages into numbers, while the controller checks whether a button is pressed. The console reads reports, applies a dead zone and updates the game. A displayed ring marks each press the game received. A return command drives two off-center motor weights. Follow the entire path, then compare drift, duplicate presses, timing and feedback.',
   steps: [
-    {title: 'Tilt the stick', body: 'The lever pivots in a gimbal. Two slotted yokes at right angles each turn with the part of the tilt across their slot, and each turns a potentiometer.'},
-    {title: 'Measure the voltages', body: 'Each potentiometer is a voltage divider: its wiper’s voltage follows how far its yoke has turned. The controller’s ADC turns each voltage into a whole number every millisecond.'},
-    {title: 'Debounce the button', body: 'The button’s contacts bounce apart and together before they settle. The firmware believes a press only when several scans in a row agree.'},
-    {title: 'Answer the poll', body: 'The console asks the controller for a report at a fixed rate, 125 times a second here unless you choose faster, and the controller sends its latest numbers.'},
-    {title: 'Run the frame', body: 'At the start of each frame the game takes the latest report, ignores the stick inside its dead zone, and moves the character. The frame reaches the screen one frame later, plus the display’s own lag.'},
+    {title:'Turn two sensors',body:'Tilting the lever turns perpendicular yokes and their potentiometer wipers. Each wiper divides a fixed supply voltage according to its angle.'},
+    {title:'Convert voltage into numbers',body:'The ideal ADC samples both wipers every millisecond. More bits make smaller voltage steps. Two signed axis values and a button bit form the illustrative report.'},
+    {title:'Wait for stable contact',body:'The button bridges a pulled-up input to ground. Its input changes from 3.3 V to 0 V. Several agreeing scans reject short contact bounces.'},
+    {title:'Send the latest report',body:'The host asks 125 times a second by default. Faster polling shortens this wait, but the game still processes input on its own frame clock.'},
+    {title:'Move and display',body:'The game ignores small stick readings inside its dead zone and limits maximum speed. It draws the next frame, then the monitor adds the selected display delay.'},
+    {title:'Send feedback back',body:'The first accepted press triggers a motor command. Off-center weights rotate, pulling on the motor mounts in a changing direction. The two assigned speeds give different rumble frequencies.'},
   ],
   parts: [
-    {name: 'Thumbstick', role: 'A lever in a gimbal, centered by a spring.'},
-    {name: 'Potentiometers', role: 'Turn each yoke’s angle into a voltage.'},
-    {name: 'Button and contacts', role: 'A rubber dome and a carbon pill that bridges two pads.'},
-    {name: 'Circuit board', role: 'Samples, debounces and reports.'},
-    {name: 'Cable', role: 'Carries the console’s polls and the controller’s reports.'},
-    {name: 'Console', role: 'Runs the game frame by frame.'},
-    {name: 'Monitor', role: 'Shows each frame after its own lag.'},
-    {name: 'Charts', role: 'The stick over time, the stick map, the ADC close up, the press close up, and where the time goes.'},
+    {name:'Controller shell',role:'Hollow panels and supports hold the mechanisms.'},
+    {name:'Thumbstick and sensors',role:'A supported gimbal, return spring and two voltage-divider potentiometers.'},
+    {name:'Button and contacts',role:'A guided cap presses a carbon pill onto two board pads.'},
+    {name:'Circuit board',role:'Power regulation, input sampling, debounce and reports.'},
+    {name:'Rumble feedback',role:'A driver, wiring and two mounted eccentric-mass motors.'},
+    {name:'USB cable',role:'Carries power, input reports and output commands.'},
+    {name:'Console and monitor',role:'Show the delayed result of the controller input.'},
+    {name:'Measurements',role:'Separate readable views of motion, ADC steps, bounce and timing.'},
   ],
   tryIt: [
-    timelineTrial('Let go of the stick', 'Press Play and watch the stick over time.', 'Let go at the gate, the stick swings 8.13° past center and comes to rest 2.72° to the left, 26.4 ms after letting go, where friction can hold it. Its report of −3,880 is 11.8% of full travel, inside the 24% dead zone, so the character stops.'),
-    joystickTrial('Ease it back', 'Choose to ease the stick back from the right.', 'Eased back, the stick stops as soon as its spring can no longer beat friction: 5.00° from center, the most the datasheet’s return precision allows. It reads 21.9% of full travel, still inside the 24% dead zone.', {release: 2}),
-    screenTrial('A smaller dead zone', 'Ease the stick back again, and set the dead zone to 20%.', 'The same resting stick now reads more than the dead zone, 21.9% against 20%. With no thumb on the stick, the character creeps across the screen at 0.12 m/s.', {release: 2, deadzone: 20}),
-    mapTrial('The diagonal', 'Choose to flick the stick up and right.', 'Against the round gate each yoke turns only 16.7°, yet together they read 102.7% of full travel. The game clamps the magnitude at 32,767, so the diagonal is no faster than straight ahead.', {release: 1}),
-    mapTrial('A square gate', 'Flick the stick up and right into a square gate.', 'In the square gate’s corner both yokes turn the full 23°, and the report reads 141.4% of full travel. Clamped, the character still walks only at full speed, but the stick map is a square.', {release: 1, gate: 1}),
-    adcTrial('Fewer bits', 'Choose the coarsest ADC.', 'With 8 bits, one step of the ADC is 0.225° of tilt and 320 in the report, four times coarser than with 10 bits: the red steps are plain to see.', {bits: 0}),
-    bounceTrial('No debounce', 'Set debounce to 1 scan and choose the fastest polling rate.', 'Believing single scans, the firmware sees the contacts part and close again and counts 2 presses, and polling at 1,000 Hz the console hears both. Over every timing, that happens to 50% of presses.', {debounce: 1, polling: 2}),
-    latencyTrial('Where the time goes', 'Press Play and watch the bars.', 'This press reaches the screen 61.7 ms after the contacts touch: 7.3 ms debouncing, 1.2 ms waiting for a poll, 6.5 ms waiting for a frame, 16.7 ms drawing it and 30 ms in the display.'),
+    experiment('Run the complete experiment','Press Play from the ready state.','Watch the stick return, the button close, the report reach the game, the weights turn and a ring appear on screen.',0),
+    experiment('Let go of the stick','Inspect the first overshoot, then resume to the resting position.','With the assigned dynamics, the stick swings 8.13° past center and settles 2.72° left after 26.4 ms. Its report is −3,880, or 11.8% of full travel, inside the 24% dead zone.',p=>p.motion.run.half,'stick-mechanism'),
+    experiment('Ease it back','Inspect the stick after a slow return.','The chosen friction model holds it at 5.00° from center. Its 21.9% report remains inside the 24% dead zone. This is one assigned example, not a rule for every controller.',.14,'stick-mechanism',{release:2}),
+    experiment('A smaller dead zone','Inspect the screen after the eased stick has stopped. Resume to watch the creep.','The unchanged resting report is 21.9%, above the 20% dead zone. The character keeps moving at 0.12 m/s even though the stick is untouched.',.27,'screen',{release:2,deadzone:20}),
+    experiment('The diagonal','Inspect the round gate map at release.','Each yoke turns 16.7°, and together they report 102.7% of full magnitude. Clamping at 32,767 prevents diagonal motion from exceeding full speed.',.02,'map',{release:1}),
+    experiment('A square gate','Compare the square outline and diagonal starting point.','Both yokes reach 23°, giving 141.4% report magnitude. The game still limits character speed; the mechanical gate allows a greater diagonal tilt.',.02,'map',{release:1,gate:1}),
+    experiment('Read the sensor voltages','Inspect both wipers after the stick settles.','The X divider settles below its center voltage. Read its voltage, ADC code and signed report together. Track current remains constant as the wiper moves.',.14,'pots'),
+    experiment('Fewer bits','Inspect the coarse conversion steps around the resting angle.','At 8 bits, one ADC step is 0.225° of tilt and about 320 in the report, four times coarser than 10 bits.',.14,'adc',{bits:0}),
+    experiment('More bits','Compare with the finer conversion steps.','A 12-bit converter has sixteen times as many codes as an 8-bit converter. Finer quantization does not remove mechanical friction or button delay.',.14,'adc',{bits:2}),
+    experiment('Contact bounce','Inspect the small contact gap during the assigned bounce.','The cap is down but the carbon pill briefly separates from the pads. The raw input is high again; the five-scan filter has not accepted the press.',.0615,'button'),
+    experiment('No debounce','Inspect the complete contact and report traces.','Single-scan decisions count 2 presses from one physical press here. At 1,000 Hz the console receives both. Across uniformly distributed clock phases, duplicate presses occur in 50% of cases for this assigned trace.',.16,'bounce',{debounce:1,polling:2}),
+    experiment('Where the time goes','Read the complete timing breakdown.','This press takes 61.7 ms: 7.3 ms debouncing, 1.2 ms waiting for a poll, 6.5 ms waiting for a frame, 16.7 ms drawing and 30 ms display delay.',.16,'latency'),
+    experiment('Poll faster','Compare the timing distribution with the default polling rate.','Faster polling cuts average report wait. This particular press still catches the same game frame, so its screen time is unchanged; the average over all clock phases improves.',.16,'latency',{polling:2}),
+    experiment('Wait for more scans','Inspect the longer debounce and the missed frame.','Eight agreeing scans reject bounce but deliver this press after an earlier frame has started. Its visible response moves to the following frame.',.18,'latency',{debounce:8}),
+    experiment('A slower display','Inspect the screen while this frame is still delayed, then resume.','The game has received the press and sent feedback, but the ring is not visible yet. Increasing display delay does not delay the motor command.',.14,'experiment',{display:80}),
+    experiment('Follow rumble feedback','Inspect the motor weights during the steady part of the pulse.','The large weight turns at the assigned 80 Hz and the small one at 150 Hz. Force arrows rotate with the weights; their lengths also account for acceleration during ramps.',p=>p.press.frame+FEEDBACK.transfer+.03,'feedback'),
+    experiment('Turn feedback off','Compare the same moment with the motors disabled.','The weights remain stationary. Stick readings, button reports and screen timing are unchanged.',p=>p.press.frame+FEEDBACK.transfer+.03,'feedback',{rumble:0}),
+    experiment('Read the final result','Inspect the end of the observation, then press Play to repeat.','The stick and motor pulse have settled. The button remains held. The result reports the resting dead-zone outcome and measured press latency; this is the end of the observation, not a button release.',.32),
   ],
   deeper: [
-    {title: 'Why a dead zone at all', body: 'The XInput documentation defines the dead zone as the movement a controller reports while its sticks are untouched and centered, and warns that it varies from controller to controller. A stick that friction holds a few degrees off center is one reason; wear and the potentiometers’ tolerances are others.'},
-    {title: 'Round sticks, square numbers', body: 'Each yoke reports its own angle, so a stick pushed diagonally against a round gate reads a little more than full, and one in a square gate’s corner reads 1.41 times full. The documentation’s example clamps the magnitude before rescaling it, which keeps diagonals from moving faster.'},
-    {title: 'Why debounce', body: 'Metal contacts that strike together bounce apart one or more times before they settle; the oscilloscope trace Wikipedia shows bounces for 2.6 ms. Reading the button once and trusting it would count one press as several.'},
-    {title: 'Frames, not milliseconds', body: 'A game acts on input only at the start of a frame, 16.7 ms apart at 60 frames a second. Missing a frame by 0.1 ms means waiting for the whole next one, so a few milliseconds of debouncing can cost 16.7 ms.'},
-    {title: 'How much lag matters', body: 'Testing reported on Wikipedia found that about 200 ms from input to visible response is distracting, and that the most responsive games reach 67 ms before the display adds its own lag, which has been measured between 10 and 68 ms.'},
+    {title:'Voltage, not changing track current',body:'Each 10 kΩ track has 3.3 V across its ends, so it carries 0.33 mA regardless of wiper position in this ideal circuit. A high-impedance ADC senses the divider voltage without drawing appreciable wiper current.'},
+    {title:'A tolerance does not define a spring',body:'A manufacturer’s travel, operating-torque and return-position specifications do not uniquely determine friction, stiffness, inertia or damping. The motion here uses an explicitly assigned reduced model. Some real sticks return close to electrical center; others need calibration or a dead zone.'},
+    {title:'Round dead zones and diagonal limits',body:'The game measures the length of the two-axis report vector, ignores values inside the chosen threshold, and rescales the rest. It clamps the magnitude before rescaling, so a square gate’s diagonal cannot make the character move faster.'},
+    {title:'Quantization and calibration',body:'The ideal ADC has equally spaced voltage bins. Mapping each bin midpoint to a signed report can leave a small nonzero neutral reading. Commercial controllers may calibrate center and endpoints; this experiment deliberately omits that calibration.'},
+    {title:'Events can be lost between samples',body:'The example queues changes observed in reports until the game reads them. Short transitions that happen entirely between polls are missed. An API that exposes only the latest state can also miss changes between game frames. The illustrated queue is an explicit choice.'},
+    {title:'Timing depends on phase',body:'Scans, polls and game frames have different phases. The histogram integrates all uniformly distributed phases for the chosen fixed bounce trace. Its range and average describe this pipeline, not universal measurements of games or displays.'},
+    {title:'Rumble is a return path',body:'The game sends an output command; the motor driver supplies electrical power. At steady speed, each eccentric weight produces a rotating force with magnitude m r ω². Ramping adds a tangential force. Force does not specify how far the held controller moves; that also depends on its mass, stiffness, damping and the hands holding it.'},
   ],
-  misconception: 'A dead zone is not a sign of a sloppy game or a broken stick. Every released stick comes to rest a little off center, and without a dead zone the game would read that as a push.',
+  misconception: 'A larger dead zone can hide small unwanted reports, but it also discards small intentional movements. More ADC bits, faster polling and stronger debounce each change a different stage of the input path.',
   limits,
-  sources: [sources.xinput, sources.alps, sources.stick, sources.adc, sources.bounce, sources.hid, sources.lag, sources.displayLag],
-  quiz: {
-    question: 'Why does a game ignore small readings from a released stick?',
-    options: ['A released stick rests slightly off center, and the game would read that as a push.', 'Small readings take too long to send.', 'The ADC cannot measure small angles.'],
-    answer: 0,
-    explanation: 'Friction in the gimbal can hold a released stick a few degrees from center, so the game needs a dead zone to tell resting from pushing.',
-  },
+  sources:[sources.alps,sources.xinput,sources.adc,sources.bounce,sources.hid,sources.rumble],
+  quiz:{question:'Why can turning up display delay postpone the ring without postponing the rumble command?',options:['The game sends feedback when it accepts the press, before the delayed frame is visible.','The motors read the monitor’s pixels.','The controller skips debounce whenever rumble is enabled.'],answer:0,explanation:'Input reaches the game first. The return command and the rendered frame then follow separate paths with different delays.'},
 };
 
 export const joystickLesson = {

@@ -135,3 +135,10 @@ assert.equal(catalogMachineComponents(frictionDriveToy.components).length, 0, 'T
 assert.deepEqual(tags('friction-drive-toy'), ['rotating-wheels', 'gears-and-belts', 'friction', 'wheel-and-axle']);
 assert.equal(catalog.groups.find(group => group.id === 'friction-drive-toy').room, 'Play and everyday objects');
 assert.equal(catalog.groups.find(group => group.id === 'friction-drive-toy').place, 'home');
+
+const gamesController = families.find(family => family.entry.id === 'games-controller');
+assert(gamesController, 'Games controller is a whole machine');
+assert.equal(catalogMachineComponents(gamesController.components).length, 0, 'Controller parts remain inspectable; draft joystick and console routes stay hidden');
+assert.deepEqual(tags('games-controller'), ['making-bits', 'using-bits', 'springs', 'rotating-wheels', 'electricity']);
+assert.equal(catalog.groups.find(group => group.id === 'games-controller').room, 'Play and everyday objects');
+assert.equal(catalog.groups.find(group => group.id === 'games-controller').place, 'home');
