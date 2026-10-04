@@ -1321,6 +1321,58 @@
       "parentId": "system"
     }
   ],
+  "aerosol-spray-can": [
+    {
+      "id": "container",
+      "name": "Can and liquid supply",
+      "parentId": "system"
+    },
+    {
+      "id": "valve",
+      "name": "Spring-return valve",
+      "parentId": "system"
+    },
+    {
+      "id": "actuator",
+      "name": "Actuator and discharge path",
+      "parentId": "system"
+    },
+    {
+      "id": "seal-contact",
+      "name": "Stem ports and gasket close-up",
+      "parentId": "system"
+    },
+    {
+      "id": "liquid",
+      "name": "Liquid inventory and surface",
+      "parentId": "system"
+    },
+    {
+      "id": "gas",
+      "name": "Gas headspace",
+      "parentId": "system"
+    },
+    {
+      "id": "flow",
+      "name": "Connected flow markers",
+      "parentId": "system"
+    },
+    {
+      "id": "spray",
+      "name": "Discharge markers",
+      "parentId": "system"
+    },
+    {
+      "id": "pressure-chart",
+      "name": "Pressure during the trial",
+      "parentId": "system"
+    },
+    {
+      "id": "temperature-chart",
+      "name": "Fresh-charge pressure and temperature",
+      "parentId": "system"
+    }
+  ],
   "microwave-oven": [
     {
       "id": "cavity",

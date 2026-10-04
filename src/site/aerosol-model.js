@@ -1,298 +1,153 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {lineObject, surface, chartText} from './scene-kit.js';
-import {sampleAerosol, aerosolPlan, blendPressure, AEROSOL, LIQUEFIED, NITROGEN, PROPELLANT_OPTIONS, AEROSOL_DEFAULTS, AEROSOL_DOMAINS} from './aerosol-physics.js';
+import {lineObject, chartText} from './scene-kit.js';
+import {sampleAerosol, aerosolPlan, aerosolInitialAmounts, AEROSOL, PROPELLANT_OPTIONS, AEROSOL_DEFAULTS, AEROSOL_DOMAINS} from './aerosol-physics.js';
+import {AS, aerosolEquilibrium} from './aerosol-equilibrium.js';
+import {MM, CAN, VALVE, point, bottomAt, radiusAt, levelFor, liquidOutline, lathe, hollowCylinder, hollowCurve, stemGeometry, dipTubeCurve, ActuatorCurve} from './aerosol-geometry.js';
+export {CAN, bottomAt, radiusAt, levelFor, liquidOutline, BRIMFUL} from './aerosol-geometry.js';
 
-// ---------------------------------------------------------------------------
-// Aerosol spray can: a steel can cut open, the liquid and the gas above it, the
-// dip tube, the valve and its spring, the actuator, and the spray.
-//
-// Scale: one millimeter is 0.006 scene units for every length. The can is 65 mm
-// across and its inside, domed bottom and sloping shoulder included, holds
-// 500 mL brimful. The liquid is drawn at the level its volume fills.
-//
-// Time: the spray plays six times faster than real time, three minutes in 30 s.
-// Drops are drawn crossing the plume twice a playback second, their number in
-// proportion to the mass sprayed each second, shrinking as their propellant
-// boils. Bubbles in the liquid stand for propellant boiling, more of them the
-// faster it boils; dots in the gas stand for its pressure, more of them the
-// higher it is. Upside down, the can is turned end over end toward the viewer,
-// so its nozzle points the other way.
-//
-// Colors: the steel shell turns pale blue as the can cools, fully blue 15 °C
-// below the room.
-//
-// Charts, above the can, not to its scale: the pressure over the three minutes
-// (red), 0 to 180 s across and 0 to 12 bar above the room's up, with a line for
-// now; and pressure against temperature, -10 to 50 °C across and 0 to 12 bar up,
-// for the liquefied propellant (gold) and the nitrogen (blue) as filled, with a
-// dot for the can now.
-// ---------------------------------------------------------------------------
-
-const MM = 0.006;
-const K = 273.15;
-const SPEED_UP = 6;
-const END = AEROSOL.duration;
-const DROPS = 40;
-const BUBBLES = 24;
-const MARKERS = 24;
-export const CAN = Object.freeze({radius: 32.5, dome: 12, chine: 30, wallTop: 145.2, shoulderTop: 165, neck: 13.5, actuatorTop: 190});
-export const PRESSURE_CHART = Object.freeze({left: -250, bottom: 240, width: 220, height: 140, seconds: 180, top: 1.2e6});
-export const TEMPERATURE_CHART = Object.freeze({left: 30, bottom: 240, width: 220, height: 140, low: -10, high: 50, top: 1.2e6});
-const STEEL = new THREE.Color(0xb4c5b0), FROST = new THREE.Color(0x9fd3e6);
-const clamp01 = x => Math.max(0, Math.min(1, x));
-const scaled = point => point.map(v => v * MM);
-
-export const bottomAt = radius => (radius <= CAN.chine ? CAN.dome * (1 - (radius / CAN.chine) ** 2) : 0);
-export const radiusAt = y => (y <= CAN.wallTop ? CAN.radius : y <= CAN.shoulderTop ? CAN.radius + (CAN.neck - CAN.radius) * (y - CAN.wallTop) / (CAN.shoulderTop - CAN.wallTop) : CAN.neck);
-/** The can's inside volume below a height, in cubic millimeters. */
-export function volumeBelow(height) {
-  const {radius: R, dome: D, chine: C, wallTop: W, shoulderTop: S} = CAN, y = Math.max(0, Math.min(S, height));
-  const low = Math.min(y, D), dome = Math.PI * (R * R * low - C * C * (low - low * low / (2 * D)));
-  const wall = y > D ? Math.PI * R * R * (Math.min(y, W) - D) : 0;
-  const shoulder = y > W ? Math.PI * (y - W) / 3 * (R * R + R * radiusAt(y) + radiusAt(y) ** 2) : 0;
-  return dome + wall + shoulder;
-}
-export const BRIMFUL = volumeBelow(CAN.shoulderTop);
-/** Height of the liquid's surface for a volume in cubic meters: standing, it fills from the bottom; upside down, from the valve end. */
-export function levelFor(volume, upright) {
-  const target = volume * 1e9;
-  let lo = 0, hi = CAN.shoulderTop;
-  for (let i = 0; i < 60; i++) {
-    const mid = (lo + hi) / 2, filled = upright ? volumeBelow(mid) : BRIMFUL - volumeBelow(mid);
-    if (upright ? filled < target : filled > target) lo = mid; else hi = mid;
-  }
-  return (lo + hi) / 2;
-}
-/** The liquid's cross-section as a closed outline of [radius, height] in millimeters. */
-export function liquidOutline(level, upright) {
-  const {radius: R, dome: D, chine: C, wallTop: W, shoulderTop: S, neck} = CAN, points = [];
-  if (upright) {
-    const inner = level < D ? C * Math.sqrt(1 - level / D) : 0;
-    if (level >= D) points.push([0, level]);
-    for (let k = 0; k <= 12; k++) { const radius = inner + (C - inner) * k / 12; points.push([radius, bottomAt(radius)]); }
-    points.push([R, 0]);
-    if (level > W) points.push([R, W]);
-    points.push([radiusAt(level), level]);
-  } else {
-    points.push([0, level], [radiusAt(level), level]);
-    if (level < W) points.push([R, W]);
-    points.push([neck, S], [0, S]);
-  }
-  points.push(points[0]);
-  return points;
-}
-export const pressurePoint = (seconds, gauge) => [(PRESSURE_CHART.left + seconds / PRESSURE_CHART.seconds * PRESSURE_CHART.width) * MM, (PRESSURE_CHART.bottom + clamp01(gauge / PRESSURE_CHART.top) * PRESSURE_CHART.height) * MM, 0];
-export const temperaturePoint = (celsius, gauge) => [(TEMPERATURE_CHART.left + (celsius - TEMPERATURE_CHART.low) / (TEMPERATURE_CHART.high - TEMPERATURE_CHART.low) * TEMPERATURE_CHART.width) * MM, (TEMPERATURE_CHART.bottom + clamp01(gauge / TEMPERATURE_CHART.top) * TEMPERATURE_CHART.height) * MM, 0];
-/** A fixed scatter of places inside the can, as fractions of a region's height and radius and an angle in the cut-open sector. */
-export const scatter = i => ({along: (i * 0.381 + 0.13) % 1, out: 0.3 + 0.6 * ((i * 0.53) % 1), angle: Math.PI / 4 + 0.3 + ((i * 0.618) % 1) * (Math.PI * 1.5 - 0.6)});
-const lathe = (points, start = 0, length = Math.PI * 2) => new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x * MM, y * MM)), 48, start, length);
-function seeThrough(mesh, opacity) {
-  mesh.material = mesh.material.clone();
-  mesh.material.transparent = true;
-  mesh.material.opacity = opacity;
-  mesh.material.depthWrite = false;
-  return mesh;
-}
+const STEEL = new THREE.Color(0xb4c5b0), COLD = new THREE.Color(0x86b4c1);
+const chartPoint = (x, pressure, span) => point([-100 + x / span * 200, -65 + pressure / 1.2e6 * 150, 0]);
+export const pressurePoint = (t, p) => chartPoint(t, p, 180);
+export const temperaturePoint = (t, p) => chartPoint(t, p, 50);
 
 export function createAerosolCanModel() {
-  const kit = houseModel('Aerosol spray can'), {root, part, control, finish, covers} = kit;
-  const system = part('system', 'Aerosol spray can', 'A steel can holding a liquid product and a propellant under pressure. Pressing the button opens a valve, and the pressure drives the liquid up a dip tube and out through a tiny hole as a spray. Drawn at true size, cut open.', [0, 0, 0]);
-  const holder = new THREE.Group();
-  system.add(holder);
+  const kit = houseModel('Aerosol spray can'), {root, part, control, finish} = kit;
+  const box = (size, pos, color, parent) => kit.box(point(size), point(pos), color, parent);
+  const cylinder = (radius, length, pos, color, parent) => kit.cylinder(radius * MM, length * MM, point(pos), color, parent);
+  const mesh = (geometry, color, parent, opacity = 1) => {
+    const template = box([1, 1, 1], [0, 0, 0], color, parent);template.geometry.dispose();template.geometry = geometry;
+    template.material = template.material.clone();Object.assign(template.material, {side: THREE.DoubleSide, transparent: opacity < 1, opacity, depthWrite: opacity === 1});return template;
+  };
+  const ring = (inside, outside, length, pos, color, parent, opacity = 1, start = 0, span = Math.PI * 2) => {const m = mesh(hollowCylinder(inside, outside, length, start, span), color, parent, opacity);m.position.set(...point(pos));return m;};
+  const system = part('system', 'Aerosol spray can', 'An original cutaway with a dip tube, spring-return valve and hollow actuator. Pressure drives discharge when the radial stem ports open below their gasket.', [0, 0, 0]);
+  const holder = new THREE.Group();system.add(holder);
+  const container = part('container', 'Can and liquid supply', 'A nominal 500 mL rigid vessel and its dip tube. The original teaching shape has a domed base and a sloped shoulder; wall strength is not calculated.', [0, 0, 0], holder);
+  const valve = part('valve', 'Spring-return valve', 'A fixed gasket covers both stem ports. Pressing the actuator moves the stem 2.4 mm down, exposing the ports to the chamber. The spring returns the stem when released.', [0, 0, 0], holder);
+  const actuator = part('actuator', 'Actuator and discharge path', 'The moving cap bears on the valve stem. Its internal elbow carries fluid to an open, tapered nozzle insert.', [0, 0, 0], holder);
+  const can = part('can', 'Domed cutaway can', 'An illustrative thin shell with a front sector removed. Its pale blue tint indicates cooling, not ice or a predicted material change.', [0, 0, 0], container);
+  const inside = [...Array.from({length: 25}, (_, k) => [CAN.chine * k / 24, bottomAt(CAN.chine * k / 24)]), [CAN.radius, 0], [CAN.radius, CAN.wallTop], [CAN.neck, CAN.shoulderTop]];
+  const outside = inside.map(([radius, y]) => [radius === 0 ? 0 : radius + .3, y - .3]);
+  const shell = mesh(lathe([...outside, ...inside.toReversed(), outside[0]], Math.PI / 4, 1.5 * Math.PI), 'metal', can);
+  const rim = kit.ring(CAN.neck * MM, .65 * MM, point([0, 165, 0]), 'metal', can);rim.rotation.x = Math.PI / 2;
 
-  const can = part('can', 'Steel can', 'Tinplate steel 65 mm across, holding 500 mL brimful. Its domed bottom and sloping shoulder let thin steel hold several bar. It turns pale blue here as it cools.', [0, 0, 0], holder);
-  const outline = [...Array.from({length: 13}, (_, k) => [CAN.chine * k / 12, bottomAt(CAN.chine * k / 12)]), [CAN.radius, 0], [CAN.radius, CAN.wallTop], [CAN.neck, CAN.shoulderTop]];
-  const shell = surface(kit, lathe(outline, Math.PI / 4, Math.PI * 1.5), 'metal', can, true);
-  const front = surface(kit, lathe(outline, -Math.PI / 4, Math.PI / 2), 'metal', can);
-  front.material = shell.material;
-  covers.push(front);
-  const rim = kit.ring(CAN.radius * MM, 1.2 * MM, [0, 0.6 * MM, 0], 'metal', can);
-  rim.rotation.x = Math.PI / 2;
+  const tube = part('dip-tube', 'Hollow dip tube', 'An open 2.2 mm bore reaches the bottom corner. Liquid delivery stops when the free surface falls below that inlet. Upside down, the inlet lies in the gas region.', [0, 0, 0], container);
+  const tubeCurve = dipTubeCurve(), dipTube = mesh(hollowCurve(tubeCurve, 1.1, 1.5), 'cream', tube, .38);
+  const cup = part('mounting-cup', 'Mounting cup and neck seal', 'The metal cup supports the valve at the can neck. Its central opening lets the stem slide through a stationary gasket.', [0, 0, 0], valve);
+  const cupMesh = ring(1.85, 13.5, 1, [0, 166.5, 0], 'metal', cup, .35);
+  ring(12.7, 13.5, .8, [0, 165.5, 0], 'ink', cup);
+  const housing = part('housing', 'Valve housing and inlet', 'A hollow chamber joins the dip tube to the stem ports. Its open front is a cutaway. Space around the spring and stem seat lets fluid reach the ports.', [0, 0, 0], valve);
+  const housingWall = ring(4.5, 5.5, 18, [0, 155, 0], 'cream', housing, .5, Math.PI / 4, 1.5 * Math.PI);
+  const housingBase = ring(1.1, 5.5, 2, [0, 146, 0], 'cream', housing, .6);
+  const gasket = part('gasket', 'Stem-port sealing gasket', 'The annular seal spans 164–166 mm. Both ports sit inside that band when released and move completely below it when pressed.', [0, 0, 0], valve);
+  const gasketMesh = ring(1.8, 5.5, 2, [0, 165, 0], 'ink', gasket);
+  const sealContact = part('seal-contact', 'Stem ports and gasket close-up', 'Compare the ports covered by the fixed gasket with the ports exposed below it. The fine brackets frame this inspection; they are not can components.', [0, 0, 0], holder);
+  sealContact.userData.inspectionOnly = 'seal-contact';sealContact.userData.explosionExcluded = true;
+  for (const sign of [-1, 1]) for (const [a, b] of [[[6.2 * sign, 161.8, 0], [6.2 * sign, 166.5, 0]], [[5.7 * sign, 161.8, 0], [6.2 * sign, 161.8, 0]], [[5.7 * sign, 166.5, 0], [6.2 * sign, 166.5, 0]]]) kit.rod(point(a), point(b), .035 * MM, 'leaf', sealContact);
+  const stem = part('stem', 'Hollow stem and radial ports', 'Two real side openings lead into a blind-bottom stem bore. The lower seat transmits the spring force; the upper end meets the actuator channel.', [0, 0, 0], valve);
+  const stemWall = mesh(stemGeometry(), 'metal', stem);
+  const stemPlug = cylinder(1.8, 1, [0, 157.5, 0], 'metal', stem);
+  const springSeat = cylinder(3.5, 1, [0, 157, 0], 'metal', stem);
+  const springPart = part('spring', 'Return spring', 'A supported coil between the housing floor and stem seat shortens by 2.4 mm when the button goes down. This motion is prescribed; spring force is not modeled.', [0, 0, 0], valve);
+  const spring = kit.spring(point([0, 147.25, 0]), 2.7 * MM, 9 * MM, 6, springPart, .25 * MM);
 
-  const valve = part('valve', 'Valve', 'A mounting cup crimped into the can’s 1 inch opening holds a plastic housing, a spring, and a stem pressed up against a rubber gasket. Pushing the stem down uncovers its side hole and lets liquid from the dip tube through.', [0, 0, 0], holder);
-  kit.cylinder(CAN.neck * MM, 2 * MM, [0, (CAN.shoulderTop + 1) * MM, 0], 'metal', valve);
-  const housing = seeThrough(kit.cylinder(4.5 * MM, 20 * MM, [0, 155 * MM, 0], 'cream', valve), 0.6);
-  const spring = kit.spring([0, 147 * MM, 0], 2.8 * MM, 11 * MM, 6, valve, 0.35 * MM);
-  const gasket = kit.ring(3 * MM, 0.8 * MM, [0, 166 * MM, 0], 'ink', valve);
-  gasket.rotation.x = Math.PI / 2;
-  const stem = kit.cylinder(1.8 * MM, 20 * MM, [0, 168 * MM, 0], 'metal', valve);
+  const cap = part('cap', 'Cutaway actuator cap', 'The hollow cap carries the stem socket, elbow and nozzle. A front cutaway reveals those passages; the casing itself is not the fluid conduit.', [0, 0, 0], actuator);
+  ring(12, 13, 8.5, [0, 176.25, 0], 'clay', cap, .5, Math.PI / 4, 1.5 * Math.PI);
+  ring(12, 13, 3.5, [0, 187.25, 0], 'clay', cap, .5, Math.PI / 4, 1.5 * Math.PI);
+  // Leave a real opening where the nozzle passes through the cap wall.
+  ring(12, 13, 5, [0, 183, 0], 'clay', cap, .5, Math.PI / 4, Math.PI / 4 - .3);
+  ring(12, 13, 5, [0, 183, 0], 'clay', cap, .5, Math.PI / 2 + .3, 1.25 * Math.PI - .3);
+  cylinder(13, 1, [0, 189.5, 0], 'clay', cap);
+  for (const direction of [[1, 0], [-1, 0], [0, -1]]) kit.rod(point([2.8 * direction[0], 175, 2.8 * direction[1]]), point([12 * direction[0], 175, 12 * direction[1]]), .7 * MM, 'clay', cap);
+  const channel = part('channel', 'Stem socket and elbow', 'A socket fits over the stem. The 2 mm inner bore rises into a 3 mm-radius elbow and turns toward the nozzle.', [0, 0, 0], actuator);
+  const socket = ring(1.8, 2.8, 8, [0, 176, 0], 'cream', channel, .55);
+  ring(1, 2.8, .5, [0, 179.75, 0], 'cream', channel, .55);
+  const actuatorCurve = new ActuatorCurve(), elbow = mesh(hollowCurve(actuatorCurve, 1, 1.4, 100), 'cream', channel, .5);
+  const nozzle = part('nozzle', 'Tapered nozzle insert', 'The connected bore narrows to a 0.45 mm exit. The assigned discharge law is a single-phase approximation; internal flashing and droplet sizes are not predicted.', [0, 0, 0], actuator);
+  const insert = mesh(lathe([[1, -2.5], [2.5, -2.5], [2.5, 2.5], [.225, 2.5], [.225, 1], [1, -2.5]]), 'ink', nozzle);
+  insert.rotation.z = -Math.PI / 2;insert.position.set(...point([12.5, 183, 0]));
 
-  const tube = part('dip-tube', 'Dip tube', 'A plastic tube from the valve down to the lowest corner of the can, where the last 6 mL of liquid collects. Whatever its open end sits in, liquid or gas, is what comes out.', [0, 0, 0], holder);
-  const tubeEnd = levelFor(AEROSOL.residual, true);
-  const tubePoints = [[0, 146, 0], [0, 100, 0], [0, 45, 0], [6, 20, 0], [17, 11, 0], [28, tubeEnd, 0]];
-  const dipTube = seeThrough(kit.tube(tubePoints.map(scaled), 1.5 * MM, 'cream', tube), 0.7);
+  const liquidPart = part('liquid', 'Liquid inventory and surface', 'The liquid level follows the conserved volume. Enlarged flow markers are teaching symbols, not simulated droplet sizes.', [0, 0, 0], holder);liquidPart.userData.explosionExcluded = true;
+  const liquid = mesh(new THREE.BufferGeometry(), 'gold', liquidPart, .24);
+  const gas = part('gas', 'Gas headspace', 'Gas presses on the liquid. These markers locate the headspace; they do not count molecules or predict collision trajectories.', [0, 0, 0], holder);gas.userData.explosionExcluded = true;
+  const gasDots = Array.from({length: 24}, () => kit.sphere(.4 * MM, [0, 0, 0], 'ink', gas));
+  const gasMaterial = gasDots[0].material.clone();gasDots.forEach(dot => {dot.material = gasMaterial;});
+  const flow = part('flow', 'Connected flow markers', 'Schematic markers show the connected dip-tube, chamber, open stem-port and nozzle route. They stop when the valve closes; transit speed is illustrative.', [0, 0, 0], holder);flow.userData.explosionExcluded = true;
+  const flowDots = Array.from({length: 45}, () => kit.sphere(.12 * MM, [0, 0, 0], 'blue', flow));
+  const spray = part('spray', 'Discharge markers', 'An enlarged indication of liquid or gas leaving the outlet. This diagram does not solve atomization, droplet size, cone angle or flash fraction.', [0, 0, 0], holder);spray.userData.explosionExcluded = true;
+  const sprayDots = Array.from({length: 36}, () => kit.sphere(.7 * MM, [0, 0, 0], 'gold', spray));
+  const sprayMaterial = sprayDots[0].material.clone();sprayDots.forEach(dot => {dot.material = sprayMaterial;});
 
-  const actuator = part('actuator', 'Actuator and nozzle', 'The button pressed onto the stem. The liquid turns a corner inside it and leaves through a hole 0.45 mm across, fast enough to tear into drops.', [0, 0, 0], holder);
-  const button = new THREE.Group();
-  actuator.add(button);
-  kit.cylinder(13 * MM, 18 * MM, [0, 181 * MM, 0], 'red', button);
-  const insert = kit.cylinder(2.5 * MM, 3 * MM, [13.5 * MM, 184 * MM, 0], 'ink', button);
-  insert.rotation.z = Math.PI / 2;
-
-  const liquidPart = part('liquid', 'Liquid', 'The product with the propellant dissolved in it, or the product alone in a nitrogen can, drawn at the level its volume fills. Bubbles show propellant boiling.', [0, 0, 0], holder);
-  const liquid = seeThrough(surface(kit, new THREE.BufferGeometry(), 'gold', liquidPart, true), 0.55);
-  const bubbles = Array.from({length: BUBBLES}, () => kit.sphere(1.5 * MM, [0, 0, 0], 'cream', liquidPart));
-
-  const gasPart = part('gas', 'Gas above the liquid', 'Propellant vapor, or nitrogen, pressing on the liquid. The dots stand for its pressure: more dots, higher pressure.', [0, 0, 0], holder);
-  const markers = Array.from({length: MARKERS}, () => kit.sphere(1.2 * MM, [0, 0, 0], 'ink', gasPart));
-  const markerMaterial = markers[0].material.clone();
-  markers.forEach(marker => { marker.material = markerMaterial; });
-
-  const spray = part('spray', 'Spray', 'Drops leaving the nozzle, more of them the more liquid leaves each second, shrinking as their propellant boils away; or puffs of gas when only gas comes out.', [0, 0, 0], system);
-  const drops = Array.from({length: DROPS}, () => kit.sphere(MM, [0, 0, 0], 'gold', spray));
-  const puffs = Array.from({length: DROPS}, () => kit.sphere(MM, [0, 0, 0], 'metal', spray));
-  const puffMaterial = seeThrough(puffs[0], 0.45).material;
-  puffs.forEach(puff => { puff.material = puffMaterial; });
-
-  const charts = part('charts', 'Charts', 'The pressure over the three minutes of spraying, and pressure against temperature for a liquefied propellant and for nitrogen, with the can marked. Not to the can’s scale.', [0, 0, 0], system);
-  const axis = (a, b) => kit.rod(a, b, 0.8 * MM, 'ink', charts);
-  axis(pressurePoint(0, 0), pressurePoint(PRESSURE_CHART.seconds, 0));
-  axis(pressurePoint(0, 0), pressurePoint(0, PRESSURE_CHART.top));
-  axis(temperaturePoint(TEMPERATURE_CHART.low, 0), temperaturePoint(TEMPERATURE_CHART.high, 0));
-  axis(temperaturePoint(TEMPERATURE_CHART.low, 0), temperaturePoint(TEMPERATURE_CHART.low, TEMPERATURE_CHART.top));
-  const pressureLine = lineObject(Math.round(END / AEROSOL.every) + 1, 0xc14f39, charts), cursor = lineObject(2, 0x374736, charts);
-  const liquefiedLine = lineObject(61, 0xe3b45e, charts), nitrogenLine = lineObject(61, 0x2f6690, charts), dot = kit.sphere(4 * MM, [0, 0, 0], 'red', charts);
-  chartText(charts, pressurePoint, {
-    title: 'Pressure while spraying', size: 10 * MM,
-    x: {min: 0, max: PRESSURE_CHART.seconds, title: 'Seconds', ticks: [[0, '0'], [90, '90'], [180, '180']]},
-    y: {min: 0, max: PRESSURE_CHART.top, title: 'Bar above the room', ticks: [[0, '0'], [0.6e6, '6'], [1.2e6, '12']]},
-    legend: [['This can', 0xc14f39]],
-  });
-  chartText(charts, temperaturePoint, {
-    title: 'Pressure against temperature', size: 10 * MM,
-    x: {min: TEMPERATURE_CHART.low, max: TEMPERATURE_CHART.high, title: 'Can temperature (°C)', ticks: [[-10, '−10'], [20, '20'], [50, '50']]},
-    y: {min: 0, max: TEMPERATURE_CHART.top, title: 'Bar above the room', ticks: [[0, '0'], [0.6e6, '6'], [1.2e6, '12']]},
-    legend: [['Liquefied propellant', 0xb8862f], ['Nitrogen', 0x2f6690]], legendAt: [TEMPERATURE_CHART.low + 0.62 * (TEMPERATURE_CHART.high - TEMPERATURE_CHART.low), TEMPERATURE_CHART.top],
-  });
-  const filledShare = aerosolPlan({propellant: 0, temperature: 20, orientation: 0}).startShare;
-  for (let i = 0; i <= 60; i++) {
-    const celsius = TEMPERATURE_CHART.low + i;
-    liquefiedLine.geometry.attributes.position.array.set(temperaturePoint(celsius, filledShare * blendPressure(celsius + K) - AEROSOL.atmosphere), i * 3);
-    nitrogenLine.geometry.attributes.position.array.set(temperaturePoint(celsius, NITROGEN.fillPressure * (celsius + K) / NITROGEN.fillTemperature - AEROSOL.atmosphere), i * 3);
+  const pressureChart = part('pressure-chart', 'Pressure during the trial', 'Pressure above room across the selected 180-second valve program. Closing the valve stops withdrawal while room heat can still change pressure.', point([350, 100, 0]), system);
+  const temperatureChart = part('temperature-chart', 'Fresh-charge pressure and temperature', 'Two sealed fresh charges compared at each temperature. The marker identifies the selected initial condition, not a partly emptied can.', point([350, 100, 0]), system);
+  const charts = [pressureChart, temperatureChart];
+  for (const [chart, id, map, title, span] of [[pressureChart, 'pressure-chart', pressurePoint, 'Pressure during the trial', 180], [temperatureChart, 'temperature-chart', temperaturePoint, 'Fresh sealed charges', 50]]) {
+    chart.userData.inspectionOnly = id;chart.userData.explosionExcluded = true;
+    box([300, 245, 1], [0, 12, -3], 'cream', chart).material = new THREE.MeshBasicMaterial({color: 0xf8f5e9});
+    kit.rod(map(0, 0), map(span, 0), .35 * MM, 'ink', chart);kit.rod(map(0, 0), map(0, 1.2e6), .35 * MM, 'ink', chart);
+    chartText(chart, map, {title, size: 11 * MM, x: {min: 0, max: span, title: chart === pressureChart ? 'Time (s)' : 'Initial temperature (°C)', ticks: [[0, '0'], [span / 2, String(span / 2)], [span, String(span)]]}, y: {min: 0, max: 1.2e6, title: 'Pressure above room (bar)', ticks: [[0, '0'], [6e5, '6'], [1.2e6, '12']]}, legend: chart === pressureChart ? [['Selected trial', 0xc14f39]] : [['Liquefied blend', 0xb8862f], ['Nitrogen', 0x2f6690]]});
   }
+  const pressureLine = lineObject(361, 0xc14f39, pressureChart), cursor = lineObject(2, 0x374736, pressureChart);
+  const liquefiedLine = lineObject(51, 0xb8862f, temperatureChart), nitrogenLine = lineObject(51, 0x2f6690, temperatureChart), temperatureDot = kit.sphere(2 * MM, [0, 0, 0], 'clay', temperatureChart);
+  for (let i = 0; i <= 50; i++) for (const [propellant, line] of [[0, liquefiedLine], [1, nitrogenLine]]) line.geometry.attributes.position.array.set(temperaturePoint(i, aerosolEquilibrium(aerosolInitialAmounts({propellant}), i + 273.15).P - AEROSOL.atmosphere), i * 3);
   for (const line of [liquefiedLine, nitrogenLine]) line.geometry.computeBoundingSphere();
 
   const specs = {
-    propellant: ['Propellant', PROPELLANT_OPTIONS.map(({value, label}) => ({value, label})), '', 'What keeps the can under pressure.'],
-    temperature: ['Temperature', null, '°C', 'The can’s temperature and the room’s.'],
-    orientation: ['Held', [{value: 0, label: 'Upright'}, {value: 1, label: 'Upside down'}], '', 'Which way up the can is while spraying.'],
+    propellant: ['Propellant', PROPELLANT_OPTIONS, '', 'Compare liquefied propellants with compressed nitrogen. Every changed setting starts a fresh trial.'],
+    temperature: ['Initial can and room temperature', null, '°C', 'A simulated temperature comparison. Do not heat a real aerosol container.'],
+    orientation: ['Can position', [{value: 0, label: 'Upright'}, {value: 1, label: 'Upside down'}], '', 'The dip-tube inlet determines whether liquid or gas reaches the valve.'],
+    button: ['Button', [{value: 0, label: 'Released throughout'}, {value: 1, label: 'Held down'}, {value: 2, label: 'Release after 10 seconds'}, {value: 3, label: 'Release after 120 seconds'}], '', 'Pausing freezes time; releasing closes the valve. The timed release leaves the can warming without further discharge.'],
   };
-  for (const [key, [min, max, step]] of Object.entries(AEROSOL_DOMAINS)) {
-    const [label, options, unit, help] = specs[key];
-    control(key, label, min, max, step, AEROSOL_DEFAULTS[key], unit, help, options);
-  }
-
-  let clock = 0, lastClock = 0, disposed = false, chartKey = '', liquidKey = '';
+  for (const [key, [min, max, step]] of Object.entries(AEROSOL_DOMAINS)) {const [label, options, unit, help] = specs[key];control(key, label, min, max, step, AEROSOL_DEFAULTS[key], unit, help, options, {primary: key === 'propellant'});}
+  let clock = 0, lastClock = 0, initialTime = null, preparedSettings = null, key = '', liquidKey = '', disposed = false;
   const result = finish(values => {
-    const s = sampleAerosol(values, clock), upright = s.upright, pressed = clock > 0 && clock < END, press = pressed ? 1.5 : 0;
-    holder.rotation.z = upright ? 0 : Math.PI;
-    holder.position.y = upright ? 0 : CAN.actuatorTop * MM;
-    button.position.y = -press * MM;
-    stem.position.y = (168 - press) * MM;
-    spring.userData.setLength((11 - press) * MM);
-
-    const level = levelFor(s.V, upright), shape = `${upright}:${level.toFixed(4)}`;
-    if (shape !== liquidKey) {
-      liquidKey = shape;
-      liquid.geometry.dispose();
-      liquid.geometry = lathe(liquidOutline(level, upright));
-    }
-    const boiling = s.liquefied ? clamp01(s.boilRate / 1.5e-4) : 0, shownBubbles = Math.round(BUBBLES * boiling);
-    const liquidLow = upright ? CAN.dome + 2 : CAN.shoulderTop - 3, roomForBubbles = upright ? level > CAN.dome + 2 : level < CAN.shoulderTop - 3;
-    bubbles.forEach((bubble, i) => {
-      const {out, angle} = scatter(i), phase = ((clock / SPEED_UP) * 0.8 + i / BUBBLES) % 1, y = liquidLow + (level - liquidLow) * phase, radius = radiusAt(y) * out;
-      bubble.position.set(radius * Math.sin(angle) * MM, y * MM, radius * Math.cos(angle) * MM);
-      bubble.visible = pressed && roomForBubbles && i < shownBubbles;
-    });
-    const gasLow = upright ? level : CAN.dome + 1, gasHigh = upright ? CAN.shoulderTop - 1 : level, shownMarkers = Math.round(MARKERS * clamp01(s.P / 1.1e6));
-    markerMaterial.color.set(s.liquefied ? 0xe3b45e : 0x2f6690);
-    markers.forEach((marker, i) => {
-      const {along, out, angle} = scatter(i + 7), y = gasLow + (gasHigh - gasLow) * along, radius = radiusAt(y) * out;
-      marker.position.set(radius * Math.sin(angle) * MM, y * MM, radius * Math.cos(angle) * MM);
-      marker.visible = gasHigh > gasLow + 2 && i < shownMarkers;
-    });
-
-    const side = upright ? 1 : -1, nozzle = [side * 15, upright ? 184 - press : CAN.actuatorTop - 184 + press];
-    const length = Math.min(260, 6 * s.jet), spread = s.liquefied ? 0.27 : 0.12, playing = clock / SPEED_UP;
-    const shownDrops = s.volumeRate > 0 ? Math.round(DROPS * clamp01(s.massRate / 4.5e-3)) : 0, shownPuffs = s.gasRate > 0 ? Math.round(DROPS * clamp01(s.gasRate / 3e-4)) : 0;
-    drops.forEach((drop, i) => {
-      const u = (playing * 2 + i / DROPS) % 1, up = Math.sin(i * 2.4), deep = Math.cos(i * 1.7);
-      drop.position.set((nozzle[0] + side * u * length) * MM, (nozzle[1] + up * spread * u * length) * MM, deep * spread * u * length * MM);
-      drop.scale.setScalar(s.liquefied ? 2 * (1 - 0.6 * u) : 2.5);
-      drop.visible = pressed && i < shownDrops;
-    });
-    puffs.forEach((puff, i) => {
-      const u = (playing * 2 + i / DROPS) % 1, up = Math.sin(i * 2.4), deep = Math.cos(i * 1.7);
-      puff.position.set((nozzle[0] + side * u * 90) * MM, (nozzle[1] + up * 0.35 * u * 90) * MM, deep * 0.35 * u * 90 * MM);
-      puff.scale.setScalar(3 * (1 + u));
-      puff.visible = pressed && i < shownPuffs;
-    });
-    shell.material.color.copy(STEEL).lerp(FROST, clamp01((s.room - s.T) / 15));
-
-    const key = JSON.stringify(values);
-    if (key !== chartKey) {
-      chartKey = key;
-      const array = pressureLine.geometry.attributes.position.array;
-      s.samples.forEach((sample, i) => array.set(pressurePoint(sample.t, sample.P - AEROSOL.atmosphere), i * 3));
-      pressureLine.geometry.attributes.position.needsUpdate = true;
-      pressureLine.geometry.computeBoundingSphere();
-    }
-    cursor.geometry.attributes.position.array.set([...pressurePoint(clock, 0), ...pressurePoint(clock, PRESSURE_CHART.top)]);
-    cursor.geometry.attributes.position.needsUpdate = true;
-    dot.position.set(...temperaturePoint(s.T - K, s.gauge));
-
-    const bar = pascals => fixed(Math.max(0, pascals) / 1e5, 2), grams = kilograms => fixed(kilograms * 1000, 1);
-    let outcome;
-    if (clock === 0) outcome = 'Ready · press Play to hold the button down';
-    else if (!pressed) outcome = `Button released after three minutes · ${grams(s.sprayedProduct)} g of product sprayed`;
-    else if (s.volumeRate > 0) outcome = `Spraying ${fixed(s.massRate * 1000, 2)} g a second at ${bar(s.gauge)} bar · ${grams(s.product)} g of product left`;
-    else if (s.gasRate > 0) outcome = `Only gas comes out: ${fixed(s.gasRate * 1000, 3)} g a second of ${s.liquefied ? 'propellant vapor' : 'nitrogen'}`;
-    else outcome = `Nothing comes out · ${grams(s.product)} g of product left in the can`;
-    const gasSpace = (AEROSOL.brimful - s.V) * 1e6;
-    return {
-      state: {...s, level, pressed},
-      readings: [
-        r('Your result', outcome),
-        r('Pressure', `${bar(s.gauge)} bar above the room’s`, s.liquefied ? (s.propellant > 0.005 ? `The propellant’s vapor pressure at ${fixed(s.T - K, 1)} °C, however much liquid is left.` : 'The last of the propellant is boiling away, so the pressure falls.') : `Nitrogen spread through ${fixed(gasSpace, 0)} mL; its pressure falls as the liquid leaves.`),
-        r('Inside the can', `${fixed(s.V * 1e6, 0)} mL of liquid, ${fixed(gasSpace, 0)} mL of gas`, s.liquefied ? `${grams(s.propellant)} g of propellant in the liquid and ${fixed(s.vapor * 1000, 2)} g as vapor.` : `${fixed(s.nitrogen * NITROGEN.molar * 1000, 2)} g of nitrogen.`),
-        r('Spray', !pressed ? 'none' : s.volumeRate > 0 ? `${fixed(s.jet, 1)} m/s out of a 0.45 mm hole` : s.gasRate > 0 ? 'gas only' : 'none', !pressed ? (clock === 0 ? 'Hold the button down to spray.' : 'The button is released.') : s.volumeRate > 0 ? (s.liquefied ? `${fixed(s.flashing * 100, 0)}% of the propellant in it boils at once, tearing the liquid into mist.` : 'No propellant in it to boil, so it breaks into coarser drops.') : s.gasRate > 0 ? (upright ? 'The dip tube’s end is out of the liquid.' : 'Upside down, the dip tube’s open end sits in the gas.') : 'Nothing is flowing.'),
-        r('Can temperature', `${fixed(s.T - K, 1)} °C`, s.liquefied ? `Boiling ${fixed(s.boiled * 1000, 2)} g of propellant has taken ${fixed(s.boiled * LIQUEFIED.latent / 1000, 2)} kJ; the room gives back ${fixed(s.heat, 2)} W.` : `The nitrogen’s work cools it a little; the room gives back ${fixed(s.heat, 2)} W.`),
-        r('Sprayed so far', `${grams(s.sprayedProduct)} g of product`, `With ${grams(s.sprayedPropellant)} g of propellant${s.sprayedGas > 0 ? ` and ${fixed(s.sprayedGas * 1000, 2)} g of gas` : ''}.`),
-        r('At 50 °C', `${bar(s.hotPressure - AEROSOL.atmosphere)} bar`, s.liquefied ? 'A liquefied propellant’s pressure climbs steeply with heat: never warm a can.' : 'A gas’s pressure rises only in proportion to its absolute temperature.'),
-      ],
-    };
+    const nextKey = JSON.stringify(values);
+    if (nextKey !== key) {key = nextKey;clock = initialTime ?? 0;lastClock = 0;const plan = aerosolPlan(values);plan.samples.forEach((s, i) => pressureLine.geometry.attributes.position.array.set(pressurePoint(s.t, s.P - AEROSOL.atmosphere), i * 3));pressureLine.geometry.attributes.position.needsUpdate = true;pressureLine.geometry.computeBoundingSphere();}
+    const s = sampleAerosol(values, clock), press = s.down ? VALVE.travel : 0;
+    holder.rotation.z = s.upright ? 0 : Math.PI;holder.position.y = s.upright ? 0 : CAN.actuatorTop * MM;
+    stem.position.y = actuator.position.y = -press * MM;spring.userData.setLength((9 - press) * MM);
+    const level = levelFor(s.V, s.upright), shape = `${s.upright}:${level.toFixed(5)}`;
+    if (shape !== liquidKey) {liquidKey = shape;liquid.geometry.dispose();liquid.geometry = lathe(liquidOutline(level, s.upright));}
+    shell.material.color.copy(STEEL).lerp(COLD, Math.max(0, Math.min(1, (values.temperature + 273.15 - s.T) / 18)));
+    const low = s.upright ? level + 1 : CAN.dome + 2, high = s.upright ? CAN.shoulderTop - 2 : level - 1;
+    gasDots.forEach((dot, i) => {const y = low + (high - low) * ((i * .754877666 + .13) % 1), radius = radiusAt(y) * (.25 + .6 * ((i * .569840291) % 1)), angle = -.7 + 1.4 * ((i * .414213562) % 1);dot.position.set(...point([radius * Math.sin(angle), y, radius * Math.cos(angle)]));dot.visible = high > low;dot.material.color.setHex(s.liquefied ? 0xb8862f : 0x2f6690);});
+    const moving = s.down && (s.volumeRate > 0 || s.gasRate > 0);
+    const chamberPath = new THREE.CurvePath(), chamberPoints = [[0, 146, 0], [0, 147.125, 0], [0, 147.125, 3.9], [0, 165 - press, 3.9], [0, 165 - press, 0], [0, 180 - press, 0]].map(p => new THREE.Vector3(...point(p)));
+    for (let i = 1; i < chamberPoints.length; i++) chamberPath.add(new THREE.LineCurve3(chamberPoints[i - 1], chamberPoints[i]));
+    flowDots.forEach((dot, i) => {dot.visible = moving;if (!moving) return;const phase = (clock / 4 + i / flowDots.length) % 1;let p;if (phase < .65) p = tubeCurve.getPointAt(1 - phase / .65);else if (phase < .85) p = chamberPath.getPointAt((phase - .65) / .2);else if (phase < .97) {p = actuatorCurve.getPointAt((phase - .85) / .12);p.y -= press * MM;}else p = new THREE.Vector3(...point([10 + (phase - .97) / .03 * 5, 183 - press, 0]));dot.position.copy(p);});
+    const strength = s.volumeRate > 0 ? s.massRate / .004 : s.gasRate / .0003;
+    sprayDots.forEach((dot, i) => {dot.visible = moving && i < Math.max(1, Math.round(36 * Math.min(1, strength)));const u = (clock / 3 + i / 36) % 1;dot.position.set(...point([15 + 100 * u, 183 - press + Math.sin(i * 2.4) * 15 * u, Math.cos(i * 1.7) * 15 * u]));dot.material.color.setHex(s.volumeRate > 0 ? 0xb8862f : 0x2f6690);});
+    cursor.geometry.attributes.position.array.set([...pressurePoint(clock, 0), ...pressurePoint(clock, 1.2e6)]);cursor.geometry.attributes.position.needsUpdate = true;
+    temperatureDot.position.set(...temperaturePoint(values.temperature, s.plan.initial.P - AEROSOL.atmosphere));
+    const grams = n => fixed(n * 1000, 2), totalOut = s.massOut.reduce((a, b) => a + b, 0), left = s.liquidMass + s.vaporMass, start = s.plan.initial.liquidMass + s.plan.initial.vaporMass;
+    const outcome = !s.down ? (clock >= AEROSOL.duration ? 'Trial complete' : 'Valve closed') : s.volumeRate > 0 ? 'Liquid leaves the nozzle' : s.gasRate > 0 ? 'Gas leaves; product stays inside' : 'No pressure-driven discharge';
+    return {state: {...s, level, press, totalOut, left, start}, readings: [
+      r('Your result', `${outcome} · ${grams(s.sprayedProduct)} g product delivered`, `${fixed(clock, 1)} of 180 seconds. ${s.down ? 'Stem ports open below the gasket.' : 'Gasket seals the stem ports.'}`),
+      r('Mass account', `${grams(left)} + ${grams(totalOut)} = ${grams(start)} g`, 'Mass still in the can + mass discharged = original charge. Each chemical species is also conserved.'),
+      r('Pressure above room', `${fixed(Math.max(0, s.gauge) / 1e5, 2)} bar`, `${fixed(s.P / 1e5, 2)} bar absolute. Pressure depends on temperature, headspace and changing composition.`),
+      r('Liquid and gas space', `${fixed(s.V * 1e6, 1)} / ${fixed(s.gasVolume * 1e6, 1)} mL`, `${s.upright ? 'Upright' : 'Upside down'}: the dip-tube inlet is in ${s.drawsLiquid ? 'liquid' : 'gas'}.`),
+      r('Discharge rate', `${fixed(s.massRate * 1000, 3)} g/s liquid · ${fixed(s.gasRate * 1000, 3)} g/s gas`, 'Assigned single-phase outlet approximation. Internal flashing, droplet sizes and spray quality are not calculated.'),
+      r('Can temperature', `${fixed(s.T - 273.15, 2)} °C`, `${fixed(s.heat, 2)} W enters from the room. The energy account includes heat transfer and enthalpy leaving with discharged material.`),
+      r('Propane fraction', s.liquefied ? `${fixed(100 * s.liquidPropaneFraction, 1)}% liquid · ${fixed(100 * s.vaporPropaneFraction, 1)}% vapor` : 'No propane in the nitrogen charge', 'Mole fractions within the propane/isobutane blend. Preferential evaporation changes the remaining blend.'),
+      r('Species discharged', AS.map((species, i) => `${species.name}: ${grams(s.massOut[i])} g`).join(' · '), 'No material respawns or changes chemical identity. The enlarged scene markers show routes, not measured droplets.'),
+      r('Valve program', values.button === 0 ? 'Released throughout' : values.button === 2 ? 'Release after 10 seconds' : values.button === 3 ? 'Release after 120 seconds' : 'Held through the trial', 'Play advances time at 6×. Pause freezes the simulation; it does not release the button. A changed setting starts a fresh charge.'),
+    ]};
   });
-
   const render = result.update;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(END, clock + dt * SPEED_UP); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = lastClock = 0; return render(result.defaults); };
-  result.actions = [
-    {label: 'Inspect: the valve and dip tube', part: 'valve', view: 'front', replay: false, run() { clock = 20; return render(); }},
-    {label: 'Inspect: the spray', part: 'spray', view: 'front', replay: false, run() { clock = 10; return render(); }},
-    {label: 'Inspect: the charts after the spray', part: 'charts', view: 'front', replay: false, run() { clock = END - 1; return render(); }},
-  ];
-  result.playback = {
-    label: 'Hold the button down',
-    description: 'Three minutes of spraying, six times faster than real time.',
-    stepLabel: 'Advance ten seconds',
-    advance: result.advance,
-    step: () => result.advance(10 / SPEED_UP),
-    complete: () => clock >= END,
-    blocked: () => false,
-  };
-
-  root.rotation.set(0.15, -0.35, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, holder, can, shell, front, rim, valve, housing, spring, gasket, stem, tube, dipTube, tubePoints, tubeEnd, actuator, button, insert, liquidPart, liquid, bubbles, gasPart, markers, markerMaterial, spray, drops, puffs, charts, pressureLine, cursor, liquefiedLine, nitrogenLine, dot, filledShare, MM, SPEED_UP, END, DROPS, BUBBLES, MARKERS};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
-  return result;
+  result.update = values => {const readings = render(values);if (preparedSettings && Object.entries(preparedSettings).every(([k, v]) => result.getState().values[k] === v)) {initialTime = null;preparedSettings = null;}return readings;};
+  result.advance = dt => {if (Number.isFinite(dt) && dt > 0) {initialTime = null;preparedSettings = null;clock = Math.min(AEROSOL.duration, clock + dt * AEROSOL.speed);}return render();};
+  result.animate = time => {const dt = Number.isFinite(time) ? Math.max(0, time - lastClock) : 0;if (Number.isFinite(time)) lastClock = time;return result.advance(dt);};
+  result.reset = ({time = 0, settings} = {}) => {preparedSettings = {...(settings ?? result.defaults)};aerosolPlan(preparedSettings);if (!Number.isFinite(time) || time < 0 || time > AEROSOL.duration) throw new RangeError('Invalid aerosol checkpoint');initialTime = time;key = '';clock = lastClock = 0;return render(preparedSettings);};
+  result.replayState = () => ({time: 0, settings: result.getState().values});
+  const inspect = (label, id, view = 'front', isolate = false) => ({label, part: id, view, isolate, replay: false, run: () => render()});
+  result.actions = [inspect('Inspect: complete can', 'system'), inspect('Inspect: spring-return valve', 'valve'), inspect('Inspect: valve seal', 'seal-contact'), inspect('Inspect: stem ports', 'stem', 'front', true), inspect('Inspect: sealing gasket', 'gasket', 'front', true), inspect('Inspect: dip-tube inlet', 'dip-tube'), inspect('Inspect: actuator channels', 'actuator'), inspect('Inspect: nozzle bore', 'nozzle', 'front', true), inspect('Compare pressure during the trial', 'pressure-chart', 'front', true), inspect('Compare fresh-charge temperatures', 'temperature-chart', 'front', true)];
+  result.playback = {label: 'Run the valve program', description: 'Three simulated minutes at 6×. Experiments open at named checkpoints. Pause freezes time; the Button control determines valve release.', stepLabel: 'Advance five seconds', advance: result.advance, step: () => result.advance(5 / AEROSOL.speed), complete: () => clock >= AEROSOL.duration, blocked: () => false};
+  result.initialPart = result.autoFramePart = 'system';result.initialView = 'front';result.frameVisibleOnly = true;result.framePadding = .68;result.selectionOutline = false;result.transparentBackground = true;
+  result.viewDirections = {front: [.35, .18, 3], iso: [1.4, .6, 2.7], back: [0, .1, -3], side: [3, .2, 0]};
+  result.partViewDirections = {'pressure-chart': {front: [0, 0, 3]}, 'temperature-chart': {front: [0, 0, 3]}, 'seal-contact': {front: [.2, -.16, 3]}, nozzle: {front: [3, .3, .5]}};
+  result.thumbnailOmit = [...charts, sealContact, flow, spray, gas];
+  for (const item of result.parts) {item.maxZoom = 600;item.framePadding = item.id.endsWith('chart') ? .58 : .68;}
+  result.topology = {system, holder, container, valve, actuator, can, shell, rim, tube, tubeCurve, dipTube, cup, cupMesh, housing, housingWall, housingBase, gasket, gasketMesh, sealContact, stem, stemWall, stemPlug, springSeat, springPart, spring, cap, channel, socket, actuatorCurve, elbow, nozzle, insert, liquidPart, liquid, gas, gasDots, flow, flowDots, spray, sprayDots, pressureChart, temperatureChart, pressureLine, cursor, liquefiedLine, nitrogenLine, temperatureDot, MM};
+  const dispose = result.dispose;result.dispose = () => {if (disposed) return;disposed = true;dispose();};return result;
 }
