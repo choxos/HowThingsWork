@@ -125,14 +125,21 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   host.querySelector('.daily-part-buttons').innerHTML=model.parts.map(part=>`<button data-part="${text(part.id)}" aria-pressed="false">${text(part.name)}</button>`).join('');
   function restoreVisibility(){for(const [object,visible] of overrides)object.visible=visible;overrides.clear();}
   function isWithin(object,parent){for(let current=object;current;current=current.parent)if(current===parent)return true;return false;}
-  function filterVisibility(){
+  function filterVisibility(showCovers=false){
     const context=selected===model.resultPart?.id?model.resultPart.context:undefined;
     const part=model.parts.find(part=>part.id===(context||selected));
     model.root.traverse(object=>{
-      if((object.userData.inspectionOnly&&selected!==object.userData.inspectionOnly)||(cutaway&&model.covers.includes(object))||(isolated&&part&&!isWithin(object,part.object)&&!isWithin(part.object,object))){overrides.set(object,object.visible);object.visible=false;}
+      if((object.userData.inspectionOnly&&selected!==object.userData.inspectionOnly)||(cutaway&&!showCovers&&model.covers.includes(object))||(isolated&&part&&!isWithin(object,part.object)&&!isWithin(part.object,object))){overrides.set(object,object.visible);object.visible=false;}
     });
   }
   function shown(object){for(let current=object;current;current=current.parent)if(!current.visible)return false;return true;}
+  function coverCanBeRevealed(part){
+    if(!cutaway||!model.covers.some(cover=>isWithin(part.object,cover)))return false;
+    // Inspection may reveal a cover hidden by the viewer, but must not reveal
+    // geometry the model itself removed for the current stage or arrangement.
+    for(let object=part.object;object;object=object.parent)if(!(overrides.get(object)??object.visible))return false;
+    return true;
+  }
   function partAt(event){
     const rect=canvas.getBoundingClientRect(),root=explosion?.root||model.root;
     root.updateMatrixWorld(true);camera.updateMatrixWorld();
@@ -253,7 +260,11 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     explosionTarget=within(next,0,1);
     if(!explosion&&next>0){
       stop();followPosition=null;assembledCamera={position:camera.position.clone(),target:orbit.target.clone(),zoom:camera.zoom,minZoom:orbit.minZoom,maxZoom:orbit.maxZoom};
-      explosion=createPartExplosion(model,camera,wrap.clientWidth/wrap.clientHeight,{width:wrap.clientWidth,height:wrap.clientHeight});
+      // An inventory may include its removable cover while preserving the
+      // selected part and cutaway state when the assembly returns.
+      if(model.includeCoversInSeparation){restoreVisibility();filterVisibility(true);}
+      try{explosion=createPartExplosion(model,camera,wrap.clientWidth/wrap.clientHeight,{width:wrap.clientWidth,height:wrap.clientHeight});}
+      finally{if(model.includeCoversInSeparation){restoreVisibility();filterVisibility();}}
       if(!explosion.items.length){restoreAssembly();separation.querySelector('output').textContent='No parts to separate in this view';return false;}
       scene.add(explosion.root);
       orbit.minZoom=.001;
@@ -269,7 +280,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   separation.querySelector('button').addEventListener('click',()=>separate(0));
   inventoryLabels.addEventListener('click',event=>{const id=event.target.closest('[data-category]')?.dataset.category;if(id&&id!=='__structure')selectPart(id,false);});
   function update(showReadings=true){restoreVisibility();const result=model.update(values);filterVisibility();if(showReadings)readings(result);draw();}
-  function syncControls(){for(const control of model.controls){const input=host.querySelector(`[data-control="${control.key}"]`),number=host.querySelector(`[data-number="${control.key}"]`);input.value=values[control.key];input.disabled=control.enabledWhen?!control.enabledWhen(values):false;input.closest('.daily-control').hidden=control.visibleWhen?!control.visibleWhen(values):false;if(number){if(document.activeElement!==number)number.value=values[control.key];number.disabled=input.disabled;}input.setAttribute('aria-valuetext',`${values[control.key]}${control.unit?' '+control.unit:''}`);}if(model.frameVisibleOnly)for(const button of host.querySelectorAll('[data-part]')){const part=model.parts.find(part=>part.id===button.dataset.part);button.disabled=Boolean(part&&!shown(part.object));button.title=button.disabled?'Not visible at this stage or in this arrangement':'';}}
+  function syncControls(){for(const control of model.controls){const input=host.querySelector(`[data-control="${control.key}"]`),number=host.querySelector(`[data-number="${control.key}"]`);input.value=values[control.key];input.disabled=control.enabledWhen?!control.enabledWhen(values):false;input.closest('.daily-control').hidden=control.visibleWhen?!control.visibleWhen(values):false;if(number){if(document.activeElement!==number)number.value=values[control.key];number.disabled=input.disabled;}input.setAttribute('aria-valuetext',`${values[control.key]}${control.unit?' '+control.unit:''}`);}if(model.frameVisibleOnly)for(const button of host.querySelectorAll('[data-part]')){const part=model.parts.find(part=>part.id===button.dataset.part);button.disabled=Boolean(part&&!shown(part.object)&&!coverCanBeRevealed(part));button.title=button.disabled?'Not visible at this stage or in this arrangement':'';}}
   function syncPlaybackButton(){
     const button=host.querySelector('[data-play]');if(!button)return;
     const complete=Boolean(model.playback?.complete()),blocked=Boolean(model.playback?.blocked());

@@ -151,7 +151,8 @@ export const publishedEntryIds = [
   "washing-machine",
   "friction-drive-toy",
   "games-controller",
-  "joystick"
+  "joystick",
+  "video-games-console"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -254,6 +255,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'video-games-console': ['using-bits', 'electricity'],
   'joystick': ['making-bits', 'springs', 'electricity', 'levers'],
   'games-controller': ['making-bits', 'using-bits', 'springs', 'rotating-wheels', 'electricity'],
   'friction-drive-toy': ['rotating-wheels', 'gears-and-belts', 'friction', 'wheel-and-axle'],

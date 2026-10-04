@@ -517,15 +517,27 @@ const joystickClaims = {
   'Read the final result': () => ({}),
 };
 const consoleClaims = {
-  'Polls': s => ({'125': s.rate, '8': ms(s.poll), '1.2': ms(s.press.reported - s.press.registered), '4.0': ms(s.latency.parts.poll)}),
-  'Poll faster': s => ({'1,000': s.rate, '0.5': ms(s.latency.parts.poll), '65.6': ms(defaults.latency.mean), '62.1': ms(s.latency.mean)}),
-  'Waiting for a frame': s => ({'16.7': ms(s.frame), '8.3': ms(s.latency.parts.frame)}),
-  'A frame missed': s => {
+  'Follow one press': () => ({}),
+  'Inside the console': () => ({}),
+  'The processor’s two roles': () => ({}),
+  'Working memory and storage': () => ({}),
+  'Filtered but not received': () => ({}),
+  'Received between updates': () => ({}),
+  'The next game update': () => ({}),
+  'Drawing is not displaying': () => ({}),
+  'Ready but still delayed': () => ({}),
+  'First visible response': s => ({'61.7': ms(s.press.latency)}),
+  'Where the time goes': s => ({'61.7': ms(s.press.latency), '51.4': ms(s.latency.min), '78.9': ms(s.latency.max), '65.6': ms(s.latency.mean)}),
+  'Poll faster': s => ({'4.0': ms(defaults.latency.parts.poll), '0.5': ms(s.latency.parts.poll), '62.1': ms(s.latency.mean), '61.7': ms(s.press.latency)}),
+  'Wait for more scans': s => {
     t.ok(s.press.frame > defaults.press.frame && s.press.frame - s.frame < s.press.reported && s.press.reported <= s.press.frame, 'the report arrives just after one frame starts, so the next frame handles it');
-    return {'8': s.values.debounce, '10.3': ms(s.press.registered - s.press.t), '16.5': ms(s.press.reported - s.press.t), '15.0': ms(s.press.frame - s.frame - s.press.t), '78.3': ms(s.press.latency), '61.7': ms(defaults.press.latency)};
+    return {'78.3': ms(s.press.latency)};
   },
-  'A slow display': s => ({'111.7': ms(s.press.latency), '115.6': ms(s.latency.mean), '50': s.values.display - PAD_DEFAULTS.display}),
-  'Every timing': s => ({'51.4': ms(s.latency.min), '78.9': ms(s.latency.max), '65.6': ms(s.latency.mean)}),
+  'No debounce': () => ({}),
+  'A slower display': s => ({'111.7': ms(s.press.latency)}),
+  'Remove the extra display delay': s => ({'31.7': ms(s.press.latency)}),
+  'Power and cooling': () => ({}),
+  'Read the final result': () => ({}),
 };
 const additionalClaims = {
   'More bits': s => ({'12':s.bits,'8':BITS[0]}),
@@ -534,11 +546,10 @@ const additionalClaims = {
 const orderedClaims = Object.fromEntries(gamesControllerLesson.tryIt.map(trial => [trial.title,machineClaims[trial.title] || additionalClaims[trial.title] || (()=>({}))]));
 checkTrialNumbers(gamesControllerLesson, orderedClaims, values => padPlan(values), t);
 checkTrialNumbers(joystickLesson, joystickClaims, values => padPlan(values), t, model);
-checkTrialNumbers(videoGamesConsoleLesson, consoleClaims, values => padPlan(values), t);
+checkTrialNumbers(videoGamesConsoleLesson, consoleClaims, values => padPlan(values), t, model);
 const square = padPlan({release: 1, gate: 1});
 checkQuotedText(joystickLesson.steps.map(step => step.body).join(' '), {[`limits total tilt to ${fixed(TRAVEL / DEG, 0)}°`]: 'limits total tilt to 23°'}, t);
-checkQuotedText(videoGamesConsoleLesson.deeper.map(item => item.body).join(' '), {[`that is ${fixed(1000 / 60, 1)} ms`]: 'that is 16.7 ms'}, t);
-checkQuotedText(videoGamesConsoleLesson.quiz.explanation, {[`a poll adds ${fixed(ms(defaults.latency.parts.poll), 1)} ms on average`]: 'a poll adds 4.0 ms on average', [`${fixed(ms(defaults.latency.parts.frame), 1)} ms of waiting and ${fixed(ms(defaults.frame), 1)} ms of drawing`]: '8.3 ms of waiting and 16.7 ms of drawing'}, t);
+checkQuotedText(videoGamesConsoleLesson.steps.map(step => step.body).join(' '), {[`one ${fixed(ms(defaults.frame), 1)} ms period`]: 'one 16.7 ms period'}, t);
 
 // The readings say what the state says.
 model.reset();

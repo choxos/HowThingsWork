@@ -4062,6 +4062,48 @@
       "parentId": "rig"
     }
   ],
+  "video-games-console": [
+    {
+      "id": "machine",
+      "name": "External controller",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "screen",
+      "name": "Monitor",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "bounce",
+      "name": "Press close up",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "latency",
+      "name": "Where the time goes",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "console-computer",
+      "name": "Video games console",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "console-links",
+      "name": "External signal cables",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "console-pipeline",
+      "name": "Input to picture",
+      "parentId": "console-experiment"
+    },
+    {
+      "id": "console-frame-data",
+      "name": "Game state and frame data",
+      "parentId": "console-experiment"
+    }
+  ],
   "robot-vacuum-cleaner": [
     {
       "id": "floor",

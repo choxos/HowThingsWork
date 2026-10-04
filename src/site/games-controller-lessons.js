@@ -1,7 +1,6 @@
 import {PAD_DEFAULTS, padPlan, CLOCKS, FEEDBACK} from './games-controller-physics.js';
 
-const trial = part => (title, instruction, observe, settings = {}) => { const values = {...PAD_DEFAULTS,...settings}; return {title,instruction,observe,values,initialState:{settings:values,time:0},reset:true,part,isolate:true,view:'front'}; };
-const bounceTrial = trial('bounce'), latencyTrial = trial('latency'), consoleTrial = trial('console');
+export {videoGamesConsoleLesson} from './video-games-console-lesson.js';
 
 export const sources = {
   xinput: {title: 'Microsoft Learn: getting started with XInput (dead zones)', url: 'https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput'},
@@ -136,45 +135,5 @@ export const joystickLesson = {
     options: ['It measures the resting position more finely without changing the mechanical return.', 'Its extra bits push the lever away from center.', 'A finer ADC disables the return spring.'],
     answer: 0,
     explanation: 'Resolution changes the size of voltage steps. The same assigned spring and friction still determine the resting lever position.',
-  },
-};
-
-export const videoGamesConsoleLesson = {
-  simple: 'Why does a button press take tens of milliseconds to show on screen?',
-  overview: 'A console does not see a button the moment it is pressed. The controller first waits for its contacts to stop bouncing, then for the console to poll it. The game acts on the report only at the start of its next frame, draws that frame, and sends it to a screen that adds its own lag. Each wait depends on where the press falls between the ticks of clocks that run independently, so the same press can take different times.',
-  steps: [
-    {title: 'Debounce', body: 'The controller calls the button pressed once its scans agree.'},
-    {title: 'Poll', body: 'The console asks for a report at a fixed rate, and the press waits for the next one.'},
-    {title: 'Wait for a frame', body: 'The game reads its input at the start of each frame.'},
-    {title: 'Draw and display', body: 'Drawing the frame takes one frame, and the screen takes its display lag to show it.'},
-  ],
-  parts: [
-    {name: 'Console', role: 'Polls the controller and runs the game.'},
-    {name: 'Monitor', role: 'Shows each frame after its own lag.'},
-    {name: 'Press close up', role: 'Contacts, scans, the firmware, polls and the console.'},
-    {name: 'Where the time goes', role: 'This press, the average, and the spread.'},
-  ],
-  tryIt: [
-    bounceTrial('Polls', 'Look at the press close up.', 'Polling 125 times a second, the console asks every 8 ms. This press waits 1.2 ms for a poll; over every timing the wait is 4.0 ms on average.'),
-    latencyTrial('Poll faster', 'Choose the fastest polling rate.', 'At 1,000 Hz the average wait for a poll falls to 0.5 ms, and the average from touch to screen from 65.6 ms to 62.1 ms.', {polling: 2}),
-    consoleTrial('Waiting for a frame', 'Press Play and watch the console’s light.', 'The game reads its input only at the start of each frame, every 16.7 ms: a report waits 8.3 ms on average, then drawing the frame takes another 16.7 ms.'),
-    bounceTrial('A frame missed', 'Set debounce to 8 scans.', 'Needing 8 scans, the firmware takes 10.3 ms, and the report reaches the console 16.5 ms after the touch, just after the frame at 15.0 ms. The press waits a whole frame more and shows after 78.3 ms instead of 61.7 ms.', {debounce: 8}),
-    latencyTrial('A slow display', 'Set the display lag to 80 ms.', 'The same press now shows 111.7 ms after the touch, and 115.6 ms on average: the display alone adds 50 ms.', {display: 80}),
-    latencyTrial('Every timing', 'Look at where the time goes.', 'Over every timing of the controller’s scans, the console’s polls and the game’s frames, a press shows between 51.4 and 78.9 ms after the touch, 65.6 ms on average.'),
-  ],
-  deeper: [
-    {title: 'Polling', body: 'A USB device speaks only when the host asks. Standard USB mice are polled 125 times a second by default, and full-speed devices can be polled up to 1,000 times a second.'},
-    {title: 'Frames are the unit', body: 'A game that misses a frame by 0.1 ms acts on the input a full frame later. At 60 frames a second that is 16.7 ms, more than all of this controller’s debouncing and polling together.'},
-    {title: 'Display lag', body: 'Displays have been measured taking between 10 and 68 ms to start showing a frame, and televisions that process the picture are among the slowest. Many offer a game mode that cuts the processing.'},
-    {title: 'How much is too much', body: 'An input lag below 30 ms is generally considered unnoticeable in a television, about 200 ms from input to visible response is distracting, and the most responsive games reach 67 ms before the display adds its own lag.'},
-  ],
-  misconception: 'A faster polling rate does not make a game respond much faster. At 60 frames a second, waiting for the next frame and drawing it cost far more than waiting for a poll.',
-  limits,
-  sources: [sources.hid, sources.lag, sources.displayLag, sources.bounce, sources.xinput],
-  quiz: {
-    question: 'Which wait usually costs the most between a press and the screen?',
-    options: ['The frame: waiting for the next one and drawing it, before the display’s own lag.', 'The USB poll.', 'The ADC conversion.'],
-    answer: 0,
-    explanation: 'At 125 Hz a poll adds 4.0 ms on average, while a 60 Hz frame adds 8.3 ms of waiting and 16.7 ms of drawing before the display’s own lag.',
   },
 };

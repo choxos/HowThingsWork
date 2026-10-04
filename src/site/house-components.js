@@ -17,6 +17,7 @@ import {createElectrostaticPrecipitatorModel} from './electrostatic-precipitator
 import {createIonizerModel} from './ionizer-model.js';
 import {joystickLesson, videoGamesConsoleLesson} from './games-controller-lessons.js';
 import {createJoystickModel} from './joystick-model.js';
+import {createVideoGamesConsoleModel} from './video-games-console-model.js';
 import {headTrackingLesson} from './vr-headset-lessons.js';
 import {capillaryActionLesson} from './pens-lessons.js';
 import {cdLesson, dvdLesson, cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
@@ -145,7 +146,7 @@ export const houseComponents={
  'Optical smoke detector':{machine:'Smoke detector',part:'chamber',values:{size:3},view:'front',isolate:false,lesson:opticalDetectorLesson,intro:opticalDetectorLesson.simple},
  'Passive infrared movement detector':{machine:'Active burglar alarm',part:'lens',isolate:false,view:'front',values:{mode:1},lesson:passiveInfraredLesson,intro:passiveInfraredLesson.simple},
  'Joystick':{machine:'Games controller',createModel:createJoystickModel,part:'rig',isolate:true,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},
- 'Video games console':{machine:'Games controller',part:'console',isolate:false,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
+ 'Video games console':{machine:'Games controller',createModel:createVideoGamesConsoleModel,part:'console-experiment',isolate:true,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
  'Phonemes':{machine:'Speech recognition',part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
  'Head tracking':{machine:'Virtual reality headset',part:'imu',isolate:false,view:'top',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
  'Polarizing filter':{machine:'Polarized light',createModel:()=>{const model=createPolarizedLightModel();model.parts.find(part=>part.id==='first').framePadding=1.6;return model;},part:'first',isolate:false,view:'front',values:{mode:0,insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},

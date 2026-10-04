@@ -144,3 +144,12 @@ assert.equal(catalog.groups.find(group => group.id === 'games-controller').room,
 assert.equal(catalog.groups.find(group => group.id === 'games-controller').place, 'home');
 assert.deepEqual(tags('joystick'), ['making-bits', 'springs', 'electricity', 'levers']);
 assert(!families.some(family => family.entry.id === 'joystick'), 'Joystick is nested under its complete controller');
+
+const videoGamesConsole = families.find(family => family.entry.id === 'video-games-console');
+assert(videoGamesConsole, 'Video games console is a whole computer, not a controller part');
+assert.equal(catalogMachineComponents(videoGamesConsole.components).length, 0, 'Internal console parts remain inside its viewer');
+assert.deepEqual(tags('video-games-console'), ['using-bits', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'video-games-console')).map(family => family.entry.id), ['video-games-console']);
+const consoleGroup = catalog.groups.find(group => group.id === videoGamesConsole.entry.group);
+assert.equal(consoleGroup.room, 'Play and everyday objects');
+assert.equal(consoleGroup.place, 'home');
