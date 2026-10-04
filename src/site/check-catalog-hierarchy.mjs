@@ -103,4 +103,10 @@ assert.equal(catalogMachineComponents(spinDryer.components).length, 0, 'Drum, fa
 assert.deepEqual(tags('spin-dryer'), ['rotating-wheels', 'pressure-power', 'springs']);
 assert.equal(catalog.groups.find(group => group.id === 'spin-dryer').room, 'Laundry and cleaning');
 assert.equal(catalog.groups.find(group => group.id === 'spin-dryer').place, 'home');
-assert(!entries.some(entry => entry.id === 'vacuum-cleaner'), 'Next unreviewed vacuum cleaner remains a private preview');
+for (const id of ['vacuum-cleaner', 'upright-vacuum-cleaner', 'aerosol-spray-can', 'air-cleaner']) {
+  assert(families.some(family => family.entry.id === id), `${id} is an accepted whole machine`);
+}
+const airCleaner = families.find(family => family.entry.id === 'air-cleaner');
+assert.deepEqual(catalogMachineComponents(airCleaner.components).map(entry => entry.id), ['electrostatic-precipitator'], 'Only the reviewed complete electrical cell is nested below the air cleaner');
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'electrostatic-precipitator')).map(family => family.entry.id), ['air-cleaner'], 'A component-only search preserves the parent cleaner');
+assert.deepEqual(tags('electrostatic-precipitator'), ['electricity', 'pressure-power']);

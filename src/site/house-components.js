@@ -13,6 +13,7 @@ import {createPiezoelectricityModel} from './piezoelectricity-model.js';
 import {quartzOscillatorLesson} from './quartz-oscillator-lesson.js';
 import {createQuartzOscillatorModel} from './quartz-oscillator-model.js';
 import {electrostaticPrecipitatorLesson, ionizerLesson} from './air-cleaner-lessons.js';
+import {createElectrostaticPrecipitatorModel} from './electrostatic-precipitator-model.js';
 import {joystickLesson, videoGamesConsoleLesson} from './games-controller-lessons.js';
 import {headTrackingLesson} from './vr-headset-lessons.js';
 import {capillaryActionLesson} from './pens-lessons.js';
@@ -130,7 +131,7 @@ export const houseComponents={
  'Vibration motor':{machine:'Smartphone',part:'motor',isolate:false,view:'front',lesson:vibrationMotorLesson,intro:vibrationMotorLesson.simple},
  'RGB subpixels':{machine:'LCD screen',part:'subpixels',isolate:false,view:'front',lesson:rgbSubpixelsLesson,intro:rgbSubpixelsLesson.simple},
  'OLED display':{machine:'LCD screen',part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
- 'Electrostatic precipitator':{machine:'Air cleaner',part:'collector',values:{mode:1},isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},
+ 'Electrostatic precipitator':{machine:'Air cleaner',createModel:createElectrostaticPrecipitatorModel,part:'stage',isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},
  'Ionizer':{machine:'Air cleaner',part:'charger',values:{mode:2},isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
  'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzOscillatorModel,part:'circuit',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
  'Piezoelectricity':{machine:'Quartz clock',createModel:createPiezoelectricityModel,part:'apparatus',isolate:false,view:'iso',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
