@@ -30,6 +30,9 @@ for(const index of[20,21]){
 const plateBounds=p.plates.map(plate=>{plate.geometry.computeBoundingBox();return plate.geometry.boundingBox.clone().translate(plate.position);});
 let area=0;
 for(let i=1;i<plateBounds.length;i++) {const gap=(plateBounds[i].min.y-plateBounds[i-1].max.y)/MM,width=plateBounds[i].getSize(new THREE.Vector3()).z/MM;t.near(gap,6,3e-5,'actual clear gap');area+=gap*width*1e-6;}
+const chargeBounds=p.returnGrid.map(mesh=>{mesh.geometry.computeBoundingBox();return mesh.geometry.boundingBox.clone().translate(mesh.position);});
+let chargeArea=0;for(let i=1;i<chargeBounds.length;i++)chargeArea+=(chargeBounds[i].min.y-chargeBounds[i-1].max.y)*chargeBounds[i].getSize(new THREE.Vector3()).z/MM**2*1e-6;
+t.near(chargeArea,P.chargingOpen,3e-8,'actual charging-grid clear area');
 t.near(area,P.open,3e-8,'actual clear flow area');t.near(plateBounds.length,45,0,'45 plates');
 p.hub.geometry.computeBoundingBox();t.near(p.hub.geometry.boundingBox.getSize(new THREE.Vector3()).x/MM,54,1e-5,'54 mm impeller hub matches assigned flow obstruction');
 for(const b of plateBounds)t.near(b.getSize(new THREE.Vector3()).x/MM,100,3e-5,'actual collection length');
@@ -93,7 +96,7 @@ let trials=0;
 for(const l of[lesson,electrostaticPrecipitatorLesson,ionizerLesson])for(const trial of l.tryIt)for(const prior of[{mode:0,fan:0},{mode:2,size:6,voltage:0,room:90}]){
   reset(prior,3500);m.reset(trial.initialState);m.update(trial.values);const s=m.getState();assert.equal(s.clock,trial.initialState.time);assert.deepEqual(s.values,trial.values);t.ok(m.parts.some(p=>p.id===trial.part),'valid trial target');trials++;
 }
-t.near(reset({},1200).remaining,.11678354436949636,1e-12,'default twenty-minute result');t.near(reset({mode:0},1200).efficiency,.3407447459562568,1e-12,'34 percent filter lesson answer');t.near(reset({size:0}).efficiency,.1180500784809761,1e-12,'12 percent tiny-particle answer');
+t.near(reset({},1200).remaining,.11460570416994742,1e-12,'default twenty-minute result from independently checked collection');t.near(reset({mode:0},1200).efficiency,.3407447459562568,1e-12,'34 percent filter lesson answer');t.near(reset({size:0}).efficiency,.12352994278612904,1e-12,'about 12 percent tiny-particle answer');
 t.ok(reset({fan:1},1200).remaining>reset({},1200).remaining,'slower flow leaves more in room despite better retention');
 t.ok(reset({room:90},1200).remaining>reset({},1200).remaining,'larger room clears more slowly');
 for(const mode of[0,1,2])for(const action of m.actions){reset({mode},1200);const before=core(m.getState());action.run();assert.deepEqual(core(m.getState()),before,'inspection preserves time and account');t.ok(m.parts.some(p=>p.id===action.part),'valid action target');}

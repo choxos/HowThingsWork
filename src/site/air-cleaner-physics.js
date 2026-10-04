@@ -17,7 +17,9 @@ import {validateControls, validTime} from './physics-kit.js';
 // https://www.epa.gov/sites/default/files/2020-07/documents/cs6ch3.pdf
 // A Poisson distribution is an assigned charge-spread approximation. Collection
 // here uses uniform plug flow, NOT the turbulent-mixing Deutsch equation:
-// a particle n charges strong drifts w(n)*L/U; uniform entry positions give
+// The charging grid has its own clear area, so exposure uses Q/A_charge.
+// This is the bulk speed between its plates; local wire blockage is neglected.
+// Collection uses Q/A_collect. A particle n charges strong drifts w(n)*L/U; uniform entry positions give
 // min(w(n)*L/(U*gap), 1). Only the lower-potential surface collects positive dust.
 //
 // Room: initially neutral, well mixed, no new source or resuspension. Fan-assisted
@@ -26,7 +28,7 @@ import {validateControls, validTime} from './physics-kit.js';
 // charge relaxation and wall field are illustrative. No ozone/health prediction.
 export const AIR = Object.freeze({viscosity: 1.81e-5, temperature: 293.15, path: 66e-9, density: 1.204, g: 9.81, boltzmann: 1.380649e-23, charge: 1.602176634e-19, permittivity: 8.8541878128e-12});
 export const FILTER = Object.freeze({fiber: 10e-6, solidity: .1, thickness: .002, area: 1.2, density: 1000});
-export const PRECIPITATOR = Object.freeze({wireVoltage: 7000, chargeField: 5.6e5, ions: 5e14, mobility: 1.5e-4, ionSpeed: 240, zone: .025, dielectric: 2.5, plateVoltage: 3000, gap: .006, thickness: .0008, plates: 45, length: .1, width: .2, open: 44 * .006 * .2});
+export const PRECIPITATOR = Object.freeze({wireVoltage: 7000, chargeField: 5.6e5, ions: 5e14, mobility: 1.5e-4, ionSpeed: 240, zone: .025, chargingOpen: 12 * (.025 - .0008) * .2, dielectric: 2.5, plateVoltage: 3000, gap: .006, thickness: .0008, plates: 45, length: .1, width: .2, open: 44 * .006 * .2});
 export const ROOM = Object.freeze({height: 2.5, ventilation: .5 / 3600, field: 20, neutralization: Math.LN2 / 600, duration: 3600, speed: 60});
 export const FAN = Object.freeze({radius: .1, hub: .027, area: Math.PI * (.1 ** 2 - .027 ** 2)});
 export const SIZES = Object.freeze([1e-8, 3e-8, 1e-7, 3e-7, 5e-7, 1e-6, 3e-6]);
@@ -85,7 +87,7 @@ export function chargeQuantile(distribution, fraction) {
 export function plateCatch(d, U, enabled = true) {
   if (U === 0 || !enabled) return 0;
   const p = PRECIPITATOR, perCharge = driftSpeed(1, d, p.plateVoltage / p.gap) * p.length / (U * p.gap);
-  return chargeDistribution(charging(d, U).total).reduce((sum, {n, probability}) => sum + probability * Math.min(n * perCharge, 1), 0);
+  return chargeDistribution(charging(d, U * p.open / p.chargingOpen).total).reduce((sum, {n, probability}) => sum + probability * Math.min(n * perCharge, 1), 0);
 }
 const cache = new Map();
 export function airCleanerPlan(input = {}) {
@@ -93,14 +95,15 @@ export function airCleanerPlan(input = {}) {
   if (cache.has(key)) return cache.get(key);
   const d = SIZES[values.size], hourly = FLOWS[values.fan], Q = hourly / 3600, enabled = values.voltage === 1 && Q > 0;
   const U = Q / (values.mode === 0 ? FILTER.area : values.mode === 1 ? PRECIPITATOR.open : FAN.area);
-  const charge = charging(d, U, enabled && values.mode !== 0), distribution = chargeDistribution(charge.total);
+  const chargeU = values.mode === 1 ? Q / PRECIPITATOR.chargingOpen : U;
+  const charge = charging(d, chargeU, enabled && values.mode !== 0), distribution = chargeDistribution(charge.total);
   const capture = values.mode === 0 && Q > 0 ? fiberCapture(d, U) : null;
   const efficiency = values.mode === 0 ? capture?.efficiency ?? 0 : values.mode === 1 ? plateCatch(d, U, enabled) : 0;
   const cadr = Q * efficiency, volume = values.room, floor = volume / ROOM.height, surfaces = 2 * floor + 4 * Math.sqrt(floor) * ROOM.height;
   const chargedFraction = -Math.expm1(-charge.total), conditionalCharge = chargedFraction > 0 ? charge.total / chargedFraction : 0;
   const roomDrift = values.mode === 2 ? driftSpeed(conditionalCharge, d, ROOM.field) : 0;
   const rates = {cleaner: cadr / volume, ventilation: ROOM.ventilation, settling: settling(d) / ROOM.height, charging: values.mode === 2 ? Q / volume * chargedFraction : 0, relaxation: values.mode === 2 ? ROOM.neutralization : 0, drift: roomDrift * surfaces / volume};
-  const plan = {values, d, hourly, Q, U, enabled, charge, distribution, chargedFraction, conditionalCharge, capture, efficiency, cadr, volume, floor, surfaces, roomDrift, rates, changes: hourly / volume};
+  const plan = {values, d, hourly, Q, U, chargeU, enabled, charge, distribution, chargedFraction, conditionalCharge, capture, efficiency, cadr, volume, floor, surfaces, roomDrift, rates, changes: hourly / volume};
   if (cache.size >= 128) cache.delete(cache.keys().next().value);cache.set(key, plan);return plan;
 }
 const integralExp = (rate, time) => rate === 0 ? time : -Math.expm1(-rate * time) / rate;

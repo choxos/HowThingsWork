@@ -27,7 +27,7 @@ for (const mean of [0, .01, .125, 1, 24.4, 195, 1472, 3000]) {
   }
 }
 for (const d of SIZES) for (const Qh of [60, 120, 200]) {
-  const U = Qh / 3600 / P.open, c = charging(d, U), residence = .025 / U;
+  const U = Qh / 3600 / P.open, chargeU = Qh / 3600 / (12 * (.025 - .0008) * .2), c = charging(d, chargeU), residence = .025 / chargeU;
   const epsilon = 8.8541878128e-12, elementary = 1.602176634e-19, coulomb = 1 / (4 * Math.PI * epsilon), kT = 1.380649e-23 * 293.15;
   const field = 3 * 2.5 / 4.5 * Math.PI * epsilon * 560000 * d * d / elementary * residence / (residence + 4 * epsilon / (5e14 * elementary * 1.5e-4));
   const diffusion = d * kT / (2 * coulomb * elementary ** 2) * Math.log1p(Math.PI * coulomb * d * 240 * elementary ** 2 * 5e14 * residence / (2 * kT));
@@ -54,6 +54,7 @@ for (const d of SIZES) for (const Qh of [60, 120, 200]) {
 for (let mode = 0; mode < 3; mode++) for (let size = 0; size < 7; size++) for (let fan = 0; fan < 4; fan++) for (let voltage = 0; voltage < 2; voltage++) for (const room of [30, 60, 90]) {
   const values = {mode, size, fan, voltage, room}, plan = airCleanerPlan(values);settings++;
   near(plan.cadr, FLOWS[fan] / 3600 * plan.efficiency, 1e-15, 'CADR is flow times retained fraction');
+  if(mode===1){near(plan.chargeU*(12*(.025-.0008)*.2),plan.Q,1e-15,'charging-grid flow continuity');near(plan.U*(44*.006*.2),plan.Q,1e-15,'collector flow continuity');}
   near(plan.changes, FLOWS[fan] / room, 1e-14, 'airflow per room volume');
   let previous = {remaining: 1, collected: 0, deposited: 0, ventilated: 0};
   for (let time = 0; time <= 3600; time += 60) {

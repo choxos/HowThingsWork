@@ -36,7 +36,7 @@ export function createAirCleanerModel() {
   const wires=new THREE.Group();charger.add(wires);frame(CELL.charger,25,wires);
   const chargingWires=[],returnGrid=[];
   for(let i=0;i<12;i++)chargingWires.push(rod([CELL.charger,92.5+25*i,-100],[CELL.charger,92.5+25*i,100],.35,'gold',wires));
-  for(let i=0;i<=12;i++)returnGrid.push(box([25,.8,200],[CELL.charger,80+25*i,0],'metal',wires));
+  for(let i=0;i<=12;i++)returnGrid.push(mesh(new THREE.BoxGeometry(...point([25,.8,200])),[CELL.charger,80+25*i,0],'metal',wires));
   rod([CELL.charger,92.5,-112],[CELL.charger,367.5,-112],1.2,'gold',wires);
   rod([CELL.charger,80,112],[CELL.charger,380,112],1.2,'metal',wires);
   returnGrid.forEach((_,i)=>rod([CELL.charger,80+25*i,100],[CELL.charger,80+25*i,112],.5,'metal',wires));
