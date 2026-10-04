@@ -1,13 +1,8 @@
-// Quartz clock, quartz oscillator, piezoelectricity and kinetic quartz watch:
-// the tine's frequency from the cantilever's own mode equation, the crystal's
-// temperature curve, the divider and motor, the energy budgets and the
-// piezoelectric plate from their formulas, the drawings held to the state, and
-// every number all four lessons quote held to the models.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {sampleQuartzClock, quartzClockPlan, sampleKinetic, kineticPlan, tineLength, tineFrequency, crystalFrequency, dailyRate, averageCurrent, ACTIVITIES, QUARTZ, QUARTZ_CLOCK_DOMAINS, KINETIC_DOMAINS} from './quartz-physics.js';
-import {createQuartzClockModel, createKineticWatchModel, clockChartPoint, kineticChartPoint, tineSway, rotorSwing, FORCE_SCALE} from './quartz-models.js';
-import {quartzClockLesson, quartzOscillatorLesson, piezoelectricityLesson, kineticWatchLesson} from './quartz-lessons.js';
+import {sampleQuartzClock, quartzClockPlan, tineLength, tineFrequency, crystalFrequency, dailyRate, averageCurrent, QUARTZ, QUARTZ_CLOCK_DOMAINS} from './quartz-physics.js';
+import {createQuartzClockModel, clockChartPoint, tineSway, FORCE_SCALE} from './quartz-models.js';
+import {quartzClockLesson, quartzOscillatorLesson, piezoelectricityLesson} from './quartz-lessons.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import {fixed} from './format.js';
 
@@ -49,14 +44,6 @@ for (const time of [0, 0.99999, 1, 2.5, 59.9, 60]) {
     t.near(q.voltage, 2.31e-12 * squeeze / C, 1e-9, 'voltage on the plate');
   }
 }
-for (const activity of [0, 1, 2]) for (const worn of [0, 2, 8, 16]) for (const start of [0, 20, 100]) {
-  const values = {activity, worn, start}, k = kineticPlan(values), use = (0.3e-3 * 0.005 + 0.1e-6) * 1.5, store = 5 * 3.6 * 1.5;
-  t.near(k.consumption, use, 1e-15, 'watch power');
-  t.near(k.daily, [2e-6, 10e-6, 30e-6][activity] * worn * 3600 - use * 86400, 1e-12, 'energy balance each day');
-  t.near(k.reserve, store / use / 86400, 1e-9, 'reserve off the wrist');
-  for (const days of [0, 7, 30]) t.near(sampleKinetic(values, days).energy, Math.min(store, Math.max(0, start / 100 * store + k.daily * days)), 1e-9, 'stored energy by day');
-}
-
 // 2. The quartz clock drawing.
 const clock = createQuartzClockModel(), c = clock.topology, MM = c.MM;
 clock.root.position.set(0.2, -0.1, 0.1);
@@ -76,22 +63,6 @@ for (const values of [{}, {temperature: -10, trim: 5}, {squeeze: 50}, {squeeze: 
   checkFinite(clock.root, t);
 }
 checkControlsMove(clock, () => [c.dot.position.toArray(), c.curve.geometry.attributes.position.getY(0), c.squeeze.userData.length, c.needle.rotation.z], model => model.advance(1.5), t);
-
-// 3. The kinetic watch drawing.
-const watch = createKineticWatchModel(), w = watch.topology;
-for (const values of [{}, {activity: 0, worn: 16}, {worn: 0, start: 100}, {activity: 2, worn: 2, start: 0}]) for (const days of [0, 0.1, 0.5, 7.25, 30]) {
-  watch.reset(); watch.update(values); watch.advance(days);
-  watch.root.updateMatrixWorld(true);
-  const s = watch.getState(), hour = (days % 1) * 24, worn = s.running && s.values.worn > 0 && hour < s.values.worn;
-  const swing = worn ? [0.25, 0.9, 1.4][s.values.activity] * Math.sin(TAU * [1, 3, 6][s.values.activity] * days * 24) : 0;
-  t.near(w.rotor.rotation.z, swing, 1e-12, 'weight swings only while worn');
-  t.near(w.magnet.rotation.z, swing * 100, 1e-9, 'generator geared up a hundredfold');
-  t.near(w.bar.scale.x, Math.max(1e-3, s.level), 1e-12, 'store bar at its level');
-  t.near(w.rateNeedle.rotation.z, -Math.max(-1, Math.min(1, s.rate / 2)) * Math.PI / 4, 1e-12, 'rate needle at the wrist’s rate');
-  t.near(w.levelLine.geometry.attributes.position.getY(7), kineticChartPoint(7, sampleKinetic(s.values, 7).level)[1], 1e-6, 'level chart');
-  checkFinite(watch.root, t);
-}
-checkControlsMove(watch, () => [w.bar.scale.x, w.levelLine.geometry.attributes.position.getY(15), w.rotor.rotation.z, w.rateNeedle.rotation.z], model => model.advance(5.1), t);
 
 // 4. The lessons, the text, refusals and disposal.
 const runClock = values => { clock.reset(); clock.update(values); clock.advance(60); return clock.getState(); };
@@ -121,23 +92,13 @@ checkTrialNumbers(piezoelectricityLesson, {
   'A tiny capacitor': st => ({'3.98': st.capacitance * 1e12}),
   'Both ways at once': () => ({'32,768': QUARTZ.nominal}),
 }, runClock, t);
-const runWatch = values => { watch.reset(); watch.update(values); watch.advance(30); return watch.getState(); };
-checkTrialNumbers(kineticWatchLesson, {
-  'Wear it walking': st => ({'10': st.harvest * 1e6, '8': st.values.worn, '0.288': st.harvest * st.values.worn * 3600, '0.207': st.consumption * 86400, '0.081': st.daily}),
-  'A desk job': st => ({'2': st.harvest * 1e6, '0.150': -st.daily, '36.1': st.empty}),
-  'Left in a drawer': st => ({'2.40': st.consumption * 1e6, '27': st.store, '130.2': st.reserve}),
-  'Breaking even': st => ({'5.76': st.wearToBreakEven}),
-  'A long day on your feet': st => ({'0.369': st.daily, '58.6': st.full}),
-  'A short run': st => (t.ok(st.daily > 0, 'just beats it'), {'30': st.harvest * 1e6, '2': st.values.worn, '0.207': st.consumption * 86400}),
-  'A cold wrist': st => ({'21.250': -(st.frequency / QUARTZ.nominal - 1) * 1e6, '1.836': -st.rate}),
-  'Where the power goes': () => ({'5': QUARTZ.watch.pulse * 1000, '0.3': QUARTZ.watch.motor * 1000, '1.5': QUARTZ.watch.motor * QUARTZ.watch.pulse * 1e6, '1.6': averageCurrent(QUARTZ.watch) * 1e6}),
-}, runWatch, t);
 checkQuotedText(quartzClockLesson.deeper.map(section => section.body).join(' '), {'60,000': fixed(QUARTZ.Q, 0), '0.034 parts per million': `${fixed(-QUARTZ.parabola * 1e6, 3)} parts per million`}, t);
 checkQuotedText(quartzOscillatorLesson.deeper.map(section => section.body).join(' '), {'0.583 s': `${fixed(quartzClockPlan({}).ringDown, 3)} s`}, t);
-checkQuotedText(kineticWatchLesson.deeper.map(section => section.body).join(' '), {'about 2.4 µW': `about ${fixed(kineticPlan({}).consumption * 1e6, 1)} µW`}, t);
 checkQuotedText(clock.parts.map(part => part.description).join(' '), {'2.59 mm': `${fixed(tineLength() * 1000, 2)} mm`, '2,400 mAh': `${fixed(QUARTZ.clock.capacity, 0)} mAh`}, t);
-checkQuotedText(watch.parts.map(part => part.description).join(' '), {'27 J': `${fixed(kineticPlan({}).store, 0)} J`}, t);
 checkRefusals(sampleQuartzClock, QUARTZ_CLOCK_DOMAINS, t);
-checkRefusals(sampleKinetic, KINETIC_DOMAINS, t);
-const resources = checkDisposal(clock, t) + checkDisposal(watch, t);
-console.log(`PASS quartz models: ${t.count} checks, ${quartzClockLesson.tryIt.length + quartzOscillatorLesson.tryIt.length + piezoelectricityLesson.tryIt.length + kineticWatchLesson.tryIt.length} trials, ${resources} resources`);
+const resources = checkDisposal(clock, t);
+console.log(`PASS quartz models: ${t.count} checks, ${quartzClockLesson.tryIt.length + quartzOscillatorLesson.tryIt.length + piezoelectricityLesson.tryIt.length} trials, ${resources} resources`);
+
+await import('./check-kinetic-watch-physics.mjs');
+await import('./check-kinetic-watch-train.mjs');
+await import('./check-kinetic-watch-model.mjs');

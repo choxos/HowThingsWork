@@ -78,3 +78,8 @@ const maximumMinimum = families.find(family => family.entry.id === 'maximum-mini
 assert(maximumMinimum, 'Maximum-minimum thermometer is a whole instrument');
 assert.equal(catalogMachineComponents(maximumMinimum.components).length, 0, 'Reservoirs, indices and reset magnet remain ordinary parts');
 assert.deepEqual(tags('maximum-minimum-thermometer'), ['exploiting-heat']);
+
+const kineticWatch = families.find(family => family.entry.id === 'kinetic-quartz-watch');
+assert(kineticWatch, 'Kinetic quartz watch is a whole machine');
+assert.equal(catalogMachineComponents(kineticWatch.components).length, 0, 'Ordinary watch parts stay inside its viewer');
+assert.deepEqual(tags('kinetic-quartz-watch'), ['electricity', 'magnetism', 'gears-and-belts']);

@@ -1,4 +1,4 @@
-import {QUARTZ_CLOCK_DEFAULTS, KINETIC_DEFAULTS} from './quartz-physics.js';
+import {QUARTZ_CLOCK_DEFAULTS} from './quartz-physics.js';
 
 const trial = (defaults, part, view) => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
 const clockTrial = trial(QUARTZ_CLOCK_DEFAULTS, 'system', 'front');
@@ -6,11 +6,8 @@ const quartzTrial = trial(QUARTZ_CLOCK_DEFAULTS, 'quartz', 'front');
 const dividerTrial = trial(QUARTZ_CLOCK_DEFAULTS, 'divider', 'front');
 const motorTrial = trial(QUARTZ_CLOCK_DEFAULTS, 'motor', 'front');
 const chartTrial = trial(QUARTZ_CLOCK_DEFAULTS, 'chart', 'front');
-const watchTrial = trial(KINETIC_DEFAULTS, 'system', 'front');
-const storeTrial = trial(KINETIC_DEFAULTS, 'chart', 'front');
 
 const clockLimits = 'Illustrative quartz clock: a quartz tuning fork of 0.25 mm tines cut to ring at 32,768 Hz at 25 °C, slowing by 0.034 parts per million for each degree squared away from it, with a quality factor of 60,000 and a trimming capacitor worth a few parts per million. Fifteen halvings, a stepping motor turning half a turn a pulse and gears of 30 to 1. The motor draws 3 mA for 32 ms each second and the circuit 10 µA from a 2,400 mAh AA cell. A quartz plate 1 cm square and 1 mm thick shows the piezoelectric effect at 2.31 pC a newton. Not modeled: aging, the drive level, the motor’s magnetics, the battery’s falling voltage, and the leakage that lets a squeezed plate’s charge drain away once the squeeze stops changing. The clock runs in real time.';
-const kineticLimits = 'Illustrative kinetic watch: the movement draws 0.3 mA for 5 ms each second and 0.1 µA more, at 1.5 V, from a 5 mAh rechargeable store. While worn it harvests 2 µW at a desk, 10 µW walking and 30 µW running, averaged over the day. The quartz slows by 0.034 parts per million for each degree squared from 25 °C. Not modeled: the rotor’s real motion, the generator’s gearing and losses, the store’s charging efficiency and self-discharge, and the hour-by-hour pattern of wear. Thirty days play a day a second.';
 const clockSources = [
   {title: 'OpenStax College Physics 2e: simple harmonic motion and resonance', url: 'https://openstax.org/books/college-physics-2e/pages/16-8-forced-oscillations-and-resonance'},
   {title: 'Crystal oscillator: quartz tuning forks at 32,768 Hz', url: 'https://en.wikipedia.org/wiki/Crystal_oscillator'},
@@ -134,45 +131,4 @@ export const piezoelectricityLesson = {
   },
 };
 
-export const kineticWatchLesson = {
-  simple: 'How does a kinetic watch run on the movement of your wrist?',
-  overview: 'A kinetic watch keeps time with quartz like any quartz watch, but it has no battery to replace. A half-moon weight swings on a bearing whenever the wrist moves. Through gears it spins a tiny generator, and the current charges a rechargeable store. Whether the store fills or empties depends on how long and how busily the watch is worn, against the small, steady power the movement uses.',
-  steps: [
-    {title: 'Swing the weight', body: 'Every arm movement swings the off-center weight around its bearing.'},
-    {title: 'Spin the generator', body: 'Gears step the swinging up about a hundredfold, spinning a magnet past a coil.'},
-    {title: 'Store the energy', body: 'The generator’s current charges a rechargeable cell.'},
-    {title: 'Run the quartz movement', body: 'The store powers the crystal, divider and stepping motor, a couple of microwatts day and night.'},
-    {title: 'Balance the books', body: 'Worn enough, the store fills; left in a drawer, it slowly empties, over months.'},
-  ],
-  parts: [
-    {name: 'Oscillating weight', role: 'Swings with the wrist.'},
-    {name: 'Generator', role: 'Turns the swinging into current.'},
-    {name: 'Energy store', role: 'Holds the energy for the dark hours.'},
-    {name: 'Quartz and stepping motor', role: 'Keep time and move the hands.'},
-    {name: 'Stored energy', role: 'The store’s level over a month.'},
-    {name: 'Movement', role: 'Carries it all.'},
-  ],
-  tryIt: [
-    watchTrial('Wear it walking', 'Wear it 8 h a day while walking, starting 20% full.', 'Walking harvests 10 µW; 8 h of it brings 0.288 J a day, more than the 0.207 J the watch uses, so the store gains 0.081 J a day.'),
-    storeTrial('A desk job', 'Wear it 8 h a day sitting at a desk.', 'Desk work brings only 2 µW, so the store loses 0.150 J a day and the watch stops after 36.1 days.', {activity: 0}),
-    storeTrial('Left in a drawer', 'Put a full watch away in a drawer.', 'Using 2.40 µW, the full 27 J store runs it for 130.2 days.', {worn: 0, start: 100}),
-    watchTrial('Breaking even', 'Compare the harvest with the use.', 'Walking, 5.76 h of wear a day keeps the store level.'),
-    storeTrial('A long day on your feet', 'Wear it 16 h a day while walking.', 'The store gains 0.369 J a day and fills in 58.6 days.', {worn: 16}),
-    watchTrial('A short run', 'Run with it 2 h a day.', 'Running harvests 30 µW, and 2 h of it just beats the 0.207 J a day the watch uses.', {activity: 2, worn: 2}),
-    watchTrial('A cold wrist', 'Wear it on a wrist at 0 °C.', 'The quartz slows by 21.250 parts per million: 1.836 s a day.', {temperature: 0}),
-    watchTrial('Where the power goes', 'Look at what uses the power.', 'The motor’s 5 ms pulses of 0.3 mA each second make 1.5 µA of the watch’s 1.6 µA.'),
-  ],
-  deeper: [
-    {title: 'Tiny power, long life', body: 'The whole movement uses about 2.4 µW, so a store holding the energy of a few seconds of a flashlight bulb runs it for months.'},
-    {title: 'Automatic mechanical watches', body: 'Mechanical automatic watches use the same swinging weight to wind a mainspring instead of turning a generator; the kinetic watch turns that idea electric.'},
-  ],
-  misconception: 'A kinetic watch does not charge from being wound or from light. Only the swinging weight charges it, so it needs to be worn, and worn long enough.',
-  limits: kineticLimits,
-  sources: [...clockSources, {title: 'Automatic quartz watches', url: 'https://en.wikipedia.org/wiki/Automatic_quartz'}],
-  quiz: {
-    question: 'A kinetic watch has been in a drawer for two months. What happened to it?',
-    options: ['It kept running on its store, which is now about half empty.', 'It stopped the moment it was taken off.', 'It kept charging from the room’s vibrations.'],
-    answer: 0,
-    explanation: 'A full store runs the movement for over four months, so two months in a drawer uses a little under half of it.',
-  },
-};
+export {kineticWatchLesson} from './kinetic-watch-lesson.js';

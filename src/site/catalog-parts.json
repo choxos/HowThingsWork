@@ -1465,6 +1465,28 @@
       "parentId": "system"
     }
   ],
+  "kinetic-quartz-watch": [
+    {
+      "id": "movement",
+      "name": "Complete watch movement",
+      "parentId": "system"
+    },
+    {
+      "id": "reserve-chart",
+      "name": "Capacitor charge and reserve",
+      "parentId": "system"
+    },
+    {
+      "id": "waveform",
+      "name": "Generator voltage and rectification",
+      "parentId": "system"
+    },
+    {
+      "id": "timing",
+      "name": "Quartz and frequency divider",
+      "parentId": "system"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",
