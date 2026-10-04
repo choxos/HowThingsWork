@@ -347,7 +347,14 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     if(key&&Object.hasOwn(values,key))event.target.value=values[key];
     syncControls();
   });
-  function reset(initialState){restoreAssembly();stop();restoreVisibility();releaseReadingsHeight();phase=0;setupActions=[];inspectionBeforeResult=undefined;initialStateForReplay=structuredClone(initialState);model.reset?.(initialState);model.animate?.(0);apply(Object.fromEntries(model.controls.map(control=>[control.key,control.initial])));if(selected===model.resultPart?.id){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}}
+  function reset(initialState){
+    restoreAssembly();stop();restoreVisibility();releaseReadingsHeight();phase=0;setupActions=[];inspectionBeforeResult=undefined;
+    initialStateForReplay=structuredClone(initialState);model.reset?.(initialState);model.animate?.(0);
+    // A preset may restore both time and settings. Applying unrelated defaults
+    // here can restart that restored simulation before the preset is displayed.
+    apply({...Object.fromEntries(model.controls.map(control=>[control.key,control.initial])),...initialState?.settings});
+    if(selected===model.resultPart?.id){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}
+  }
   host.querySelector('[data-reset-controls]').addEventListener('click',()=>reset(pendingReplay?.initialState));
   function replay(){
     const experiment={values:{...configuredValues},initialState:model.replayState?.()??initialStateForReplay,actions:[...setupActions],inspection:selected===model.resultPart?.id?(inspectionBeforeResult??{selected,isolated,direction:camera.position.clone().sub(orbit?.target||new THREE.Vector3())}):undefined};

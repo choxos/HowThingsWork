@@ -1784,6 +1784,53 @@
       "parentId": "system"
     }
   ],
+  "voltage-multiplier": [
+    {
+      "id": "board",
+      "name": "Circuit board",
+      "parentId": "system"
+    },
+    {
+      "id": "source",
+      "name": "Alternating source",
+      "parentId": "system"
+    },
+    {
+      "id": "pump",
+      "name": "Pump capacitors",
+      "parentId": "system"
+    },
+    {
+      "id": "smoothing",
+      "name": "Smoothing capacitors",
+      "parentId": "system"
+    },
+    {
+      "id": "diodes",
+      "name": "Diodes",
+      "parentId": "system"
+    },
+    {
+      "id": "load",
+      "name": "Load resistor and output",
+      "parentId": "system"
+    },
+    {
+      "id": "node-chart",
+      "name": "Node voltages",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Startup output",
+      "parentId": "system"
+    },
+    {
+      "id": "ripple-chart",
+      "name": "Late-cycle output",
+      "parentId": "system"
+    }
+  ],
   "kinetic-quartz-watch": [
     {
       "id": "movement",

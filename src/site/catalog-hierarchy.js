@@ -5,6 +5,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 export const componentParentIds = {
   'electrostatic-precipitator': 'air-cleaner',
   'ionizer': 'air-cleaner',
+  'voltage-multiplier': 'air-cleaner',
   'quartz-oscillator': 'quartz-clock',
   'anchor-escapement': 'mechanical-clock',
   'lever-escapement': 'mechanical-watch',
@@ -85,6 +86,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 const nestedMachineIds = new Set([
   "electrostatic-precipitator",
   "ionizer",
+  "voltage-multiplier",
   "quartz-oscillator",
   "anchor-escapement",
   "lever-escapement",
