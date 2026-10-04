@@ -3769,6 +3769,18 @@
       "parentId": "system"
     }
   ],
+  "water-clock": [
+    {
+      "id": "inflow",
+      "name": "Float-driven inflow clock",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Actual time versus indicated time",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",

@@ -1,92 +1,94 @@
 import {validateControls, validTime} from './physics-kit.js';
 
-// Water clocks: two ways to let water measure time, and the trouble each has.
-//
-// Units: SI inside. Readings convert to millimeters, hours, milliliters.
-//
-// Outflow. A pot 400 mm tall full of water drains through a sharp-edged hole
-// in its floor. By Torricelli the water leaves at sqrt(2 g h), and a sharp hole
-// passes 0.62 of its full area's worth, so the level falls at
-//   dh/dt = -0.62 a sqrt(2 g h) / A(h).
-// A straight-sided pot, 150 mm in radius, falls fast when full and slowly when
-// nearly empty, so its hour marks bunch toward the bottom. The Egyptians shaped
-// their pots to flare upward. If the radius grows as the fourth root of the
-// height, A(h) grows as sqrt(h), the square roots cancel, and the level falls
-// at the same speed all the way down: 150 mm across the rim.
-//
-// Inflow, as Ctesibius built it. A tank kept brim-full by an overflow holds its
-// water 50 mm above a narrow tube 50 mm long, half as wide as the hole would
-// be. Flow through such a tube is smooth, so Poiseuille's law gives
-//   Q = pi d^4 rho g h / (128 mu L),
-// steady because the head never changes. It fills a receiving jar 30 mm in
-// radius, raising a float and its pointer at a steady pace. But the viscosity
-// mu of water falls as it warms: mu = 2.414e-5 Pa s times 10^(247.8 / (T +
-// 133.15)), with T in degrees Celsius, so the same clock runs faster in summer.
-//
-// A sharp hole's flow barely depends on viscosity, so temperature is left out
-// of the outflow pots.
-//
-// Not modeled: evaporation, the tube's entry and exit losses, surface tension
-// at a narrow hole, and the float's own displacement.
-
+// Original equal-hour teaching apparatus, not a measured ancient artifact.
+// SI units internally; the playback clock is in hours. Inflow is a prescribed
+// constant volumetric rate. Outflow is quasi-steady Q = Cd a sqrt(2gh).
 export const DESIGNS = Object.freeze([
-  Object.freeze({value: 0, label: 'Straight-sided outflow pot'}),
-  Object.freeze({value: 1, label: 'Egyptian pot, flaring upward'}),
-  Object.freeze({value: 2, label: 'Ctesibius’s inflow clock'}),
+  Object.freeze({value: 0, label: 'Cylindrical outflow pot'}),
+  Object.freeze({value: 1, label: 'Conical outflow pot'}),
+  Object.freeze({value: 2, label: 'Inflow clock with gears'}),
 ]);
 export const WATER = Object.freeze({
-  g: 9.81, density: 1000, discharge: 0.62, height: 0.4, radius: 0.15, head: 0.05, tube: 0.05, jar: 0.03, jarHeight: 0.4, duration: 12, step: 1,
+  g: 9.81, density: 1000, discharge: .62, height: .4, radius: .15, bottomRadius: .08,
+  referenceBore: .001, jar: .04, jarHeight: .3, initialLevel: .03, overflowLevel: .27,
+  floatRadius: .024, floatHeight: .04, movingMass: .04,
+  teeth: 36, module: .002, pitchRadius: .036, dialHours: 12,
+  duration: 12, step: 1,
 });
-export const WATER_DEFAULTS = Object.freeze({design: 0, bore: 1, temperature: 20});
-export const WATER_DOMAINS = Object.freeze({design: [0, 2, 1], bore: [0.6, 2, 0.1], temperature: [5, 35, 1]});
+export const WATER_DEFAULTS = Object.freeze({design: 2, rate: 100, bore: 1});
+export const WATER_DOMAINS = Object.freeze({design: [0, 2, 1], rate: [0, 200, 10], bore: [.6, 2, .1]});
 
-export const viscosity = T => 2.414e-5 * 10 ** (247.8 / (T + 133.15));
-/** Cross-section of the pot at a height above its floor. */
-export const potArea = (design, h) => design === 1 ? Math.PI * WATER.radius ** 2 * Math.sqrt(Math.max(0, h) / WATER.height) : Math.PI * WATER.radius ** 2;
-export const potRadius = (design, h) => design === 1 ? WATER.radius * (Math.max(0, h) / WATER.height) ** 0.25 : WATER.radius;
-export const potVolume = design => design === 1 ? Math.PI * WATER.radius ** 2 * 2 * WATER.height / 3 : Math.PI * WATER.radius ** 2 * WATER.height;
+export const jarArea = Math.PI * WATER.jar ** 2;
+export const referenceRise = 2 * Math.PI * WATER.pitchRadius / WATER.dialHours;
+export const referenceFlow = jarArea * referenceRise / 3600;
+export const displacedVolume = WATER.movingMass / WATER.density;
+export const floatDraft = displacedVolume / (Math.PI * WATER.floatRadius ** 2);
+export const potRadius = (design, h) => design === 1 ? WATER.bottomRadius + (WATER.radius - WATER.bottomRadius) * h / WATER.height : WATER.radius;
+export const potArea = (design, h) => Math.PI * potRadius(design, h) ** 2;
 
-/** Water level against time for an outflow pot, in closed form. */
+/** Volume below h for the cylinder or straight-sided conical frustum. */
+export function potVolume(design, h = WATER.height) {
+  const a = design === 1 ? WATER.bottomRadius : WATER.radius;
+  const b = design === 1 ? (WATER.radius - WATER.bottomRadius) / WATER.height : 0;
+  return Math.PI * (a * a * h + a * b * h * h + b * b * h ** 3 / 3);
+}
+
+/** Integral of A(h)/sqrt(h), with its finite value at zero. */
+export function drainageIntegral(design, h) {
+  const a = design === 1 ? WATER.bottomRadius : WATER.radius;
+  const b = design === 1 ? (WATER.radius - WATER.bottomRadius) / WATER.height : 0;
+  return Math.PI * (2 * a * a * Math.sqrt(h) + 4 * a * b * h ** 1.5 / 3 + 2 * b * b * h ** 2.5 / 5);
+}
+const drainageFactor = bore => WATER.discharge * Math.PI * (bore / 2) ** 2 * Math.sqrt(2 * WATER.g);
+export const emptyTime = (design, bore) => drainageIntegral(design, WATER.height) / drainageFactor(bore) / 3600;
+
+/** Invert the integrated drainage equation; no step-size-dependent emptying. */
 export function outflowLevel(design, bore, hours) {
-  const w = WATER, a = Math.PI * (bore / 2) ** 2, t = hours * 3600;
-  if (design === 1) {
-    const speed = w.discharge * a * Math.sqrt(2 * w.g * w.height) / (Math.PI * w.radius ** 2);
-    return Math.max(0, w.height - speed * t);
-  }
-  const k = w.discharge * a * Math.sqrt(2 * w.g) / (Math.PI * w.radius ** 2), root = Math.sqrt(w.height) - k * t / 2;
-  return root > 0 ? root ** 2 : 0;
+  const target = drainageIntegral(design, WATER.height) - drainageFactor(bore) * hours * 3600;
+  if (target <= 0) return 0;
+  if (hours === 0) return WATER.height;
+  if (design === 0) return (target / (2 * Math.PI * WATER.radius ** 2)) ** 2;
+  let lo = 0, hi = WATER.height;
+  for (let i = 0; i < 54; i++) {const mid = (lo + hi) / 2; if (drainageIntegral(design, mid) < target) lo = mid; else hi = mid;}
+  return (lo + hi) / 2;
 }
-export function emptyTime(design, bore) {
-  const w = WATER, a = Math.PI * (bore / 2) ** 2;
-  if (design === 1) return w.height / (w.discharge * a * Math.sqrt(2 * w.g * w.height) / (Math.PI * w.radius ** 2)) / 3600;
-  return 2 * Math.sqrt(w.height) / (w.discharge * a * Math.sqrt(2 * w.g) / (Math.PI * w.radius ** 2)) / 3600;
-}
-export function inflowRate(bore, temperature) {
-  const w = WATER, d = bore / 2;
-  return Math.PI * d ** 4 * w.density * w.g * w.head / (128 * viscosity(temperature) * w.tube);
-}
+export const inflowRate = rate => referenceFlow * rate / 100;
 
 export function waterClockPlan(input = {}) {
-  const values = validateControls(input, WATER_DEFAULTS, WATER_DOMAINS, 'water clock'), bore = values.bore / 1000, w = WATER;
+  const values = validateControls(input, WATER_DEFAULTS, WATER_DOMAINS, 'water clock');
   if (values.design === 2) {
-    const flow = inflowRate(bore, values.temperature), rise = flow / (Math.PI * w.jar ** 2) * 3600, d = bore / 2;
-    const speed = flow / (Math.PI * (d / 2) ** 2), reynolds = w.density * speed * d / viscosity(values.temperature);
-    return {values, flow, rise, full: w.jarHeight / rise, reynolds, viscosity: viscosity(values.temperature), marks: Array.from({length: 13}, (_, h) => Math.min(w.jarHeight, rise * h))};
+    const flow = inflowRate(values.rate), rise = flow * 3600 / jarArea;
+    return {values, flow, rise, full: rise ? (WATER.overflowLevel - WATER.initialLevel) / rise : Infinity,
+      initialVolume: jarArea * WATER.initialLevel - displacedVolume,
+      capacity: jarArea * WATER.overflowLevel - displacedVolume,
+      marks: Array.from({length: 13}, (_, h) => WATER.initialLevel + referenceRise * h)};
   }
-  const empties = emptyTime(values.design, bore);
-  return {values, empties, volume: potVolume(values.design), firstHour: w.height - outflowLevel(values.design, bore, 1), marks: Array.from({length: 13}, (_, h) => outflowLevel(values.design, bore, h))};
+  const referenceEmpty = emptyTime(values.design, WATER.referenceBore);
+  const marks = Array.from({length: Math.floor(referenceEmpty) + 1}, (_, h) => outflowLevel(values.design, WATER.referenceBore, h));
+  return {values, empties: emptyTime(values.design, values.bore / 1000), referenceEmpty, initialVolume: potVolume(values.design), marks};
 }
 
-export function sampleWaterClock(input = {}, hours = 0) {
+export function sampleWaterPlan(plan, hours = 0) {
   validTime(hours);
-  const plan = waterClockPlan(input), clock = Math.min(WATER.duration, hours);
-  if (plan.values.design === 2) {
-    const level = Math.min(WATER.jarHeight, plan.rise * clock);
-    return {...plan, clock, level, shows: level / plan.rise, collected: level * Math.PI * WATER.jar ** 2, complete: clock >= WATER.duration};
+  const clock = Math.min(WATER.duration, hours), {values} = plan;
+  if (values.design === 2) {
+    const incoming = plan.flow * clock * 3600, room = plan.capacity - plan.initialVolume;
+    const retained = Math.min(room, incoming), overflow = Math.max(0, incoming - room);
+    const travel = retained / jarArea, level = WATER.initialLevel + travel, shows = travel / referenceRise;
+    const full = clock >= plan.full;
+    return {...plan, clock, level, travel, shows, error: shows - clock, incoming, retained, overflow,
+      volume: plan.initialVolume + retained, collected: overflow, displacedVolume, floatDraft,
+      floatBottom: level - floatDraft, floatTop: level - floatDraft + WATER.floatHeight,
+      buoyancy: WATER.movingMass * WATER.g, handAngle: -travel / WATER.pitchRadius,
+      riseRate: full ? 0 : plan.rise, outflow: full ? plan.flow : 0,
+      stopped: full || plan.flow === 0, phase: full ? 'Receiver overflowing; hand stopped' : plan.flow === 0 ? 'Inlet closed; hand stopped' : 'Water raises the float and turns the hand', complete: clock >= WATER.duration};
   }
-  const level = outflowLevel(plan.values.design, plan.values.bore / 1000, clock);
-  const marks = plan.marks, below = marks.findIndex(mark => mark <= level + 1e-12);
-  const shows = below <= 0 ? 0 : below - 1 + (marks[below - 1] - level) / (marks[below - 1] - marks[below]);
-  const speed = plan.values.design === 1 ? WATER.discharge * Math.PI * (plan.values.bore / 2000) ** 2 * Math.sqrt(2 * WATER.g * WATER.height) / (Math.PI * WATER.radius ** 2) : WATER.discharge * Math.PI * (plan.values.bore / 2000) ** 2 * Math.sqrt(2 * WATER.g * level) / (Math.PI * WATER.radius ** 2);
-  return {...plan, clock, level, shows, fallRate: speed * 3600, complete: clock >= WATER.duration};
+  const level = outflowLevel(values.design, values.bore / 1000, clock);
+  const volume = potVolume(values.design, level), collected = plan.initialVolume - volume;
+  const flow = drainageFactor(values.bore / 1000) * Math.sqrt(level);
+  const shows = Math.min(plan.referenceEmpty, clock * (values.bore / (WATER.referenceBore * 1000)) ** 2);
+  return {...plan, clock, level, volume, collected, flow, shows, error: shows - clock,
+    fallRate: flow / potArea(values.design, level) * 3600, incoming: 0, overflow: 0,
+    stopped: level === 0, phase: level === 0 ? 'Pot empty; indication stopped' : 'Water drains past the fixed hour marks', complete: clock >= WATER.duration};
 }
+export const sampleWaterClock = (input = {}, hours = 0) => sampleWaterPlan(waterClockPlan(input), hours);

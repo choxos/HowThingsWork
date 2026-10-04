@@ -93,4 +93,8 @@ const piezoelectricity = families.find(family => family.entry.id === 'piezoelect
 assert(piezoelectricity, 'Piezoelectricity is an independent idea, not a smaller clock machine');
 assert.equal(catalogMachineComponents(piezoelectricity.components).length, 0);
 assert.deepEqual(tags('piezoelectricity'), ['electricity']);
-assert(!entries.some(entry => entry.id === 'water-clock'), 'Unreviewed water clock remains a private preview');
+const waterClock = families.find(family => family.entry.id === 'water-clock');
+assert(waterClock, 'Water clock is a whole machine');
+assert.equal(catalogMachineComponents(waterClock.components).length, 0, 'Float, rack, pinion and vessels stay inside the clock viewer');
+assert.deepEqual(tags('water-clock'), ['floating', 'pressure-power', 'gears-and-belts']);
+assert(!entries.some(entry => entry.id === 'spin-dryer'), 'Unreviewed spin dryer remains a private preview');

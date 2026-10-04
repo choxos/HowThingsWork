@@ -1,53 +1,65 @@
 import {WATER_DEFAULTS} from './water-clock-physics.js';
 
-const trial = (part, view) => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...WATER_DEFAULTS, ...values}, reset: true, part, isolate: false, view});
-const clockTrial = trial('system', 'front');
-const potTrial = trial('pot', 'front');
-const inflowTrial = trial('inflow', 'front');
-const chartTrial = trial('chart', 'front');
+const trial = (title, instruction, observe, values = {}, time = 0, part = 'system', view = 'iso') => {
+  const settings = {...WATER_DEFAULTS, ...values};
+  return {title, instruction, observe, values: settings, reset: true, initialState: {time, settings}, part, isolate: part === 'chart', view};
+};
 
 export const waterClockLesson = {
-  simple: 'How did people tell the time at night with nothing but flowing water, and why was it so hard to keep even?',
-  overview: 'A water clock measures time by how much water has flowed. The simplest is a pot with a small hole: the level falls past marks on the inside. But water leaves faster when the pot is full, so the marks can’t be evenly spaced, unless the pot is shaped to make up for it, as the Egyptians did. Ctesibius of Alexandria turned the idea around, filling a jar from a tank whose level never changes, so a float rose at a steady pace. Try both, and see what a cold night does to each.',
+  simple: 'How can flowing water move a clock hand, and what makes that hand gain or lose time?',
+  overview: 'Follow a connected chain: water enters a vessel, a float lifts a toothed rack, and a pinion turns a hand. The fixed dial assumes one particular inflow rate. Change that rate and compare the clock reading with actual elapsed time. Then switch to two draining vessels whose water levels pass fixed hour marks. These original teaching models use equal modern hours; their dimensions and inlet are not a reconstruction of an ancient artifact.',
   steps: [
-    {title: 'Let it drain', body: 'Water leaves a hole in the floor of a pot at a speed set by the depth above it: the deeper the water, the faster it goes.'},
-    {title: 'Mark the hours', body: 'Marks inside the pot show where the level stands after each hour. In a straight pot they crowd together toward the bottom.'},
-    {title: 'Shape the pot', body: 'A pot flaring toward its rim has more water to lose at the top, where it drains fastest, so the level falls at an even pace.'},
-    {title: 'Or fill instead', body: 'A tank kept brim-full by an overflow feeds a narrow tube at a steady depth, so water trickles into a jar at a steady rate.'},
-    {title: 'Read the float', body: 'A float in the jar lifts a pointer past hour marks on a column.'},
+    {title: 'Establish a reference rate', body: 'At the nominal inlet rate, the receiver gains 94.7482 mL every hour. Its fixed cross-section turns that added volume into 18.85 mm of rise. Changing the rate does not move the hour marks.'},
+    {title: 'Lift a partly submerged float', body: 'The float and rack together weigh 40 g. They displace 40 mL of water, so the float sits partly below the surface. As more water enters, its immersion stays the same while the whole assembly rises.'},
+    {title: 'Convert height into rotation', body: 'The guided rack meshes with a 36-tooth pinion. Its shaft runs in two bearings and carries the hand. A rise of 226.19 mm makes one complete clockwise turn, representing twelve indicated hours.'},
+    {title: 'Read the error', body: 'Compare indicated elapsed hours with actual elapsed hours. Half the calibrated inflow advances the clock half as quickly. At overflow, the water level and hand stop even though the inlet continues supplying water.'},
+    {title: 'Compare a draining vessel', body: 'An outflow pot loses water fastest when its head is greatest. A cylinder needs hour marks that crowd toward the bottom. A conical pot changes the relation between volume and height, but straight sloping sides do not give perfectly uniform descent.'},
   ],
   parts: [
-    {name: 'Outflow pot', role: 'Drains through a hole in its floor; its level passes the hour marks.'},
-    {name: 'Inflow clock', role: 'A constant-head tank, a narrow tube, a jar, a float and a pointer.'},
-    {name: 'Level over the night', role: 'Shows how evenly each design keeps time.'},
+    {name: 'Ideal regulated inlet', role: 'Delivers a chosen, constant volumetric rate from an external supply.'},
+    {name: 'Receiving vessel and fixed level scale', role: 'Turns added water volume into a measurable rise.'},
+    {name: 'Buoyant float', role: 'Supports the moving rack by displacing water.'},
+    {name: 'Guided toothed rack', role: 'Transmits the float’s upward movement to the pinion teeth.'},
+    {name: 'Pinion and supported shaft', role: 'Converts linear rack travel into clockwise rotation.'},
+    {name: 'Fixed equal-hour dial and hand', role: 'Shows time according to the original rate calibration.'},
+    {name: 'Base, shaft bearings and rack guides', role: 'Supports the vessels and constrains the intended motions.'},
+    {name: 'Overflow channel and collection bowl', role: 'Collects excess water after the receiver stops rising.'},
+    {name: 'Outflow vessel with fixed hour marks', role: 'Compares cylindrical and conical draining clocks.'},
+    {name: 'Sharp-edged drain opening', role: 'Sets the outflow area while water depth sets the driving head.'},
+    {name: 'Bridge stand', role: 'Holds the pot above its collecting basin with an open path for the drain.'},
+    {name: 'Water collection basin', role: 'Retains the water that leaves the outflow clock.'},
   ],
   tryIt: [
-    potTrial('A straight pot', 'Play the night with the straight-sided pot and a 1.0 mm hole.', 'The level falls 66.5 mm in the first hour but only 6.1 mm in the eleventh, so the hour marks crowd toward the bottom, and the pot is empty after 11.51 h.'),
-    potTrial('The Egyptian shape', 'Choose the flaring Egyptian pot with a 0.7 mm hole.', 'Its level falls the same 34.0 mm every hour, so the marks are evenly spaced, and it lasts 11.75 h.', {design: 1, bore: 0.7}),
-    chartTrial('A wider hole', 'Set the hole to 1.5 mm.', 'Half as wide again is 2.25 times the area, and the pot is empty after 5.12 h.', {bore: 1.5}),
-    inflowTrial('Ctesibius’s clock', 'Choose Ctesibius’s inflow clock.', 'The tank’s steady head pushes 54.1 mL an hour through the narrow tube, and the float rises a steady 19.13 mm every hour.', {design: 2}),
-    inflowTrial('A winter night', 'Cool the inflow clock’s water to 5 °C.', 'Cold water is thicker, 1.501 mPa·s against 1.002 at 20 °C, so the float rises only 12.76 mm an hour and the clock runs slow.', {design: 2, temperature: 5}),
-    chartTrial('A summer night', 'Warm the inflow clock’s water to 35 °C.', 'Thinner water flows faster: 26.67 mm an hour, 2.09 times the winter pace.', {design: 2, temperature: 35}),
-    clockTrial('A plain hole ignores the cold', 'Cool the straight pot’s water to 5 °C.', 'Flow through a sharp hole barely depends on how thick the water is, so the pot still empties after 11.51 h.', {temperature: 5}),
-    inflowTrial('A wider tube', 'Choose the inflow clock with a 2.0 mm hole.', 'The tube, now 1 mm wide, passes 16.00 times the water and fills the jar in 1.31 h, yet its flow is still smooth, with a Reynolds number of 305.', {design: 2, bore: 2}),
+    trial('Six hours at the calibrated rate', 'Inspect the inflow clock after six actual hours. Continue with Play or advance one hour.', 'The clock reads 6.000 h with zero error. The float and rack have risen 113.10 mm, turning the hand halfway around.', {}, 6),
+    trial('Watch rack teeth drive the pinion', 'Inspect the gear mesh after one hour, then advance another hour.', 'At nominal flow, one hour raises the rack by exactly three tooth pitches and rotates the 36-tooth pinion by 30°. The hand shares its shaft.', {}, 1, 'drive', 'front'),
+    trial('Half the flow, half the indicated time', 'Inspect a six-hour run at 50% inflow.', 'Actual time is 6.000 h, but the unchanged clock reads 3.000 h. It has lost 3.000 h; neither the dial nor the level marks have moved.', {rate: 50}, 6),
+    trial('Double flow gains time', 'Inspect three actual hours at 200% inflow, before overflow begins.', 'The clock already reads 6.000 h. It is 3.000 h fast because twice the water has entered per actual hour.', {rate: 200}, 3),
+    trial('Close the inlet', 'Inspect six actual hours with the inlet set to 0%.', 'The initial water still supports the float, but no extra water enters. Rack and hand remain at zero; the clock has lost 6.000 h.', {rate: 0}, 6),
+    trial('Overflow stops the hand', 'Inspect eight actual hours at 200% inflow.', 'Overflow began after 6.366 actual hours. The clock has stopped at 12.732 indicated hours while about 309.60 mL has reached the overflow bowl. Advance another hour: the bowl fills further but the hand stays still.', {rate: 200}, 8),
+    trial('One complete clock-hand turn', 'Inspect the end of a nominal twelve-hour run.', 'The hand points to 12 again, but the total indication is 12.000 h, not zero. The receiver has not yet overflowed. Play restarts this same setting from the initial water level.', {}, 12, 'display', 'front'),
+    trial('Cylinder: read the crowded hour marks', 'Inspect the cylindrical outflow pot after six hours through a 1.0 mm opening.', 'The level is 91.75 mm above the opening and the scale reads 6.000 h. The first hour occupies 66.46 mm of height; the eleventh occupies only 6.12 mm.', {design: 0}, 6, 'pot', 'front'),
+    trial('Wider opening, unchanged marks', 'Inspect three hours with a 1.5 mm opening in the cylinder.', 'The opening has 2.25 times the reference area. The fixed scale reads 6.750 h after 3.000 actual hours, an error of +3.750 h.', {design: 0, bore: 1.5}, 3, 'pot', 'front'),
+    trial('An empty pot cannot keep counting', 'Inspect the cylinder after twelve hours with its reference opening.', 'It emptied after 11.515 h. No flow remains. Its last indication stays at 11.515 h, so it is about 0.485 h behind by the end of the trial. All 28.2743 L is in the basin.', {design: 0}, 12),
+    trial('A cone is not an exact cure', 'Inspect the conical vessel after three hours through a 1.0 mm opening.', 'Its level is 166.94 mm and its scale reads 3.000 h. The first hour occupies 72.19 mm, while the next occupies 77.88 mm. Straight sloping sides do not produce equal level changes.', {design: 1}, 3, 'pot', 'front'),
+    trial('A smaller hole runs slow', 'Inspect six hours in the cone with a 0.6 mm opening.', 'The unchanged scale reads 2.160 h, losing 3.840 h. The smaller area makes this vessel last about 15.799 h, beyond the twelve-hour trial.', {design: 1, bore: .6}, 6, 'pot', 'front'),
+    trial('Compare real time with clock time', 'Inspect the complete trace for a 50% inflow trial.', 'The blue trace stays below the correct-time diagonal. At six actual hours it reaches three indicated hours; at twelve it reaches six.', {rate: 50}, 6, 'chart', 'front'),
   ],
   deeper: [
-    {title: 'Torricelli’s law', body: 'Water falls out of a hole as fast as if it had dropped from the surface: from a full pot 400 mm deep, at 2.80 m/s. As the level drops, so does the speed, which is why a straight pot slows down.'},
-    {title: 'The Egyptian answer', body: 'If a round pot’s radius grows as the fourth root of the height, its area grows as the square root, exactly canceling the square root in the outflow speed. The water clock from Karnak, over three thousand years old, flares upward with straight sloping sides, an approximation to that curve.'},
-    {title: 'A constant head', body: 'Ctesibius kept his supply tank overflowing, so the depth pushing water through the tube never changed. That made the flow steady, and his clocks could drive pointers, bells and moving figures.'},
-    {title: 'Why a narrow tube feels the cold', body: 'Smooth flow through a narrow tube goes as the fourth power of its width and inversely as the water’s viscosity. Water at 5 °C is about twice as thick as at 35 °C, so an inflow clock needed adjusting with the seasons.'},
+    {title: 'Historical mechanism, original apparatus', body: 'Vitruvius describes water lifting a float connected to toothed machinery in his account of Ctesibius’s clocks. He also describes adjustments for seasonal hours. This lesson adopts the float and toothed drive principle while using an original supported apparatus, an ideal regulated inlet and a modern twelve-hour dial. It does not identify this particular geometry as Ctesibius’s construction.'},
+    {title: 'Time calibration must remain fixed', body: 'A clock is calibrated against an independent time reference. Here nominal inflow and the gear geometry define twelve indicated hours per revolution. Changing the input rate must create a timing error; relabeling the scale would hide it. Each outflow shape separately retains the levels calculated for its 1 mm reference opening.'},
+    {title: 'From volume to a hand angle', body: 'With receiver area A and accumulated inlet volume ΔV, the rise before overflow is Δh = ΔV/A. The float’s constant displaced volume cancels in this change, but remains in the total water balance. Rack travel equals Δh. Pinion angle has magnitude Δh/r, where r = 36 mm is the pitch radius. Gear teeth enforce the conversion without a friction-wheel approximation.'},
+    {title: 'Why the float stays partly submerged', body: 'For the selected 40 g moving assembly and water density of 1,000 kg/m³, equilibrium requires 40 mL displacement. Dividing by the float’s cross-section gives a draft of 22.10 mm. The model assumes negligible guide and bearing friction, negligible acceleration and a balanced hand, so no extra driving force is needed. Float weight and immersion are still included.'},
+    {title: 'The outflow calculation', body: 'For head h and opening area a, Q = Cd a √(2gh), with Cd = 0.62 held fixed. Conservation gives dh/dt = −Q/A(h). The cylinder has constant A. In the cone, radius is b + kh, so A(h) = π(b + kh)². Integrating A(h)/√h gives 2πb²√h + (4πbk/3)h^(3/2) + (2πk²/5)h^(5/2). Inverting that expression gives the current level without a time-step approximation.'},
+    {title: 'Why a conical wall is only a comparison', body: 'To make level fall exactly uniformly in this ideal outflow law, area would need to vary as √h, corresponding to radius proportional to h^(1/4). That is not a straight-sided cone. The displayed cone is deliberately described by its actual straight-sided geometry, with its own nonuniform hour marks.'},
+    {title: 'Account for every supplied drop', body: 'Inflow: initial water plus supplied water equals receiver water plus collected overflow. Outflow: initial pot water equals remaining pot water plus basin water. At overflow the float no longer rises; at empty the outflow vanishes. Actual time still advances in both cases, exposing the stopped clock’s growing error.'},
+    {title: 'Why real water clocks need adjustment', body: 'Real inlet rate can change with pressure, temperature, deposits and valve condition. Evaporation, menisci and mechanical friction also affect a clock. The inflow-rate control lets you study the timing consequence of a changed rate without claiming to predict those separate causes. Historical seasonal-hour systems additionally changed what an hour meant; that is separate from this equal-hour rate error.'},
   ],
-  misconception: 'A water clock does not measure time by weight or by the speed of the water. It measures how much water has moved, which is steady only if the flow is kept steady.',
-  limits: 'Illustrative water clocks. A 400 mm pot of 150 mm radius at the rim, straight or with its radius growing as the fourth root of height, draining through a sharp hole passing 0.62 of its area by Torricelli’s law. An inflow clock with a 50 mm steady head over a 50 mm tube half as wide as the hole, smooth flow by Poiseuille’s law, a viscosity that follows water’s own curve with temperature, and a 30 mm jar. Not modeled: evaporation, the tube’s entry and exit losses, surface tension at a tiny hole, and the float’s own displacement. The night plays an hour a second.',
+  misconception: 'A flowing-water clock does not stay accurate merely because water keeps moving. It needs a stable relation between accumulated water and independently calibrated time. Overflow can leave water moving while its hand stands still.',
+  limits: 'Calculated teaching apparatus, not a calibrated construction plan or an exact ancient reconstruction. Modern equal hours. Inflow is an imposed constant volumetric rate from an external regulated supply; no valve law, supply reservoir, capillary, viscosity or temperature model is implied. Water density is fixed at 1,000 kg/m³. Receiver radius 40 mm, initial depth 30 mm, ideal overflow crest 270 mm; finite overflow depth and transient filling of the channel are neglected. Float radius 24 mm, height 40 mm, combined float-and-rack mass 40 g. Quasistatic, frictionless rack, bearings and guides; balanced hand, no inertia or backlash dynamics. Involute-compatible teeth use module 2 mm and 36 pinion teeth. Outflow vessels are 400 mm deep: cylinder radius 150 mm; cone radius increases linearly from 80 to 150 mm. Torricelli flow uses a constant illustrative Cd of 0.62 and negligible surface velocity. Viscosity, surface tension, small-hole dripping, changing discharge coefficient and evaporation are omitted, including near empty. Vessel fronts and water are cut away for inspection; water accounting uses full cross-sections and subtracts float displacement. Moving blue markers only show flow direction; their size, spacing and speed do not encode real drop volume or jet velocity. One playback second represents one hour. Each control change starts a fresh trial; presets open at named checkpoints. Plot axes show calculated hours, not physical dimensions.',
   sources: [
-    {title: 'OpenStax College Physics 2e: flow rate and Poiseuille’s law', url: 'https://openstax.org/books/college-physics-2e/pages/12-4-viscosity-and-laminar-flow-poiseuilles-law'},
-    {title: 'Water clock: outflow, inflow and Ctesibius', url: 'https://en.wikipedia.org/wiki/Water_clock'},
-    {title: 'Torricelli’s law', url: 'https://en.wikipedia.org/wiki/Torricelli%27s_law'},
+    {title: 'Vitruvius, On Architecture IX.8: Ctesibius, floats and toothed machinery', url: 'https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Vitruvius/9%2A.html'},
+    {title: 'OpenStax College Physics 2e: Archimedes’ principle', url: 'https://openstax.org/books/college-physics-2e/pages/11-7-archimedes-principle'},
+    {title: 'OpenStax College Physics 2e: Bernoulli’s equation', url: 'https://openstax.org/books/college-physics-2e/pages/12-2-bernoullis-equation'},
   ],
-  quiz: {
-    question: 'Why do the hour marks in a straight-sided outflow pot crowd toward the bottom?',
-    options: ['Water leaves faster when the pot is full, so the level falls more in the early hours.', 'The pot is narrower at the bottom.', 'Water gets colder as the night goes on.'],
-    answer: 0,
-    explanation: 'The outflow speed goes as the square root of the depth. Full, the pot drains quickly; nearly empty, it trickles, so each hour moves the level less.',
-  },
+  quiz: {question: 'The inflow is halved while the original dial stays in place. What does the clock show after six actual hours, before overflow?', options: ['Three indicated hours: it has lost three hours.', 'Six indicated hours: the scale automatically recalibrates.', 'Twelve indicated hours: less water turns the hand faster.'], answer: 0, explanation: 'Half the volume enters per actual hour, so the float rises half as far and the hand turns half as much. Keeping the original calibration exposes the three-hour error.'},
 };

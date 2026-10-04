@@ -137,7 +137,8 @@ export const publishedEntryIds = [
   "kinetic-quartz-watch",
   "quartz-clock",
   "quartz-oscillator",
-  "piezoelectricity"
+  "piezoelectricity",
+  "water-clock"
 ];
 
 // Built but not yet published. Only a dev server started with
@@ -240,6 +241,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'water-clock': ['floating', 'pressure-power', 'gears-and-belts'],
   'piezoelectricity': ['electricity'],
   'quartz-oscillator': ['electricity'],
   'quartz-clock': ['electricity', 'magnetism', 'gears-and-belts'],
