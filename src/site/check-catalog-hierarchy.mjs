@@ -121,3 +121,10 @@ assert.equal(catalogMachineComponents(robotVacuum.components).length, 0, 'Robot 
 assert.deepEqual(tags('robot-vacuum-cleaner'), ['using-bits', 'sensors-and-detectors', 'rotating-wheels', 'pressure-power', 'electricity']);
 assert.equal(catalog.groups.find(group => group.id === 'robot-vacuum-cleaner').room, 'Laundry and cleaning');
 assert.equal(catalog.groups.find(group => group.id === 'robot-vacuum-cleaner').place, 'home');
+
+const washingMachine = families.find(family => family.entry.id === 'washing-machine');
+assert(washingMachine, 'Washing machine is a whole machine');
+assert.equal(catalogMachineComponents(washingMachine.components).length, 0, 'Washer mechanisms remain inspectable parts, not separate catalog entries');
+assert.deepEqual(tags('washing-machine'), ['rotating-wheels', 'exploiting-heat', 'pressure-power', 'springs', 'electricity']);
+assert.equal(catalog.groups.find(group => group.id === 'washing-machine').room, 'Laundry and cleaning');
+assert.equal(catalog.groups.find(group => group.id === 'washing-machine').place, 'home');

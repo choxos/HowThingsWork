@@ -4169,6 +4169,18 @@
       "parentId": "system"
     }
   ],
+  "washing-machine": [
+    {
+      "id": "machine",
+      "name": "Front-loading washing machine",
+      "parentId": "system"
+    },
+    {
+      "id": "charts",
+      "name": "Program and suspension charts",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",
