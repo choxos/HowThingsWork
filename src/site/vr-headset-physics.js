@@ -19,8 +19,8 @@ import {validateControls, validTime} from './physics-kit.js';
 // once the latency has passed. With prediction, the frame is drawn for the
 // yaw expected when it lights, carried forward at the gyroscope's latest rate.
 //
-// The lenses follow chapter 4: a thin lens of 45 mm focal length, as in Google
-// Cardboard, with the screen at or inside its focal length makes a virtual
+// The lenses follow chapter 4: an assigned thin lens of 45 mm focal length,
+// with the screen at or inside its focal length, makes a virtual
 // image (1/s1 + 1/s2 = 1/f). The eyes aim at the virtual object (vergence) and
 // focus on the virtual image (accommodation); the difference in diopters is
 // the vergence and accommodation conflict.
@@ -36,7 +36,8 @@ import {validateControls, validTime} from './physics-kit.js';
 export const CLOCKS = Object.freeze({gyro: 1000, camera: 60, frame: 90, flash: 0.002, duration: 3});
 export const HEAD = Object.freeze({start: 0.5, turn: 60, turnTime: 1, swing: 25, swingTime: 0.5});
 export const SHAKE = Object.freeze([0, HEAD.swing, -HEAD.swing, HEAD.swing, -HEAD.swing, 0]);
-export const LENS = Object.freeze({focal: 45, relief: 15, halfView: 30, radius: 17, ipd: 63, comfort: 0.4});
+export const LENS = Object.freeze({focal: 45, relief: 15, halfView: 30, radius: 17, ipd: 63});
+export const AUDIO = Object.freeze({earHalfSpacing: 0.080, sourceDistance: 2, soundSpeed: 343});
 export const GAINS = Object.freeze([0, 1e-4, 1e-2]);
 
 const options = labels => Object.freeze(labels.map((label, value) => Object.freeze({value, label})));
@@ -44,8 +45,8 @@ export const MOTION_OPTIONS = options(['Turn to look left', 'Shake your head', '
 export const PREDICTION_OPTIONS = options(['No prediction', 'Predict ahead']);
 export const CORRECTION_OPTIONS = options(['No correction', 'Camera, α = 0.0001', 'Camera, α = 0.01']);
 
-export const VR_DEFAULTS = Object.freeze({motion: 0, latency: 20, prediction: 1, offset: 0, scale: 0, correction: 1, screen: 44, distance: 2});
-export const VR_DOMAINS = Object.freeze({motion: [0, 2, 1], latency: [5, 100, 5], prediction: [0, 1, 1], offset: [-2, 2, 0.1], scale: [-3, 3, 0.5], correction: [0, 2, 1], screen: [41, 45, 0.1], distance: [0.3, 10, 0.1]});
+export const VR_DEFAULTS = Object.freeze({motion: 0, latency: 20, prediction: 1, offset: 0, scale: 0, correction: 1, screen: 44, distance: 2, soundDirection: 60, soundTracking: 1});
+export const VR_DOMAINS = Object.freeze({motion: [0, 2, 1], latency: [5, 100, 5], prediction: [0, 1, 1], offset: [-2, 2, 0.1], scale: [-3, 3, 0.5], correction: [0, 2, 1], screen: [41, 45, 0.1], distance: [0.3, 10, 0.1], soundDirection: [-90, 90, 15], soundTracking: [0, 1, 1]});
 
 /** The minimum-jerk blend from 0 to 1 at s in [0, 1]: its value and its first and second derivatives in s. */
 export function minimumJerk(s) {
@@ -130,10 +131,23 @@ export function rayThrough(screen, height, pupil) {
 export function eyesOn(distance, focus) {
   const aim = 1 / distance, conflict = Math.abs(aim - focus);
   return {
-    aim, conflict, comfortable: conflict <= LENS.comfort + 1e-12,
+    aim, conflict,
     vergence: 2 * Math.atan(LENS.ipd / 2000 / distance), turn: Math.atan(LENS.ipd / 2000 / distance),
-    near: 1 / (focus + LENS.comfort), far: focus > LENS.comfort ? 1 / (focus - LENS.comfort) : null,
   };
+}
+
+/** Direct-path delay cues at two point ears. This omits the head's acoustic
+ * shadow, pinnae, reflections and audio transport latency; it is not an HRTF.
+ * Positive delay means the left ear's signal must arrive first. */
+export function audioCue(sourceAzimuth, estimatedYaw, tracking = true) {
+  const yaw = tracking ? estimatedYaw : 0, angle = (sourceAzimuth - yaw) * Math.PI / 180;
+  const source = [AUDIO.sourceDistance * Math.sin(angle), AUDIO.sourceDistance * Math.cos(angle)];
+  const left = Math.hypot(source[0] - AUDIO.earHalfSpacing, source[1]);
+  const right = Math.hypot(source[0] + AUDIO.earHalfSpacing, source[1]);
+  const first = Math.min(left, right) / AUDIO.soundSpeed;
+  return {yaw, azimuth: sourceAzimuth - yaw, source, left, right,
+    delay: (right - left) / AUDIO.soundSpeed,
+    leftDelay: left / AUDIO.soundSpeed - first, rightDelay: right / AUDIO.soundSpeed - first};
 }
 
 const plans = new Map();
@@ -169,5 +183,6 @@ export function vrAt(plan, time) {
 /** The plan and the moment `time` seconds into the run. */
 export function sampleVr(input = {}, time = 0) {
   const plan = vrPlan(input);
-  return {...plan, now: vrAt(plan, validTime(time))};
+  const now = vrAt(plan, validTime(time));
+  return {...plan, now, audio: audioCue(plan.values.soundDirection, now.estimate, Boolean(plan.values.soundTracking))};
 }

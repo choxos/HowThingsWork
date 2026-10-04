@@ -6,7 +6,7 @@
 // drawing held to the state, and every number the two lessons quote held to
 // the model.
 import assert from 'node:assert/strict';
-import {vrPlan, sampleVr, headYaw, minimumJerk, lensImage, viewSlope, rayThrough, eyesOn, CLOCKS, HEAD, SHAKE, LENS, GAINS, VR_DEFAULTS, VR_DOMAINS} from './vr-headset-physics.js';
+import {vrPlan, sampleVr, headYaw, minimumJerk, lensImage, viewSlope, rayThrough, eyesOn, audioCue, CLOCKS, HEAD, SHAKE, LENS, GAINS, VR_DEFAULTS, VR_DOMAINS} from './vr-headset-physics.js';
 import {createVrHeadsetModel, objectDirection, panelX, wrap, FACE, HEADSET, IMU_AT, CAMERA_AT, CHARTS, FRAME_ROWS, VIEW_ROWS, COLORS, LANDMARKS} from './vr-headset-model.js';
 import {vrHeadsetLesson, headTrackingLesson} from './vr-headset-lessons.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
@@ -15,10 +15,10 @@ import {fixed} from './format.js';
 // The headset written again from its sources.
 const t = tally(), DEG = Math.PI / 180, MM = 0.02;
 const RATE = 1000, IMAGES = 60, FRAMES = 90, FLASH = 0.002, RUN = 3, START = 0.5, TURN = 60, TURN_TIME = 1, SWING = 25, SWING_TIME = 0.5;
-const FOCAL = 45, RELIEF = 15, IPD = 63, COMFORT = 0.4, HALF_VIEW = 30, POINT = 20;
+const FOCAL = 45, RELIEF = 15, IPD = 63, HALF_VIEW = 30, POINT = 20;
 t.ok(CLOCKS.gyro === RATE && CLOCKS.camera === IMAGES && CLOCKS.frame === FRAMES && CLOCKS.flash === FLASH && CLOCKS.duration === RUN, 'clocks: LaValle’s 1,000 Hz gyroscope and 60 Hz camera, 90 frames a second lit for 2 ms, a 3 s run');
 t.ok(HEAD.start === START && HEAD.turn === TURN && HEAD.turnTime === TURN_TIME && HEAD.swing === SWING && HEAD.swingTime === SWING_TIME, 'head motions');
-t.ok(LENS.focal === FOCAL && LENS.relief === RELIEF && LENS.ipd === IPD && LENS.comfort === COMFORT && LENS.halfView === HALF_VIEW, 'lens, eyes and comfort');
+t.ok(LENS.focal === FOCAL && LENS.relief === RELIEF && LENS.ipd === IPD && LENS.halfView === HALF_VIEW, 'assigned lens and eye geometry');
 assert.deepEqual([...GAINS], [0, 0.0001, 0.01], 'no correction, LaValle’s example gain and a firmer one');
 assert.deepEqual([...SHAKE], [0, SWING, -SWING, SWING, -SWING, 0], 'the shake’s turning points');
 t.add(2);
@@ -216,12 +216,10 @@ for (const screen of screens) {
     t.near(eyes.turn, Math.acos(l[1] / Math.hypot(...l)), 1e-9, 'each eye turns in half of it');
     t.near(eyes.aim, 1 / distance, 1e-12, 'aim in diopters');
     t.near(eyes.conflict, Math.abs(1 / distance - focus), 1e-12, 'conflict');
-    t.ok(eyes.comfortable === (Math.abs(1 / distance - focus) <= COMFORT + 1e-12), 'comfortable within 0.4 D');
-    t.near(eyes.conflict <= COMFORT ? 1 : 0, distance >= eyes.near - 1e-9 && distance <= (eyes.far ?? Infinity) + 1e-9 ? 1 : 0, 0, 'the comfortable range holds exactly the comfortable distances');
-    t.ok(eyes.far === null ? focus <= COMFORT : Number.isFinite(eyes.far), 'no far limit once the focus is within 0.4 D of infinity');
+    t.ok(!('comfortable' in eyes) && !('near' in eyes) && !('far' in eyes), 'optical mismatch does not classify human comfort');
   }
 }
-t.near(eyesOn(0.3, 0.5).conflict, 2.83, 0.004, 'Wikipedia’s example: an object at 30 cm and a screen at 2 m conflict by 3.33 − 0.5 = 2.83 D');
+t.near(eyesOn(0.3, 0.5).conflict, 2.83, 0.004, 'an object at 30 cm and an optical image at 2 m differ by 3.33 − 0.5 = 2.83 D');
 
 // 6. The drawing, held to the state.
 const model = createVrHeadsetModel(), topo = model.topology, SLOW = topo.SLOW;
@@ -391,13 +389,9 @@ for (const settings of SETTINGS) {
     samePoints(topo.rays[i], [chartPoint(O.x + X1, O.y + O.axis + POINT), chartPoint(O.x + O.lens, O.y + O.axis + ray.lens), chartPoint(O.x + O.lens - RELIEF, O.y + O.axis + pupil)], 'a ray into the pupil');
     samePoints(topo.backRays[i], [chartPoint(O.x + O.lens, O.y + O.axis + ray.lens), chartPoint(O.x + O.lens + reach, O.y + O.axis + ray.lens - ray.after * reach)], 'the ray traced back');
   });
-  const eyes = eyesOn(values.distance, focus);
-  t.near(topo.comfortBar.scale.x / MM, dx(focus + COMFORT) - dx(Math.max(0, focus - COMFORT)), 1e-9, 'the comfort band');
-  t.near(topo.comfortBar.position.x / MM, (dx(focus + COMFORT) + dx(Math.max(0, focus - COMFORT))) / 2, 1e-9, 'the comfort band’s place');
   samePoints(topo.focusMark, [chartPoint(dx(focus), D.y + 14), chartPoint(dx(focus), D.y + 48)], 'focus');
   samePoints(topo.aimMark, [chartPoint(dx(1 / values.distance), D.y + 14), chartPoint(dx(1 / values.distance), D.y + 58)], 'aim');
-  t.ok(topo.conflictLine.material.color.getHex() === (Math.abs(1 / values.distance - focus) <= COMFORT ? COLORS.camera : COLORS.shown), 'the conflict turns red beyond 0.4 D');
-  t.ok(eyes.comfortable === (Math.abs(1 / values.distance - focus) <= COMFORT), 'comfortable');
+  t.ok(topo.conflictLine.material.color.getHex() === COLORS.faint, 'mismatch retains a neutral color without a health threshold');
 }
 
 // Sizes and places, measured from the drawing.
@@ -423,7 +417,10 @@ t.ok(IMU_AT.z + IMU_AT.board[2] / 2 < HEADSET.lensZ + 41 && IMU_AT.y - IMU_AT.bo
 const facing = [Math.sin(topo.camera.rotation.y), Math.cos(topo.camera.rotation.y)], toHead = [-CAMERA_AT.x, -CAMERA_AT.z].map(v => v / Math.hypot(CAMERA_AT.x, CAMERA_AT.z));
 t.near(facing[0] * toHead[0] + facing[1] * toHead[1], 1, 1e-12, 'the camera faces the head');
 for (const [x, y, z] of [[HEADSET.half - 2, 30, 118], [84, 32, 20], [48, 36, -82], [0, 38, -102]]) t.ok((x / FACE.radii[0]) ** 2 + (y / FACE.radii[1]) ** 2 + (z / FACE.radii[2]) ** 2 > 1.1, 'the strap runs outside the head');
-t.ok(model.parts.every(p => !p.parentId || p.parentId === 'system'), 'no part hangs from another part but the whole');
+t.ok(new Set(model.parts.map(p => p.id)).size === model.parts.length, 'unique inspectable parts');
+for (const part of model.parts) if (part.parentId) {
+  t.ok(model.parts.find(p => p.id === part.parentId)?.object === part.object.parent, `${part.id}: inventory ancestry matches the scene`);
+}
 
 // The motion the drawing exists to show: the room's landmarks move across the panel against the head.
 model.reset();
@@ -437,14 +434,26 @@ t.near(topo.wearer.rotation.y, TURN * DEG, 1e-12, 'the head ends turned 60°');
 // 7. What the lessons say.
 const defaults = vrPlan({}), noPrediction = vrPlan({prediction: 0});
 const machineClaims = {
-  'Turn your head': s => { t.ok(Math.abs(s.worstSlip.slip) * 10 < Math.abs(noPrediction.worstSlip.slip), 'prediction cuts the slip more than tenfold'); return {'60': HEAD.turn, '112.5': s.peakRate, '0.08': Math.abs(s.worstSlip.slip), '20': s.values.latency}; },
-  'No prediction': s => { t.ok(s.worstSlip.slip < 0, 'the picture lags a head turning left'); return {'2.37': Math.abs(s.worstSlip.slip), '1.01': s.worstSlip.flash}; },
-  'A 1990s headset': s => { const ratio = s.worstSlip.slip / noPrediction.worstSlip.slip; t.ok(ratio > 2.5 && ratio < 3, 'nearly three times'); return {'60': s.values.latency, '6.84': Math.abs(s.worstSlip.slip), '112.5': s.peakRate, '2.37': Math.abs(noPrediction.worstSlip.slip), '20': VR_DEFAULTS.latency}; },
-  'Predict further ahead': s => { t.ok(Math.round(s.worstSlip.slip / defaults.worstSlip.slip) === 8, 'eight times'); return {'60': s.values.latency, '0.65': Math.abs(s.worstSlip.slip), '0.08': Math.abs(defaults.worstSlip.slip), '20': VR_DEFAULTS.latency}; },
-  'A fast gyroscope': s => { t.near(s.endDrift, s.values.scale / 100 * HEAD.turn, 1e-9, 'the error is the scale error’s share of the turn'); return {'3': s.values.scale, '61.80': s.estimate[s.N], '60': HEAD.turn, '1.80': s.endDrift}; },
-  'The camera corrects it': s => { t.near(1 / (s.alpha * RATE), 0.1, 1e-12, 'a tenth of a second'); t.ok(s.worstDrift.value < 0, 'the old images drag the estimate behind'); return {'0.01': s.alpha, '0.00': Math.abs(s.endDrift), '16.3': maxAge * 1000, '0.57': Math.abs(s.worstDrift.value)}; },
-  'A near object': s => ({'0.3': s.values.distance, '11.99': s.eyes.vergence / DEG, '3.33': s.eyes.aim, '0.50': s.image.focus, '2.83': s.eyes.conflict, '0.4': LENS.comfort}),
-  'Screen at the focal length': s => { t.ok(s.image.fromEye === null && s.image.focus === 0 && s.values.screen === LENS.focal, 'at the focal length'); return {'45': s.values.screen, '1.0': s.values.screen - VR_DEFAULTS.screen, '44': VR_DEFAULTS.screen, '2.00': lensImage(VR_DEFAULTS.screen).fromEye}; },
+  'Turn your head': () => ({}),
+  'Inside the headset': () => ({}),
+  'Two views on one panel': () => ({}),
+  'Trace the lens rays': () => ({}),
+  'Screen at the focal length': s => { t.ok(s.image.fromEye === null && s.image.focus === 0, 'parallel rays at the focal length'); return {}; },
+  'A near virtual object': s => ({'3.33': s.eyes.aim, '0.50': s.image.focus, '2.83': s.eyes.conflict}),
+  'Nearly matching aim and focus': s => ({'2.0': s.values.distance, '2.00': s.image.fromEye}),
+  'Tracking during the turn': () => ({}),
+  'No prediction': s => { t.ok(s.worstSlip.slip < 0, 'the stale picture lags the head'); return {'2.37': Math.abs(s.worstSlip.slip)}; },
+  'More delay without prediction': s => ({'6.84': Math.abs(s.worstSlip.slip)}),
+  'Predict further ahead': s => ({'0.65': Math.abs(s.worstSlip.slip)}),
+  'A fast gyroscope': s => ({'3': s.values.scale, '61.80': s.estimate[s.N], '60': HEAD.turn, '1.80': s.endDrift}),
+  'The camera corrects it': s => ({'0.00': Math.abs(s.endDrift), '0.57': Math.abs(s.worstDrift.value)}),
+  'An offset while still': s => ({'0.5': s.values.offset, '1.50': s.endDrift, '3': s.duration}),
+  'Read a display flash': () => ({}),
+  'A sound on the left': s => ({'0.404': Math.abs(audioCue(s.values.soundDirection, 0, true).delay) * 1000}),
+  'Turn toward the sound': () => ({}),
+  'Freeze the ear cues': s => ({'0.404': Math.abs(audioCue(s.values.soundDirection, 60, false).delay) * 1000}),
+  'Errors beyond the chart': s => ({'18.32': Math.abs(s.worstSlip.slip), '12': CHARTS.errors.range}),
+  'Read the final result': () => ({}),
 };
 const trackingClaims = {
   'Add up the readings': s => { t.ok(s.gyro[s.N] === 0, 'the readings fall back to nothing'); return {'112.50': Math.max(...Array.from(s.gyro, Math.abs)), '3,000': s.N, '60.00': s.estimate[s.N]}; },
@@ -458,17 +467,17 @@ checkTrialNumbers(vrHeadsetLesson, machineClaims, values => vrPlan(values), t);
 checkTrialNumbers(headTrackingLesson, trackingClaims, values => vrPlan(values), t);
 const trials = vrHeadsetLesson.tryIt.length + headTrackingLesson.tryIt.length;
 
-checkQuotedText(vrHeadsetLesson.steps.map(step => step.body).join(' '), {[`${fixed(RATE, 0)} times a second`]: '1,000 times a second', [`${fixed(IMAGES, 0)} times a second`]: '60 times a second', [`${fixed(FRAMES, 0)} times a second`]: '90 times a second', [`for just ${fixed(FLASH * 1000, 0)} ms`]: 'for just 2 ms'}, t);
-checkQuotedText(vrHeadsetLesson.deeper.map(item => item.body).join(' '), {[`this ${fixed(FOCAL, 0)} mm lens is ${fixed(1000 / FOCAL, 1)} D`]: 'this 45 mm lens is 22.2 D', [`${fixed(IPD, 0)} mm apart here`]: '63 mm apart here', [`An object ${fixed(2, 1)} m away is ${fixed(eyesOn(2, 0).turn / DEG, 2)}° to the right`]: 'An object 2.0 m away is 0.90° to the right', [`${fixed(eyesOn(2, 0).turn / DEG, 2)}° to the left for the right eye`]: '0.90° to the left for the right eye', [`at ${fixed(FRAMES, 0)} frames a second`]: 'at 90 frames a second', [`up to about ${fixed(COMFORT, 1)} D`]: 'up to about 0.4 D'}, t);
-checkQuotedText(vrHeadsetLesson.quiz.explanation, {[`${fixed(VR_DEFAULTS.latency, 0)} ms of latency left the picture up to ${fixed(Math.abs(noPrediction.worstSlip.slip), 2)}° behind a head turning at ${fixed(noPrediction.peakRate, 1)}°/s`]: '20 ms of latency left the picture up to 2.37° behind a head turning at 112.5°/s', [`cut that to ${fixed(Math.abs(defaults.worstSlip.slip), 2)}°`]: 'cut that to 0.08°'}, t);
+t.ok(vrHeadsetLesson.steps.some(step => step.title === 'Update both ear signals'), 'audio forms part of the causal lesson');
+t.ok(vrHeadsetLesson.deeper.some(item => item.body.includes('does not bound every instant')), 'flash-onset metric is explicitly limited');
+t.ok(vrHeadsetLesson.quiz.answer === 0 && vrHeadsetLesson.quiz.options[0].includes('fixed in the virtual world'), 'quiz teaches a world-fixed scene');
 checkQuotedText(headTrackingLesson.steps.map(step => step.body).join(' '), {[`${fixed(RATE, 0)} times a second`]: '1,000 times a second'}, t);
 checkQuotedText(headTrackingLesson.deeper.map(item => item.body).join(' '), {[`${fixed(GAINS[1], 4)} in his example`]: '0.0001 in his example', [`${fixed(IMAGES, 0)} images a second and the gyroscope ${fixed(RATE, 0)} readings`]: '60 images a second and the gyroscope 1,000 readings', [`${[...new Set(runs)].sort().join(' or ')} readings in a row`]: '16 or 17 readings in a row', [`up to ${fixed(VR_DOMAINS.scale[1], 0)}% off in scale`]: 'up to 3% off in scale'}, t);
 checkQuotedText(headTrackingLesson.quiz.explanation, {[`${fixed(vrPlan({scale: 3, correction: 0}).endDrift, 2)}° after a ${fixed(TURN, 0)}° turn`]: '1.80° after a 60° turn', [`${fixed(Math.abs(vrPlan({motion: 1, scale: 3, correction: 0}).endDrift), 2)}° once a shaking head`]: '0.00° once a shaking head'}, t);
-checkQuotedText(vrHeadsetLesson.limits, {[`${fixed(TURN, 0)}° to the left in ${fixed(TURN_TIME, 0)} s`]: '60° to the left in 1 s', [`swings of ${fixed(SWING, 0)}° each way`]: 'swings of 25° each way', [`${fixed(RATE, 0)} times a second`]: '1,000 times a second', [`the true yaw ${fixed(IMAGES, 0)} times a second`]: 'the true yaw 60 times a second', [`${fixed(FRAMES, 0)} times a second and lit for ${fixed(FLASH * 1000, 0)} ms`]: '90 times a second and lit for 2 ms', [`${fixed(FOCAL, 0)} mm focal length ${fixed(RELIEF, 0)} mm in front of the eyes`]: '45 mm focal length 15 mm in front of the eyes', [`the screen ${fixed(VR_DOMAINS.screen[0], 0)} to ${fixed(VR_DOMAINS.screen[1], 0)} mm behind them`]: 'the screen 41 to 45 mm behind them', [`eyes ${fixed(IPD, 0)} mm apart`]: 'eyes 63 mm apart', [`comfort limit of ${fixed(COMFORT, 1)} D`]: 'comfort limit of 0.4 D', [`${['', '', '', '', '', 'five'][SLOW]} times slower`]: 'five times slower'}, t);
+checkQuotedText(vrHeadsetLesson.limits, {[`${fixed(FRAMES, 0)} Hz`]: '90 Hz', [`flash for ${fixed(FLASH * 1000, 0)} ms`]: 'flash for 2 ms', [`${fixed(FOCAL, 0)} mm focal length`]: '45 mm focal length', [`${fixed(RELIEF, 0)} mm eye relief`]: '15 mm eye relief', [`${fixed(IPD, 0)} mm eye spacing`]: '63 mm eye spacing', [`from ${VR_DOMAINS.screen[0]} to ${VR_DOMAINS.screen[1]} mm`]: 'from 41 to 45 mm'}, t);
 t.ok(headTrackingLesson.limits === vrHeadsetLesson.limits, 'one set of limits');
 
 const describe = id => model.parts.find(p => p.id === id).description;
-checkQuotedText(describe('wearer'), {[`${fixed(IPD, 0)} mm apart`]: '63 mm apart'}, t);
+checkQuotedText(describe('wearer'), {[`eye spacing is ${fixed(IPD, 0)} mm`]: 'eye spacing is 63 mm'}, t);
 checkQuotedText(describe('headset'), {[`${fixed(2 * HEADSET.half, 0)} mm across`]: '184 mm across'}, t);
 checkQuotedText(describe('lenses'), {[`${fixed(FOCAL, 0)} mm focal length`]: '45 mm focal length', [`${fixed(RELIEF, 0)} mm in front of the eyes`]: '15 mm in front of the eyes'}, t);
 checkQuotedText(describe('display'), {[`lights for ${fixed(FLASH * 1000, 0)} ms each frame`]: 'lights for 2 ms each frame', [`a line every ${fixed(LANDMARKS[1] - LANDMARKS[0], 0)}°`]: 'a line every 10°'}, t);
@@ -479,22 +488,22 @@ checkQuotedText(describe('errors'), {[`The same ${fixed(RUN, 0)} s, ${fixed(E.ra
 checkQuotedText(describe('frames'), {[`The last ${fixed(F.window * 1000, 0)} ms`]: 'The last 120 ms', [`${fixed(IMAGES, 0)} a second`]: '60 a second', [`${fixed(FRAMES, 0)} a second`]: '90 a second', [`frame’s ${fixed(FLASH * 1000, 0)} ms of light`]: 'frame’s 2 ms of light'}, t);
 checkQuotedText(describe('view'), {[`${fixed(V.span, 0)}° either way`]: '40° either way', [`a tick every ${fixed(10, 0)}° and a tall one every ${fixed(30, 0)}°`]: 'a tick every 10° and a tall one every 30°'}, t);
 checkQuotedText(describe('optics'), {[`its focal point, ${fixed(FOCAL, 0)} mm out`]: 'its focal point, 45 mm out', [`a screen point ${fixed(POINT, 0)} mm off the axis`]: 'a screen point 20 mm off the axis'}, t);
-checkQuotedText(describe('focus'), {[`to ${fixed(D.d1, 0)} for ${fixed(100 / D.d1, 0)} cm`]: 'to 4 for 25 cm', [`within ${fixed(COMFORT, 1)} D of the focus`]: 'within 0.4 D of the focus'}, t);
+checkQuotedText(describe('focus'), {[`to ${fixed(D.d1, 0)} for ${fixed(100 / D.d1, 0)} cm`]: 'to 4 for 25 cm'}, t);
 t.ok(POINT === O.point && RELIEF === O.lens - 25 && IMU_AT.fullCircle === 300, 'chart constants the text quotes');
 
 // Readings, controls, scene, refusals and disposal.
 model.reset();
 model.playback.advance(RUN * SLOW);
 const hints = Object.fromEntries(model.getState().readings.map(item => [item.label, `${item.value} ${item.hint || ''}`]));
-checkQuotedText(hints['Display'], {[`Frames start ${fixed(FRAMES, 0)} times a second and light ${fixed(VR_DEFAULTS.latency, 0)} ms later for ${fixed(FLASH * 1000, 0)} ms`]: 'Frames start 90 times a second and light 20 ms later for 2 ms', [`worst frame was ${fixed(Math.abs(defaults.worstSlip.slip), 2)}° off`]: 'worst frame was 0.08° off'}, t);
+checkQuotedText(hints['Display'], {[`Frames start ${fixed(FRAMES, 0)} times a second and light ${fixed(VR_DEFAULTS.latency, 0)} ms later for ${fixed(FLASH * 1000, 0)} ms`]: 'Frames start 90 times a second and light 20 ms later for 2 ms', [`largest flash-onset error was ${fixed(Math.abs(defaults.worstSlip.slip), 2)}°`]: 'largest flash-onset error was 0.08°'}, t);
 checkQuotedText(hints['Estimate'], {[`α = ${fixed(GAINS[1], 4)}`]: 'α = 0.0001', [`about ${fixed(1 / (GAINS[1] * RATE), 1)} s`]: 'about 10.0 s'}, t);
-checkQuotedText(hints['Your result'], {[`never more than ${fixed(Math.abs(defaults.worstSlip.slip), 2)}° off the room`]: 'never more than 0.08° off the room', [`ends ${fixed(Math.abs(defaults.endDrift), 2)}° off`]: 'ends 0.04° off'}, t);
+checkQuotedText(hints['Your result'], {[`Largest flash-onset error ${fixed(Math.abs(defaults.worstSlip.slip), 2)}°`]: 'Largest flash-onset error 0.08°', [`ends ${fixed(Math.abs(defaults.endDrift), 2)}° off`]: 'ends 0.04° off'}, t);
 checkQuotedText(hints['Lenses'], {[`image ${fixed(lensImage(44).fromEye, 2)} m away`]: 'image 2.00 m away', [`focus at ${fixed(lensImage(44).focus, 2)} D`]: 'focus at 0.50 D'}, t);
-checkQuotedText(hints['Eyes'], {[`each eye turns in ${fixed(eyesOn(2, lensImage(44).focus).turn / DEG, 2)}°`]: 'each eye turns in 0.90°', [`from ${fixed(eyesOn(2, lensImage(44).focus).near, 2)} m to ${fixed(eyesOn(2, lensImage(44).focus).far, 2)} m`]: 'from 1.11 m to 9.88 m'}, t);
+checkQuotedText(hints['Eyes'], {[`each eye turns in ${fixed(eyesOn(2, lensImage(44).focus).turn / DEG, 2)}°`]: 'each eye turns in 0.90°', 'initial straight-ahead object': 'initial straight-ahead object'}, t);
 checkQuotedText(hints['Head'], {[`up to ${fixed(defaults.peakRate, 1)}°/s`]: 'up to 112.5°/s'}, t);
 
 const snapshot = () => JSON.stringify({
-  yaw: topo.wearer.rotation.y, panel: topo.panel.position.z, comfort: topo.comfortBar.scale.x,
+  yaw: topo.wearer.rotation.y, panel: topo.panel.position.z, sound: topo.soundRows.map(row => row.marker.position.toArray()),
   lines: [topo.truthLine, topo.estimateLine, topo.shownLine, topo.driftLine, topo.slipLine, topo.screenLine, ...topo.rays, topo.focusMark, topo.aimMark, topo.panelTicks, topo.pipes, topo.startTicks, topo.truthTicks, topo.shownTicks].map(points),
   objects: [...topo.panelObjects, topo.truthObject, topo.shownObject].map(object => [object.visible, ...object.position.toArray()]),
 });

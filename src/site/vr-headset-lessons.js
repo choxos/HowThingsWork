@@ -1,64 +1,84 @@
-import {VR_DEFAULTS} from './vr-headset-physics.js';
+import {VR_DEFAULTS, vrPlan} from './vr-headset-physics.js';
 
 const trial = (part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...VR_DEFAULTS, ...values}, reset: true, part, isolate: false, view});
 const viewTrial = trial('view'), timelineTrial = trial('timeline'), errorsTrial = trial('errors'), focusTrial = trial('focus'), opticsTrial = trial('optics'), imuTrial = trial('imu', 'top');
 
 export const sources = {
-  lavalle: {title: 'Steven M. LaValle: Virtual Reality, chapters 4 to 9', url: 'http://lavalle.pl/vr/'},
-  headset: {title: 'Wikipedia: Virtual reality headset', url: 'https://en.wikipedia.org/wiki/Virtual_reality_headset'},
-  cardboard: {title: 'Wikipedia: Google Cardboard', url: 'https://en.wikipedia.org/wiki/Google_Cardboard'},
-  vac: {title: 'Wikipedia: Vergence-accommodation conflict', url: 'https://en.wikipedia.org/wiki/Vergence-accommodation_conflict'},
-  ipd: {title: 'Wikipedia: Pupillary distance', url: 'https://en.wikipedia.org/wiki/Pupillary_distance'},
-  imu: {title: 'Wikipedia: Inertial measurement unit', url: 'https://en.wikipedia.org/wiki/Inertial_measurement_unit'},
-  gyro: {title: 'Wikipedia: Vibrating structure gyroscope', url: 'https://en.wikipedia.org/wiki/Vibrating_structure_gyroscope'},
-  mpu: {title: 'InvenSense: MPU-6000 and MPU-6050 product specification, revision 3.1', url: 'https://cdn.sparkfun.com/datasheets/Components/General%20IC/PS-MPU-6000A.pdf'},
+  lavalle: {title: 'LaValle: virtual reality systems and their assumptions', url: 'https://lavalle.pl/vr/'},
+  optics: {title: 'LaValle: thin lenses and virtual images', url: 'https://lavalle.pl/vr/vrch4.pdf'},
+  rendering: {title: 'LaValle: rendering delay and viewpoint prediction', url: 'https://lavalle.pl/vr/vrch7.pdf'},
+  tracking: {title: 'LaValle: gyroscopes and complementary tracking', url: 'https://lavalle.pl/vr/vrch9.pdf'},
+  audio: {title: 'LaValle: binaural timing and level cues', url: 'https://lavalle.pl/vr/node365.html'},
+  trackedAudio: {title: 'LaValle: tracking the virtual ears', url: 'https://lavalle.pl/vr/node383.html'},
+  hrtf: {title: 'LaValle: head-related transfer functions', url: 'https://lavalle.pl/vr/node382.html'},
+  evaluation: {title: 'LaValle: evaluating perception and comfort', url: 'https://lavalle.pl/vr/node385.html'},
+  mpu: {title: 'TDK InvenSense: MPU-6000/6050 specification, revision 3.4', url: 'https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/mpu-6000-datasheet1.pdf'},
 };
 
-const limits = 'Illustrative headset: the head turns about one vertical axis only, 60° to the left in 1 s or in half-second swings of 25° each way, each a minimum-jerk blend; a gyroscope read 1,000 times a second as the mean rate over each millisecond, with the offset and scale you set and no noise or rounding; a camera fixed in the room that measures the true yaw 60 times a second, exactly and at once; LaValle’s complementary filter; frames started 90 times a second and lit for 2 ms; thin lenses of 45 mm focal length 15 mm in front of the eyes, with the screen 41 to 45 mm behind them; eyes 63 mm apart; and a comfort limit of 0.4 D. Not modeled: pitch, roll and position, the accelerometer and magnetometer, scan-out, lens distortion and color fringes, the eyes’ own movements, and how people adapt. The camera stands much closer than a real one would, and the run plays five times slower than real time.';
+const limits = 'Illustrative tethered headset with one display split into two eye views, supported optics and electronics, two earphones and an external rendering computer. The wearer is a geometric reference, not an anatomical fit model. Dimensions and functional connections are assigned; detailed circuits, protocols, rendering workload and power conversion are omitted. Tracking covers yaw only: a 60-degree turn, repeated swings or a stationary head. The gyroscope reports the mean rate over each 1 ms interval with assigned offset and scale errors. A perfect, zero-delay camera reports yaw at 60 Hz; its most recent sample is reused in a complementary filter. Pitch, roll, translation, sensor noise and quantization are omitted. Frames start at 90 Hz and flash for 2 ms after the chosen delay. Error plots clip at ±12°; numerical summaries retain the full error. Error summaries measure flash onset; the panel and comparison diagram hold the last flash for inspection. Thin-lens optics use a 45 mm focal length, 15 mm eye relief, 63 mm eye spacing and screen distances from 41 to 45 mm. Lens distortion, chromatic aberration, accommodation dynamics, eye movement, flicker perception and comfort are not simulated. The focus comparison uses the initial straight-ahead object geometry. Sound cues use direct paths from a fixed source 2 m from the head center to point ears 160 mm apart at 343 m/s. Head shadow, pinnae, level differences, room reflections, HRTFs and audio transport delay are omitted; no sound is played. Ear cues follow the current tracker estimate rather than the delayed visual frame. The external camera is drawn nearby to keep the system legible. Playback is five times slower than the three-second observation.';
+
+const experiment = (title, instruction, observe, time, part = 'system', overrides = {}) => {
+  const values = {...VR_DEFAULTS, ...overrides};
+  return {title, instruction, observe, values, initialState: {settings: values, time: typeof time === 'function' ? time(vrPlan(values)) : time}, reset: true, part, isolate: true, view: 'front'};
+};
 
 export const vrHeadsetLesson = {
-  simple: 'How do two small screens a few centimeters from your eyes become a room that stays put when you turn your head?',
-  overview: 'A virtual reality headset puts a lens in front of each eye and a screen just inside the lenses’ focal length, so the screen looks large and far away. It draws a slightly different view for each eye, and redraws both as your head moves. To follow your head it adds up a gyroscope’s readings a thousand times a second, and lets a camera correct the drift. Every frame takes time to draw, so the headset draws each one for where your head will be when it lights. Move your head, spoil the gyroscope, take away prediction and move the screen to see each job.',
+  simple: 'How can pictures and sound stay in a virtual room while the headset turns with your head?',
+  overview: 'A headset sends head-motion measurements to a computer and receives new eye views and ear signals. Lenses make a nearby display appear farther away. Two viewpoints create stereo depth, while tracking changes the images and sound cues as the wearer turns. Inspect the connected hardware, compare the real and rendered directions, then change the timing and optical setup.',
   steps: [
-    {title: 'Measure the turning', body: 'A gyroscope chip reports how fast the headset is turning, 1,000 times a second. Adding up its readings gives which way the head points.'},
-    {title: 'Correct the drift', body: 'Small errors in the readings add up too. A camera in the room sees which way the headset points 60 times a second, and every reading nudges the estimate toward its latest image.'},
-    {title: 'Start a frame', body: 'The headset starts a frame 90 times a second, drawn for the latest estimate carried forward to the moment the frame will light.'},
-    {title: 'Light the screen', body: 'Once the latency has passed, the frame lights for just 2 ms, so that a turning eye does not smear it.'},
-    {title: 'Look through the lenses', body: 'Each lens makes its half of the screen look far away. The two halves show the scene from each eye’s own position, so the eyes aim at a near object while still focusing on the far image of the screen.'},
+    {title: 'Measure and estimate', body: 'The gyroscope measures turning rate. Adding its samples estimates yaw. The assigned camera periodically supplies an independent direction, and the filter gradually corrects drift.'},
+    {title: 'Prepare two eye views', body: 'The computer uses the estimated head pose and separate eye positions to draw two views of the virtual scene. This illustrative panel holds the views side by side.'},
+    {title: 'Predict across the delay', body: 'A new frame takes time to reach the display. Predicting the viewing direction at flash onset reduces the mismatch, but acceleration and tracking errors can still spoil the prediction.'},
+    {title: 'Send light through the lenses', body: 'Each lens bends rays from its display area toward the corresponding eye. The screen appears farther away, while the difference between the two pictures supplies a stereo depth cue.'},
+    {title: 'Update both ear signals', body: 'A source fixed in the virtual world changes direction relative to the ears as the head turns. The computer updates separate audio channels; earphones reproduce them. The sound diagram shows one simplified timing cue.'},
   ],
   parts: [
-    {name: 'Lenses', role: 'Magnify the screen and put its image far away.'},
-    {name: 'Display panel', role: 'A view for each eye.'},
-    {name: 'Inertial measurement unit', role: 'Its gyroscope reports how fast the head turns.'},
-    {name: 'Tracking camera', role: 'Sees which way the headset truly points.'},
-    {name: 'Headset shell and strap', role: 'Hold it all in front of the eyes.'},
-    {name: 'Charts', role: 'Yaw over time, how far off, frames close up, what the left eye sees, the lens, and aim and focus.'},
+    {name: 'Case and fit', role: 'Hold the supported hardware in its wearing pose.'},
+    {name: 'Optics and display', role: 'Deliver a separate magnified view to each eye.'},
+    {name: 'Tracking sensor', role: 'Report head-turn rate to the computer.'},
+    {name: 'Interface and earphones', role: 'Exchange tracking data and return image and sound signals.'},
+    {name: 'External computer and camera', role: 'Render the virtual scene and supply an independent pose reference.'},
+    {name: 'Timing, optics and sound diagrams', role: 'Make the model’s otherwise invisible calculations inspectable.'},
   ],
   tryIt: [
-    viewTrial('Turn your head', 'Press Play and watch what the left eye sees.', 'Turning 60° to the left at up to 112.5°/s, the landmarks the display draws never stray more than 0.08° from where the room’s landmarks truly are: each frame is drawn for where the head will be when it lights, 20 ms after it starts.'),
-    viewTrial('No prediction', 'Choose no prediction, press Play and watch the two rows.', 'Drawn for where the head pointed when each frame started, the picture falls up to 2.37° behind the head, 1.01 s into the run as the turn is fastest: the room seems to swing along with you.', {prediction: 0}),
-    errorsTrial('A 1990s headset', 'Choose no prediction and set the latency to 60 ms.', 'Without prediction, 60 ms of latency leaves the picture up to 6.84° behind a head turning at 112.5°/s, nearly three times the 2.37° at 20 ms.', {prediction: 0, latency: 60}),
-    errorsTrial('Predict further ahead', 'Set the latency to 60 ms.', 'Predicting 60 ms ahead at the gyroscope’s latest rate misses whenever the head speeds up or slows down on the way: the picture is off by up to 0.65°, eight times the 0.08° at 20 ms.', {latency: 60}),
-    timelineTrial('A fast gyroscope', 'Set the gyroscope scale error to 3% and choose no correction.', 'Reading every turn 3% too fast, the estimate turns 61.80° while the head turns 60°, and with nothing to correct it the room stays turned 1.80° after the head stops.', {scale: 3, correction: 0}),
-    errorsTrial('The camera corrects it', 'Set the gyroscope scale error to 3% and choose the firmer camera correction.', 'Blended in at α = 0.01, the camera’s images pull the estimate back within about a tenth of a second, and the run ends 0.00° off. But an image can be 16.3 ms old, so while the head turns the pull drags the estimate up to 0.57° behind.', {scale: 3, correction: 2}),
-    focusTrial('A near object', 'Set the virtual object to 0.3 m.', 'To aim at an object 0.3 m away the eyes turn in 11.99° between them, a demand of 3.33 D, while the lenses keep their focus on the screen’s image at 0.50 D: a conflict of 2.83 D, far beyond the 0.4 D most people find comfortable.', {distance: 0.3}),
-    opticsTrial('Screen at the focal length', 'Set the screen to 45 mm from the lens.', 'With the screen exactly at the lens’s 45 mm focal length, the rays from each screen point leave the lens parallel and the image is infinitely far away. Just 1.0 mm closer, at 44 mm, the image is 2.00 m from the eye.', {screen: 45}),
+    experiment('Turn your head', 'Press Play and follow the wearer.', 'The head turns left, carrying the display, lenses and earphones. The computer updates the two eye views and sound cues to keep the virtual world in place.', 0),
+    experiment('Inside the headset', 'Inspect the cutaway, then turn Look inside off and on.', 'The lens bridge reaches the case walls. The display, sensor board and interface board have supports. Earphone and host signal bundles connect the functional parts.', 0, 'device'),
+    experiment('Two views on one panel', 'Inspect the display from the eye side.', 'Distant landmarks line up alike in both halves, but the nearby gold object occupies different horizontal positions because the eyes have different viewpoints.', .1, 'display'),
+    experiment('Trace the lens rays', 'Follow light from the screen point through the lens into the pupil.', 'The outgoing rays diverge as though they came from an enlarged virtual image. The faint backward extensions indicate that image direction.', 0, 'optics'),
+    experiment('Screen at the focal length', 'Inspect the ray diagram with the screen at 45 mm.', 'Rays from the same screen point leave parallel, placing its ideal image at infinity. The focus demand is zero diopters.', 0, 'optics', {screen: 45}),
+    experiment('A near virtual object', 'Compare aim and focus for an object 0.3 m away.', 'The initial eye geometry requires 3.33 D of vergence demand while the screen image requires about 0.50 D of focus, a difference of 2.83 D. This measures optical mismatch, not comfort.', 0, 'focus', {distance: .3}),
+    experiment('Nearly matching aim and focus', 'Compare the default object distance and screen position.', 'An object at 2.0 m has almost the same focus demand as this screen image at about 2.00 m. Changing virtual depth changes vergence demand without moving the physical display.', 0, 'focus'),
+    experiment('Tracking during the turn', 'Compare room directions with the held display frame.', 'The upper row uses the current head direction. The lower row holds the most recently flashed picture. They can differ between flashes even when prediction is accurate at flash onset.', 1.026, 'view'),
+    experiment('No prediction', 'Inspect the worst flash onset without prediction.', 'The greatest flash-onset error is 2.37° in this assigned turn. The frame used an older pose, so its picture lags the head.', p => p.worstSlip.flash, 'view', {prediction: 0}),
+    experiment('More delay without prediction', 'Read the errors with a 60 ms delay.', 'The largest flash-onset error rises to 6.84°. This compares two assigned delays; it is not a specification for a generation of headsets.', p => p.worstSlip.flash, 'errors', {prediction: 0, latency: 60}),
+    experiment('Predict further ahead', 'Keep the 60 ms delay and restore prediction.', 'The largest flash-onset error falls to 0.65°. Constant-rate prediction cannot fully anticipate the turn’s acceleration and deceleration.', p => p.worstSlip.flash, 'errors', {latency: 60}),
+    experiment('A fast gyroscope', 'Inspect the completed turn with scale error and no correction.', 'A 3% scale error turns the estimate through 61.80° while the head turns 60°. The remaining drift is 1.80°.', 3, 'timeline', {scale: 3, correction: 0}),
+    experiment('The camera corrects it', 'Compare the same scale error with firmer correction.', 'The final drift rounds to 0.00°, but the held camera measurements pull the estimate as much as 0.57° behind during the turn. Correcting one error can introduce another.', 3, 'errors', {scale: 3, correction: 2}),
+    experiment('An offset while still', 'Inspect a stationary head with offset and no correction.', 'A 0.5°/s reading accumulates 1.50° of drift in 3 s even though the head never moves.', 3, 'errors', {motion: 2, offset: .5, correction: 0}),
+    experiment('Read a display flash', 'Inspect the sensor, camera, frame-start and illumination rows.', 'Many gyro readings occur between camera samples. Frame work spans the assigned delay, and each bottom bar marks a brief display flash. The preview holds images between flashes for inspection.', p => p.frames[90].flash + .001, 'frames'),
+    experiment('A sound on the left', 'Compare the two direct-path ear cues before turning.', 'For this fixed source, the left signal leads the right by about 0.404 ms. Different ear arrival times are one cue to sound direction; the diagram does not synthesize a complete spatial sound.', 0, 'sound', {correction: 0}),
+    experiment('Turn toward the sound', 'Compare the cues after turning toward the same source.', 'The source is now straight ahead in the estimated head frame. Both direct paths have equal length, so both ear signals arrive together.', 1.5, 'sound', {correction: 0}),
+    experiment('Freeze the ear cues', 'Repeat that turn while keeping the initial ear signals.', 'The left signal still leads by 0.404 ms. The cue remains attached to the headset instead of following the source fixed in the virtual world.', 1.5, 'sound', {correction: 0, soundTracking: 0}),
+    experiment('Errors beyond the chart', 'Inspect a fast shake with a 100 ms delay and no prediction.', 'The largest flash-onset error is 18.32°. The red plot clips at 12° in either direction; its flat edge is a display limit, not a constant physical error. The numerical summary retains the full value.', p => p.worstSlip.flash, 'errors', {motion: 1, latency: 100, prediction: 0}),
+    experiment('Read the final result', 'Inspect the completed observation, then press Play to repeat it.', 'The result reports the largest flash-onset error and final tracker drift. Replay keeps the timing, optics and sound settings you selected.', 3),
   ],
   deeper: [
-    {title: 'Why lenses', body: 'An eye cannot focus on a screen a few centimeters away. LaValle explains that a lens with the screen at its focal length sends each point’s light out parallel, as if from infinitely far away, and with the screen a little closer it makes a virtual image at a finite distance, from 1/s1 + 1/s2 = 1/f. Optical power is measured in diopters, one over the focal length in meters: this 45 mm lens is 22.2 D.'},
-    {title: 'Two views', body: 'Each eye’s view is drawn from that eye’s own position, 63 mm apart here. An object 2.0 m away is 0.90° to the right of straight ahead for the left eye and 0.90° to the left for the right eye, and the brain reads the difference as depth.'},
-    {title: 'Low persistence', body: 'If each frame stayed lit until the next, a world-fixed object would sit still on the screen for a whole frame while the eye, turning to keep it in view, swept on across it. LaValle describes lighting the display for only one or two milliseconds each frame, at 90 frames a second or more so that the flicker cannot be seen.'},
-    {title: 'How much latency', body: 'In early systems, LaValle writes, the time from motion to photons was often over 100 ms, and 60 ms was considered acceptable in the 1990s. Modern headsets reach around 15 to 25 ms and predict the rest away, and a Valve engineer has put the ideal latency at 7 to 15 ms.'},
-    {title: 'Aim and focus', body: 'Headset optics often place the screen’s image somewhere between two meters and infinity. The eyes focus there even when the scene puts an object close, so aim and focus disagree; most people tolerate up to about 0.4 D of this conflict.'},
+    {title: 'Direction comes from accumulated rate', body: 'A gyroscope measures angular velocity, not absolute direction. Offset accumulates with time; scale error accumulates with net rotation. An independent reference can limit drift, but its noise, delay and correction strength matter.'},
+    {title: 'Prediction is a model of the next moment', body: 'This experiment carries the latest measured rate forward to flash onset. It predicts constant-rate motion well. Acceleration, stale measurements and calibration errors explain its remaining error. Real systems may also reproject a rendered image shortly before display.'},
+    {title: 'Flash onset is one specific metric', body: 'The reported maximum compares rendered and true yaw at the start of each flash. It does not bound every instant of the illumination interval or the age of the held preview. Short illumination can reduce smear during eye movement; flicker and perception are outside this model.'},
+    {title: 'Near screen, distant image', body: 'The thin-lens relation is 1/f = 1/s + 1/s′. A screen inside the focal length has a negative image distance, corresponding to a virtual image on the screen side. At the focal length its rays leave parallel. Eye relief is included when calculating focus demand.'},
+    {title: 'Stereo depth and optical focus differ', body: 'The separate eye images can depict different depths while the screen’s optical image remains at one distance. The focus diagram measures this mismatch for the initial straight-ahead geometry. A numerical difference alone does not establish whether a person will be comfortable.'},
+    {title: 'Two delays are not a full sound scene', body: 'The audio diagram divides straight-line source-to-ear distances by the assigned sound speed. Real spatial audio also needs frequency-dependent head and pinna filtering, level differences, reflections and suitable tracking. Those are not represented by this two-point-ear model.'},
   ],
-  misconception: 'The eyes do not focus on a screen a few centimeters away. The lenses put its image meters away, or infinitely far, and that is where the eyes focus, even when a virtual object looks close.',
+  misconception: 'Putting a screen in front of the eyes is not enough. The optics, separate eye views, tracked rendering and changing ear signals must work together as the head moves.',
   limits,
-  sources: [sources.lavalle, sources.headset, sources.cardboard, sources.vac, sources.ipd, sources.mpu],
+  sources: [sources.optics, sources.rendering, sources.tracking, sources.audio, sources.trackedAudio, sources.hrtf, sources.evaluation, sources.mpu],
+  related: ['Games controller', 'Video games console', 'Lenses'],
   quiz: {
-    question: 'Why does a headset draw each frame for where your head will be, rather than where it is?',
-    options: ['A frame lights tens of milliseconds after it starts, and the head keeps turning meanwhile.', 'The gyroscope measures the future.', 'The lenses slow the light down.'],
+    question: 'Why must the computer change both images and ear signals when the head turns?',
+    options: ['The scene should stay fixed in the virtual world while the display and earphones move with the wearer.', 'The lenses rotate the virtual world mechanically.', 'A gyroscope directly outputs a finished picture and sound.'],
     answer: 0,
-    explanation: 'Without prediction, 20 ms of latency left the picture up to 2.37° behind a head turning at 112.5°/s. Drawing each frame for where the head would be cut that to 0.08°.',
+    explanation: 'Tracking estimates the new viewing and listening pose. The computer uses that pose to prepare the next eye views and ear signals.',
   },
 };
 
@@ -95,7 +115,7 @@ export const headTrackingLesson = {
   ],
   misconception: 'A gyroscope does not tell the headset which way it faces. It only reports how fast it turns, and the direction comes from adding up its readings, errors and all.',
   limits,
-  sources: [sources.lavalle, sources.imu, sources.gyro, sources.mpu],
+  sources: [sources.tracking, sources.mpu],
   quiz: {
     question: 'A gyroscope reads every turn 3% too fast. When is the estimate furthest off?',
     options: ['When the head has turned furthest from where it started.', 'After the longest time, whatever the head does.', 'Never: a scale error cancels itself out.'],

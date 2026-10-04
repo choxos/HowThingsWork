@@ -4104,6 +4104,68 @@
       "parentId": "console-experiment"
     }
   ],
+  "virtual-reality-headset": [
+    {
+      "id": "wearer",
+      "name": "Wearer",
+      "parentId": "system"
+    },
+    {
+      "id": "camera",
+      "name": "Tracking camera",
+      "parentId": "system"
+    },
+    {
+      "id": "device",
+      "name": "Complete headset",
+      "parentId": "system"
+    },
+    {
+      "id": "host",
+      "name": "External rendering computer",
+      "parentId": "system"
+    },
+    {
+      "id": "computer-links",
+      "name": "Computer and tracking cables",
+      "parentId": "system"
+    },
+    {
+      "id": "timeline",
+      "name": "Yaw over time",
+      "parentId": "system"
+    },
+    {
+      "id": "errors",
+      "name": "How far off",
+      "parentId": "system"
+    },
+    {
+      "id": "frames",
+      "name": "Frames close up",
+      "parentId": "system"
+    },
+    {
+      "id": "view",
+      "name": "What the left eye sees",
+      "parentId": "system"
+    },
+    {
+      "id": "optics",
+      "name": "Lens, at true size",
+      "parentId": "system"
+    },
+    {
+      "id": "focus",
+      "name": "Aim and focus",
+      "parentId": "system"
+    },
+    {
+      "id": "sound",
+      "name": "Tracked sound cues",
+      "parentId": "system"
+    }
+  ],
   "robot-vacuum-cleaner": [
     {
       "id": "floor",

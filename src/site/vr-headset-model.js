@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
+import {validTime} from './physics-kit.js';
+import {installHeadsetHardware} from './vr-headset-hardware.js';
 import {chartText, lineObject, surface, textLabel} from './scene-kit.js';
-import {vrPlan, vrAt, rayThrough, CLOCKS, HEAD, LENS, GAINS, MOTION_OPTIONS, PREDICTION_OPTIONS, CORRECTION_OPTIONS, VR_DEFAULTS, VR_DOMAINS} from './vr-headset-physics.js';
+import {vrPlan, vrAt, rayThrough, audioCue, CLOCKS, HEAD, LENS, GAINS, MOTION_OPTIONS, PREDICTION_OPTIONS, CORRECTION_OPTIONS, VR_DEFAULTS, VR_DOMAINS} from './vr-headset-physics.js';
 
 // ---------------------------------------------------------------------------
-// Virtual reality headset: a head wearing a headset whose shell is drawn
-// see-through with its top cut away, a tracking camera fixed in the room, and
-// six charts behind them.
+// Virtual reality headset: a wearer, supported headset hardware, rendering
+// computer and fixed tracking camera. Removable covers expose the interior;
+// seven separately inspected diagrams explain tracking, optics and sound.
 //
 // Scale: one millimeter is 0.02 scene units for the head, the headset (184 mm
 // across), its lenses (45 mm focal length, 15 mm in front of the eyes), its
@@ -81,10 +83,10 @@ export function createVrHeadsetModel() {
     meshes.forEach(mesh => { mesh.material = material; });
     return material;
   };
-  const system = part('system', 'Headset, wearer and camera', 'A head wearing a virtual reality headset, its shell see-through and its top cut away, a tracking camera fixed in the room, and six charts. Move the head and follow the gyroscope, the camera, the frames and the lenses.', [0, 0, 0]);
+  const system = part('system', 'Complete virtual reality experiment', 'A wearer, a tethered headset, an external rendering computer and a fixed tracking camera. Remove the covers to inspect the supported hardware, or open the separate tracking, optics and sound diagrams.', [0, 0, 0]);
 
   // The wearer, built about the vertical axis the head turns on.
-  const wearer = part('wearer', 'Wearer', 'A head of adult size, drawn at true size, turning about a vertical axis through its middle. Its eyes are 63 mm apart, between the averages of 61.7 mm for women and 64.0 mm for men in a 2012 survey of US Army personnel.', [0, 0, 0], system);
+  const wearer = part('wearer', 'Wearer', 'A head of adult size, drawn at true size, turning about a vertical axis through its middle. Its assigned eye spacing is 63 mm. This simple mannequin supplies geometric reference points, not an anatomical model.', [0, 0, 0], system);
   const skull = kit.sphere(mm(1), [0, 0, 0], 'cream', wearer);
   skull.scale.set(...FACE.radii);
   const neck = kit.cylinder(mm(FACE.neck), mm(50), at(0, -105, -8), 'cream', wearer);
@@ -99,7 +101,8 @@ export function createVrHeadsetModel() {
     kit.disk(mm(2), mm(0.6), at(x, FACE.eyeY, FACE.eyeZ + FACE.eyeRadius - 0.2), 'ink', wearer);
   }
 
-  // The headset's shell: two sides, the front and a bottom split around the nose, see-through; foam against the face; the strap.
+  // The headset shell, nose opening, face interface and strap. The hardware
+  // helper adds removable covers and a real side-connector aperture.
   const H = HEADSET, depth = H.front - H.back, midZ = (H.front + H.back) / 2, height = H.top - H.bottom, midY = (H.top + H.bottom) / 2;
   const headset = part('headset', 'Headset shell and strap', 'The headset’s shell, 184 mm across, drawn see-through with its top cut away, the foam that rests on the face, and the strap. Drawn at true size.', [0, 0, 0], system);
   const shell = [
@@ -117,7 +120,7 @@ export function createVrHeadsetModel() {
   kit.tube([[H.half - 2, 30, 118], [84, 32, 20], [48, 36, -82], [0, 38, -102], [-48, 36, -82], [-84, 32, 20], [-(H.half - 2), 30, 118]].map(p => at(...p)), mm(4), 'ink', headset);
 
   // The lenses, centered on the eyes.
-  const lenses = part('lenses', 'Lenses', 'Two lenses of 45 mm focal length, as in Google Cardboard, 15 mm in front of the eyes and centered on them. The screen sits at or just inside their focal length, so each lens works as a magnifier: the screen looks large and far away. Drawn at true size.', [0, 0, 0], system);
+  const lenses = part('lenses', 'Lenses', 'Two illustrative lenses of 45 mm focal length, 15 mm in front of the eyes and centered on them. The screen sits at or just inside their focal length, so each lens works as a magnifier: the screen looks large and far away. Drawn at true size.', [0, 0, 0], system);
   const glass = [1, -1].map(side => {
     const lens = kit.sphere(mm(LENS.radius), at(side * FACE.eyeX, FACE.eyeY, H.lensZ), 'blue', lenses);
     lens.scale.z = 4 / LENS.radius;
@@ -127,7 +130,7 @@ export function createVrHeadsetModel() {
   paint(glass, COLORS.glass, 0.75);
 
   // The display panel, one screen with a view for each eye, its face toward the eyes.
-  const display = part('display', 'Display panel', 'One display panel with a view for each eye side by side, as a phone in Cardboard shows them. Each view draws the room’s landmarks, a line every 10°, and the gold virtual object, as the frame lit most recently was drawn for that eye’s own position. A real panel lights for 2 ms each frame; this one is drawn lit throughout. Drawn at true size.', [0, 0, 0], system);
+  const display = part('display', 'Display panel', 'One display panel with a view for each eye side by side, as a phone in Cardboard shows them. Each view draws the room’s landmarks, a line every 10°, and the gold virtual object, as the frame lit most recently was drawn for that eye’s own position. The assigned panel lights for 2 ms each frame; the illustration holds the last lit image so it can be inspected. Drawn at true size.', [0, 0, 0], system);
   const panel = new THREE.Group();
   display.add(panel);
   const [pw, ph, pt] = H.panel;
@@ -158,6 +161,7 @@ export function createVrHeadsetModel() {
   const cameraLight = kit.box([mm(3), mm(3), mm(1.5)], at(12, 7, 10.6), 'red', camera);
   paint([cameraLight], COLORS.dark);
   for (const [x, z] of [[0, -30], [26, 15], [-26, 15]]) kit.rod(at(0, -12, 0), at(x, CAMERA_AT.floor - CAMERA_AT.y, z), mm(1.5), 'metal', camera);
+  const hardware = installHeadsetHardware(kit, {system, headset, lenses, display, imu, camera, shell, MM, H});
 
   // The charts, in a plane behind the head.
   const Z = CHARTS.z, P = (x, y) => at(x, y, Z);
@@ -198,7 +202,7 @@ export function createVrHeadsetModel() {
 
   const E = CHARTS.errors;
   const ex = t => E.x + t / CLOCKS.duration * E.w, ey = v => E.y + E.h / 2 + Math.max(-E.range, Math.min(E.range, v)) / E.range * E.h / 2;
-  const errors = chart('errors', 'How far off', 'The same 3 s, 12° either way from the middle line. Blue: the estimate minus the head’s true yaw, the tracker’s drift. Red: each frame’s yaw minus where the head truly points when the frame lights, the room seeming to slip. Faint lines: 1° either way.');
+  const errors = chart('errors', 'How far off', 'The same 3 s, 12° either way from the middle line. Blue: the estimate minus the head’s true yaw, the tracker’s drift. Red: each frame’s yaw minus where the head truly points when the frame lights, measured at flash onset, not throughout the flash. Faint lines: 1° either way. Values beyond the vertical range are clipped at ±12°; read the numerical result for their full magnitude.');
   frameBox(E, errors);
   setLine(segments(3, COLORS.faint, errors), [[E.x, ey(0)], [E.x + E.w, ey(0)], [E.x, ey(1)], [E.x + E.w, ey(1)], [E.x, ey(-1)], [E.x + E.w, ey(-1)]]);
   const driftLine = lineObject(601, COLORS.estimate, errors), slipLine = lineObject(546, COLORS.shown, errors), errorsCursor = lineObject(2, COLORS.truth, errors);
@@ -211,7 +215,7 @@ export function createVrHeadsetModel() {
   paint(flashBars, COLORS.lit);
 
   const V = CHARTS.view, vx = angle => V.x + V.w / 2 - angle / V.span * V.w / 2;
-  const view = chart('view', 'What the left eye sees', 'Across the left eye’s view, 40° either way, the wearer’s left on the left. Top row: where the room’s landmarks truly are now, a tick every 10° and a tall one every 30°, straight ahead in red. Bottom row: where the display draws them now. When the picture is right, the rows line up. Gold: the left edge of the gold ring marks the virtual object. Clay lines: the edges of the view.');
+  const view = chart('view', 'What the left eye sees', 'Across the left eye’s view, 40° either way, the wearer’s left on the left. Top row: where the room’s landmarks truly are now, a tick every 10° and a tall one every 30°, straight ahead in red. Bottom row: where the last lit frame placed them. The lower row holds that frame between flashes. When the picture is right, the rows line up. Gold: the center of the ring marks the virtual object. Clay lines: the edges of the view.');
   frameBox(V, view);
   setLine(segments(1, COLORS.camera, view), [[vx(0), V.y + 2], [vx(0), V.y + V.h - 2]]);
   const viewEdges = segments(2, COLORS.edge, view), truthTicks = segments(36, COLORS.faint, view), shownTicks = segments(36, COLORS.truth, view), aheadMarks = segments(2, COLORS.shown, view);
@@ -229,12 +233,11 @@ export function createVrHeadsetModel() {
   const rays = O.pupils.map(() => lineObject(3, COLORS.shown, optics)), backRays = O.pupils.map(() => lineObject(2, COLORS.faint, optics));
 
   const D = CHARTS.focus, dx = d => D.x + 10 + Math.max(0, Math.min(D.d1, d)) / D.d1 * (D.w - 20);
-  const focus = chart('focus', 'Aim and focus', 'Diopters, from 0 for infinitely far on the left to 4 for 25 cm on the right, a tick every half diopter. Blue: where the eyes must focus, on the screen’s image. Red: where they aim, at the virtual object. Gold band: within 0.4 D of the focus, a conflict most people find comfortable. The line between them turns red outside it.');
+  const focus = chart('focus', 'Aim and focus', 'Diopters, from 0 for infinitely far on the left to 4 for 25 cm on the right, a tick every half diopter. Blue: where the eyes must focus, on the screen’s image. Red: where they aim, at the virtual object. The line measures their difference in the initial straight-ahead geometry. It does not predict comfort.');
   frameBox(D, focus);
   setLine(lineObject(2, COLORS.truth, focus), [[dx(0), D.y + 14], [dx(D.d1), D.y + 14]]);
   setLine(segments(9, COLORS.truth, focus), Array.from({length: 9}, (_, i) => [[dx(i / 2), D.y + 14 - (i % 2 ? 1.5 : 3)], [dx(i / 2), D.y + 14 + (i % 2 ? 1.5 : 3)]]).flat());
-  const comfortBar = kit.box([1, mm(6), mm(0.8)], P(D.x, D.y + 21), 'gold', focus);
-  const focusMark = lineObject(2, COLORS.estimate, focus), aimMark = lineObject(2, COLORS.shown, focus), conflictLine = lineObject(2, COLORS.shown, focus);
+  const focusMark = lineObject(2, COLORS.estimate, focus), aimMark = lineObject(2, COLORS.shown, focus), conflictLine = lineObject(2, COLORS.faint, focus);
   const focusRing = ring(COLORS.estimate, focus), aimRing = ring(COLORS.shown, focus);
 
   // The charts' words: titles, axes, row names and a few labels that move with what they name.
@@ -248,7 +251,7 @@ export function createVrHeadsetModel() {
     legend: [['Head', COLORS.truth], ['Estimate', COLORS.estimate], ['Drawn for', COLORS.shown]], legendAt: [1, 54],
   });
   chartText(errors, (t, v) => P(ex(t), ey(v)), {
-    title: 'How far off', size: TEXT,
+    title: 'Tracking errors (clipped at ±12°)', size: TEXT,
     x: {min: 0, max: CLOCKS.duration, title: 'Seconds', ticks: seconds},
     y: {min: -E.range, max: E.range, title: 'Degrees, left up', ticks: [[-E.range, `−${E.range}°`], [0, '0'], [E.range, `${E.range}°`]]},
     legend: [['Drift', COLORS.estimate], ['Slip', COLORS.shown]],
@@ -280,6 +283,21 @@ export function createVrHeadsetModel() {
   // Beside its ring, on the side with room.
   const placeWord = ({label, width}, d, y) => label.userData.place(...at(d > D.d1 * 0.7 ? dx(d) - 3 - width : dx(d) + 3, y, Z + 0.4));
 
+  const sound = part('sound', 'Tracked sound cues', 'The two earphones receive different arrival-time cues for a fixed virtual source. This diagram shows direct paths to two point ears, not a measured HRTF, acoustic shadow or room simulation. It is visual only.', [0, 0, 0], system);
+  textLabel(sound, 'Sound arrival at each ear', {height: .17, position: [0, 1.45, 0], weight: 'bold'});
+  const soundDirectionWord = textLabel(sound, '', {height: .13, width: 3, position: [0, 1.05, 0]});
+  const soundRows = [];
+  for (const [i, name] of ['Left ear', 'Right ear'].entries()) {
+    const y = .48 - i * .65;
+    textLabel(sound, name, {height: .14, align: 'left', position: [-1.4, y + .2, 0]});
+    const axis = lineObject(2, COLORS.faint, sound); axis.geometry.setAttribute('position', new THREE.Float32BufferAttribute([-1.2, y, 0, 1.2, y, 0], 3));
+    const marker = kit.box([.025, .18, .01], [0, y, .01], i ? 'red' : 'blue', sound);
+    const label = textLabel(sound, '', {height: .12, width: 2.8, position: [0, y - .20, .01]});
+    soundRows.push({marker, label});
+  }
+  const soundDifferenceWord = textLabel(sound, '', {height: .14, width: 3.2, position: [0, -.86, .01]});
+  textLabel(sound, 'Relative arrival: 0 to 0.5 ms after the first ear', {height: .105, width: 3.2, position: [0, -1.18, 0]});
+
   control('motion', 'Head motion', ...VR_DOMAINS.motion, VR_DEFAULTS.motion, '', 'How the wearer moves during the run.', MOTION_OPTIONS.map(({value, label}) => ({value, label})));
   control('latency', 'Latency', ...VR_DOMAINS.latency, VR_DEFAULTS.latency, 'ms', 'From the moment a frame starts, taking the tracker’s estimate, to the moment it lights.');
   control('prediction', 'Prediction', ...VR_DOMAINS.prediction, VR_DEFAULTS.prediction, '', 'Draw each frame for the yaw expected when it lights, or for the estimate when it starts.', PREDICTION_OPTIONS.map(({value, label}) => ({value, label})));
@@ -288,6 +306,9 @@ export function createVrHeadsetModel() {
   control('correction', 'Drift correction', ...VR_DOMAINS.correction, VR_DEFAULTS.correction, '', 'Whether the camera’s images pull the estimate back, and how hard.', CORRECTION_OPTIONS.map(({value, label}) => ({value, label})));
   control('screen', 'Screen to lens', ...VR_DOMAINS.screen, VR_DEFAULTS.screen, 'mm', 'How far the display panel is from the lenses, whose focal length is 45 mm.');
   control('distance', 'Virtual object', ...VR_DOMAINS.distance, VR_DEFAULTS.distance, 'm', 'How far in front of the eyes the scene puts a small object, straight ahead of where they first face.');
+
+  control('soundDirection', 'Sound direction', ...VR_DOMAINS.soundDirection, VR_DEFAULTS.soundDirection, '°', 'Fixed virtual source relative to the original forward direction. Positive is left; negative is right.');
+  control('soundTracking', 'Sound follows head tracking', ...VR_DOMAINS.soundTracking, VR_DEFAULTS.soundTracking, '', 'Update the ear cues as the estimated head direction changes, or leave them attached to the starting headset direction.', [{value: 0, label: 'Keep initial ear cues'}, {value: 1, label: 'Track the head'}]);
 
   // What changes only with the settings: the long charts, the lens chart and the focus chart.
   let chartKey = '';
@@ -319,9 +340,6 @@ export function createVrHeadsetModel() {
       setLine(backRays[i], [oP(O.lens, O.axis + ray.lens), oP(O.lens + reach, O.axis + ray.lens - ray.after * reach)]);
     });
 
-    const low = Math.max(0, image.focus - LENS.comfort), high = image.focus + LENS.comfort;
-    comfortBar.scale.x = mm(dx(high) - dx(low));
-    comfortBar.position.x = mm((dx(high) + dx(low)) / 2);
     setLine(focusMark, [[dx(image.focus), D.y + 14], [dx(image.focus), D.y + 48]]);
     setLine(aimMark, [[dx(eyes.aim), D.y + 14], [dx(eyes.aim), D.y + 58]]);
     focusRing.position.set(...P(dx(image.focus), D.y + 50.5));
@@ -329,7 +347,6 @@ export function createVrHeadsetModel() {
     placeWord(focusWord, image.focus, D.y + 50.5);
     placeWord(aimWord, eyes.aim, D.y + 60.5);
     setLine(conflictLine, [[dx(image.focus), D.y + 36], [dx(eyes.aim), D.y + 36]]);
-    conflictLine.material.color.set(eyes.comfortable ? COLORS.camera : COLORS.shown);
 
     const half = plan.halfAngle / DEG;
     setLine(viewEdges, [[vx(half), V.y + 2], [vx(half), V.y + V.h - 2], [vx(-half), V.y + 2], [vx(-half), V.y + V.h - 2]]);
@@ -357,11 +374,19 @@ export function createVrHeadsetModel() {
   const result = finish(values => {
     const plan = vrPlan(values), now = vrAt(plan, clock), {values: settings, image, eyes} = plan, half = plan.halfAngle / DEG;
     redraw(plan);
+    const audio = audioCue(settings.soundDirection, now.estimate, Boolean(settings.soundTracking));
+    soundDirectionWord.userData.setText(`${fixed(Math.abs(audio.azimuth), 1)}° ${audio.azimuth >= 0 ? 'left' : 'right'} of rendered forward`);
+    for (const [i, delay] of [audio.leftDelay, audio.rightDelay].entries()) {
+      soundRows[i].marker.position.x = -1.2 + 2.4 * delay / .0005;
+      soundRows[i].label.userData.setText(`${fixed((i ? audio.right : audio.left), 3)} m path · +${fixed(delay * 1000, 3)} ms`);
+    }
+    soundDifferenceWord.userData.setText(Math.abs(audio.delay) < 0.0000005 ? 'Both signals arrive together' : `${audio.delay > 0 ? 'Left' : 'Right'} ear first by ${fixed(Math.abs(audio.delay) * 1000, 3)} ms`);
 
     // The head, the headset and everything in it turn together by the head's true yaw.
     const yaw = now.head.angle * DEG;
     for (const group of [wearer, headset, lenses, display, imu]) group.rotation.y = yaw;
     panel.position.z = mm(H.lensZ + settings.screen);
+    hardware.update(yaw, settings.screen);
 
     // The panel draws what the frame lit most recently was drawn for.
     const shownYaw = now.showing ? now.showing.shown : 0, offNow = shownYaw - now.head.angle;
@@ -439,15 +464,16 @@ export function createVrHeadsetModel() {
     const worst = plan.worstSlip, alpha = plan.alpha, age = now.t - now.imageTime;
     const motionHint = [`A smooth turn of ${fixed(HEAD.turn, 0)}° to the left in ${fixed(HEAD.turnTime, 0)} s, starting at ${fixed(HEAD.start, 1)} s, at up to ${fixed(plan.peakRate, 1)}°/s.`, `Swings of ${fixed(HEAD.swing, 0)}° each way, each taking ${fixed(HEAD.swingTime, 1)} s, at up to ${fixed(plan.peakRate, 1)}°/s.`, 'Held perfectly still for the whole run.'][settings.motion];
     return {
-      state: {...plan, now, clock, shownYaw, offNow, sweep, half},
+      state: {...plan, now, clock, shownYaw, offNow, sweep, half, audio},
       readings: [
-        r('Your result', clock <= 0 ? `Ready · ${MOTION_OPTIONS[settings.motion].label}; press Play` : clock >= CLOCKS.duration ? `The picture was never more than ${fixed(Math.abs(worst.slip), 2)}° off the room · the estimate ends ${fixed(Math.abs(plan.endDrift), 2)}° off` : `${fixed(now.t, 2)} s · head ${yawText(now.head.angle)} · picture ${fixed(Math.abs(offNow), 2)}° off`),
+        r('Your result', clock <= 0 ? `Ready · ${MOTION_OPTIONS[settings.motion].label}; press Play` : clock >= CLOCKS.duration ? `Largest flash-onset error ${fixed(Math.abs(worst.slip), 2)}° · the estimate ends ${fixed(Math.abs(plan.endDrift), 2)}° off` : `${fixed(now.t, 2)} s · head ${yawText(now.head.angle)} · last frame ${fixed(Math.abs(offNow), 2)}° from current head`),
         r('Head', `${yawText(now.head.angle)} · ${fixed(Math.abs(now.head.rate), 1) === '0.0' ? 'still' : `turning at ${fixed(Math.abs(now.head.rate), 1)}°/s`}`, motionHint),
-        r('Gyroscope', `Reads ${now.gyro < 0 ? '−' : ''}${fixed(Math.abs(now.gyro), 2)}°/s`, `One reading every millisecond, ω̂ = a + bω with an offset a of ${fixed(settings.offset, 1)}°/s and a scale b of ${fixed(plan.scale, 3)}. Before calibration, an MPU-6050’s datasheet allows ±20°/s of offset and ±3% of scale.`),
+        r('Gyroscope', `Reads ${now.gyro < 0 ? '−' : ''}${fixed(Math.abs(now.gyro), 2)}°/s`, `One reading every millisecond, ω̂ = a + bω with an offset a of ${fixed(settings.offset, 1)}°/s and a scale b of ${fixed(plan.scale, 3)}. Offset and scale are assigned controls, not measured specifications for this headset.`),
         r('Estimate', `${yawText(now.estimate)} · ${fixed(Math.abs(now.drift), 2) === '0.00' ? 'with the head' : `${fixed(Math.abs(now.drift), 2)}° ${now.drift > 0 ? 'ahead of' : 'behind'} the head`}`, alpha > 0 ? `The camera’s latest image, taken ${fixed(age * 1000, 1)} ms ago, is blended in with α = ${alphaText(alpha)} at every reading, a pull that acts over about ${fixed(1 / (alpha * CLOCKS.gyro), 1)} s.` : 'No correction: the estimate is only the readings added up, so every error in them stays.'),
-        r('Display', now.showing ? `Frame ${fixed(now.showing.n, 0)} drawn for ${yawText(now.showing.shown)} · ${now.flashing ? 'lit' : 'dark between flashes'}` : 'Dark until the first frame lights', `Frames start ${fixed(CLOCKS.frame, 0)} times a second and light ${fixed(settings.latency, 0)} ms later for ${fixed(CLOCKS.flash * 1000, 0)} ms, each drawn for ${settings.prediction ? 'the yaw expected when it lights' : 'the estimate when it starts'}. This run’s worst frame was ${fixed(Math.abs(worst.slip), 2)}° off, ${fixed(worst.flash, 2)} s in.`),
+        r('Display', now.showing ? `Frame ${fixed(now.showing.n, 0)} drawn for ${yawText(now.showing.shown)} · ${now.flashing ? 'lit' : 'dark between flashes'}` : 'Dark until the first frame lights', `Frames start ${fixed(CLOCKS.frame, 0)} times a second and light ${fixed(settings.latency, 0)} ms later for ${fixed(CLOCKS.flash * 1000, 0)} ms, each drawn for ${settings.prediction ? 'the yaw expected when it lights' : 'the estimate when it starts'}. This run’s largest flash-onset error was ${fixed(Math.abs(worst.slip), 2)}°, ${fixed(worst.flash, 2)} s in. The error chart clips beyond ±12°.`),
         r('Lenses', `Screen ${fixed(settings.screen, 1)} mm from a ${fixed(LENS.focal, 0)} mm lens · image ${Number.isFinite(image.fromEye) ? `${fixed(image.fromEye, 2)} m away` : 'infinitely far'}`, `The eyes must focus at ${fixed(image.focus, 2)} D to see the screen sharply. With the screen at the lens’s focal length the image is infinitely far; each millimeter closer brings it much nearer.`),
-        r('Eyes', `Aim ${fixed(eyes.aim, 2)} D · focus ${fixed(image.focus, 2)} D · conflict ${fixed(eyes.conflict, 2)} D`, `To look at the object ${fixed(settings.distance, 1)} m away, each eye turns in ${fixed(eyes.turn / DEG, 2)}°, ${fixed(eyes.vergence / DEG, 2)}° between them. Objects from ${fixed(eyes.near, 2)} m to ${Number.isFinite(eyes.far) ? `${fixed(eyes.far, 2)} m` : 'infinitely far'} stay within ${fixed(LENS.comfort, 1)} D of the focus, which most people find comfortable.`),
+        r('Sound cues', Math.abs(audio.delay) < 0.0000005 ? 'Both ears together' : `${audio.delay > 0 ? 'Left' : 'Right'} ear leads by ${fixed(Math.abs(audio.delay) * 1000, 3)} ms`, 'Assigned source 2 m from the head center; point ears 160 mm apart and sound speed 343 m/s. Head shadow, pinnae, reflections, level differences and audio transport delay are omitted.'),
+        r('Eyes', `Aim ${fixed(eyes.aim, 2)} D · focus ${fixed(image.focus, 2)} D · conflict ${fixed(eyes.conflict, 2)} D`, `For the initial straight-ahead object ${fixed(settings.distance, 1)} m away, each eye turns in ${fixed(eyes.turn / DEG, 2)}°, ${fixed(eyes.vergence / DEG, 2)}° between them. This geometric demand is not a comfort assessment or a simulation of eye movements.`),
       ],
     };
   });
@@ -455,14 +481,12 @@ export function createVrHeadsetModel() {
   const render = result.update;
   result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(CLOCKS.duration, clock + dt / SLOW); return render(); };
   result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
+  result.reset = (initial = {}) => { clock = Math.min(CLOCKS.duration, validTime(initial.time ?? 0)); lastClock = 0; return render({...result.defaults, ...(initial.settings || {})}); };
+  result.replayState = () => ({settings: {...result.getState().values}, time: 0});
   result.actions = [
-    {label: 'Inspect: the lenses', part: 'lenses', view: 'top', replay: false, run() { clock = 0; return render(); }},
-    {label: 'Inspect: the gyroscope', part: 'imu', view: 'top', replay: false, run() { clock = 1; return render(); }},
-    {label: 'Inspect: what the eye sees', part: 'view', view: 'front', replay: false, run() { clock = 1.02; return render(); }},
-    {label: 'Inspect: frames close up', part: 'frames', view: 'front', replay: false, run() { clock = 1.02; return render(); }},
-    {label: 'Inspect: aim and focus', part: 'focus', view: 'front', replay: false, run() { return render(); }},
-  ];
+    ['Inspect: complete experiment', 'system'], ['Inspect: headset', 'device'], ['Inspect: lenses', 'lenses'], ['Inspect: display panel', 'display'], ['Inspect: gyroscope', 'imu'], ['Inspect: tracking camera', 'camera'], ['Inspect: earphones', 'earphones'], ['Inspect: rendering computer', 'host'],
+    ['Read: head tracking', 'timeline'], ['Read: tracking errors', 'errors'], ['Read: frame timing', 'frames'], ['Compare: room and picture', 'view'], ['Trace: lens rays', 'optics'], ['Compare: aim and focus', 'focus'], ['Compare: sound cues', 'sound'],
+  ].map(([label, part]) => ({label, part, view: 'front', isolate: true, replay: false, run: () => render()}));
   result.playback = {
     label: 'Move your head',
     description: 'The head moves for 3 s, played five times slower than real time.',
@@ -473,18 +497,34 @@ export function createVrHeadsetModel() {
     blocked: () => false,
   };
 
-  root.rotation.set(0.4, -0.35, 0);
-  result.initialPart = 'system';
+  root.rotation.set(0, 0, 0);
+  result.controls.find(item => item.key === 'motion').primary = true;
+  result.initialPart = result.autoFramePart = 'system';
+  result.initialIsolated = true;
+  result.initialCutaway = true;
+  result.includeCoversInSeparation = true;
+  result.partViewDirections = {};
+  const diagramIds = ['timeline', 'errors', 'frames', 'view', 'optics', 'focus', 'sound'];
+  for (const item of result.parts) {
+    const diagram = diagramIds.includes(item.id);
+    result.partViewDirections[item.id] = {front: diagram ? [0, 0, 3] : [.7, 1.2, 3]};
+    item.framePadding = .70; item.maxZoom = 300;
+    if (diagram) {item.object.userData.inspectionOnly = item.id; item.object.userData.explosionExcluded = true;}
+  }
+  wearer.userData.explosionExcluded = camera.userData.explosionExcluded = true;
+  result.partViewDirections.display.front = [0, .2, -3];
+  result.partViewDirections.imu.front = [0, 3, .2];
+  result.thumbnailOmit = [wearer, camera, hardware.host, hardware.links, ...result.parts.filter(p => diagramIds.includes(p.id)).map(p => p.object)];
   result.initialView = 'front';
   result.frameVisibleOnly = true;
   result.framePadding = 0.62;
-  // The chip turns with the head; follow it, framed wide enough to show the
-  // headset around it.
-  result.followParts = ['imu'];
-  result.parts.find(item => item.id === 'imu').framePadding = 2;
+  // Inspection preserves the chosen framing while the physical head turns.
+  result.followParts = [];
+  result.parts.find(item => item.id === 'imu').framePadding = .75;
   result.selectionOutline = false;
   result.transparentBackground = true;
-  result.topology = {system, wearer, skull, neck, nose, headset, shell, lenses, glass, display, panel, panelBorders, panelTicks, panelAhead, panelObjects, imu, rateArc, camera, cameraLight, timeline, truthLine, estimateLine, shownLine, timelineCursor, errors, driftLine, slipLine, errorsCursor, frames, gyroTicks, cameraTicks, startTicks, pipes, flashBars, view, viewEdges, truthTicks, shownTicks, aheadMarks, truthObject, shownObject, optics, screenLine, screenPoint, rays, backRays, focus, comfortBar, focusMark, aimMark, conflictLine, focusRing, aimRing, tx, ty, ex, ey, vx, dx, oP, eyeAt, MM, SLOW};
+  result.hardware = hardware;
+  result.topology = {system, wearer, skull, neck, nose, headset, shell, lenses, glass, display, panel, panelBorders, panelTicks, panelAhead, panelObjects, imu, rateArc, camera, cameraLight, timeline, truthLine, estimateLine, shownLine, timelineCursor, errors, driftLine, slipLine, errorsCursor, frames, gyroTicks, cameraTicks, startTicks, pipes, flashBars, view, viewEdges, truthTicks, shownTicks, aheadMarks, truthObject, shownObject, optics, screenLine, screenPoint, rays, backRays, focus, focusMark, aimMark, conflictLine, focusRing, aimRing, tx, ty, ex, ey, vx, dx, oP, eyeAt, sound, soundRows, soundDirectionWord, soundDifferenceWord, MM, SLOW};
   const dispose = result.dispose;
   result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;

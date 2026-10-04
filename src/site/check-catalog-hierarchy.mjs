@@ -153,3 +153,12 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 const consoleGroup = catalog.groups.find(group => group.id === videoGamesConsole.entry.group);
 assert.equal(consoleGroup.room, 'Play and everyday objects');
 assert.equal(consoleGroup.place, 'home');
+
+const headset = families.find(family => family.entry.id === 'virtual-reality-headset');
+assert(headset, 'Virtual reality headset is a whole machine');
+assert.equal(catalogMachineComponents(headset.components).length, 0, 'Ordinary headset parts remain inside its viewer');
+assert.deepEqual(tags('virtual-reality-headset'), ['using-bits', 'light-and-images', 'sensors-and-detectors', 'sound-and-music', 'electricity']);
+assert(!entries.some(entry => entry.id === 'head-tracking'), 'Unreviewed head-tracking lesson remains unpublished');
+const headsetGroup = catalog.groups.find(group => group.id === headset.entry.group);
+assert.equal(headsetGroup.room, 'Play and everyday objects');
+assert.equal(headsetGroup.place, 'home');
