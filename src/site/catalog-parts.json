@@ -4403,6 +4403,58 @@
       "parentId": "system"
     }
   ],
+  "unicycle": [
+    {
+      "id": "ground",
+      "name": "Ground",
+      "parentId": "system"
+    },
+    {
+      "id": "wheel",
+      "name": "Wheel",
+      "parentId": "system"
+    },
+    {
+      "id": "frame",
+      "name": "Frame and saddle",
+      "parentId": "system"
+    },
+    {
+      "id": "cranks",
+      "name": "Cranks and pedals",
+      "parentId": "system"
+    },
+    {
+      "id": "rider",
+      "name": "Rider",
+      "parentId": "system"
+    },
+    {
+      "id": "center",
+      "name": "Center of mass",
+      "parentId": "system"
+    },
+    {
+      "id": "push",
+      "name": "Pushes",
+      "parentId": "system"
+    },
+    {
+      "id": "lean",
+      "name": "Lean over time",
+      "parentId": "system"
+    },
+    {
+      "id": "speed",
+      "name": "Speed over time",
+      "parentId": "system"
+    },
+    {
+      "id": "torque",
+      "name": "Pedal torque over time",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",

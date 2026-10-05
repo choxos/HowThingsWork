@@ -165,3 +165,8 @@ assert.deepEqual(tags('head-tracking'), ['sensors-and-detectors', 'using-bits', 
 const headsetGroup = catalog.groups.find(group => group.id === headset.entry.group);
 assert.equal(headsetGroup.room, 'Play and everyday objects');
 assert.equal(headsetGroup.place, 'home');
+
+const unicycle = families.find(family => family.entry.id === 'unicycle');
+assert(unicycle && unicycle.components.length === 0, 'Unicycle stays a whole item; ordinary parts stay in its viewer');
+assert.deepEqual(tags('unicycle'), ['rotating-wheels', 'wheel-and-axle', 'levers', 'gears-and-belts']);
+assert(hasCatalogPart('unicycle', 'cranks') && hasCatalogPart('unicycle', 'frame'), 'Unicycle part bookmarks remain available');

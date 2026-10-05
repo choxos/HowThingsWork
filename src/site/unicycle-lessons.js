@@ -1,64 +1,64 @@
 import {UNICYCLE_DEFAULTS} from './unicycle-physics.js';
 
-const trial = (part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...UNICYCLE_DEFAULTS, ...values}, reset: true, part, isolate: false, view});
-const systemTrial = trial('system'), leanTrial = trial('lean'), speedTrial = trial('speed'), torqueTrial = trial('torque');
-
-export const sources = {
-  unicycle: {title: 'Wikipedia: Unicycle', url: 'https://en.wikipedia.org/wiki/Unicycle'},
-  crankset: {title: 'Wikipedia: Crankset', url: 'https://en.wikipedia.org/wiki/Crankset'},
-  pendulum: {title: 'Wikipedia: Inverted pendulum', url: 'https://en.wikipedia.org/wiki/Inverted_pendulum'},
-  com: {title: 'Wikipedia: Center of mass', url: 'https://en.wikipedia.org/wiki/Center_of_mass'},
-  chronometry: {title: 'Wikipedia: Mental chronometry', url: 'https://en.wikipedia.org/wiki/Mental_chronometry'},
-  ansur: {title: 'OPEN Design Lab, Penn State: ANSUR II, the 2012 anthropometric survey of US Army personnel', url: 'https://www.openlab.psu.edu/datasets/ansur-ii/'},
-  ansurMen: {title: 'ANSUR II public data: men', url: 'https://tools.openlab.psu.edu/publicData/ANSUR_II_MALE_Public.csv'},
-  ansurWomen: {title: 'ANSUR II public data: women', url: 'https://tools.openlab.psu.edu/publicData/ANSUR_II_FEMALE_Public.csv'},
-  selfBalancing: {title: 'Wikipedia: Electric unicycle', url: 'https://en.wikipedia.org/wiki/Electric_unicycle'},
+const trial = (part, title, observe, values = {}, time = 10) => {
+  const settings = {...UNICYCLE_DEFAULTS, ...values};
+  return {title, instruction: 'The settings and observation time are applied. Press Play to replay this run from its start.', observe, values: settings, initialState: {settings, time}, reset: true, part, isolate: true, view: 'front'};
 };
 
-const limits = 'A practiced rider whose reflexes match the unicycle, balancing only forward and back: 79.7 kg, with a crotch height of 825 mm and a trochanterion height of 883 mm, the mean of the 6,068 US Army personnel measured in ANSUR II, seated upright with legs straight to a pedal at the bottom and the center of mass 10 cm above the trochanter; a 2 kg wheel carried at its rim, rolling without slipping; legs that push with at most the rider’s weight, at right angles to the crank at every crank angle; reflexes to the lean, its rate and the speed, each sensed one reaction delay late, from a rider upright and still before the run, with the delay standing for the whole loop from lean to leg force. Not modeled: balance from side to side and steering, dead spots where a crank points straight up or down, the frame’s own mass, the body bending, rolling resistance and slipping. The run stops at a lean of 45° and plays at half speed.';
-
 export const unicycleLesson = {
-  simple: 'How does anyone stay up on one wheel?',
-  overview: 'A unicycle has one wheel and nothing to steer with, so on its own it falls over. The rider keeps it up by pedaling: whenever it leans forward they roll the wheel forward under the lean, and whenever it leans back they roll the wheel back. Every correction comes a reaction delay late, and the legs can push only so hard. Change the delay, the saddle, the cranks and the speed to see what makes balancing possible.',
+  simple: 'How can pedaling keep one wheel under a leaning rider?',
+  overview: 'A unicyclist balances forward and back by moving the wheel under their body. Pedal torque both accelerates the wheel and turns the rider in the opposite direction. Explore an assigned balance controller: change how late it reacts, how hard it can push and how high the rider sits. The moving ground marks show travel while the unicycle stays centered.',
   steps: [
-    {title: 'Sit on a pendulum', body: 'The rider’s center of mass is 1.16 m above the ground, balanced over the small patch where the tire touches it. Tipped even slightly, it falls further.'},
-    {title: 'Notice the lean', body: 'The rider senses the lean, but only after a reaction delay.'},
-    {title: 'Pedal under it', body: 'The legs turn the cranks and with them the wheel, rolling the tire forward under a forward lean or back under a backward one.'},
-    {title: 'Lean to change speed', body: 'To speed up, the rider leans forward first; to slow down, back.'},
+    {title: 'Begin with a lean', body: 'In the default 24-inch example, the assigned rider’s center of mass is 1.16 m above the ground. A forward lean grows unless the rider corrects it.'},
+    {title: 'Notice it after a delay', body: 'The controller responds to past lean, turning rate and speed. Before those readings arrive, it holds the relative crank acceleration at its previous command. Holding still can require pedal torque.'},
+    {title: 'Move the wheel underneath', body: 'Pedaling forward rolls the wheel under a forward lean. The equal and opposite torque on the rider also helps turn the body back toward upright.'},
+    {title: 'Read the outcome', body: 'Replay a full ten-second run or inspect a chosen moment. Read lean, speed and torque separately; each chart fits its entire curve. The simulation stops when lean reaches 45°, before a crash or dismount.'},
   ],
   parts: [
-    {name: 'Wheel', role: 'Rolls under the rider; its size sets how far each turn of the cranks goes.'},
-    {name: 'Cranks and pedals', role: 'Carry the legs’ push to the wheel; their length sets the torque a push gives.'},
-    {name: 'Frame and saddle', role: 'Hold the rider over the axle; on a giraffe a chain drives the wheel.'},
-    {name: 'Rider', role: 'The weight to be balanced, and the one balancing it.'},
-    {name: 'Center of mass', role: 'The top of the pendulum.'},
-    {name: 'Charts', role: 'Lean, speed and pedal torque over time.'},
+    {name: 'Wheel and axle', role: 'The tire, rim, spokes and axle rotate together. With the assigned direct or 1:1 chain drive, one crank revolution makes one wheel revolution relative to the frame.'},
+    {name: 'Cranks and pedals', role: 'Transmit force and torque; a longer crank gives more torque for the same perpendicular force.'},
+    {name: 'Frame and saddle', role: 'Support the rider. The giraffe variants raise the crank axle and connect it to the wheel with a chain.'},
+    {name: 'Rider', role: 'An illustrative body and moving legs. Dynamics concentrate the assigned rider mass at the marked point.'},
+    {name: 'Measurements', role: 'Ground marks, force arrows, center-of-mass guides and three charts explain motion; they are not machine components.'},
   ],
   tryIt: [
-    systemTrial('Hold the cranks still', 'Choose Holds the cranks still and press Play.', 'From a 3° lean the unicycle and rider tip over together as one body on the tire: the lean grows e times every 0.40 s and passes 45° 1.36 s in.', {rider: 1}),
-    leanTrial('Pedal under the lean', 'Keep Pedals to balance and press Play.', 'The legs answer 190 ms late, so the lean first grows to 3.72°. Then the wheel rolls forward under it, 0.61 m in all, and the rider ends upright.'),
-    leanTrial('React more slowly', 'Set the reaction delay to 300 ms and press Play.', 'These reflexes keep this unicycle up only for delays under 260 ms. At 300 ms each push comes too late, the swings grow, and the rider falls 4.9 s in.', {delay: 300}),
-    systemTrial('A giraffe', 'Keep the delay at 300 ms and choose the tallest giraffe saddle.', 'With the saddle 3.05 m up and the center of mass at 3.21 m, the lean grows e times only every 0.60 s. These reflexes now work for delays under 387 ms, and the rider stays up, leaning at most 3.81°.', {delay: 300, seat: 3}),
-    torqueTrial('A hard shove', 'Set the starting lean to 15° and the cranks to 79 mm.', 'Catching that lean needs more torque than the rider’s whole weight gives on a 79 mm crank, 61.8 N·m. The legs are held at that limit and the rider falls 0.90 s in.', {lean: 15, crank: 79}),
-    torqueTrial('Longer cranks', 'Keep the 15° lean and set the cranks back to 125 mm.', 'The same push now gives up to 97.7 N·m. The hardest moment takes 67.0 N·m, the lean peaks at 18.68° and the rider recovers.', {lean: 15}),
-    speedTrial('Ride off', 'Set the starting lean to 0° and the speed wanted to 1.5 m/s.', 'To lean the rider forward, the wheel first rolls back 5.2 cm. Then it carries them off, leaning at most 7.35°, up to 1.5 m/s.', {lean: 0, speed: 1.5}),
-    systemTrial('A bigger wheel', 'Keep 1.5 m/s with no starting lean and choose the biggest wheel.', 'A 36-inch wheel rolls 2.873 m for each turn of the cranks, against 1.915 m for the 24-inch wheel, so in the 10 s run the wheel and cranks turn 4.26 times instead of 6.58.', {lean: 0, speed: 1.5, wheel: 3}),
+    trial('system', 'Hold the cranks still', 'Holds the cranks still: from a 3° lean, the model reaches its 45° stop at 1.36 s. The small-angle characteristic growth time is 0.40 s; growth from rest follows a hyperbolic cosine, not a pure exponential.', {rider: 1}),
+    trial('lean', 'Pedal under the lean', 'Pedals to balance: readings arrive 190 ms late. Lean first grows to 3.72°, then shrinks. The wheel rolls 0.61 m and the rider ends nearly upright.'),
+    trial('lean', 'React more slowly', 'At 300 ms, swings grow and the model reaches its stop 4.9 s in. For small disturbances without torque saturation, this controller’s local delay boundary is about 260 ms.', {delay: 300}),
+    trial('system', 'A giraffe', 'The saddle is 3.05 m up and the assigned center of mass is 3.21 m high. Its small-angle growth time is 0.60 s and local delay boundary about 387 ms. At the selected 300 ms delay this run stays up, with a peak lean of 3.81°.', {delay: 300, seat: 3}),
+    trial('torque', 'A hard shove', 'The assigned force limit gives 61.8 N·m on 79 mm cranks. The controller saturates and the 15° starting lean reaches the stop at 0.90 s. A locally stable delay cannot guarantee recovery from a large lean.', {lean: 15, crank: 79}),
+    trial('torque', 'Longer cranks', 'At the same 15° starting lean, 125 mm cranks allow 97.7 N·m. This run needs at most 67.0 N·m; lean peaks at 18.68° and recovers.', {lean: 15}),
+    trial('speed', 'Ride off', 'Starting upright, the controller first rolls the wheel back 5.2 cm to create a forward lean. The largest lean is 7.35°; speed settles near the requested 1.5 m/s.', {lean: 0, speed: 1.5}),
+    trial('system', 'A bigger wheel', 'A 36-inch wheel travels 2.873 m per full ground-frame wheel turn; the 24-inch wheel travels 1.915 m. In these 10 s runs the wheel turns 4.26 times versus 6.58, with slightly different balance transients.', {lean: 0, speed: 1.5, wheel: 3}),
+    trial('system', 'Before feedback arrives', 'At 0.180 s the rider leans 3.31°, but the delayed reading is still upright. The cranks have not yet received a corrective acceleration command; holding them relative to the body still takes torque.', {}, .18),
+    trial('system', 'The first new lean reading', 'At 0.190 s the controller receives the initial 3° lean. The actual lean has already reached 3.34°. Its new command begins to turn the cranks relative to the frame.', {}, .19),
+    trial('system', 'Roll back first', 'At 0.625 s the wheel is 5.2 cm behind its start and about to move forward. The body is already leaning forward, ready for the wheel to accelerate under it.', {lean: 0, speed: 1.5}, .625),
+    trial('system', 'No feedback delay', 'At 0.190 s the zero-delay controller has reduced the initial 3° lean to 2.79°. Compare the first new reading trial, where delayed correction has only just begun.', {delay: 0}, .19),
+    trial('system', 'Perfectly upright', 'With zero initial lean, zero requested speed and no disturbance, every position and force correction remains zero. An exact equilibrium can persist in an ideal model even when a nearby disturbed state would move.', {lean: 0}),
+    trial('system', 'A smaller wheel', 'At the same 1.5 m/s requested speed, the 20-inch wheel makes about 7.97 ground-frame turns in this run. Smaller wheels need more revolutions per meter.', {lean: 0, speed: 1.5, wheel: 0}),
   ],
   deeper: [
-    {title: 'An upside-down pendulum', body: 'A unicycle and its rider make an inverted pendulum, pivoting on the tire with the center of mass on top. Tipped a little, gravity tips it further, and tall pendulums fall more slowly than short ones. Holding the cranks still, the lean here grows e times every 0.40 s on a standard unicycle and every 0.60 s on a giraffe with its saddle 3.05 m up.'},
-    {title: 'Pedaling under the lean', body: 'The rider has nothing to push against but the pedals. Turning the cranks forward rolls the wheel forward under a forward lean, and the same torque pushes back on the rider’s body, turning it back toward upright. Both catch the lean at once.'},
-    {title: 'The legs as a motor', body: 'On a standard unicycle one turn of the cranks is one turn of the wheel. The torque is the push times the crank length, so a push of the rider’s whole weight, 782 N, gives 61.8 N·m on a 79 mm crank and 97.7 N·m on a 125 mm one. Indoor riders commonly use 100 mm cranks, some as short as 79 mm, while mountain riders use cranks longer than 125 mm.'},
-    {title: 'Always late', body: 'A rider notices a lean and pushes back only after a delay; a simple reaction to something seen takes about 190 ms. A push that answers an old lean can arrive after the lean has already reversed, and then it feeds the swing. With these reflexes the standard unicycle stays up for delays under 260 ms, and no reflexes to the lean and its rate alone could keep it up with a delay of 568 ms or more.'},
-    {title: 'Roll back to go forward', body: 'To speed up forward the rider must lean forward first, or the push that speeds the wheel up would tip them back. The quickest way to lean forward is to roll the wheel back from under the body. A cart balancing a pole does the same: a sudden command to move one way first moves the cart the other way.'},
-    {title: 'Side to side', body: 'This model balances only forward and back. Side to side, a rider steers the wheel back under the lean by twisting and tilting it. Self-balancing electric unicycles do the forward and back balancing with a motor, sensing the lean with accelerometers and gyroscopes, and still leave side to side to the rider.'},
+    {title: 'An inverted pendulum on a wheel', body: 'With the relative crank angle held fixed and small lean, the model gives θ̈ = w²θ. Here w² = mgl / J, with l the point mass height above the axle and J = 2Mr² + m(r + l)². From rest, θ(t) = θ(0) cosh(wt). The unstable exponential mode has growth time 1/w: 0.40 s for the default unicycle and 0.60 s for the tallest assigned giraffe. This approximation does not describe a whole large-angle fall.'},
+    {title: 'Equal and opposite torque', body: 'The wheel receives pedal torque; the rider receives its opposite. The same action changes forward travel and body lean. The model solves these coupled equations rather than prescribing an animation of a balanced rider.'},
+    {title: 'A deliberately ideal leg motor', body: 'The controller requests crank acceleration relative to the frame. An ideal inner actuator supplies the torque required by the coupled dynamics, up to a symmetric cap. The cap is the assigned rider weight, 782 N, times crank length: 61.8 N·m for 79 mm or 97.7 N·m for 125 mm. Force is allowed perpendicular to the crank at every angle, including positions where a real downward-only pedal push would have a dead spot.'},
+    {title: 'Delay limits have conditions', body: 'The chosen controller combines delayed lean, lean rate and speed error. Its gains scale with the unicycle dimensions. The displayed boundary comes from linearization around upright with no torque saturation, so it predicts local stability, not recovery from every shove. Human balance can also use prediction, several senses, body movements and learned strategies; the assigned 190 ms delay is not a measurement of a rider.'},
+    {title: 'Why roll backward to start forward?', body: 'Accelerating the wheel forward tends to rotate the body back. This controller first moves the wheel back, creating a forward lean, then accelerates forward to catch it. A real rider can also lean by moving their body; that extra motion is not modeled.'},
+    {title: 'Height and gearing', body: 'The tall variants use equal-sized chain sprockets, giving a 1:1 ratio relative to the frame. Raising the assigned point mass slows the growth of a small lean. Real tall unicycles add frame mass, flex and mounting difficulty that this comparison leaves out.'},
+    {title: 'Sideways balance is a different problem', body: 'Forward/back lean rotates about an axis parallel to the wheel axle, so gyroscopic precession does not provide the restoring action shown here. Sideways balance involves steering and body motion and is outside this model. Wheel spin alone is not a universal explanation of cycle stability.'},
   ],
-  misconception: 'The spinning wheel does not hold a unicycle up forward and back. A forward lean turns the rider about a line parallel to the axle, which the wheel’s spin does nothing to resist; only pedaling the wheel back under the center of mass catches it.',
-  limits,
-  sources: [sources.unicycle, sources.crankset, sources.pendulum, sources.com, sources.chronometry, sources.ansur, sources.ansurMen, sources.ansurWomen, sources.selfBalancing],
+  misconception: 'A turning wheel does not automatically keep this rider upright. Active pedal torque moves the wheel and turns the body; feedback delay and limited torque can still let a lean grow.',
+  limits: 'Assigned teaching parameters: rider mass 79.7 kg, nominal leg reach 825 mm, point mass 158 mm above the saddle, and a 2 kg hoop wheel. These are not measurements of a seated rider or population-average body model. The rigid point-mass body balances in one vertical plane with perfect rolling grip and a massless frame. Before the initial lean, delayed history is upright and still; the speed target is known immediately. An ideal acceleration actuator has a symmetric torque cap equal to weight times crank length. No pedal dead spots, muscle dynamics, lateral balance, steering, body bending, slip, tire deformation, rolling resistance, chain stretch or frame inertia. The run uses 0.5 ms steps and stops at the first sample crossing a lean of 45°; its crossing time is interpolated. It plays at half speed. Charts show the whole planned trace with a current-time cursor, including the stop sample. Numerical outcomes describe this controller, not riding instructions or product performance.',
+  sources: [
+    {title: 'Unicycle.com: learning to ride and moving the wheel under the rider', url: 'https://www.unicycle.com/learning-to-ride/'},
+    {title: 'Unicycle.com: giraffe assembly and chain drive', url: 'https://www.unicycle.com/content/doc/INS-UDC-013-US.pdf'},
+    {title: 'Gajbhiye, Banavar and Delgado: wheeled inverted-pendulum dynamics', url: 'https://arxiv.org/abs/1612.01814'},
+    {title: 'Insperger, Milton and Stépán: delayed balance control and its assumptions', url: 'https://doi.org/10.1098/rsif.2012.0763'},
+    {title: 'Kooijman and colleagues: cycle stability is not explained by gyroscopic effects alone', url: 'https://arendschwab.com/research/stablebicycle/'},
+  ],
   quiz: {
-    question: 'Why does a unicycle roll backward for a moment as its rider sets off forward?',
-    options: ['To lean the rider forward, so the wheel can then speed up under them without tipping them back.', 'The cranks slip before they grip.', 'The tire squashes under the push.'],
+    question: 'Why does this controller briefly roll the wheel backward when starting forward?',
+    options: ['To create a forward lean before accelerating the wheel under the rider.', 'The cranks slip before they grip.', 'Wheel spin automatically pulls the rider upright.'],
     answer: 0,
-    explanation: 'Speeding the wheel up forward pushes the rider’s body back, so the rider must lean forward first. In the ride off trial the wheel rolled back 5.2 cm before carrying the rider off.',
+    explanation: 'The backward movement shifts the support behind the body. In the ride off trial the wheel rolled back 5.2 cm, then accelerated forward under the lean. This is the behavior of the assigned controller.',
   },
 };

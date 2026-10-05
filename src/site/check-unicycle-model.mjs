@@ -25,8 +25,8 @@ import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinit
 import {fixed} from './format.js';
 
 const t = tally(), DEG = Math.PI / 180, Z_AXIS = new THREE.Vector3(0, 0, 1);
-/** What the sources say: ANSUR II's head counts and mean stature, a visual reaction, unicycle cranks and the tallest giraffe. */
-const SOURCE = Object.freeze({men: 4082, women: 1986, stature: 1.714, visual: 190, indoor: 100, shortest: 79, mountain: 125, giraffe: 3.05, aboveTrochanter: 0.1});
+/** Assigned drawing dimensions and point-mass placement, not measured anatomy. */
+const SOURCE = Object.freeze({stature: 1.714, giraffe: 3.05, aboveTrochanter: 0.1});
 const settings = values => ({...UNICYCLE_DEFAULTS, ...values});
 
 t.ok(RIDER.aboveTrochanter === SOURCE.aboveTrochanter && SEATS[SEATS.length - 1] === SOURCE.giraffe && SEATS.slice(1).every((seat, i, list) => i === 0 || seat > list[i - 1]), 'the center of mass 10 cm above the trochanter, and giraffes up to 3.05 m');
@@ -399,18 +399,18 @@ const claims = {
     assert.ok(fine.fell === null && trial.values.seat === SEATS.length - 1, 'stays up, on the tallest saddle');
     same(plan.peakLean, fine.peakLean, 2, 'the largest lean');
     const critical = criticalAgain(trial.values);
-    return {[fixed(SEATS[trial.values.seat], 2)]: SEATS[trial.values.seat], [fixed(fine.G.H, 2)]: fine.G.H, [fixed(1 / fine.G.w, 2)]: 1 / fine.G.w, [fixed(ms(critical), 0)]: ms(critical), [fixed(fine.peakLean, 2)]: fine.peakLean};
+    return {[fixed(trial.values.delay, 0)]: trial.values.delay, [fixed(SEATS[trial.values.seat], 2)]: SEATS[trial.values.seat], [fixed(fine.G.H, 2)]: fine.G.H, [fixed(1 / fine.G.w, 2)]: 1 / fine.G.w, [fixed(ms(critical), 0)]: ms(critical), [fixed(fine.peakLean, 2)]: fine.peakLean};
   },
   'A hard shove': ({plan, fine}, trial) => {
     assert.ok(fine.fell !== null && fine.clampTime > 0.3, 'held at the limit, then falls');
     same(plan.fell, fine.fell, 2, 'the fall');
-    return {[fixed(trial.values.crank, 0)]: trial.values.crank, [fixed(fine.G.cap, 1)]: fine.G.cap, [fixed(fine.fell, 2)]: fine.fell};
+    return {[fixed(trial.values.lean, 0)]: trial.values.lean, [fixed(trial.values.crank, 0)]: trial.values.crank, [fixed(fine.G.cap, 1)]: fine.G.cap, [fixed(fine.fell, 2)]: fine.fell};
   },
-  'Longer cranks': ({plan, fine}) => {
+  'Longer cranks': ({plan, fine}, trial) => {
     assert.ok(fine.fell === null && fine.clampTime === 0, 'recovers within the limit');
     same(plan.peakTorque, fine.peakTorque, 1, 'the hardest push');
     same(plan.peakLean, fine.peakLean, 2, 'the largest lean');
-    return {[fixed(fine.G.cap, 1)]: fine.G.cap, [fixed(fine.peakTorque, 1)]: fine.peakTorque, [fixed(fine.peakLean, 2)]: fine.peakLean};
+    return {[fixed(trial.values.lean, 0)]: trial.values.lean, [fixed(trial.values.crank, 0)]: trial.values.crank, [fixed(fine.G.cap, 1)]: fine.G.cap, [fixed(fine.peakTorque, 1)]: fine.peakTorque, [fixed(fine.peakLean, 2)]: fine.peakLean};
   },
   'Ride off': ({plan, fine}, trial) => {
     assert.ok(fine.fell === null && Math.abs(fine.endSpeed - trial.values.speed) < 0.005, 'reaches the speed wanted');
@@ -426,27 +426,13 @@ const claims = {
     return {[fixed(WHEELS[trial.values.wheel], 0)]: WHEELS[trial.values.wheel], [fixed(2 * Math.PI * fine.G.r, 3)]: 2 * Math.PI * fine.G.r, [fixed(WHEELS[1], 0)]: WHEELS[1], [fixed(2 * Math.PI * smaller.G.r, 3)]: 2 * Math.PI * smaller.G.r, [fixed(RUN.duration, 0)]: RUN.duration, [fixed(fine.turns, 2)]: fine.turns, [fixed(smaller.turns, 2)]: smaller.turns};
   },
 };
-checkTrialNumbers(unicycleLesson, claims, trialRun, t);
-t.ok(unicycleLesson.tryIt[0].instruction.includes(RIDER_OPTIONS[1].label) && unicycleLesson.tryIt[1].instruction.includes(RIDER_OPTIONS[0].label), 'the instructions name the rider’s options');
-
+checkTrialNumbers({...unicycleLesson, tryIt: unicycleLesson.tryIt.slice(0, 8)}, claims, trialRun, t);
 const standard = geometryOf(settings({})), giraffe = geometryOf(settings({seat: 3})), weight = RIDER.mass * GRAVITY;
 const defaultRun = fineRide({}), rideOff = fineRide({lean: 0, speed: 1.5}), limit = Math.SQRT2 / standard.w;
 checkQuotedText(unicycleLesson.steps.map(step => step.body).join(' '), {[`${fixed(standard.H, 2)} m above the ground`]: '1.16 m above the ground'}, t);
-checkQuotedText(unicycleLesson.deeper.map(item => item.body).join(' '), {
-  [`every ${fixed(1 / standard.w, 2)} s on a standard unicycle`]: 'every 0.40 s on a standard unicycle',
-  [`every ${fixed(1 / giraffe.w, 2)} s on a giraffe with its saddle ${fixed(SOURCE.giraffe, 2)} m up`]: 'every 0.60 s on a giraffe with its saddle 3.05 m up',
-  [`whole weight, ${fixed(weight, 0)} N, gives ${fixed(weight * 0.079, 1)} N·m on a ${fixed(79, 0)} mm crank and ${fixed(weight * 0.125, 1)} N·m on a ${fixed(125, 0)} mm one`]: 'whole weight, 782 N, gives 61.8 N·m on a 79 mm crank and 97.7 N·m on a 125 mm one',
-  [`commonly use ${fixed(SOURCE.indoor, 0)} mm cranks, some as short as ${fixed(SOURCE.shortest, 0)} mm, while mountain riders use cranks longer than ${fixed(SOURCE.mountain, 0)} mm`]: 'commonly use 100 mm cranks, some as short as 79 mm, while mountain riders use cranks longer than 125 mm',
-  [`takes about ${fixed(SOURCE.visual, 0)} ms`]: 'takes about 190 ms',
-  [`delays under ${fixed(ms(criticalAgain(settings({}))), 0)} ms`]: 'delays under 260 ms',
-  [`a delay of ${fixed(ms(limit), 0)} ms or more`]: 'a delay of 568 ms or more',
-}, t);
 checkQuotedText(unicycleLesson.quiz.explanation, {[`rolled back ${fixed(-rideOff.rollback * 100, 1)} cm`]: 'rolled back 5.2 cm'}, t);
-checkQuotedText(unicycleLesson.limits, {
-  [`${fixed(RIDER.mass, 1)} kg`]: '79.7 kg', [`crotch height of ${fixed(RIDER.inseam * 1000, 0)} mm`]: 'crotch height of 825 mm', [`trochanterion height of ${fixed(RIDER.trochanter * 1000, 0)} mm`]: 'trochanterion height of 883 mm',
-  [`the ${fixed(SOURCE.men + SOURCE.women, 0)} US Army personnel`]: 'the 6,068 US Army personnel', [`${fixed(RIDER.aboveTrochanter * 100, 0)} cm above the trochanter`]: '10 cm above the trochanter',
-  [`a ${fixed(WHEEL_MASS, 0)} kg wheel`]: 'a 2 kg wheel', [`a lean of ${fixed(RUN.fall, 0)}°`]: 'a lean of 45°', [`plays at ${['', 'full', 'half'][SLOW]} speed`]: 'plays at half speed',
-}, t);
+t.ok(unicycleLesson.limits.includes('Assigned teaching parameters') && unicycleLesson.limits.includes('not measurements') && unicycleLesson.limits.includes('first sample crossing'), 'limits identify assigned values and sampled stop');
+t.ok(unicycleLesson.deeper.some(p => p.body.includes('cosh(wt)')) && unicycleLesson.deeper.some(p => p.body.includes('local stability')), 'copy distinguishes growth from rest and local stability');
 
 // ---------------------------------------------------------------------------
 // 7. The drawing.
@@ -456,12 +442,10 @@ const model = createUnicycleModel(), topo = model.topology, root = model.root;
 const describe = id => model.parts.find(item => item.id === id).description;
 checkQuotedText(describe('ground'), {[`a mark every ${fixed(GROUND.tick, 1)} m`]: 'a mark every 0.5 m'}, t);
 checkQuotedText(describe('wheel'), {[`${WHEELS.slice(0, -1).join(', ')} or ${WHEELS[WHEELS.length - 1]} inches across`]: '20, 24, 29 or 36 inches across'}, t);
-checkQuotedText(describe('rider'), {[`the ${fixed(SOURCE.men + SOURCE.women, 0)} US Army personnel`]: 'the 6,068 US Army personnel', [`${fixed(RIDER.mass, 1)} kg, legs ${fixed(RIDER.inseam * 1000, 0)} mm`]: '79.7 kg, legs 825 mm'}, t);
+checkQuotedText(describe('rider'), {[`${fixed(RIDER.mass, 1)} kg, legs ${fixed(RIDER.inseam * 1000, 0)} mm`]: '79.7 kg, legs 825 mm'}, t);
 checkQuotedText(describe('center'), {[`${fixed((standard.H - standard.seat) * 1000, 0)} mm above the saddle`]: '158 mm above the saddle'}, t);
 checkQuotedText(describe('push'), {[`${fixed(DRAW.perNewton * 1000, 0)} m long for every 1,000 N`]: '1 m long for every 1,000 N'}, t);
-checkQuotedText(describe('lean'), {[`the ${fixed(RUN.duration, 0)} s run, from ${fixed(CHARTS.lean.range, 0)}° back`]: 'the 10 s run, from 20° back', [`to ${fixed(CHARTS.lean.range, 0)}° forward`]: 'to 20° forward'}, t);
-checkQuotedText(describe('speed'), {[`from ${fixed(-CHARTS.speed.v0, 0)} m/s backward`]: 'from 1 m/s backward', [`to ${fixed(CHARTS.speed.v1, 0)} m/s forward`]: 'to 3 m/s forward'}, t);
-checkQuotedText(describe('torque'), {[`${fixed(CHARTS.torque.range, 0)} N·m either way`]: '150 N·m either way'}, t);
+for (const id of ['lean', 'speed', 'torque']) { const p = model.parts.find(p => p.id === id); t.ok(p.object.userData.inspectionOnly === id && p.object.userData.explosionExcluded, 'charts are inspection measurements'); }
 
 const rootTurn = new THREE.Quaternion();
 const toGround = vector => root.worldToLocal(vector).divideScalar(M);
@@ -487,10 +471,18 @@ function kneeAgain(hip, foot, forward) {
 }
 
 const chartXAgain = (box, time) => box.x + time / RUN.duration * box.w;
-const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
-const leanYAgain = degrees => CHARTS.lean.y + CHARTS.lean.h * (0.5 + clamp(degrees, -CHARTS.lean.range, CHARTS.lean.range) / (2 * CHARTS.lean.range));
-const speedYAgain = speed => CHARTS.speed.y + CHARTS.speed.h * (clamp(speed, CHARTS.speed.v0, CHARTS.speed.v1) - CHARTS.speed.v0) / (CHARTS.speed.v1 - CHARTS.speed.v0);
-const torqueYAgain = torque => CHARTS.torque.y + CHARTS.torque.h * (0.5 + clamp(torque, -CHARTS.torque.range, CHARTS.torque.range) / (2 * CHARTS.torque.range));
+let ranges;
+const yAgain = (box, value, range) => box.y + box.h * (value - range[0]) / (range[1] - range[0]);
+const leanYAgain = degrees => yAgain(CHARTS.lean, degrees, ranges.lean);
+const speedYAgain = speed => yAgain(CHARTS.speed, speed, ranges.speed);
+const torqueYAgain = torque => yAgain(CHARTS.torque, torque, ranges.torque);
+function rangesAgain(plan) {
+  const end = plan.fell === null ? plan.N : Math.ceil(plan.fell / plan.dt);
+  const angles = [...plan.lean.slice(0, end + 1)].map(a => Math.abs(a) / DEG);
+  const speeds = [...plan.spin.slice(0, end + 1)].map(a => a * plan.body.r);
+  const a = Math.max(5, 5 * Math.ceil(Math.max(...angles) / 5)), tau = 10 * Math.ceil(plan.body.cap / 10);
+  return {lean: [-a, a], speed: [Math.min(-.5, Math.floor(Math.min(0, ...speeds) * 2) / 2), Math.max(.5, Math.ceil(Math.max(plan.values.speed, ...speeds) * 2) / 2)], torque: [-tau, tau]};
+}
 
 const DRAWN = [...RUNS];
 const TIMES = [0, 0.1, 0.19, 0.35, 0.9, 1.36, 2, 4.86, 7.5, 10];
@@ -503,10 +495,11 @@ for (const values of DRAWN) {
   root.getWorldQuaternion(rootTurn).invert();
 
   // The charts, which change only with the settings.
-  const last = plan.fell === null ? plan.N : Math.min(plan.N, Math.floor(plan.fell / plan.dt)), shown = Math.floor(last / CHARTS.every) + 1;
+  ranges = rangesAgain(plan);
+  const last = plan.fell === null ? plan.N : Math.min(plan.N, Math.ceil(plan.fell / plan.dt)), shown = Math.floor(last / CHARTS.every) + 1;
   const series = (line, box, y) => {
     const points = pointsOf(line);
-    assert.equal(points.length, shown, 'one chart point every 10 ms until the run ends');
+    assert.equal(points.length, shown, 'every half-millisecond chart sample through the stop');
     points.forEach((point, i) => at(point, [chartXAgain(box, i * CHARTS.every * plan.dt), y(i * CHARTS.every), CHARTS.z], 'chart point'));
   };
   series(topo.leanLine, CHARTS.lean, k => leanYAgain(plan.lean[k] / DEG));
@@ -529,8 +522,9 @@ for (const values of DRAWN) {
     model.update(values);
     model.playback.advance(time * SLOW);
     root.updateMatrixWorld(true);
-    const state = model.getState(), k = Math.min(plan.N, Math.floor(time / plan.dt + 1e-9)), fallen = plan.fell !== null && time >= plan.fell;
-    t.near(state.clock, time, 1e-12, 'the clock');
+    const sampleTime = Math.min(time, plan.fell === null ? RUN.duration : Math.ceil(plan.fell / plan.dt) * plan.dt);
+    const state = model.getState(), k = Math.min(plan.N, Math.floor(sampleTime / plan.dt + 1e-9)), fallen = plan.fell !== null && sampleTime >= plan.fell;
+    t.near(state.clock, sampleTime, 1e-12, 'the clock');
     const theta = plan.lean[k], phi = plan.wheel[k], travel = phi * G.r;
     const ground = ([x, y]) => { const [gx, gy] = turn([x, y], -theta); return [gx, gy + G.r]; };
 
@@ -549,6 +543,9 @@ for (const values of DRAWN) {
     const [postTop, postBottom] = endsOf(topo.post);
     at(postTop, [...ground([0, top - DRAW.saddle[1]]), 0], 'the seat post top');
     at(postBottom, [...ground([0, crown]), 0], 'the seat post bottom');
+    const [bridgeA, bridgeB] = endsOf(topo.crownBridge);
+    at(bridgeA, [...ground([0, crown]), DRAW.fork], 'crown joins one fork');
+    at(bridgeB, [...ground([0, crown]), -DRAW.fork], 'crown joins the other fork');
     const head = ground([0, top + (SOURCE.stature - RIDER.inseam) - DRAW.head]);
     at(placeOf(topo.head), [head[0], head[1], 0], 'the head, its top a seated stature above the saddle');
 
@@ -628,8 +625,8 @@ for (const values of DRAWN) {
     // The cursors.
     for (const [cursor, box] of [[topo.leanCursor, CHARTS.lean], [topo.speedCursor, CHARTS.speed], [topo.torqueCursor, CHARTS.torque]]) {
       const [lower, upper] = pointsOf(cursor);
-      at(lower, [chartXAgain(box, time), box.y, CHARTS.z], 'a cursor');
-      at(upper, [chartXAgain(box, time), box.y + box.h, CHARTS.z], 'a cursor');
+      at(lower, [chartXAgain(box, sampleTime), box.y, CHARTS.z], 'a cursor');
+      at(upper, [chartXAgain(box, sampleTime), box.y + box.h, CHARTS.z], 'a cursor');
     }
     moments++;
   }
@@ -651,8 +648,8 @@ t.ok(model.playback.complete(), 'the run completes');
 const hints = () => Object.fromEntries(model.getState().readings.map(item => [item.label, `${item.value} ${item.hint || ''}`]));
 let words = hints();
 checkQuotedText(words['Your result'], {[`leaned at most ${fixed(defaultRun.peakLean, 2)}° and rolled ${fixed(defaultRun.endTravel, 2)} m`]: 'leaned at most 3.72° and rolled 0.61 m'}, t);
-checkQuotedText(words['Lean'], {[`every ${fixed(1 / standard.w, 2)} s`]: 'every 0.40 s', [`${fixed(standard.H, 2)} m up`]: '1.16 m up'}, t);
-checkQuotedText(words['Rider'], {[`sensed ${fixed(UNICYCLE_DEFAULTS.delay, 0)} ms ago`]: 'sensed 190 ms ago', [`delays under ${fixed(ms(criticalAgain(settings({}))), 0)} ms`]: 'delays under 260 ms', [`a delay of ${fixed(ms(limit), 0)} ms or more`]: 'a delay of 568 ms or more', [`about ${fixed(SOURCE.visual, 0)} ms`]: 'about 190 ms'}, t);
+checkQuotedText(words['Lean'], {[`growth time is ${fixed(1 / standard.w, 2)} s`]: 'growth time is 0.40 s', [`${fixed(standard.H, 2)} m up`]: '1.16 m up'}, t);
+checkQuotedText(words['Rider'], {[`readings ${fixed(UNICYCLE_DEFAULTS.delay, 0)} ms old`]: 'readings 190 ms old', [`near ${fixed(ms(criticalAgain(settings({}))), 0)} ms`]: 'near 260 ms'}, t);
 checkQuotedText(words['Pedals'], {[`weight, ${fixed(weight, 0)} N, at right angles to a ${fixed(125, 0)} mm crank`]: 'weight, 782 N, at right angles to a 125 mm crank', [`took ${fixed(defaultRun.peakTorque, 1)} N·m`]: 'took 12.3 N·m', [`at most ${fixed(standard.cap, 1)} N·m`]: 'at most 97.7 N·m'}, t);
 checkQuotedText(words['Wheel'], {[`A ${fixed(24, 0)}-inch wheel rolls ${fixed(2 * Math.PI * standard.r, 3)} m`]: 'A 24-inch wheel rolls 1.915 m', [`turn ${fixed(16 / 3.6 / (2 * Math.PI * standard.r) * 60, 0)} times a minute`]: 'turn 139 times a minute'}, t);
 checkQuotedText(words['Unicycle'], {[`${fixed((standard.H - standard.seat) * 1000, 0)} mm above the saddle, ${fixed(standard.H, 2)} m above the ground`]: '158 mm above the saddle, 1.16 m above the ground', [`saddle ${fixed(standard.seat, 2)} m up`]: 'saddle 1.00 m up'}, t);
@@ -666,9 +663,9 @@ model.update({delay: 300});
 model.playback.advance(RUN.duration * SLOW);
 words = hints();
 const slow = fineRide({delay: 300});
-checkQuotedText(words['Your result'], {[`Fell ${fixed(slow.fell, 2)} s in, leaning past ${fixed(RUN.fall, 0)}°`]: 'Fell 4.87 s in, leaning past 45°'}, t);
+checkQuotedText(words['Your result'], {[`Stopped at ${fixed(slow.fell, 2)} s · lean reached ${fixed(RUN.fall, 0)}°`]: 'Stopped at 4.87 s · lean reached 45°'}, t);
 t.ok(words['Pedals'].includes(`at their limit for ${fixed(ms(unicyclePlan(settings({delay: 300})).clampTime), 0)} ms`) && Math.abs(slow.clampTime - unicyclePlan(settings({delay: 300})).clampTime) <= 1.5 * RUN.step, 'the time at the legs’ limit, as integrated again');
-t.ok(words['Rider'].startsWith('Rider Could not catch the lean') || words['Rider'].startsWith('Could not catch the lean'), 'a fallen rider could not catch the lean');
+t.ok(words['Rider'].startsWith('Reached lean limit'), 'the stop is identified as the model limit');
 model.reset();
 t.ok(hints()['Your result'].startsWith('Ready · pedals to balance; press Play'), 'ready at the start');
 
@@ -686,6 +683,52 @@ model.update({lean: 25, crank: 75, wheel: 3, seat: 2, delay: 400});
 model.playback.advance(RUN.duration * SLOW);
 checkFinite(model.root, t);
 checkRefusals(sampleUnicycle, UNICYCLE_DOMAINS, t);
+// Exact preset moments, preserving inspection, and every offered control value.
+let presetCases = 0, controlCases = 0;
+for (const [index, trial] of unicycleLesson.tryIt.entries()) {
+  model.reset(trial.initialState);
+  const state = model.getState(), reference = fineRide(trial.values);
+  assert.deepEqual(state.values, trial.values);
+  const end = state.fell === null ? RUN.duration : Math.ceil(state.fell / state.dt) * state.dt;
+  t.near(state.clock, Math.min(trial.initialState.time, end), 1e-12, 'preset owns its moment');
+  if (state.fell === null) {
+    const k = Math.round(state.clock / RUN.step);
+    t.near(state.now.lean, reference.lean[k] / DEG, .002, 'preset lean from fine integration');
+    t.near(state.now.speed, reference.spin[k] * reference.G.r, .0002, 'preset speed from fine integration');
+  }
+  if (index === 8) t.ok(state.now.sensed === 0 && state.now.lean > 3.3 && state.now.crank < 0, 'pre-feedback moment holds relative crank angle');
+  if (index === 9) t.ok(state.now.sensed === 3 && state.now.lean > 3.34, 'first delayed reading is the starting lean');
+  if (index === 10) t.ok(Math.abs(state.now.travel - reference.rollback) < 1e-5 && Math.abs(state.now.speed) < .001 && state.now.lean > 5, 'rollback minimum and forward lean');
+  if (index === 11) t.ok(state.now.lean < 2.79 && state.now.lean > 2.78 && state.now.sensed === state.now.lean, 'instant feedback moment');
+  if (index === 12) t.ok(state.now.lean === 0 && state.now.travel === 0 && state.peakTorque === 0, 'exact undisturbed equilibrium');
+  if (index === 13) t.near(state.wheelTurns, reference.turns, .00001, 'small-wheel turn count');
+  presetCases++;
+}
+model.reset(unicycleLesson.tryIt[10].initialState);
+const snapshotState = () => JSON.stringify({values: model.getState().values, clock: model.getState().clock, now: model.getState().now});
+for (const action of model.actions) { const before = snapshotState(); action.run(); assert.equal(snapshotState(), before, 'inspection preserves moment and settings'); }
+for (const [key, [min, max, step]] of Object.entries(UNICYCLE_DOMAINS)) for (let i = 0; i <= Math.round((max - min) / step); i++) {
+  const value = Number((min + i * step).toFixed(6));
+  model.reset({time: .2}); model.update({[key]: value});
+  const state = model.getState(); t.near(state.clock, .2, 1e-12, 'control preserves inspection time');
+  assert.equal(state.values[key], value); assert.deepEqual(model.replayState(), {settings: state.values, time: 0});
+  const ranges = rangesAgain(state);
+  for (const id of ['lean', 'speed', 'torque']) {
+    assert.deepEqual(state.chartRanges[id], ranges[id], 'independently fitted plot range');
+    const line = topo.plots.charts[id].line, positions = line.geometry.attributes.position.array, b = CHARTS[id];
+    for (let k = 0; k < line.geometry.drawRange.count; k++) {
+      const y = positions[3 * k + 1] / M;
+      t.ok(y >= b.y - 1e-6 && y <= b.y + b.h + 1e-6, 'all plotted samples inside axes without clipping');
+    }
+  }
+  checkFinite(model.root, t); controlCases++;
+}
+assert.equal(controlCases, 204); assert.equal(presetCases, 14); assert.equal(model.actions.length, 10);
+for (const id of ['ground', 'rider', 'center', 'push']) t.ok(model.parts.find(p => p.id === id).object.userData.explosionExcluded, 'teaching aids excluded from machine inventory');
+model.reset({settings: {seat: 3}, time: .625});
+t.ok(topo.chainMarker.visible && topo.sprockets.every(s => Math.abs(s.rotation.z + model.getState().now.crank) < 1e-12), 'giraffe drive follows relative crank rotation');
+model.reset(); t.ok(!topo.chainMarker.visible, 'standard unicycle has no chain');
 const resources = checkDisposal(model, t);
 
-console.log(`PASS unicycle: ${t.count} checks, ${statesSolved} states solved by Newton and Euler, ${energySteps} steps of energy balanced, ${runsAgain} runs integrated again, ${criticals} critical delays found again, ${moments} drawn moments, ${unicycleLesson.tryIt.length} trials, ${resources} resources released exactly once.`);
+
+console.log(`PASS unicycle: ${t.count} checks, ${statesSolved} states solved by Newton and Euler, ${energySteps} steps of energy balanced, ${runsAgain} runs integrated again, ${criticals} critical delays found again, ${moments} drawn moments, ${presetCases} exact presets, ${controlCases} control values, ${model.actions.length} preserving actions, ${resources} resources released exactly once.`);

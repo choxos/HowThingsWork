@@ -16,22 +16,20 @@ import {validateControls, validTime} from './physics-kit.js';
 // A rider's legs hold the cranks: they set how fast the cranks turn relative
 // to the body, and the torque that takes follows from the equations above. It
 // is capped at the rider's whole weight pushed at right angles to the crank,
-// at every crank angle. Holding the cranks still, the unicycle and rider fall
-// together as one body pivoting on the tire, e times further every 1/w
-// seconds, w² = m g l / (p + 2q + s).
+// at every crank angle. With locked cranks near upright,
+// the small-angle equation is θ̈ = w² θ, w² = m g l / (p + 2q + s).
+// From rest θ(t) = θ(0) cosh(wt); 1/w is the unstable-mode growth time.
 //
-// The rider is a practiced one whose reflexes match the unicycle: the crank
+// An assigned feedback controller is tuned to each unicycle: the crank
 // acceleration they ask for answers the lean, how fast it changes and how far
 // their speed is from the speed they want, each as they sensed it one reaction
 // delay ago, with strengths in units of w. Before the run the rider was
 // upright and still, so a starting lean is noticed only after the delay; the
 // speed they want is their own and acts at once.
 //
-// The rider's size is the mean of the 6,068 US Army personnel measured in
-// ANSUR II (2012): 79.7 kg, crotch height 825 mm, trochanterion height 883 mm.
-// Seated upright with legs straight to a pedal at the bottom, the saddle is at
-// crotch height above that pedal and the center of mass 10 cm above the
-// trochanter, as for a standing adult.
+// Rider dimensions, mass and point-mass position are assigned teaching
+// parameters, not a measured seated rider or a population-average claim.
+// The nominal leg reach fixes the saddle height above the lowest pedal.
 //
 // The run takes fourth-order Runge-Kutta steps of half a millisecond, and at
 // every stage the rider senses the state one delay earlier.
@@ -46,7 +44,7 @@ import {validateControls, validTime} from './physics-kit.js';
 // ---------------------------------------------------------------------------
 
 export const GRAVITY = 9.81;
-/** The mean ANSUR II adult, men and women together, and where the center of mass sits above the trochanter. */
+/** Assigned teaching dimensions; the mass is concentrated at one point above the saddle. */
 export const RIDER = Object.freeze({mass: 79.7, inseam: 0.825, trochanter: 0.883, aboveTrochanter: 0.1});
 export const WHEELS = Object.freeze([20, 24, 29, 36]);
 export const WHEEL_MASS = 2;
@@ -135,7 +133,7 @@ export function criticalDelay(body, gains = REFLEXES) {
   return best / body.w;
 }
 
-/** The longest delay that reflexes to the lean and its rate alone can approach but never reach: √2 / w. */
+/** The undamped small-angle delayed proportional-derivative bound, without saturation or prediction: √2 / w. */
 export const delayLimit = body => Math.SQRT2 / body.w;
 
 const rides = new Map();
