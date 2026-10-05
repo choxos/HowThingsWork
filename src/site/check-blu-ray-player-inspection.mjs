@@ -28,5 +28,7 @@ t.ok(T.status.material!==T.board.material,'status light never changes board colo
 t.ok(model.covers.includes(T.frontSlot)&&model.covers.includes(T.status),'trim leaves with removed front panel');
 t.ok(T.output.parent===T.chassis,'rear socket stays with its mounting panel during separation');
 t.ok(T.status.parent===T.chassis,'front indicator stays with its mounting panel during separation');
+t.ok(model.thumbnailOmit.length===5&&model.thumbnailOmit.every(o=>o.userData.inspectionOnly),'room thumbnails omit every enlarged inspection diagram');
+t.ok(model.thumbnailOmit.every(o=>o.parent===T.system),'omitted diagrams stay attached for lesson inspection and disposal');
 const resources=checkDisposal(model,t);
 console.log(JSON.stringify({passed:true,checks:t.count,inventories,resources}));

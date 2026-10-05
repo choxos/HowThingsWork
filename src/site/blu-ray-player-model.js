@@ -268,6 +268,7 @@ export function createBluRayPlayerModel() {
   result.covers.push(p.lid,p.front,p.frontSlot,p.status,p.right,p.discFront);result.initialCutaway=true;
   result.catalogParts=result.parts.filter(part=>!['system','player'].includes(part.id));
   const detailIds=new Set(['optics','track','layers','phase','spin']);
+  result.thumbnailOmit=[...detailIds].map(id=>d[id]);
   result.partViewDirections=Object.fromEntries(result.parts.map(part=>[part.id,{front:detailIds.has(part.id)?[0,0,3]:[1.1,1.9,3]}]));
   for(const part of result.parts)part.framePadding=detailIds.has(part.id)?.60:.68;
   result.initialPart='player';result.initialView='front';result.frameVisibleOnly=true;result.framePadding=.70;result.selectionOutline=false;result.transparentBackground=true;
