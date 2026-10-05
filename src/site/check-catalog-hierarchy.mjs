@@ -170,3 +170,10 @@ const unicycle = families.find(family => family.entry.id === 'unicycle');
 assert(unicycle && unicycle.components.length === 0, 'Unicycle stays a whole item; ordinary parts stay in its viewer');
 assert.deepEqual(tags('unicycle'), ['rotating-wheels', 'wheel-and-axle', 'levers', 'gears-and-belts']);
 assert(hasCatalogPart('unicycle', 'cranks') && hasCatalogPart('unicycle', 'frame'), 'Unicycle part bookmarks remain available');
+
+const stapler = families.find(family => family.entry.id === 'stapler');
+assert(stapler && stapler.components.length === 0, 'Stapler remains one whole machine; its staples and springs stay inside its viewer');
+assert.deepEqual(tags('stapler'), ['springs', 'levers', 'friction']);
+assert(hasCatalogPart('stapler', 'strip') && hasCatalogPart('stapler', 'springs'), 'Stapler part bookmarks remain available');
+assert.equal(catalog.groups.find(group => group.id === 'stapler').room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === 'stapler').place, 'home');

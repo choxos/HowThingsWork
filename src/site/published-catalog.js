@@ -2,6 +2,7 @@ import {neighborhoodCatalog as drafts} from './catalog-data.js';
 
 // Add routes only after the item's source, controls, browser, and review gates pass.
 export const publishedEntryIds = [
+  "stapler",
   "unicycle",
   "sewing-machine",
   "lockstitch",
@@ -258,6 +259,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'stapler': ['springs', 'levers', 'friction'],
   'unicycle': ['rotating-wheels', 'wheel-and-axle', 'levers', 'gears-and-belts'],
   'head-tracking': ['sensors-and-detectors', 'using-bits', 'electricity'],
   'virtual-reality-headset': ['using-bits', 'light-and-images', 'sensors-and-detectors', 'sound-and-music', 'electricity'],
@@ -333,7 +335,7 @@ const groups = drafts.groups.map(group => ({
   relatedStudies: [],
 })).filter(group => group.items.length);
 const descriptions = {
-  home: 'Explore kitchen tools, laundry, toys, measuring, locks, sewing, and electrical protection.',
+  home: 'Explore kitchen and study tools, laundry, toys, measuring, locks, sewing, and electrical protection.',
   workshop: 'Follow motors, 3D printing, ignition, and crash-sensing mechanisms.',
   discovery: 'Explore sensors, seismic measurements, inertial navigation, telescopes, and microscopes.',
   park: 'Explore binocular prisms, upright images, and stereo depth.',

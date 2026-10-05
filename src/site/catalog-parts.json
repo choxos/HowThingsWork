@@ -1000,6 +1000,48 @@
       "parentId": "system"
     }
   ],
+  "stapler": [
+    {
+      "id": "base",
+      "name": "Base and anvil",
+      "parentId": "system"
+    },
+    {
+      "id": "paper",
+      "name": "Paper",
+      "parentId": "system"
+    },
+    {
+      "id": "magazine",
+      "name": "Magazine and staples",
+      "parentId": "system"
+    },
+    {
+      "id": "strip",
+      "name": "Staple strip and follower",
+      "parentId": "magazine"
+    },
+    {
+      "id": "arm",
+      "name": "Arm and blade",
+      "parentId": "system"
+    },
+    {
+      "id": "springs",
+      "name": "Leaf return springs",
+      "parentId": "system"
+    },
+    {
+      "id": "detail",
+      "name": "Cut across the nose",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Force during the press",
+      "parentId": "system"
+    }
+  ],
   "raft": [
     {
       "id": "timbers",

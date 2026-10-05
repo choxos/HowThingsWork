@@ -6,33 +6,33 @@ import {validateControls, validTime} from './physics-kit.js';
 //
 // Units: millimeters, newtons and seconds; work in joules.
 //
-// Exact, from the sources: each staple's wire, crown and legs; how much of
-// each leg comes out through the back of the stack, and where the folded legs
-// end; the lever, for pushes straight down: the hand's force times its
-// distance from the hinge equals the blade's force times the blade's
-// distance; and the cube law for folding a round wire, whose bending moment
-// at full yield is its strength times d³/6.
+// Assigned teaching specimens use rectangular wire, with section dimensions
+// and crown width based on the KYA 26/6 and 24/6 product examples. Leg length
+// here means outside height; it is not a universal definition of a product's
+// nominal leg length. The 8 mm specimen is an assigned longer comparison.
 //
-// Illustrative: every force along the stroke (the two springs, breaking the
-// staple off its strip, piercing, friction in the paper and folding), sized
-// so a 26/6 staple's hardest push, pressed over the blade, stays within the
-// 15 to 30 pounds-force a patent gives for a conventional stapler, from 1 to
-// 25 sheets; the stapler's own dimensions; and 0.1 mm for every sheet, inside
-// the 97 to 114 μm of 20-pound bond paper.
+// Vertical forces obey the ideal lever's moment and work relations. Plastic
+// bending of the rectangular section uses Z = width * thickness² / 4, with
+// the same yield stress and bending moment arm for the specimens.
+//
+// Every spring, separation, penetration, friction and folding force is
+// illustrative, not fitted to measurements. The stapler's dimensions and
+// 0.1 mm sheet thickness are also assigned. This is not a product-capacity
+// or required-hand-force prediction.
 // ---------------------------------------------------------------------------
 
 /** Newtons in one pound-force, by definition. */
 export const LBF = 0.45359237 * 9.80665;
 
 /**
- * Staple sizes from the table on Wikipedia's staple page: the wire's gauge and
- * the leg's length make the name, and the crown is measured across its
- * outside. The table gives 24/8 no crown width; it is taken as 24/6's.
+ * Rectangular specimens, mm. `wire` is thickness within the staple plane;
+ * `width` is depth perpendicular to that plane. Crown and leg are outside
+ * dimensions in this model. These labels do not assert product compatibility.
  */
 export const STAPLES = Object.freeze([
-  Object.freeze({name: '26/6', wire: 0.405, crown: 12.7, leg: 6}),
-  Object.freeze({name: '24/6', wire: 0.511, crown: 12.9, leg: 6}),
-  Object.freeze({name: '24/8', wire: 0.511, crown: 12.9, leg: 8}),
+  Object.freeze({name: 'Light 6 mm', wire: 0.40, width: 0.50, crown: 12.85, leg: 6}),
+  Object.freeze({name: 'Heavy 6 mm', wire: 0.45, width: 0.50, crown: 12.85, leg: 6}),
+  Object.freeze({name: 'Heavy 8 mm', wire: 0.45, width: 0.50, crown: 12.85, leg: 8}),
 ]);
 
 /** One sheet of paper, mm. */
@@ -48,8 +48,17 @@ export const STAPLER = Object.freeze({
   gap: 9,
   recess: 0.5,
   longest: 8,
+  magazineNose: 166,
   speed: 4,
 });
+
+/** The loaded crown meets a vertical nose guide while the magazine pivots. */
+export function magazineAngle(crownDrop) {
+  const height = STAPLER.recess + STAPLER.longest, y = height - crownDrop;
+  return Math.asin(height / Math.hypot(STAPLER.blade, y)) - Math.atan2(y, STAPLER.blade);
+}
+
+export const magazineNoseAt = crownDrop => STAPLER.gap - STAPLER.magazineNose * Math.sin(magazineAngle(crownDrop));
 
 /** The illustrative forces, all felt at the blade. Per-leg forces are doubled for the two legs. */
 export const FORCES = Object.freeze({
@@ -64,7 +73,7 @@ export const FORCES = Object.freeze({
   fold: 28,
 });
 
-export const STAPLE_OPTIONS = Object.freeze(STAPLES.map((staple, value) => Object.freeze({value, label: `${staple.name}: ${staple.wire} mm wire, ${staple.leg} mm legs`})));
+export const STAPLE_OPTIONS = Object.freeze(STAPLES.map((staple, value) => Object.freeze({value, label: `${staple.name} · ${staple.width.toFixed(2)} × ${staple.wire.toFixed(2)} mm wire`})));
 export const ANVIL_OPTIONS = Object.freeze([
   Object.freeze({value: 0, label: 'Permanent: legs folded inward'}),
   Object.freeze({value: 1, label: 'Temporary: legs folded outward'}),
@@ -82,11 +91,11 @@ export const PHASES = Object.freeze({
   seated: 'Crown down on the paper',
 });
 
-/** A round wire's full plastic section modulus, d³/6, mm³: its bending moment at full yield is its strength times this. */
-export const plasticModulus = wire => wire ** 3 / 6;
+/** Rectangular plastic section modulus, mm³, for bending through `wire`. */
+export const plasticModulus = (wire, width = STAPLES[0].width) => width * wire ** 2 / 4;
 
 /** Each leg's folding force, N: the thinnest wire's, scaled by the plastic modulus. */
-export const foldForce = wire => FORCES.fold * plasticModulus(wire) / plasticModulus(STAPLES[0].wire);
+export const foldForce = (wire, width = STAPLES[0].width) => FORCES.fold * plasticModulus(wire, width) / plasticModulus(STAPLES[0].wire, STAPLES[0].width);
 
 /** The return spring between arm and magazine, u mm into the drive. */
 const springAt = u => FORCES.spring + FORCES.springRate * u;
@@ -105,10 +114,12 @@ export function staplerPlan(input = {}) {
   const ratio = STAPLER.blade / values.hand;
   const fold = foldForce(wire);
 
-  const closed = STAPLER.gap - stack;
-  const recess = STAPLER.recess + STAPLER.longest - leg;
+  const closedAngle = Math.asin((STAPLER.gap - stack) / STAPLER.magazineNose);
+  const loadedHeight = STAPLER.recess + STAPLER.longest;
+  const closed = STAPLER.blade * Math.tan(closedAngle) + loadedHeight * (1 - 1 / Math.cos(closedAngle));
+  const touch = STAPLER.gap + loadedHeight - leg - stack;
+  const recess = touch - closed;
   const broken = closed + FORCES.breakTravel;
-  const touch = closed + recess;
   const anvil = through > 0 ? touch + stack : null;
   const seat = touch + below;
 
@@ -143,7 +154,7 @@ export function bladeForce(plan, drop) {
   const {closed, recess, stack, below, through, fold} = plan;
   if (drop < closed) return FORCES.magazine + FORCES.magazineRate * drop;
   const u = drop - closed, spring = springAt(u);
-  if (u < FORCES.breakTravel) return spring + FORCES.breakOff * u / FORCES.breakTravel;
+  if (drop < plan.broken) return spring + FORCES.breakOff * u / FORCES.breakTravel;
   if (u < recess) return spring;
   const inside = u - recess;
   if (through > 0 && inside >= stack) return spring + 2 * (fold + FORCES.friction * stack);
@@ -155,7 +166,7 @@ export function phaseAt(plan, drop) {
   if (drop >= plan.seat) return 'seated';
   if (drop < plan.closed) return 'closing';
   const u = drop - plan.closed;
-  if (u < FORCES.breakTravel) return 'breaking';
+  if (drop < plan.broken) return 'breaking';
   if (u < plan.recess) return 'free';
   if (plan.through > 0 && u - plan.recess >= plan.stack) return 'folding';
   return 'piercing';
@@ -203,13 +214,19 @@ function profileOf(plan) {
 
 /** The press at a moment of the slow playback. */
 export function staplerAt(plan, time) {
-  const t = validTime(time), drop = Math.min(plan.seat, STAPLER.speed * t);
+  const t = validTime(time);
+  let drop = Math.min(plan.seat, STAPLER.speed * t);
+  // A mathematically exact stage boundary has the post-transition force,
+  // whether reached by a preset or by many small playback steps.
+  for (const boundary of [plan.closed, plan.broken, plan.touch, plan.anvil, plan.seat]) {
+    if (boundary !== null && Math.abs(drop - boundary) < 1e-10) { drop = boundary; break; }
+  }
   const blade = bladeForce(plan, drop);
   const inside = Math.max(0, drop - plan.closed - plan.recess);
   return {
     t, drop, phase: phaseAt(plan, drop), done: drop >= plan.seat,
     blade, hand: blade * plan.ratio, handTravel: drop / plan.ratio,
-    nose: STAPLER.gap - Math.min(drop, plan.closed),
+    nose: magazineNoseAt(Math.min(drop, plan.closed)),
     crownTop: STAPLER.gap + STAPLER.recess + STAPLER.longest - drop,
     inPaper: Math.min(inside, plan.stack, plan.below),
     reach: plan.through > 0 ? Math.max(0, Math.min(inside - plan.stack, plan.through)) : 0,
