@@ -11,7 +11,7 @@ import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinit
 import * as P from './pens-physics.js';
 import * as BP from './ballpoint-model.js';
 import * as FT from './felt-tip-model.js';
-import * as DP from './dip-pen-model.js';
+import * as DP from './capillary-model.js';
 import {ballpointLesson, feltTipLesson, dipPenLesson, capillaryActionLesson, ballpointLimits, feltTipLimits, dipPenLimits, capillaryLimits} from './pens-lessons.js';
 import {houseComponents} from './house-components.js';
 
@@ -147,10 +147,10 @@ const ballpoint = BP.createBallpointModel();
 const felt = FT.createFeltTipModel();
 
 // ---------------------------------------------------------------------------
-// 6. The dip pen and the bench, read off their drawing.
+// 6. The unpublished capillary bench, preserved for its separate review.
 // ---------------------------------------------------------------------------
 
-const dip = DP.createDipPenModel(), D = dip.topology;
+const dip = DP.createCapillaryModel(), D = dip.topology;
 for (let liquid = 0; liquid < 3; liquid++) {
   for (let i = 0; i <= 8; i++) {
     const radius = Number((0.1 + 0.05 * i).toFixed(2)), L = P.LIQUIDS[liquid], h = 1000 * jurin(SRC[L.name], radius / 1000), enters = 15 + h > 0;
@@ -245,15 +245,6 @@ for (let press = 0; press <= 1.0001; press += 0.1) {
 
 const settled = (model, values) => pose(model, values, 1e3);
 const dipAt = values => settled(dip, values), rest = dipAt({});
-checkTrialNumbers(dipPenLesson, {
-  'Dip the nib': s => ({'0.02': P.NIB.gap, '10': P.NIB.slit, '207': 1000 * s.fill}),
-  'Why it holds': s => ({'0.02': P.NIB.gap, '742': s.holdRest}),
-  'Press for a downstroke': s => ({'0.02': P.NIB.gap, '0.07': s.tipGap, '3.5': s.tipGap / P.NIB.gap, '43': s.flow, '0.15': s.line}),
-  'Press hard': s => { t.near(s.line, 2 * rest.line, 1e-12, 'twice as wide as with no press'); return {'0.12': s.tipGap, '0.20': s.line, '216': s.flow, '124': s.hold}; },
-  'A hairline': s => ({'0.03': s.tipGap, '0.11': s.line}),
-  'A slit is a pair of plates': s => { t.near(s.tops[0] / s.tops.at(-1), 10, 1e-6, 'ten times the gap, a tenth of the height'); return {'0.10': P.BENCH.narrow, '148.4': s.tops[0], '1.00': P.BENCH.wide, '14.8': s.tops.at(-1)}; },
-}, dipAt, t);
-
 const tubeAt = values => dipAt(values), narrow = tubeAt({});
 checkTrialNumbers(capillaryActionLesson, {
   'Water in a narrow tube': s => ({'74.2': s.now.level, '90': 90, '2.56': s.tube90, '70': Number(s.height.toPrecision(1))}),
@@ -268,10 +259,6 @@ checkTrialNumbers(capillaryActionLesson, {
 const firstIn = P.DIP_DOMAINS.radius, entering = [];
 for (let i = 0; i <= 8; i++) { const radius = Number((firstIn[0] + i * firstIn[2]).toFixed(2)); if (P.dipPenPlan({liquid: 2, radius}).enters) entering.push(radius); }
 const deeper = lesson => lesson.deeper.map(item => item.body).join(' ');
-{
-  const half = P.dipPenPlan({press: 0.5});
-  checkQuotedText(deeper(dipPenLesson), {[`${fixed(half.tipGap / P.NIB.gap, 1)} times its width`]: '3.5 times its width', [`lets ${fixed(half.flow, 0)} times as much ink`]: 'lets 43 times as much ink'}, t);
-}
 checkQuotedText(deeper(capillaryActionLesson), {
   [`${fixed(narrow.capillary, 2)} mm for water`]: '2.72 mm for water',
   [`rise of ${Number((1000 * jurin(SRC.Water, 2e-4)).toPrecision(1))} mm`]: 'rise of 70 mm',
@@ -286,9 +273,7 @@ checkQuotedText(deeper(capillaryActionLesson), {
   t.near(wide.tube.k / thin.tube.k, 4, 1e-12, 'a tube twice as wide climbs four times as fast');
   t.near(wide.height / thin.height, 0.5, 1e-12, 'though only half as high');
 }
-checkQuotedText(dipPenLimits, {[`${fixed(P.NIB.length, 0)} mm long and ${fixed(P.NIB.width, 0)} mm wide`]: '30 mm long and 7 mm wide', [`${fixed(P.NIB.gap, 2)} mm wide at rest running ${fixed(P.NIB.slit, 0)} mm`]: '0.02 mm wide at rest running 10 mm', [`vent hole ${fixed(2 * P.NIB.vent, 0)} mm across`]: 'vent hole 2 mm across', [`dipped ${fixed(P.NIB.dip, 0)} mm`]: 'dipped 3 mm', [`splay ${fixed(P.NIB.compliance, 1)} mm for every newton`]: 'splay 0.1 mm for every newton', [`line is ${fixed(P.NIB.tip, 1)} mm wide`]: 'line is 0.1 mm wide'}, t);
 checkQuotedText(capillaryLimits, {[`dipped ${fixed(P.BENCH.depth, 0)} mm`]: 'dipped 15 mm', [`widths ${DP.WIDEN} times wider`]: 'widths 10 times wider', [`glass at ${fixed(P.MERCURY.angle, 0)}°`]: 'glass at 140°', [`a gap of ${fixed(P.BENCH.narrow, 1)} mm to one of ${fixed(P.BENCH.wide, 1)} mm across ${fixed(P.BENCH.width, 0)} mm`]: 'a gap of 0.1 mm to one of 1.0 mm across 40 mm'}, t);
-checkQuotedText(dipPenLesson.quiz.explanation, {[`from ${fixed(P.NIB.gap, 2)} mm to ${fixed(P.dipPenPlan({press: 0.5}).tipGap, 2)} mm`]: 'from 0.02 mm to 0.07 mm', [`${fixed(P.dipPenPlan({press: 0.5}).flow, 0)} times`]: '43 times'}, t);
 checkQuotedText(capillaryActionLesson.quiz.explanation, {[`${fixed(narrow.height, 1)} mm in a 0.2 mm tube, ${fixed(dipAt({radius: 0.1}).height, 1)} mm in a 0.1 mm one`]: '74.2 mm in a 0.2 mm tube, 148.4 mm in a 0.1 mm one'}, t);
 const partText = (model, id) => model.parts.find(part => part.id === id).description;
 checkQuotedText(partText(dip, 'capillary'), {[`dipped ${fixed(P.BENCH.depth, 0)} mm`]: 'dipped 15 mm', [`drawn ${DP.WIDEN} times wider`]: 'drawn 10 times wider'}, t);
@@ -310,7 +295,7 @@ t.ok(ballpointLimits.includes('does not predict air entry'), 'the limits exclude
 // 8. What every model owes the viewer.
 // ---------------------------------------------------------------------------
 
-for (const [name, model, sample, domains, stepSize] of [['ballpoint', ballpoint, P.sampleBallpoint, P.BALLPOINT_DOMAINS, 0.1], ['felt tip', felt, P.sampleFeltTip, P.FELT_DOMAINS, 0.1], ['dip pen', dip, P.sampleDipPen, P.DIP_DOMAINS, 0.1]]) {
+for (const [name, model, sample, domains, stepSize] of [['ballpoint', ballpoint, P.sampleBallpoint, P.BALLPOINT_DOMAINS, 0.1], ['felt tip', felt, P.sampleFeltTip, P.FELT_DOMAINS, 0.1], ['capillary draft', dip, P.sampleDipPen, P.DIP_DOMAINS, 0.1]]) {
   checkControlsMove(model, () => drawing(model), m => m.advance(100), t);
   checkRefusals(sample, domains, t);
   model.reset();
@@ -330,7 +315,7 @@ for (const [name, model, sample, domains, stepSize] of [['ballpoint', ballpoint,
   t.ok(model.parts.every(part => part.description && !/[—–]| - |--/.test(part.description)), `${name}: every part described, with no dashes`);
   t.ok(model.getState().readings.every(item => !/NaN|undefined|Infinity/.test(item.value + (item.hint || ''))), `${name}: readings are all numbers`);
 }
-const disposed = [BP.createBallpointModel(), FT.createFeltTipModel(), DP.createDipPenModel()].map(model => { model.advance(2); return checkDisposal(model, t); });
+const disposed = [BP.createBallpointModel(), FT.createFeltTipModel(), DP.createCapillaryModel()].map(model => { model.advance(2); return checkDisposal(model, t); });
 for (const model of [ballpoint, felt, dip]) model.dispose();
 
 console.log(`PASS pens: ${t.count} checks, ${counts.rises} rises found again by integrating Poiseuille’s balance, ${counts.strips} wedge strips and ${counts.charts} chart points read back, ${counts.rolls} rolls with the touching point held still, ${counts.specks} ink specks, ${counts.poses} poses, 4 lessons, ${disposed.join(', ')} resources released exactly once.`);

@@ -118,7 +118,9 @@
     "check:stapler-model": "node src/site/check-stapler-model.mjs && node src/site/check-stapler-inspection.mjs",
     "check:stapler": "node src/site/check-stapler.mjs",
     "check:felt-tip-model": "node src/site/check-felt-tip-model.mjs && node src/site/check-felt-tip-inspection.mjs",
-    "check:felt-tip": "node src/site/check-felt-tip.mjs"
+    "check:felt-tip": "node src/site/check-felt-tip.mjs",
+    "check:dip-pen-model": "node src/site/check-dip-pen-model.mjs && node src/site/check-dip-pen-inspection.mjs",
+    "check:dip-pen": "node src/site/check-dip-pen.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

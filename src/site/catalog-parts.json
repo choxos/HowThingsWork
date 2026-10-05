@@ -1491,6 +1491,38 @@
       "parentId": "system"
     }
   ],
+  "dip-pen": [
+    {
+      "id": "well",
+      "name": "Inkwell",
+      "parentId": "system"
+    },
+    {
+      "id": "paper",
+      "name": "Paper and written stroke",
+      "parentId": "system"
+    },
+    {
+      "id": "holder",
+      "name": "Wooden holder and nib socket",
+      "parentId": "system"
+    },
+    {
+      "id": "nib",
+      "name": "Steel nib and flexing tines",
+      "parentId": "system"
+    },
+    {
+      "id": "retained",
+      "name": "Ink retained in the slit",
+      "parentId": "nib"
+    },
+    {
+      "id": "detail",
+      "name": "Writing tip, enlarged",
+      "parentId": "system"
+    }
+  ],
   "microwave-oven": [
     {
       "id": "cavity",

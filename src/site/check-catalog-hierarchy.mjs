@@ -191,3 +191,11 @@ assert.deepEqual(tags('felt-tip-pen'), ['pressure-power']);
 assert(hasCatalogPart('felt-tip-pen', 'nib') && hasCatalogPart('felt-tip-pen', 'reservoir'), 'Marker part bookmarks remain available');
 assert.equal(catalog.groups.find(group => group.id === feltTip.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === feltTip.entry.group).place, 'home');
+
+const dipPen = families.find(family => family.entry.id === 'dip-pen');
+assert(dipPen && dipPen.components.length === 0, 'Dip pen remains one whole item; nib, holder and ink stay inside its viewer');
+assert.deepEqual(tags('dip-pen'), ['pressure-power', 'springs']);
+assert(hasCatalogPart('dip-pen', 'nib') && hasCatalogPart('dip-pen', 'holder'), 'Dip pen inspection bookmarks remain available');
+assert.equal(catalog.groups.find(group => group.id === dipPen.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === dipPen.entry.group).place, 'home');
+assert(!catalog.entries.some(entry => entry.id === 'capillary-action'), 'The unfinished capillary bench remains unpublished');

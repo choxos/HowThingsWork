@@ -1,4 +1,5 @@
 import {Box3,Vector3} from 'three';
+import {createCapillaryModel} from './capillary-model.js';
 import {createSiphonModel} from './siphon-model.js';
 import {createPolarizedLightModel} from './polarized-light-model.js';
 import {createLCDModel} from './lcd-model.js';
@@ -122,7 +123,7 @@ export const houseComponents={
  'Feed-dog lift and advance linkages':{machine:'Sewing machine',createModel:()=>{const model=createSewingModel({feedLesson:true,linkageLesson:true});model.resultPart.focusOnComplete=false;model.followParts=[...model.followParts,'feed-linkages'];return model;},part:'feed-linkages',view:'iso',isolate:true,lesson:utilityComponentLessons['Feed-dog lift and advance linkages'],intro:utilityComponentLessons['Feed-dog lift and advance linkages'].simple},
  'Siphon':{machine:'Toilet tank',createModel:createSiphonModel,part:'system',isolate:false,view:'front',lesson:utilityComponentLessons['Siphon'],intro:utilityComponentLessons['Siphon'].simple},
  'Rotating spray arm':{machine:'Dishwasher',createModel:()=>createDishwasherModel({sprayArmLesson:true}),part:'system',isolate:false,view:'front',lesson:rotatingSprayArmLesson,intro:rotatingSprayArmLesson.simple},
- 'Capillary action':{machine:'Dip pen',part:'capillary',isolate:false,view:'front',lesson:capillaryActionLesson,intro:capillaryActionLesson.simple},
+ 'Capillary action':{machine:'Dip pen',createModel:createCapillaryModel,part:'capillary',isolate:false,view:'front',lesson:capillaryActionLesson,intro:capillaryActionLesson.simple},
  'Refrigerant compressor':{machine:'Refrigerator',createModel:createRefrigerantCompressorModel,part:'system',isolate:false,view:'front',lesson:refrigerantCompressorLesson,intro:refrigerantCompressorLesson.simple},
  'CD':{machine:'Blu-ray player',part:'track',isolate:false,view:'front',values:{format:0},lesson:cdLesson,intro:cdLesson.simple},
  'DVD':{machine:'Blu-ray player',part:'track',isolate:false,view:'front',values:{format:1},lesson:dvdLesson,intro:dvdLesson.simple},

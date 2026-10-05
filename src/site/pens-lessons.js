@@ -1,4 +1,5 @@
 import {BALLPOINT_DEFAULTS, DIP_DEFAULTS, FELT_DEFAULTS} from './pens-physics.js';
+import {DIP_WRITE_DEFAULTS} from './dip-pen-physics.js';
 
 const trial = (defaults, part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
 
@@ -155,48 +156,62 @@ export const feltTipLesson = {
 // Dip pen, and capillary action on its bench.
 // ---------------------------------------------------------------------------
 
-const dipSystem = trial(DIP_DEFAULTS, 'system'), dipNib = trial(DIP_DEFAULTS, 'nib'), dipTip = trial(DIP_DEFAULTS, 'tip'), dipBench = trial(DIP_DEFAULTS, 'capillary');
+const dipTrial = (title, observe, values = {}, part = 'system', time = 6.2) => {
+  const settings = {...DIP_WRITE_DEFAULTS, ...values};
+  return {title, instruction: 'Settings and observation time are applied. Press Play to continue or replay the sequence.', observe, values: settings, initialState: {settings, time}, reset: true, part, isolate: true, view: part === 'paper' ? 'top' : 'front'};
+};
 
-export const dipPenLimits = 'A steel nib drawn at true size and flat, 30 mm long and 7 mm wide, with a slit 0.02 mm wide at rest running 10 mm from the tip to a vent hole 2 mm across. It is dipped 3 mm into water-based ink, taken as water at 20 °C that wets the steel completely. The slit starts empty and fills from the tip as the gap between two plates, by Poiseuille’s law with the ink’s weight and no inertia, and stops at the vent hole. The nib is dipped with its tines at rest and pressed in the close up. Illustrative: the tines splay 0.1 mm for every newton, hinged at the vent hole, and the line is 0.1 mm wide with no press, widening by the splay. Time runs on a log scale from 1 ms to 1,000 s. Not modeled: the curve of a real nib, the drop held under it, the paper drawing ink out, and the ink running out.';
+export const dipPenLimits = 'Original flat steel teaching nib, 30 mm long and 7 mm wide, with a 0.25 mm thickness. A 9 mm narrow slot reaches the lower edge of a 2 mm vent centered 10 mm above the tip. The resting gap is 0.020 mm; assigned extra force spreads the tip by 0.1 mm/N, decreasing linearly to zero spread at the slot root. The pen is tilted 45°. Retained loads are chosen as 0, 0.020 or 0.045 μL. The full load equals the resting narrow-slot volume. Loading, retention near the tip, lifting and transfer are imposed teaching stages, not predictions of wetting, capture or drainage. A dry nib skips the ink. Writing travels 40 mm at 10 mm/s after a 2.2 s preparation sequence. Assigned line width equals tip span and wet-film thickness is 10 μm. Deposited volume is width × thickness × inked length; the same volume is removed from the tapered slot. Ink flow is assumed sufficient until the chosen supply is exhausted. No ink is deposited during the stationary contact stage. Actual nib curvature, nonlinear elasticity, contact forces, finite-width channel resistance, drop storage outside the slit, evaporation, blotting, paper absorption and breaking of the ink bridge are not solved. The 40× tip inspection uses the same force and ink state. Capillary pressure is only a local ideal parallel-face comparison with complete wetting and assigned water-like surface tension of 72.8 mN/m; it does not predict net flow or guarantee against leaks.';
 
 export const dipPenLesson = {
-  simple: 'How does a dip pen hold ink with no reservoir, and why does pressing harder make a thicker line?',
-  overview: 'A dip pen is a metal nib split down the middle. The slit between its two tines is a very narrow gap, and ink climbs into it and stays there by capillary action, the same pull that lifts water up a glass tube on the bench beside it. Pressing the nib splays the tines, widening the slit so far more ink flows. Press Play to dip the nib, and change the press to see the tip open and the line widen.',
+  simple: 'How do a split nib, a small ink load and flexible tines make a written stroke?',
+  overview: 'Dipping wets the nib and loads ink into its narrow spaces. Capillary effects help retain that ink; the slit connects it to the paper. The pen lifts, moves to the page and writes. Extra force spreads the pointed tines, widening the line. This example tracks a chosen volume so you can see why a wider stroke uses the retained ink sooner.',
   steps: [
-    {title: 'Dip', body: 'The nib goes into the ink, and the ink wets the steel.'},
-    {title: 'Climb the slit', body: 'The slit is a gap between two plates, and ink climbs it to the vent hole.'},
-    {title: 'Touch the paper', body: 'At the tip, the paper draws ink out of the slit.'},
-    {title: 'Press for a thick line', body: 'Pushing down splays the tines: the slit widens, much more ink flows, and the line widens.'},
+    {title: 'Load the nib', body: 'Ink enters narrow spaces around the nib. Here the chosen load occupies only the slit; real nibs also retain ink around the vent and on their undersides.'},
+    {title: 'Carry it to the page', body: 'The holder lifts the nib clear of the well and moves it onto paper. A dry comparison skips the ink.'},
+    {title: 'Spread the tines', body: 'Extra force on the pointed nib spreads its two tips. The enlarged view shows the same gap as the complete pen.'},
+    {title: 'Spend the retained ink', body: 'A moving wet tip leaves a line. Every bit deposited is removed from the nib; once this assigned supply runs out, the pen leaves dry travel.'},
   ],
   parts: [
-    {name: 'Nib and inkwell', role: 'The steel nib with its slit and vent hole, dipped into ink.'},
-    {name: 'Tip on the paper, close up', role: 'The tines, the ink between them and the line they leave.'},
-    {name: 'Capillary bench', role: 'A glass tube and a wedge of two plates, showing the same pull.'},
-    {name: 'Rise over time', role: 'The level in the tube and the wedge after dipping.'},
+    {name: 'Wooden holder and nib socket', role: 'Supports the steel shank without storing ink inside the handle.'},
+    {name: 'Steel nib and flexing tines', role: 'One connected sheet splits into two flexible tips around the slit.'},
+    {name: 'Ink retained in the slit', role: 'A finite volume remains connected to the writing point and is consumed by the stroke.'},
+    {name: 'Inkwell', role: 'Supplies the chosen initial load; its cutaway exposes the immersed nib.'},
+    {name: 'Paper and written stroke', role: 'Records where the moving tip still has ink.'},
+    {name: 'Writing tip, enlarged', role: 'Shows the same tine spread, retained ink and wet or dry contact at 40× scale.'},
   ],
   tryIt: [
-    dipNib('Dip the nib', 'Press Play and watch the nib.', 'The slit between the tines is a gap 0.02 mm wide. Ink climbs it from the tip and reaches the vent hole 10 mm up in 207 ms.'),
-    dipNib('Why it holds', 'Look at the nib.', 'A slit 0.02 mm wide could hold water-based ink 742 mm up, far above the vent hole, so gravity does not drain the slit.'),
-    dipTip('Press for a downstroke', 'Press the nib with 0.5 N.', 'The tines splay and the tip opens from 0.02 mm to 0.07 mm, 3.5 times as wide. Ink flows between plates with the cube of their gap, so the slit now lets ink through 43 times as easily, and the line widens to 0.15 mm.', {press: 0.5}),
-    dipTip('Press hard', 'Press the nib with 1 N.', 'The tip opens to 0.12 mm and the line to 0.20 mm, twice as wide as with no press, and the slit lets ink through 216 times as easily. Even this wide, it could hold ink 124 mm up.', {press: 1}),
-    dipTip('A hairline', 'Press the nib with 0.1 N.', 'Light pressure barely flexes the tines: the tip opens only to 0.03 mm and the line is 0.11 mm wide.', {press: 0.1}),
-    dipBench('A slit is a pair of plates', 'Press Play and look at the wedge on the bench.', 'Between two plates the gap times the height stays the same. Where the wedge is 0.10 mm wide the water stands 148.4 mm high, and where it is 1.00 mm wide only 14.8 mm: ten times the gap, a tenth of the height.'),
+    dipTrial('Complete a light stroke', 'The full 0.045 μL load writes all 40 mm at the assigned 0.10 mm width. It deposits 0.040 μL and retains 0.005 μL.', {}, 'paper'),
+    dipTrial('Watch the assigned loading', 'Halfway through the illustrative loading stage, the slot contains 0.0225 μL. No ink has reached the paper. This loading schedule is imposed, not a predicted capillary filling rate.', {}, 'nib', .25),
+    dipTrial('Lift without writing', 'The nib now holds 0.045 μL and its point is 25 mm above the ink surface. Deposited volume is still zero; moving through air does not draw a line.', {}, 'system', 1),
+    dipTrial('Apply force without creating ink', 'The tines are halfway through applying 1 N of extra force. Their tip gap has reached 0.070 mm. The retained volume is still 0.045 μL, but it occupies a shorter length of the wider slot.', {press: 1}, 'detail', 2.1),
+    dipTrial('A broader downstroke', 'With 0.5 N of extra force, the assigned width is 0.15 mm. The same 0.045 μL load writes 30.00 mm, then the final 10.00 mm of travel is dry.', {press: .5}, 'paper'),
+    dipTrial('Spread the tines farther', 'At 1 N of extra force the tip gap is 0.120 mm and line width is 0.20 mm. The full load writes 22.50 mm before running out.', {press: 1}, 'paper'),
+    dipTrial('A smaller retained load', 'The 0.020 μL load writes 20.00 mm at light contact. The remaining 20.00 mm of travel leaves no new ink.', {load: 1}, 'paper'),
+    dipTrial('Small load, wide stroke', 'The same 0.020 μL now supplies a 0.20 mm wide line for only 10.00 mm. Doubling assigned width halves the length possible from a fixed volume and film thickness.', {load: 1, press: 1}, 'paper'),
+    dipTrial('Skip dipping', 'The nib stays above the ink, moves to paper and completes its motion. With no retained supply, the entire 40 mm travel is dry.', {load: 0}, 'system'),
+    dipTrial('Inspect a wet writing point', 'The wide tip has traveled 8.00 mm and deposited 0.016 μL. The remaining 0.029 μL still connects to the point, and its blue trail reaches the moving tip.', {press: 1}, 'detail', 3),
+    dipTrial('Inspect a dry writing point', 'The tip has traveled 30.00 mm, beyond the 22.50 mm supplied by its load. The slit is empty and no new blue trail follows the tip.', {press: 1}, 'detail', 5.2),
+    dipTrial('Compare the light contact', 'At light contact the tip gap is 0.020 mm and assigned line width is 0.10 mm. After 10.00 mm of writing, 0.035 μL remains in the slot.', {}, 'detail', 3.2),
   ],
   deeper: [
-    {title: 'A slit for a reservoir', body: 'A dip pen is usually a metal nib with a central slit that acts as a capillary channel, like a fountain pen’s, mounted in a holder, often of wood. Most have no reservoir but a small hole, indent or pocket where a drop of ink is held by capillary action, so the writer must dip again often.'},
-    {title: 'Thick and thin', body: 'Pushing down on a pointed nib splays its tines and lets more ink flow through the widened slit, so thick lines come on downstrokes. Lighter pressure flexes the tines less and makes thinner strokes, and the finest hairlines come on upstrokes and sideways strokes. Pressed too hard on an upstroke, the tines are likely to dig into the paper.'},
-    {title: 'The cube of the gap', body: 'Ink squeezing between two plates is held back by its viscosity along both of them. At a given pull the flow grows with the cube of the gap, so a slit opened to 3.5 times its width lets 43 times as much ink through.'},
-    {title: 'How flexible a nib is', body: 'A nib’s flexibility depends on how springy its metal is, how thick it is and its shape: longer tines flex more than short ones, and a more curved nib is stiffer.'},
-    {title: 'The vent hole', body: 'The hole at the top of the slit ends it and relieves the metal, keeping the nib from cracking along the slit after it has flexed many times.'},
+    {title: 'Capillary retention and gravity', body: 'Wetting and curved liquid surfaces create pressure differences that help ink remain in narrow spaces. Gravity also contributes along an inclined nib. Neither effect by itself determines delivery: the liquid surfaces, resistance, paper and available ink all matter.'},
+    {title: 'Why a tapered slit is not one uniform channel', body: 'The selected force opens the tip most and leaves the root almost unchanged. A formula for one uniform gap cannot be applied to the entire nib using only its tip width. This model shows the geometry and conserves ink volume; it does not claim a measured flow multiplier.'},
+    {title: 'Flex makes the stroke wider', body: 'Pointed nibs can spread under pressure, unlike rigid broad-edge nibs whose line also depends strongly on their angle. The assigned compliance here illustrates flexible tines; actual stiffness depends on metal, curvature, thickness and construction.'},
+    {title: 'A finite load', body: 'For the assigned wet film, volume equals line width times thickness times inked length. A wider stroke spends the same retained load over a shorter distance. Real ink delivery and spreading need measurements of both nib and paper.'},
+    {title: 'Wetting changes the result', body: 'Manufacturers note that a protective nib coating, excess ink, ink consistency and paper choice can all affect writing. The ideal load here does not simulate cleaning, drying, leakage or skipped tracks.'},
   ],
-  misconception: 'A dip pen’s ink does not run down the nib under its own weight. Capillary action could hold it hundreds of millimeters up the slit; the paper draws it out at the tip.',
+  misconception: 'A dip pen is not fed from inside its wooden holder. It carries a limited amount on the nib. Capillary effects help retain and deliver that ink, while gravity, resistance, wetting and contact with paper also matter.',
   limits: dipPenLimits,
-  sources: [sources.dipPen, sources.nib, sources.fountain, sources.capillary],
+  sources: [
+    {title: 'Speedball: Calligraphy and illustration, pointed pen mechanics', url: 'https://www.speedballart.com/shop/calligraphy-illustration/'},
+    {title: 'Manuscript: Dip nib, ink and paper guidance', url: 'https://calligraphy.co.uk/pages/faq'},
+  ],
   quiz: {
-    question: 'Why does pressing a dip pen harder make a thicker line?',
-    options: ['The tines splay and widen the slit, and far more ink flows through a wider gap.', 'Pressing squeezes ink out of the holder.', 'Paper soaks up ink faster when it is pressed.'],
+    question: 'In this model, why does the same ink load write a shorter line with more extra force?',
+    options: ['The tines spread, so each millimeter of the wider stroke uses more ink at the assigned film thickness.', 'The wooden holder absorbs the extra ink.', 'Opening the slit destroys ink before it reaches the paper.'],
     answer: 0,
-    explanation: 'At 0.5 N the tip opens from 0.02 mm to 0.07 mm, and because flow grows with the cube of the gap the slit lets ink through 43 times as easily.',
+    explanation: 'At 0.10 mm width a full load can complete the 40 mm stroke. At 0.20 mm width it is exhausted after 22.50 mm. Deposited plus retained volume always equals the loaded volume.',
   },
 };
 
