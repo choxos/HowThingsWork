@@ -364,7 +364,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     // A preset may restore both time and settings. Applying unrelated defaults
     // here can restart that restored simulation before the preset is displayed.
     apply({...Object.fromEntries(model.controls.map(control=>[control.key,control.initial])),...initialState?.settings});
-    if(selected===model.resultPart?.id){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}
+    if(selected===model.resultPart?.id&&!model.resultPart?.preserveOnReset){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}
   }
   host.querySelector('[data-reset-controls]').addEventListener('click',()=>reset(pendingReplay?.initialState));
   function replay(){

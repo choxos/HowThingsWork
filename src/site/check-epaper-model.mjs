@@ -653,7 +653,7 @@ for (const lesson of [L.electronicPaperLesson, L.electronicInkLesson, L.electrow
   t.ok(lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, 'every source a link, none twice');
   t.ok(lesson.tryIt.every(trial => model.parts.some(item => item.id === trial.part) && trial.view === 'front' && trial.reset === true), 'every trial on a part the model has');
 }
-t.ok(studyLessons['Electronic paper'] === L.electronicPaperLesson, 'the electronic paper’s lesson');
+t.ok(studyLessons['Electronic paper'] !== L.electronicPaperLesson, 'the reviewed main lesson is independent of preserved component drafts');
 for (const [name, lesson, part, values] of [['Electronic ink', L.electronicInkLesson, 'cell', {ink: 1}], ['Electrowetting display', L.electrowettingLesson, 'wetting', undefined], ['E-reader', L.eReaderLesson, 'reader', {ink: 1}]]) {
   const component = houseComponents[name];
   t.ok(component.machine === 'Electronic paper' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front', `${name} routes to the electronic paper’s ${part} with its own lesson`);

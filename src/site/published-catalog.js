@@ -2,6 +2,7 @@ import {neighborhoodCatalog as drafts} from './catalog-data.js';
 
 // Add routes only after the item's source, controls, browser, and review gates pass.
 export const publishedEntryIds = [
+  "electronic-paper",
   "blu-ray-player",
   "capillary-action",
   "dip-pen",
@@ -264,6 +265,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'electronic-paper': ['electricity', 'using-bits', 'light-and-images'],
   'blu-ray-player': ['light-and-images', 'using-bits', 'rotating-wheels', 'screws', 'electricity'],
   'dip-pen': ['pressure-power', 'springs'],
   'felt-tip-pen': ['pressure-power'],

@@ -25,6 +25,7 @@ import {createHeadTrackingModel} from './head-tracking-model.js';
 import {capillaryActionLesson} from './pens-lessons.js';
 import {cdLesson, dvdLesson, cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
 import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
+import {createElectronicPaperModel} from './epaper-model.js';
 import {accelerometerLesson, vibrationMotorLesson} from './phone-lessons.js';
 import {infraredSignalingLesson, diodeLesson, lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
 import {rgbSubpixelsLesson, oledDisplayLesson} from './lcd-lessons.js';
@@ -130,9 +131,9 @@ export const houseComponents={
  'DVD':{machine:'Blu-ray player',createModel:createBluRayModel,part:'track',isolate:false,view:'front',values:{format:1},lesson:dvdLesson,intro:dvdLesson.simple},
  'CD-ROM':{machine:'Blu-ray player',createModel:createBluRayModel,part:'signal',isolate:false,view:'front',values:{format:0},lesson:cdRomLesson,intro:cdRomLesson.simple},
  'Optical-disc readout':{machine:'Blu-ray player',createModel:createBluRayModel,part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
- 'Electronic ink':{machine:'Electronic paper',part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
- 'Electrowetting display':{machine:'Electronic paper',part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
- 'E-reader':{machine:'Electronic paper',part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},
+ 'Electronic ink':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
+ 'Electrowetting display':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
+ 'E-reader':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},
  'Accelerometer':{machine:'Smartphone',part:'accelerometer',isolate:false,view:'front',lesson:accelerometerLesson,intro:accelerometerLesson.simple},
  'Vibration motor':{machine:'Smartphone',part:'motor',isolate:false,view:'front',lesson:vibrationMotorLesson,intro:vibrationMotorLesson.simple},
  'RGB subpixels':{machine:'LCD screen',part:'subpixels',isolate:false,view:'front',lesson:rgbSubpixelsLesson,intro:rgbSubpixelsLesson.simple},

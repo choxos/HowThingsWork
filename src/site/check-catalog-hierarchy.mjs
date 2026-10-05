@@ -212,3 +212,11 @@ assert(hasCatalogPart('blu-ray-player', 'pickup') && hasCatalogPart('blu-ray-pla
 assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).place, 'home');
 for (const id of ['cd', 'dvd', 'cd-rom', 'optical-disc-readout']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+
+const electronicPaper = families.find(family => family.entry.id === 'electronic-paper');
+assert(electronicPaper && electronicPaper.components.length === 0, 'Electronic paper stays one whole lesson; ordinary parts and unfinished components stay out of the directory');
+assert.deepEqual(tags('electronic-paper'), ['electricity', 'using-bits', 'light-and-images']);
+assert(hasCatalogPart('electronic-paper', 'ink') && hasCatalogPart('electronic-paper', 'addressing'), 'Display and addressing inspections remain bookmarkable');
+assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).place, 'home');
+for (const id of ['electronic-ink', 'electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);

@@ -1,7 +1,7 @@
 import {staplerLesson} from './stapler-lessons.js';
 import {ballpointLesson, feltTipLesson, dipPenLesson} from './pens-lessons.js';
 import {bluRayPlayerLesson} from './blu-ray-player-lesson.js';
-import {electronicPaperLesson} from './epaper-lessons.js';
+import {electronicPaperDisplayLesson} from './electronic-paper-lesson.js';
 import {smartphoneLesson} from './phone-lessons.js';
 import {speechRecognitionLesson} from './speech-lessons.js';
 import {calculatorLesson} from './calculator-lessons.js';
@@ -13,7 +13,7 @@ export const studyLessons={
  'Dip pen':dipPenLesson,
  'Stapler':staplerLesson,
  'Blu-ray player':bluRayPlayerLesson,
- 'Electronic paper':electronicPaperLesson,
+ 'Electronic paper':electronicPaperDisplayLesson,
  'Smartphone':smartphoneLesson,
  'LCD screen':lcdScreenLesson,
  'Remote control':remoteControlLesson,

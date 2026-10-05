@@ -1887,6 +1887,68 @@
       "parentId": "system"
     }
   ],
+  "electronic-paper": [
+    {
+      "id": "case",
+      "name": "Case and mounting frame",
+      "parentId": "reader"
+    },
+    {
+      "id": "battery",
+      "name": "Battery and leads",
+      "parentId": "reader"
+    },
+    {
+      "id": "controller",
+      "name": "Controller and power board",
+      "parentId": "reader"
+    },
+    {
+      "id": "driver",
+      "name": "Display driver and flexible connection",
+      "parentId": "reader"
+    },
+    {
+      "id": "backplane",
+      "name": "TFT backplane",
+      "parentId": "reader"
+    },
+    {
+      "id": "ink",
+      "name": "Reflective display layer",
+      "parentId": "reader"
+    },
+    {
+      "id": "frontlight",
+      "name": "Front light and protective sheet",
+      "parentId": "reader"
+    },
+    {
+      "id": "addressing",
+      "name": "Pixel addressing, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "capsule",
+      "name": "Charged pigments, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "wetting",
+      "name": "Water displacing oil, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "lighting",
+      "name": "Front light path, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "filters",
+      "name": "Color filters, enlarged",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",
