@@ -18,7 +18,8 @@ import {createIonizerModel} from './ionizer-model.js';
 import {joystickLesson, videoGamesConsoleLesson} from './games-controller-lessons.js';
 import {createJoystickModel} from './joystick-model.js';
 import {createVideoGamesConsoleModel} from './video-games-console-model.js';
-import {headTrackingLesson} from './vr-headset-lessons.js';
+import {headTrackingLesson} from './head-tracking-lesson.js';
+import {createHeadTrackingModel} from './head-tracking-model.js';
 import {capillaryActionLesson} from './pens-lessons.js';
 import {cdLesson, dvdLesson, cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
 import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
@@ -148,7 +149,7 @@ export const houseComponents={
  'Joystick':{machine:'Games controller',createModel:createJoystickModel,part:'rig',isolate:true,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},
  'Video games console':{machine:'Games controller',createModel:createVideoGamesConsoleModel,part:'console-experiment',isolate:true,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
  'Phonemes':{machine:'Speech recognition',part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
- 'Head tracking':{machine:'Virtual reality headset',part:'imu',isolate:false,view:'top',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
+ 'Head tracking':{machine:'Virtual reality headset',createModel:createHeadTrackingModel,part:'system',isolate:true,view:'front',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
  'Polarizing filter':{machine:'Polarized light',createModel:()=>{const model=createPolarizedLightModel();model.parts.find(part=>part.id==='first').framePadding=1.6;return model;},part:'first',isolate:false,view:'front',values:{mode:0,insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
  'Liquid crystals':{machine:'Liquid crystal display',createModel:()=>{const model=createLCDModel();model.parts.find(part=>part.id==='molecules').framePadding=1.6;return model;},part:'molecules',isolate:false,view:'front',values:{mode:0,drive:0,battery:1},lesson:liquidCrystalsLesson,intro:liquidCrystalsLesson.simple},
  'Polarizing sunglasses':{machine:'Polarized light',part:'glasses',isolate:false,view:'front',values:{mode:1,brewster:1,material:0,glasses:1,analyzer:0},lesson:polarizingSunglassesLesson,intro:polarizingSunglassesLesson.simple},

@@ -3,12 +3,12 @@
 // run again in LaValle's rearranged form and held to closed forms, every
 // frame rebuilt and held to what prediction can and cannot do, the lens
 // traced again ray by ray, the eyes' aim found again from vectors, the
-// drawing held to the state, and every number the two lessons quote held to
+// drawing held to the state, and every number the headset lesson quotes held to
 // the model.
 import assert from 'node:assert/strict';
 import {vrPlan, sampleVr, headYaw, minimumJerk, lensImage, viewSlope, rayThrough, eyesOn, audioCue, CLOCKS, HEAD, SHAKE, LENS, GAINS, VR_DEFAULTS, VR_DOMAINS} from './vr-headset-physics.js';
 import {createVrHeadsetModel, objectDirection, panelX, wrap, FACE, HEADSET, IMU_AT, CAMERA_AT, CHARTS, FRAME_ROWS, VIEW_ROWS, COLORS, LANDMARKS} from './vr-headset-model.js';
-import {vrHeadsetLesson, headTrackingLesson} from './vr-headset-lessons.js';
+import {vrHeadsetLesson} from './vr-headset-lessons.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import {fixed} from './format.js';
 
@@ -455,26 +455,13 @@ const machineClaims = {
   'Errors beyond the chart': s => ({'18.32': Math.abs(s.worstSlip.slip), '12': CHARTS.errors.range}),
   'Read the final result': () => ({}),
 };
-const trackingClaims = {
-  'Add up the readings': s => { t.ok(s.gyro[s.N] === 0, 'the readings fall back to nothing'); return {'112.50': Math.max(...Array.from(s.gyro, Math.abs)), '3,000': s.N, '60.00': s.estimate[s.N]}; },
-  'An offset': s => ({'0.5': s.values.offset, '1.50': s.endDrift, '3': s.duration}),
-  'A scale error': s => { t.ok(s.estimate[500] === 0 && s.truth[500] === 0, 'no drift before the turn'); return {'60': HEAD.turn, '1.80': s.endDrift, '3': s.values.scale}; },
-  'Shake it off': s => ({'25': HEAD.swing, '0.75': Math.abs(s.worstDrift.value), '0.00': Math.abs(s.endDrift)}),
-  'A gentle pull': s => ({'0.0001': s.alpha, '10': 1 / (s.alpha * RATE), '3': s.duration, '1.30': s.endDrift, '1.50': vrPlan({...s.values, correction: 0}).endDrift, '5.00': settle(s.values.offset, s.alpha)}),
-  'A firm pull': s => ({'0.01': s.alpha, '0.05': s.endDrift, '16.3': maxAge * 1000, '0.83': Math.abs(s.worstDrift.value)}),
-};
 checkTrialNumbers(vrHeadsetLesson, machineClaims, values => vrPlan(values), t);
-checkTrialNumbers(headTrackingLesson, trackingClaims, values => vrPlan(values), t);
-const trials = vrHeadsetLesson.tryIt.length + headTrackingLesson.tryIt.length;
+const trials = vrHeadsetLesson.tryIt.length;
 
 t.ok(vrHeadsetLesson.steps.some(step => step.title === 'Update both ear signals'), 'audio forms part of the causal lesson');
 t.ok(vrHeadsetLesson.deeper.some(item => item.body.includes('does not bound every instant')), 'flash-onset metric is explicitly limited');
 t.ok(vrHeadsetLesson.quiz.answer === 0 && vrHeadsetLesson.quiz.options[0].includes('fixed in the virtual world'), 'quiz teaches a world-fixed scene');
-checkQuotedText(headTrackingLesson.steps.map(step => step.body).join(' '), {[`${fixed(RATE, 0)} times a second`]: '1,000 times a second'}, t);
-checkQuotedText(headTrackingLesson.deeper.map(item => item.body).join(' '), {[`${fixed(GAINS[1], 4)} in his example`]: '0.0001 in his example', [`${fixed(IMAGES, 0)} images a second and the gyroscope ${fixed(RATE, 0)} readings`]: '60 images a second and the gyroscope 1,000 readings', [`${[...new Set(runs)].sort().join(' or ')} readings in a row`]: '16 or 17 readings in a row', [`up to ${fixed(VR_DOMAINS.scale[1], 0)}% off in scale`]: 'up to 3% off in scale'}, t);
-checkQuotedText(headTrackingLesson.quiz.explanation, {[`${fixed(vrPlan({scale: 3, correction: 0}).endDrift, 2)}° after a ${fixed(TURN, 0)}° turn`]: '1.80° after a 60° turn', [`${fixed(Math.abs(vrPlan({motion: 1, scale: 3, correction: 0}).endDrift), 2)}° once a shaking head`]: '0.00° once a shaking head'}, t);
 checkQuotedText(vrHeadsetLesson.limits, {[`${fixed(FRAMES, 0)} Hz`]: '90 Hz', [`flash for ${fixed(FLASH * 1000, 0)} ms`]: 'flash for 2 ms', [`${fixed(FOCAL, 0)} mm focal length`]: '45 mm focal length', [`${fixed(RELIEF, 0)} mm eye relief`]: '15 mm eye relief', [`${fixed(IPD, 0)} mm eye spacing`]: '63 mm eye spacing', [`from ${VR_DOMAINS.screen[0]} to ${VR_DOMAINS.screen[1]} mm`]: 'from 41 to 45 mm'}, t);
-t.ok(headTrackingLesson.limits === vrHeadsetLesson.limits, 'one set of limits');
 
 const describe = id => model.parts.find(p => p.id === id).description;
 checkQuotedText(describe('wearer'), {[`eye spacing is ${fixed(IPD, 0)} mm`]: 'eye spacing is 63 mm'}, t);
@@ -519,4 +506,4 @@ checkFinite(model.root, t);
 checkRefusals(sampleVr, VR_DOMAINS, t);
 const resources = checkDisposal(model, t);
 
-console.log(`PASS virtual reality headset: ${t.count} checks, ${trackRuns} tracking runs, ${frameCount} frames rebuilt, ${moments} drawn moments, ${trials} trials across two lessons, ${resources} resources released exactly once.`);
+console.log(`PASS virtual reality headset: ${t.count} checks, ${trackRuns} tracking runs, ${frameCount} frames rebuilt, ${moments} drawn moments, ${trials} headset trials, ${resources} resources released exactly once.`);

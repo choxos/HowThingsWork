@@ -1,7 +1,5 @@
 import {VR_DEFAULTS, vrPlan} from './vr-headset-physics.js';
 
-const trial = (part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...VR_DEFAULTS, ...values}, reset: true, part, isolate: false, view});
-const viewTrial = trial('view'), timelineTrial = trial('timeline'), errorsTrial = trial('errors'), focusTrial = trial('focus'), opticsTrial = trial('optics'), imuTrial = trial('imu', 'top');
 
 export const sources = {
   lavalle: {title: 'LaValle: virtual reality systems and their assumptions', url: 'https://lavalle.pl/vr/'},
@@ -82,44 +80,4 @@ export const vrHeadsetLesson = {
   },
 };
 
-export const headTrackingLesson = {
-  simple: 'How does a headset know which way your head is pointing, when its sensor only feels how fast it turns?',
-  overview: 'A gyroscope does not know which way it points. It reports how fast it is turning, and the headset adds up its readings a thousand times a second to follow the head. Every error in a reading is added up too, so the estimate drifts: an offset drifts steadily with time, a scale error with how far you turn. A camera in the room measures the head’s direction on its own, and a filter blends that in, gently enough that the corrections go unnoticed.',
-  steps: [
-    {title: 'Feel the turning', body: 'Inside the chip, tiny vibrating structures feel Coriolis forces while it turns, and it reports the rate of turning 1,000 times a second.'},
-    {title: 'Add it up', body: 'Each reading times one millisecond is how far the head turned in that millisecond. Adding them up gives the head’s yaw.'},
-    {title: 'Watch the drift', body: 'An offset adds the same small turn every millisecond. A scale error adds a share of every real turn.'},
-    {title: 'Correct with the camera', body: 'At every reading, a complementary filter moves the estimate a small fraction α of the way toward the camera’s latest image.'},
-  ],
-  parts: [
-    {name: 'Inertial measurement unit', role: 'The gyroscope and accelerometer chip.'},
-    {name: 'Tracking camera', role: 'Measures which way the headset points.'},
-    {name: 'Yaw over time', role: 'The head, the estimate and the frames.'},
-    {name: 'How far off', role: 'The drift and the slip, magnified.'},
-    {name: 'Frames close up', role: 'Readings, images and frames in the last 120 ms.'},
-  ],
-  tryIt: [
-    imuTrial('Add up the readings', 'Choose no correction, press Play and watch the gyroscope.', 'Its readings rise to 112.50°/s halfway through the turn and fall back to nothing. Added up, the run’s 3,000 readings give 60.00°, exactly the head’s turn, because this gyroscope is perfect.', {correction: 0}),
-    errorsTrial('An offset', 'Choose to hold still, set the gyroscope offset to 0.5°/s and choose no correction.', 'Reading 0.5°/s while nothing moves, the estimate turns 1.50° in 3 s: the room slowly rotates around a wearer who is perfectly still.', {motion: 2, offset: 0.5, correction: 0}),
-    timelineTrial('A scale error', 'Set the gyroscope scale error to 3% and choose no correction.', 'Before the turn the estimate does not drift at all. After the 60° turn it is 1.80° too far, 3% of the turn, and stays there: this error grows with how far the head turns, not with time.', {scale: 3, correction: 0}),
-    errorsTrial('Shake it off', 'Shake your head with a 3% scale error and no correction.', 'Each 25° swing out adds 0.75° of error and each swing back takes it away again: facing forward after the last swing, the estimate is 0.00° off.', {motion: 1, scale: 3, correction: 0}),
-    errorsTrial('A gentle pull', 'Hold still with a 0.5°/s offset and choose the gentler camera correction.', 'At α = 0.0001 the pull acts over about 10 s, so after 3 s the estimate has still drifted 1.30° instead of 1.50°. Left longer, it would settle 5.00° off: a gentle correction needs a well-calibrated gyroscope.', {motion: 2, offset: 0.5, correction: 1}),
-    errorsTrial('A firm pull', 'Keep the 0.5°/s offset, turn your head, and choose the firmer camera correction.', 'At α = 0.01 the offset’s drift is held to 0.05° by the end of the run. But during the turn an image can be 16.3 ms old, and the pull drags the estimate 0.83° behind the head: the kind of correction LaValle warns the wearer may notice.', {offset: 0.5, correction: 2}),
-  ],
-  deeper: [
-    {title: 'Why it drifts', body: 'LaValle models a gyroscope’s reading as ω̂ = a + bω. Added up over time, the offset a builds an error that grows steadily, and the scale b one that grows with every turn, so tracking error grows faster when the head turns more quickly. Even a perfectly calibrated gyroscope drifts, he notes, because of rounding, sampling and noise.'},
-    {title: 'Calibration', body: 'Before calibration, the MPU-6050’s datasheet allows its gyroscope to read up to 20°/s while perfectly still and to be up to 3% off in scale. Headsets calibrate against a better reference, and LaValle warns that a headset warming up during use can spoil its calibration.'},
-    {title: 'The filter', body: 'LaValle’s complementary filter moves the estimate a fraction α of the way toward the other sensor, with α close to zero: 0.0001 in his example. With a camera taking 60 images a second and the gyroscope 1,000 readings, the same image serves for 16 or 17 readings in a row.'},
-    {title: 'Tilt and yaw', body: 'An accelerometer feels gravity, so it can say which way is up and correct the head’s tilt, but only while the head is not accelerating much. It cannot tell which way the head faces. That takes a magnetometer, which nearby iron and circuit boards disturb, or a camera.'},
-    {title: 'Why not position too', body: 'Adding up an accelerometer’s readings twice to find position makes a calibration error grow with the square of time instead of in step with it. LaValle notes that this becomes unbearable within a fraction of a second, which is why headsets track position with cameras.'},
-  ],
-  misconception: 'A gyroscope does not tell the headset which way it faces. It only reports how fast it turns, and the direction comes from adding up its readings, errors and all.',
-  limits,
-  sources: [sources.tracking, sources.mpu],
-  quiz: {
-    question: 'A gyroscope reads every turn 3% too fast. When is the estimate furthest off?',
-    options: ['When the head has turned furthest from where it started.', 'After the longest time, whatever the head does.', 'Never: a scale error cancels itself out.'],
-    answer: 0,
-    explanation: 'A scale error adds a share of every turn, so it follows the angle turned: 1.80° after a 60° turn, and 0.00° once a shaking head faces forward again.',
-  },
-};
+export {headTrackingLesson} from './head-tracking-lesson.js';

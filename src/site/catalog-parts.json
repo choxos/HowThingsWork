@@ -4166,6 +4166,48 @@
       "parentId": "system"
     }
   ],
+  "head-tracking": [
+    {
+      "id": "wearer",
+      "name": "Wearer",
+      "parentId": "system"
+    },
+    {
+      "id": "camera",
+      "name": "Tracking camera",
+      "parentId": "system"
+    },
+    {
+      "id": "device",
+      "name": "Complete headset",
+      "parentId": "system"
+    },
+    {
+      "id": "host",
+      "name": "External rendering computer",
+      "parentId": "system"
+    },
+    {
+      "id": "computer-links",
+      "name": "Computer and tracking cables",
+      "parentId": "system"
+    },
+    {
+      "id": "tracking-step",
+      "name": "One tracking update",
+      "parentId": "system"
+    },
+    {
+      "id": "tracking-heading",
+      "name": "Head and estimated direction",
+      "parentId": "system"
+    },
+    {
+      "id": "tracking-drift",
+      "name": "Tracking error over time",
+      "parentId": "system"
+    }
+  ],
   "robot-vacuum-cleaner": [
     {
       "id": "floor",
