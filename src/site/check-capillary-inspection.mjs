@@ -7,8 +7,16 @@ const t=tally(),model=createCapillaryModel(),B=model.topology;
 let inventories=0,contacts=0;
 const bounds=o=>new THREE.Box3().setFromObject(o);
 const reset=settings=>{model.reset({settings,time:3});model.root.updateMatrixWorld(true);};
+function outward(mesh){
+ const g=mesh.geometry,p=g.attributes.position,n=g.attributes.normal,index=g.index,count=index?index.count:p.count;
+ const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),normal=new THREE.Vector3();let volume=0;
+ for(let i=0;i<count;i+=3){const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);a.fromBufferAttribute(p,ids[0]);b.fromBufferAttribute(p,ids[1]);c.fromBufferAttribute(p,ids[2]);volume+=a.dot(b.clone().cross(c))/6;const cross=b.sub(a).cross(c.sub(a));if(cross.lengthSq()>1e-22){normal.fromBufferAttribute(n,ids[0]);t.ok(cross.dot(normal)>0,'triangle winding agrees with the outward shading normal');}}
+ t.ok(volume>0,'closed solid has outward triangle winding');
+}
 for(const depth of [5,15,60])for(const radius of [.1,.5]){
   reset({depth,radius});
+  for(const mesh of [B.tubeBack,B.tubeFront,...B.plates,B.slider,...B.pads,B.lowerWedge])outward(mesh);
+  const sleeveHit=new THREE.Raycaster(new THREE.Vector3(.96,(205-depth)*MM,.2),new THREE.Vector3(0,0,-1)).intersectObject(B.slider);t.ok(sleeveHit.length>0,'outside ray sees clamp sleeve');t.near(sleeveHit[0].point.z,.04,1e-8,'front-facing sleeve renders its outside wall, not its inside back wall');
   t.near(bounds(B.base).max.y/MM,bounds(B.floor).min.y/MM,3e-5,'bath floor rests on base');
   t.near(bounds(B.rail).min.y/MM,bounds(B.base).max.y/MM,3e-5,'stand rail meets base');
   t.near(bounds(B.clampTop).min.y/MM,bounds(B.plates[0]).max.y/MM,3e-5,'plate clamp top meets actual plate top');

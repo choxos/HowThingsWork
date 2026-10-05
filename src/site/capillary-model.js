@@ -13,24 +13,38 @@ const point = (x, y, z = 0) => [x * MM, y * MM, z * MM];
 const polygon = points => new THREE.Shape(points.map(([x,y]) => new THREE.Vector2(x,y)));
 const replace = (mesh, geometry) => {mesh.geometry.dispose(); mesh.geometry = geometry;};
 
+/** Extrude an x/z footprint upward without reversing the solid's faces. */
+function verticalExtrusion(shape,height){
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false});
+  geometry.rotateX(-Math.PI/2);geometry.scale(MM,MM,-MM);
+  // The reflected z coordinate reverses handedness. Reverse each triangle too,
+  // preserving the transformed outward normals and correct front-face culling.
+  if(geometry.index){
+    const index=geometry.index.array;for(let i=0;i<index.length;i+=3)[index[i+1],index[i+2]]=[index[i+2],index[i+1]];
+    geometry.index.needsUpdate=true;
+  }else{
+    for(const attribute of Object.values(geometry.attributes)){
+      const a=attribute.array,n=attribute.itemSize;
+      for(let i=0;i<attribute.count;i+=3)for(let k=0;k<n;k++){const j=(i+1)*n+k,l=(i+2)*n+k;[a[j],a[l]]=[a[l],a[j]];}
+      attribute.needsUpdate=true;
+    }
+  }
+  return geometry;
+}
+
 /** Solid annular tube wall, open at both ends, with a longitudinal cut face. */
 export function capillaryWall(radius, start, length = Math.PI) {
   const points=[];
   for (let i=0;i<=64;i++){const a=start+length*i/64;points.push([APPARATUS.tubeOuter*Math.sin(a),APPARATUS.tubeOuter*Math.cos(a)]);}
   for (let i=64;i>=0;i--){const a=start+length*i/64;points.push([radius*Math.sin(a),radius*Math.cos(a)]);}
-  const geometry=new THREE.ExtrudeGeometry(polygon(points),{depth:C.length,bevelEnabled:false});
-  geometry.rotateX(-Math.PI/2);geometry.scale(MM,MM,-MM);
-  return geometry;
+  return verticalExtrusion(polygon(points),C.length);
 }
 
 /** Constant-thickness glass plates bounding an actual 0.1–1.0 mm wedge. */
 export function capillaryPlate(side) {
   const a = side * C.narrowGap / 2, b = side * C.wideGap / 2, d = side * APPARATUS.plate;
   const outline = polygon([[0,a],[C.wedgeWidth,b],[C.wedgeWidth,b+d],[0,a+d]]);
-  const geometry = new THREE.ExtrudeGeometry(outline,{depth:C.length,bevelEnabled:false});
-  // Shape x/y are apparatus x/z; extrusion becomes height.
-  geometry.rotateX(-Math.PI/2); geometry.scale(MM,MM,-MM);
-  return geometry;
+  return verticalExtrusion(outline,C.length);
 }
 
 /** Closed liquid sheet; local parallel-plate equilibrium ignores along-wedge curvature. */
@@ -68,12 +82,11 @@ export function createCapillaryModel() {
   const arm=box(carriage,'metal',2,94,203,207,-4,-2);
   const collar=surface(kit,new THREE.LatheGeometry([[2,201],[3,201],[3,209],[2,209],[2,201]].map(([x,y])=>new THREE.Vector2(x*MM,y*MM)),48), 'metal',carriage);
   const railSocket=polygon([[93,-4],[99,-4],[99,4],[93,4]]), railHole=new THREE.Path();railHole.moveTo(94,-3);railHole.lineTo(94,3);railHole.lineTo(98,3);railHole.lineTo(98,-3);railHole.closePath();railSocket.holes.push(railHole);
-  const sliderGeometry=new THREE.ExtrudeGeometry(railSocket,{depth:8,bevelEnabled:false});sliderGeometry.rotateX(-Math.PI/2);sliderGeometry.scale(MM,MM,-MM);
+  const sliderGeometry=verticalExtrusion(railSocket,8);
   const slider=surface(kit,sliderGeometry,'metal',carriage);slider.position.y=201*MM;
   const pads=[-1,1].map(side=>{
     const inner=x=>side*(capillaryGap(x-40)/2+A.plate),outer=side<0?-4:1.5;
-    const geometry=new THREE.ExtrudeGeometry(polygon([[58,inner(58)],[62,inner(62)],[62,outer],[58,outer]]),{depth:19,bevelEnabled:false});
-    geometry.rotateX(-Math.PI/2);geometry.scale(MM,MM,-MM);
+    const geometry=verticalExtrusion(polygon([[58,inner(58)],[62,inner(62)],[62,outer],[58,outer]]),19);
     const mesh=surface(kit,geometry,'ink',carriage,true);mesh.position.y=201*MM;return mesh;
   });
   const clampTop=box(carriage,'ink',58,62,220,222,-4,1.5);
@@ -133,7 +146,7 @@ export function createCapillaryModel() {
       carriage.position.y=-plan.depth*MM;
       replace(lowerTube,new THREE.CylinderGeometry(A.tubeOuter*MM,A.tubeOuter*MM,(-plan.depth-A.floor)*MM,128));lowerTube.position.y=(A.floor-plan.depth)*MM/2;
       const lowerShape=polygon([[A.wedgeX,-C.narrowGap/2-A.plate],[A.wedgeX+C.wedgeWidth,-C.wideGap/2-A.plate],[A.wedgeX+C.wedgeWidth,C.wideGap/2+A.plate],[A.wedgeX,C.narrowGap/2+A.plate]]);
-      const lowerGeometry=new THREE.ExtrudeGeometry(lowerShape,{depth:-plan.depth-A.floor,bevelEnabled:false});lowerGeometry.rotateX(-Math.PI/2);lowerGeometry.scale(MM,MM,-MM);replace(lowerWedge,lowerGeometry);lowerWedge.position.y=A.floor*MM;
+      const lowerGeometry=verticalExtrusion(lowerShape,-plan.depth-A.floor);replace(lowerWedge,lowerGeometry);lowerWedge.position.y=A.floor*MM;
       tubeBack.position.y=tubeFront.position.y=-plan.depth*MM;
       replace(tubeBack,capillaryWall(plan.radius,Math.PI/2));replace(tubeFront,capillaryWall(plan.radius,-Math.PI/2));
       plates.forEach(mesh=>mesh.position.y=-plan.depth*MM);
