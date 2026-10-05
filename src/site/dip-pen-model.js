@@ -91,7 +91,7 @@ export function createDipPenModel() {
     detailPaper.visible=now.touching;
     const trailStart=Math.max(-1.5,-now.travel),trailEnd=Math.min(0,now.inked-now.travel);
     setBox(detailLine,-plan.lineWidth/2,plan.lineWidth/2,0,W.film,trailStart,Math.max(trailStart+1e-8,trailEnd));detailLine.visible=now.touching&&trailEnd>trailStart&&now.inked>0;
-    const phaseText={loading:'Loading the chosen amount', 'dry-start':'Dry nib held above the ink', lifting:'Lifting clear of the inkwell', 'moving-to-paper':'Moving to the paper', lowering:'Lowering the nib', 'applying-force':'Applying extra writing force', writing:now.exhausted?'Moving dry: retained ink exhausted':'Writing', complete:now.inked===W.stroke?'Complete: full stroke written':'Complete: part or all of the travel is dry'};
+    const phaseText={loading:'Loading the chosen amount', 'dry-start':'Dry nib held above the ink', lifting:'Lifting clear of the inkwell', 'moving-to-paper':'Moving to the paper', lowering:'Lowering the nib', 'applying-force':'Applying extra writing force', 'light-contact':'Light contact: ready to write', writing:now.exhausted?'Moving dry: retained ink exhausted':'Writing', complete:now.inked===W.stroke?'Complete: full stroke written':'Complete: part or all of the travel is dry'};
     return {state:{...plan,now,clock},readings:[
       r('Your result',clock===0?'Ready · press Play to follow the pen':phaseText[now.phase]),
       r('Ink on paper',`${fixed(now.inked,2)} mm of a 40 mm stroke`,`Tip travel: ${fixed(now.travel,2)} mm. The selected load can supply ${fixed(plan.inkedLength,2)} mm at the assigned width and wet-film thickness.`),

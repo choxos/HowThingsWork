@@ -33,6 +33,8 @@ for (let p = 0; p <= 10; p++) for (const load of [0, 1, 2]) {
     t.near(n.deposited, written * width * .01, 1e-12, 'wet film volume');
     t.near(n.remaining + n.deposited, n.loaded, 1e-12, 'conserved load throughout experiment');
     t.ok(n.force >= 0 && n.force <= press && n.remaining >= 0, 'bounded force and volume');
+    if (load === 0 && elapsed < 1) t.ok(n.phase === 'dry-start', 'dry nib remains held above ink rather than claiming a lift');
+    if (press === 0 && elapsed >= 2 && elapsed < 2.2) t.ok(n.phase === 'light-contact', 'zero extra force reports light contact without claiming flex');
     t.ok(B.line.visible === (written > 0), 'no premature or dry ink');
     t.ok(B.slotInk.visible === (n.remaining > 1e-12), 'empty slit is visibly empty');
     if (B.slotInk.visible) t.near(meshVolume(B.slotInk), n.remaining, 2e-8, 'rendered tapered volume equals retained ink');

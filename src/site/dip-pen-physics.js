@@ -51,7 +51,13 @@ export function dipWritingPlan(input = {}) {
 export function dipWritingAt(plan, time) {
   const t = Math.min(plan.duration, validTime(time)), W = DIP_WRITE;
   const loaded = plan.load * clamp(t / W.loadEnd);
-  const phase = t < W.loadEnd ? (plan.load ? 'loading' : 'dry-start') : t < W.liftEnd ? 'lifting' : t < W.transferEnd ? 'moving-to-paper' : t < W.lowerEnd ? 'lowering' : t < W.writeStart ? 'applying-force' : t < W.duration ? 'writing' : 'complete';
+  let phase;
+  if (t < W.loadEnd) phase = plan.load ? 'loading' : 'dry-start';
+  else if (t < W.liftEnd) phase = plan.load ? 'lifting' : 'dry-start';
+  else if (t < W.transferEnd) phase = 'moving-to-paper';
+  else if (t < W.lowerEnd) phase = 'lowering';
+  else if (t < W.writeStart) phase = plan.values.press ? 'applying-force' : 'light-contact';
+  else phase = t < W.duration ? 'writing' : 'complete';
   const force = plan.values.press * smooth((t - W.lowerEnd) / (W.writeStart - W.lowerEnd));
   const travel = Math.max(0, Math.min(W.stroke, (t - W.writeStart) * W.speed));
   const inked = Math.min(travel, plan.inkedLength), deposited = inked * plan.area;
