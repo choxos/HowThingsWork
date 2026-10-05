@@ -32,6 +32,7 @@ import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
 import {createAccelerometerModel} from './accelerometer-model.js';
 import {infraredSignalingLesson, diodeLesson, lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
 import {rgbSubpixelsLesson, oledDisplayLesson} from './lcd-lessons.js';
+import {createLcdScreenModel} from './lcd-screen-model.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
 import {acGeneratorLesson, dcGeneratorLesson, generatorSlipRingsLesson} from './grid-generator-lessons.js';
 import {createGeneratorModel} from './grid-generator-model.js';
@@ -139,8 +140,8 @@ export const houseComponents={
  'E-reader':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},
  'Accelerometer':{machine:'Smartphone',createModel:createAccelerometerModel,part:'module',isolate:false,view:'front',lesson:capacitiveAccelerometerLesson,intro:capacitiveAccelerometerLesson.simple},
  'Vibration motor':{machine:'Smartphone',createModel:createVibrationMotorModel,part:'system',isolate:false,view:'front',lesson:eccentricVibrationMotorLesson,intro:eccentricVibrationMotorLesson.simple},
- 'RGB subpixels':{machine:'LCD screen',part:'subpixels',isolate:false,view:'front',lesson:rgbSubpixelsLesson,intro:rgbSubpixelsLesson.simple},
- 'OLED display':{machine:'LCD screen',part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
+ 'RGB subpixels':{machine:'LCD screen',createModel:createLcdScreenModel,part:'subpixels',isolate:false,view:'front',lesson:rgbSubpixelsLesson,intro:rgbSubpixelsLesson.simple},
+ 'OLED display':{machine:'LCD screen',createModel:createLcdScreenModel,part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
  'Electrostatic precipitator':{machine:'Air cleaner',createModel:createElectrostaticPrecipitatorModel,part:'stage',isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},
  'Ionizer':{machine:'Air cleaner',createModel:createIonizerModel,part:'fan',isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
  'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzOscillatorModel,part:'circuit',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},

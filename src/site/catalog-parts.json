@@ -2250,6 +2250,128 @@
       "parentId": "system"
     }
   ],
+  "lcd-screen": [
+    {
+      "id": "frame",
+      "name": "Retaining frame",
+      "parentId": "enclosure"
+    },
+    {
+      "id": "reflector",
+      "name": "Rear reflector",
+      "parentId": "enclosure"
+    },
+    {
+      "id": "leds",
+      "name": "White LED strip",
+      "parentId": "backlight"
+    },
+    {
+      "id": "light-guide",
+      "name": "Light guide and extraction pattern",
+      "parentId": "backlight"
+    },
+    {
+      "id": "diffuser",
+      "name": "Diffuser film",
+      "parentId": "backlight"
+    },
+    {
+      "id": "rear-polarizer",
+      "name": "Rear polarizer",
+      "parentId": "cell"
+    },
+    {
+      "id": "rear-glass",
+      "name": "Rear glass substrate",
+      "parentId": "cell"
+    },
+    {
+      "id": "pixel-electrodes",
+      "name": "TFT matrix and pixel electrodes",
+      "parentId": "cell"
+    },
+    {
+      "id": "rear-alignment",
+      "name": "Rear alignment layer",
+      "parentId": "cell"
+    },
+    {
+      "id": "liquid-crystal",
+      "name": "Twisted liquid-crystal layer",
+      "parentId": "cell"
+    },
+    {
+      "id": "seal",
+      "name": "Perimeter seal and spacers",
+      "parentId": "cell"
+    },
+    {
+      "id": "front-alignment",
+      "name": "Front alignment layer",
+      "parentId": "cell"
+    },
+    {
+      "id": "common-electrode",
+      "name": "Transparent common electrode",
+      "parentId": "cell"
+    },
+    {
+      "id": "color-filters",
+      "name": "Red, green and blue filters",
+      "parentId": "cell"
+    },
+    {
+      "id": "front-glass",
+      "name": "Front glass substrate",
+      "parentId": "cell"
+    },
+    {
+      "id": "front-polarizer",
+      "name": "Front analyzer and visible picture",
+      "parentId": "cell"
+    },
+    {
+      "id": "board",
+      "name": "Timing and bias board",
+      "parentId": "electronics"
+    },
+    {
+      "id": "source-driver",
+      "name": "Source driver and data ribbon",
+      "parentId": "electronics"
+    },
+    {
+      "id": "gate-driver",
+      "name": "Gate driver and row ribbon",
+      "parentId": "electronics"
+    },
+    {
+      "id": "backlight-feed",
+      "name": "Backlight power connection",
+      "parentId": "electronics"
+    },
+    {
+      "id": "optics-detail",
+      "name": "Polarization and liquid crystal",
+      "parentId": "system"
+    },
+    {
+      "id": "matrix-detail",
+      "name": "Row selection and stored voltage",
+      "parentId": "system"
+    },
+    {
+      "id": "rgb-detail",
+      "name": "RGB apertures and mixed pixel",
+      "parentId": "system"
+    },
+    {
+      "id": "response-detail",
+      "name": "Optical response and polarity",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",

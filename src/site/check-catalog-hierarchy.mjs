@@ -221,6 +221,14 @@ assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.gro
 assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).place, 'home');
 for (const id of ['electronic-ink', 'electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
 
+const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
+assert(lcdScreen && lcdScreen.components.length === 0, 'LCD screen is one whole item; ordinary parts and unfinished display lessons stay out of the directory');
+assert.deepEqual(tags('lcd-screen'), ['light-and-images', 'electricity', 'using-bits']);
+assert(hasCatalogPart('lcd-screen', 'front-polarizer') && hasCatalogPart('lcd-screen', 'matrix-detail'), 'Visible picture and stored-voltage inspection remain bookmarkable');
+assert.equal(catalog.groups.find(group => group.id === lcdScreen.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === lcdScreen.entry.group).place, 'home');
+for (const id of ['rgb-subpixels', 'oled-display']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+
 const smartphone = families.find(family => family.entry.id === 'smartphone');
 assert(smartphone, 'Smartphone remains one whole item');
 assert.deepEqual(new Set(catalogMachineComponents(smartphone.components).map(entry => entry.id)), new Set(['accelerometer','vibration-motor']), 'The reviewed accelerometer and vibration motor appear as smaller machines');

@@ -5,7 +5,7 @@ import {electronicPaperDisplayLesson} from './electronic-paper-lesson.js';
 import {smartphoneLearningLesson} from './smartphone-lesson.js';
 import {speechRecognitionLesson} from './speech-lessons.js';
 import {calculatorLesson} from './calculator-lessons.js';
-import {lcdScreenLesson} from './lcd-lessons.js';
+import {tftScreenLesson} from './tft-screen-lesson.js';
 import {remoteControlLesson} from './remote-lessons.js';
 export const studyLessons={
  'Ballpoint pen':ballpointLesson,
@@ -15,7 +15,7 @@ export const studyLessons={
  'Blu-ray player':bluRayPlayerLesson,
  'Electronic paper':electronicPaperDisplayLesson,
  'Smartphone':smartphoneLearningLesson,
- 'LCD screen':lcdScreenLesson,
+ 'LCD screen':tftScreenLesson,
  'Remote control':remoteControlLesson,
  'Speech recognition':speechRecognitionLesson,
  'Calculator':calculatorLesson,

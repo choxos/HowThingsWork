@@ -15,7 +15,6 @@ import * as P from './lcd-physics.js';
 import * as M from './lcd-screen-model.js';
 import * as L from './lcd-lessons.js';
 import {houseComponents} from './house-components.js';
-import {studyLessons} from './study-lessons.js';
 
 const t = tally();
 const counts = {energies: 0, layers: 0, poses: 0, points: 0, instances: 0, numbers: 0, pixels: 0, steps: 0};
@@ -861,10 +860,11 @@ t.ok(!model.playback.complete() && !model.resultPart.available() && model.result
   for (const values of [{}, {gap: 6, red: 3}]) t.ok(numbersIn(P.screenPlan(values)).every(value => typeof value !== 'number' || Number.isFinite(value)) && numbersIn(P.screenAt(P.screenPlan(values), 0.05)).every(value => typeof value !== 'number' || Number.isFinite(value)), 'no Infinity or NaN anywhere in the plan or the moment');
 }
 
-// Component routing: the two components open the screen’s parts with their own lessons.
-t.ok(studyLessons['LCD screen'] === L.lcdScreenLesson, 'the LCD screen’s lesson');
+// The unreviewed child drafts retain their original model and lessons.
+// The reviewed parent is checked independently by check-tft-screen-model.mjs.
 for (const [name, lesson, part] of [['RGB subpixels', L.rgbSubpixelsLesson, 'subpixels'], ['OLED display', L.oledDisplayLesson, 'oled']]) {
   const component = houseComponents[name];
+  t.ok(component.createModel === M.createLcdScreenModel, 'The child draft keeps its original factory');
   t.ok(component.machine === 'LCD screen' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the screen’s ${part} with its own lesson`);
   assert.equal(component.values, undefined);
 }
