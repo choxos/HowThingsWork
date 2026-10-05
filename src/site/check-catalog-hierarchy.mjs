@@ -220,3 +220,11 @@ assert(hasCatalogPart('electronic-paper', 'ink') && hasCatalogPart('electronic-p
 assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).place, 'home');
 for (const id of ['electronic-ink', 'electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+
+const smartphone = families.find(family => family.entry.id === 'smartphone');
+assert(smartphone && smartphone.components.length === 0, 'Smartphone is one whole item; ordinary parts and unfinished component lessons stay out of the directory');
+assert.deepEqual(tags('smartphone'), ['sensors-and-detectors', 'using-bits', 'electricity', 'springs', 'rotating-wheels']);
+assert(hasCatalogPart('smartphone', 'board') && hasCatalogPart('smartphone', 'sensor-detail'), 'Hardware and enlarged mechanism inspections remain bookmarkable');
+assert.equal(catalog.groups.find(group => group.id === smartphone.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === smartphone.entry.group).place, 'home');
+for (const id of ['accelerometer', 'vibration-motor']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);

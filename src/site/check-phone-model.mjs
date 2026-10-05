@@ -950,9 +950,10 @@ for (const lesson of [L.smartphoneLesson, L.accelerometerLesson, L.vibrationMoto
   t.ok(lesson.parts.every(item => model.parts.some(part => part.name === item.name)), 'every part named is a part the model has');
   t.ok(lesson.steps.length === 5 && lesson.deeper.length === 6, 'five steps and six deeper sections');
 }
-t.ok(studyLessons['Smartphone'] === L.smartphoneLesson, 'the smartphone’s lesson');
+t.ok(studyLessons['Smartphone'] !== L.smartphoneLesson, 'the reviewed main lesson replaces this preserved draft');
 for (const [name, lesson, part] of [['Accelerometer', L.accelerometerLesson, 'accelerometer'], ['Vibration motor', L.vibrationMotorLesson, 'motor']]) {
   const component = houseComponents[name];
+  t.ok(component.createModel === M.createSmartphoneModel, `${name} retains its draft factory until separately reviewed`);
   t.ok(component.machine === 'Smartphone' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false && component.values === undefined, `${name} routes to the smartphone’s ${part} with its own lesson`);
 }
 

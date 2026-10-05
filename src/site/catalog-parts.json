@@ -1949,6 +1949,123 @@
       "parentId": "system"
     }
   ],
+  "smartphone": [
+    {
+      "id": "case",
+      "name": "Case and mounting frame",
+      "parentId": "phone"
+    },
+    {
+      "id": "battery",
+      "name": "Battery and leads",
+      "parentId": "phone"
+    },
+    {
+      "id": "board",
+      "name": "Main circuit board",
+      "parentId": "phone"
+    },
+    {
+      "id": "processor",
+      "name": "Processor and memory interface",
+      "parentId": "board"
+    },
+    {
+      "id": "memory",
+      "name": "Flash memory",
+      "parentId": "board"
+    },
+    {
+      "id": "modem",
+      "name": "Cellular modem and transceiver",
+      "parentId": "board"
+    },
+    {
+      "id": "wireless",
+      "name": "Wi-Fi and Bluetooth circuitry",
+      "parentId": "board"
+    },
+    {
+      "id": "navigation",
+      "name": "Satellite navigation receiver",
+      "parentId": "board"
+    },
+    {
+      "id": "power",
+      "name": "Power management",
+      "parentId": "board"
+    },
+    {
+      "id": "sim",
+      "name": "Subscriber identity module",
+      "parentId": "board"
+    },
+    {
+      "id": "audio",
+      "name": "Audio conversion and amplifier",
+      "parentId": "board"
+    },
+    {
+      "id": "sensor",
+      "name": "Three-axis motion sensor",
+      "parentId": "board"
+    },
+    {
+      "id": "display",
+      "name": "Display and flexible cable",
+      "parentId": "phone"
+    },
+    {
+      "id": "touch",
+      "name": "Touch electrodes and cover glass",
+      "parentId": "phone"
+    },
+    {
+      "id": "antenna",
+      "name": "Antenna and radio feed",
+      "parentId": "phone"
+    },
+    {
+      "id": "speaker",
+      "name": "Loudspeaker and sound outlet",
+      "parentId": "phone"
+    },
+    {
+      "id": "microphone",
+      "name": "Microphone and sound inlet",
+      "parentId": "phone"
+    },
+    {
+      "id": "motor",
+      "name": "Vibration motor and mounting",
+      "parentId": "phone"
+    },
+    {
+      "id": "camera",
+      "name": "Camera module",
+      "parentId": "phone"
+    },
+    {
+      "id": "touch-detail",
+      "name": "Touch sensing, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "sensor-detail",
+      "name": "Three sensing axes, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "motor-detail",
+      "name": "Rotating unbalance, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "voice-detail",
+      "name": "Voice signal path, enlarged",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",

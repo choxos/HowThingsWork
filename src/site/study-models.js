@@ -4,7 +4,7 @@ import {createFeltTipModel} from './felt-tip-model.js';
 import {createDipPenModel} from './dip-pen-model.js';
 import {createBluRayPlayerModel} from './blu-ray-player-model.js';
 import {createElectronicPaperDisplayModel} from './electronic-paper-model.js';
-import {createSmartphoneModel} from './phone-model.js';
+import {createSmartphoneLearningModel} from './smartphone-model.js';
 import {createSpeechModel} from './speech-model.js';
 import {createCalculatorModel} from './calculator-model.js';
 import {createLcdScreenModel} from './lcd-screen-model.js';
@@ -16,7 +16,7 @@ export function createStudyModel(name){
  if(name==='Dip pen')return createDipPenModel();
  if(name==='Blu-ray player')return createBluRayPlayerModel();
  if(name==='Electronic paper')return createElectronicPaperDisplayModel();
- if(name==='Smartphone')return createSmartphoneModel();
+ if(name==='Smartphone')return createSmartphoneLearningModel();
  if(name==='Speech recognition')return createSpeechModel();
  if(name==='Calculator')return createCalculatorModel();
  if(name==='LCD screen')return createLcdScreenModel();

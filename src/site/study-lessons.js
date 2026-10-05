@@ -2,7 +2,7 @@ import {staplerLesson} from './stapler-lessons.js';
 import {ballpointLesson, feltTipLesson, dipPenLesson} from './pens-lessons.js';
 import {bluRayPlayerLesson} from './blu-ray-player-lesson.js';
 import {electronicPaperDisplayLesson} from './electronic-paper-lesson.js';
-import {smartphoneLesson} from './phone-lessons.js';
+import {smartphoneLearningLesson} from './smartphone-lesson.js';
 import {speechRecognitionLesson} from './speech-lessons.js';
 import {calculatorLesson} from './calculator-lessons.js';
 import {lcdScreenLesson} from './lcd-lessons.js';
@@ -14,11 +14,9 @@ export const studyLessons={
  'Stapler':staplerLesson,
  'Blu-ray player':bluRayPlayerLesson,
  'Electronic paper':electronicPaperDisplayLesson,
- 'Smartphone':smartphoneLesson,
+ 'Smartphone':smartphoneLearningLesson,
  'LCD screen':lcdScreenLesson,
  'Remote control':remoteControlLesson,
  'Speech recognition':speechRecognitionLesson,
  'Calculator':calculatorLesson,
 };
-
-studyLessons['Smartphone'].sources.push({title:'Analog Devices: MEMS accelerometers and gyroscopes',url:'https://www.analog.com/en/resources/technical-articles/accelerometer-and-gyroscopes-sensors-operation-sensing-and-applications.html'});
