@@ -1427,6 +1427,38 @@
       "parentId": "system"
     }
   ],
+  "ballpoint-pen": [
+    {
+      "id": "paper",
+      "name": "Paper and line",
+      "parentId": "system"
+    },
+    {
+      "id": "barrel",
+      "name": "Barrel and rear plug",
+      "parentId": "system"
+    },
+    {
+      "id": "refill",
+      "name": "Ink reservoir",
+      "parentId": "system"
+    },
+    {
+      "id": "tip",
+      "name": "Ball, socket and ink channel",
+      "parentId": "system"
+    },
+    {
+      "id": "ball",
+      "name": "Ball, close up",
+      "parentId": "system"
+    },
+    {
+      "id": "pulls",
+      "name": "Weight along the refill",
+      "parentId": "system"
+    }
+  ],
   "microwave-oven": [
     {
       "id": "cavity",

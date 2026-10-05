@@ -153,46 +153,54 @@ export const sampleDipPen = (input, time = 0) => dipPenAt(dipPenPlan(input), tim
 /** Standard ball diameters, mm. */
 export const BALL_SIZES = Object.freeze([0.3, 0.38, 0.4, 0.5, 0.7, 0.8, 1.0, 1.2, 1.4]);
 
-/** The line, mm at mm/s; the refill's bore, a radius, and its column of ink, mm; the Space Pen's nitrogen, kPa. */
-export const BALLPOINT = Object.freeze({line: 50, speed: 10, boreRadius: 1, column: 60, nitrogen: 310});
+/** The line, mm at mm/s; the refill's bore, a radius, and its column of ink, mm; an assigned gas gauge pressure, kPa, not a product specification. */
+export const BALLPOINT = Object.freeze({line: 50, speed: 10, boreRadius: 1, column: 60, nitrogen: 200});
 
 /** Where the pen writes: the share of the ink's weight along the refill toward the ball, the cosine of the refill's angle to straight down. */
 export const PLACES = Object.freeze([
   Object.freeze({label: 'On a desk: pointing down', angle: 0, share: 1}),
   Object.freeze({label: 'On a wall: sideways', angle: 90, share: 0}),
   Object.freeze({label: 'On the ceiling: pointing up', angle: 180, share: -1}),
-  Object.freeze({label: 'In orbit: nothing weighs', angle: null, share: 0}),
+  Object.freeze({label: 'In orbit: free fall', angle: null, share: 0}),
 ]);
 export const REFILLS = Object.freeze(['Ordinary: open at the back', 'Pressurized: nitrogen behind a float']);
 
 export const BALL_OPTIONS = Object.freeze(BALL_SIZES.map(value => Object.freeze({value, label: `${value.toFixed(value === 0.38 ? 2 : 1)} mm${value === 0.7 ? ': fine' : value === 1 ? ': medium' : value === 1.4 ? ': broad' : ''}`})));
 export const PLACE_OPTIONS = Object.freeze(PLACES.map((place, value) => Object.freeze({value, label: place.label})));
 export const REFILL_OPTIONS = Object.freeze(REFILLS.map((label, value) => Object.freeze({value, label})));
-export const BALLPOINT_DEFAULTS = Object.freeze({ball: 0.7, place: 0, refill: 0});
-export const BALLPOINT_DOMAINS = Object.freeze({ball: [0.3, 1.4, 0.01], place: [0, 3, 1], refill: [0, 1, 1]});
+export const CONDITION_OPTIONS = Object.freeze(['Primed: ink already on the ball', 'Clean ball: watch the first ink arrive', 'Blocked channel: use the remaining film'].map((label, value) => Object.freeze({label, value})));
+export const BALLPOINT_DEFAULTS = Object.freeze({ball: 0.7, place: 0, refill: 0, condition: 0});
+export const BALLPOINT_DOMAINS = Object.freeze({ball: [0.3, 1.4, 0.01], place: [0, 3, 1], refill: [0, 1, 1], condition: [0, 2, 1]});
 
 export function ballpointPlan(input = {}) {
   const values = validateControls(input, BALLPOINT_DEFAULTS, BALLPOINT_DOMAINS, 'ballpoint pen');
   if (!BALL_SIZES.includes(values.ball)) throw new RangeError('Invalid ball');
   const place = PLACES[values.place], pressurized = values.refill === 1, circumference = Math.PI * values.ball;
-  const feeds = pressurized || place.share >= 0;
+  // Orientation changes the hydrostatic contribution, not an invented failure threshold.
+  // The user specifies a primed tip, a clean starting ball, or a blocked feed.
+  const feeds = values.condition !== 2, primed = values.condition !== 1;
   return Object.freeze({
-    values, ball: values.ball, place, pressurized, circumference, feeds,
+    values, ball: values.ball, place, pressurized, circumference, feeds, primed,
     turns: BALLPOINT.line / circumference, delay: circumference / 2,
     head: WATER.density * G * BALLPOINT.column / 1000 * place.share,
     weight: WATER.density * G * BALLPOINT.column / 1000,
+    gasPressure: pressurized ? BALLPOINT.nitrogen * 1000 : 0,
     duration: BALLPOINT.line / BALLPOINT.speed,
   });
 }
 
 /** The pen `time` s into its line: travel mm, the ball's turn in radians, how far round the ball the ink has come, mm of its surface, and the line laid, mm. */
 export function ballpointAt(plan, time) {
-  const t = validTime(time), travel = Math.min(BALLPOINT.line, BALLPOINT.speed * t);
+  const t = Math.min(plan.duration, validTime(time)), travel = Math.min(BALLPOINT.line, BALLPOINT.speed * t);
+  const lineStart = plan.primed ? 0 : plan.delay;
+  const lineEnd = plan.feeds ? travel : Math.min(travel, plan.delay);
   return {
     t, travel, done: travel >= BALLPOINT.line,
     turn: travel / (plan.ball / 2), turns: travel / plan.circumference,
     ink: plan.feeds ? Math.min(travel, plan.delay) : 0,
-    line: plan.feeds ? Math.max(0, travel - plan.delay) : 0,
+    lineStart, lineEnd, line: Math.max(0, lineEnd - lineStart),
+    wetContact: plan.feeds ? plan.primed || travel >= plan.delay : travel < plan.delay,
+    feedPressure: plan.gasPressure + plan.head,
   };
 }
 

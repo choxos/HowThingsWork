@@ -48,7 +48,7 @@ t.ok(fixed(100 * puddle(0.487, 13500, 140), 2) === '0.36', 'the surface tension 
 t.ok(fixed(100 * puddle(0.072, 1000, 107), 2) === '0.44', 'the surface tension page’s water on paraffin, 0.44 cm');
 assert.deepEqual([...P.BALL_SIZES], [0.3, 0.38, 0.4, 0.5, 0.7, 0.8, 1.0, 1.2, 1.4]);
 t.ok(P.BALL_SIZES.every(size => size >= 0.28 && size <= 1.6), 'every ball inside the 0.28 to 1.6 mm the page gives');
-t.ok(P.BALLPOINT.nitrogen === 310, 'the Space Pen’s nearly 310 kPa');
+t.ok(P.BALLPOINT.nitrogen === 200, 'assigned pressure comparison, not a commercial rating');
 
 // ---------------------------------------------------------------------------
 // 2. The pull of a curved surface balances the column.
@@ -136,79 +136,8 @@ const arrowDirection = arrow => new THREE.Vector3(0, 1, 0).applyQuaternion(arrow
 // 4. The ballpoint pen, read off its drawing.
 // ---------------------------------------------------------------------------
 
-const ballpoint = BP.createBallpointModel(), B = ballpoint.topology;
-for (const ball of P.BALL_SIZES) {
-  for (let place = 0; place < 4; place++) {
-    for (const refill of [0, 1]) {
-      for (const seconds of [0, 0.03, 0.08, 0.5, 1.7, 3.3, 5, 9]) {
-        const s = pose(ballpoint, {ball, place, refill}, seconds), now = s.now, radius = ball / 2;
-        const travel = Math.min(50, 10 * seconds), angle = [0, 90, 180, 0][place], share = [1, 0, -1, 0][place], feeds = refill === 1 || place !== 2, delay = Math.PI * ball / 2;
-        t.near(now.travel, travel, 1e-12, 'travel at 10 mm a second');
-        t.near(now.turns, travel / (Math.PI * ball), 1e-12, 'turns: travel over π times the diameter');
-        t.near(B.setup.rotation.z, rad(angle), 1e-15, 'the pen’s frame turned to where it writes');
-        if (place !== 3) t.near(Math.cos(rad(angle)), share, 1e-15, 'the share along the refill is the cosine of its angle to straight down');
-        else t.ok(share === 0 && s.place.angle === null, 'in orbit no weight, so no share');
-        t.near(B.pen.position.x / BP.MM, travel, 1e-9, 'the pen at the end of its travel');
-        t.near(B.ball.scale.x / BP.MM, radius, 1e-12, 'the ball at true size');
-        t.near(B.ball.position.y / BP.MM, radius, 1e-12, 'the ball resting on the paper');
-        t.near(B.ball.rotation.z, -travel / radius, 1e-9, 'the ball turned by its travel over its radius');
-        t.near(B.bigBall.rotation.z, B.ball.rotation.z, 1e-12, 'the close up turns with the pen’s ball');
-        t.near(B.bigBall.scale.x / BP.MM, BP.DETAIL * radius, 1e-9, 'the close up 40 times larger');
-        // The line, from where the ink first reached the paper.
-        const line = feeds ? Math.max(0, travel - delay) : 0;
-        t.near(now.line, line, 1e-12, 'the line starts half a turn after the ball begins to roll');
-        t.ok(B.line.visible === line > 0, 'the line shows once it has length');
-        if (line > 0) {
-          const [[x0, x1], , [z0, z1]] = span(B.line, BP.MM);
-          t.near(x0, delay, 1e-9, 'the line starts where the ink first reached the paper');
-          t.near(x1, delay + line, 1e-9, 'the line ends under the ball');
-          t.near(z1 - z0, 0.5 * ball, 1e-9, 'the line drawn half as wide as the ball');
-        }
-        // The specks carrying ink.
-        const reach = (feeds ? Math.min(travel, delay) : 0) / radius;
-        B.specks.forEach((speck, i) => {
-          let along = (travel / radius - 2 * Math.PI * i / BP.SPECKS) % (2 * Math.PI);
-          if (along < 0) along += 2 * Math.PI;
-          t.ok((speck.material === B.inkMaterial) === (along <= Math.min(reach, Math.PI) + 1e-12), 'a speck carries ink from the top until it reaches the paper');
-          counts.specks++;
-        });
-        // The refill.
-        const inkSpan = span(B.ink, BP.MM)[1];
-        t.near(inkSpan[0], BP.REFILL.socket + (feeds ? 0 : BP.REFILL.pulled), 1e-9, 'the ink rests on the ball unless gravity pulls it back');
-        t.near(inkSpan[1] - inkSpan[0], P.BALLPOINT.column, 1e-9, 'a 60 mm column of ink');
-        t.ok(B.float.visible === (refill === 1) && B.gas.visible === (refill === 1) && B.seal.visible === (refill === 1), 'a float, nitrogen and a seal only in the pressurized refill');
-        // The weight and its share along the refill, on one scale.
-        t.ok(B.weightArrow.visible === (place !== 3), 'in orbit nothing weighs');
-        if (place !== 3) {
-          t.near(B.weightArrow.userData.length, BP.ARROW.length * BP.MM, 1e-12, 'the full weight 30 mm long');
-          t.near(arrowDirection(B.weightArrow).y, -1, 1e-12, 'the weight points straight down');
-          t.near(B.shareArrow.userData.length, Math.abs(share) * BP.ARROW.length * BP.MM, 1e-12, 'the share on the same scale');
-          if (share !== 0) {
-            const d = arrowDirection(B.shareArrow), want = [share * Math.sin(rad(angle)), -share * Math.cos(rad(angle))];
-            t.near(d.x, want[0], 1e-9, 'the share points along the refill');
-            t.near(d.y, want[1], 1e-9, 'toward the ball or away from it');
-          }
-        }
-        t.ok(ballpoint.getState().readings[0].value.length > 0, 'a result reading');
-        counts.poses++;
-      }
-      // Rolling without slipping, read off the drawn ball: the point touching the paper does not move.
-      for (const seconds of [0.7, 2.2, 4.1]) {
-        pose(ballpoint, {ball, place, refill}, seconds);
-        const turn = -B.ball.rotation.z, local = new THREE.Vector3(Math.sin(turn), -Math.cos(turn), 0);
-        const before = B.ball.localToWorld(local.clone()), center = B.ball.localToWorld(new THREE.Vector3());
-        ballpoint.advance(1e-5);
-        ballpoint.root.updateMatrixWorld(true);
-        const after = B.ball.localToWorld(local.clone()), moved = B.ball.localToWorld(new THREE.Vector3()).distanceTo(center);
-        t.near(moved, 10 * 1e-5 * BP.MM, 1e-12, 'the ball’s center moves at the writing speed');
-        t.ok(after.distanceTo(before) < 1e-3 * moved, 'the point touching the paper stays put');
-        counts.rolls++;
-      }
-    }
-  }
-}
-t.near(P.ballpointPlan({}).weight, 1000 * g * 0.06, 1e-9, 'a 60 mm column of water weighs 588.6 Pa');
-assert.throws(() => P.ballpointPlan({ball: 0.31}), RangeError, 'only standard balls');
+// Detailed ballpoint laws, film states and geometry are checked separately.
+const ballpoint = BP.createBallpointModel();
 
 // ---------------------------------------------------------------------------
 // 5. The felt-tip pen, read off its drawing.
@@ -361,18 +290,6 @@ for (let press = 0; press <= 1.0001; press += 0.1) {
 // ---------------------------------------------------------------------------
 
 const settled = (model, values) => pose(model, values, 1e3);
-const ballAt = values => settled(ballpoint, values);
-checkTrialNumbers(ballpointLesson, {
-  'Write a line': s => ({'22.74': s.now.turns, '50': P.BALLPOINT.line, '1.100': s.delay, '48.9': s.now.line}),
-  'A fine ball': s => ({'53.05': s.now.turns, '50': P.BALLPOINT.line, '0.942': s.circumference, '0.471': s.delay}),
-  'A broad ball': s => ({'11.37': s.now.turns, '50': P.BALLPOINT.line, '4.398': s.circumference, '0.7': P.BALLPOINT_DEFAULTS.ball}),
-  'On a wall': s => { t.ok(s.place.share === 0 && s.feeds, 'sideways, no share and still fed'); return {}; },
-  'On the ceiling': s => { t.ok(s.place.share === -1 && !s.feeds && s.now.line === 0, 'pointed up, the ordinary refill lays no line'); return {'588.6': s.weight}; },
-  'A pressurized refill': s => { t.ok(s.feeds && s.pressurized, 'the pressurized refill writes pointed up'); return {'310': P.BALLPOINT.nitrogen, '527': P.BALLPOINT.nitrogen * 1000 / s.weight, '48.9': s.now.line}; },
-  'In orbit': s => { t.ok(s.place.angle === null && s.feeds && !s.weighs, 'in orbit nothing weighs and the pen writes'); return {}; },
-}, ballAt, t);
-t.near(ballAt({ball: 1.4}).now.turns * 2, ballAt({ball: 0.7}).now.turns, 1e-12, 'twice as wide, half as many turns');
-
 const feltAt = values => settled(felt, values), water = feltAt({});
 checkTrialNumbers(feltTipLesson, {
   'Write a line': s => { t.ok(s.stroke === 2 && P.FELT.rest === 2, 'a 2 s stroke and a 2 s rest'); return {'40': P.FELT.line, '2': s.stroke, '0.050': s.dwell, '1.0': P.FELT.contact, '0.112': s.spread, '1.22': s.width, '2.43': 2 * s.blot}; },
@@ -408,7 +325,6 @@ checkTrialNumbers(capillaryActionLesson, {
 const firstIn = P.DIP_DOMAINS.radius, entering = [];
 for (let i = 0; i <= 8; i++) { const radius = Number((firstIn[0] + i * firstIn[2]).toFixed(2)); if (P.dipPenPlan({liquid: 2, radius}).enters) entering.push(radius); }
 const deeper = lesson => lesson.deeper.map(item => item.body).join(' ');
-checkQuotedText(deeper(ballpointLesson), {[`turns ${fixed(1e6 / (Math.PI * 0.7), 0)} times in a kilometer`]: 'turns 454,728 times in a kilometer', [`nearly ${fixed(P.BALLPOINT.nitrogen, 0)} kPa`]: 'nearly 310 kPa'}, t);
 checkQuotedText(deeper(feltTipLesson), {[`pulls ${fixed(P.FELT.reservoirPore / P.FELT.nibPore, 0)} times as hard`]: 'pulls 5 times as hard', [`climbs ${fixed(5.0 * Math.sqrt(1) / 0.25, 0)} mm in the first minute`]: 'climbs 20 mm in the first minute', [`only ${fixed(5.0 * Math.sqrt(4) / 0.25, 0)} mm by the fourth`]: 'only 40 mm by the fourth'}, t);
 {
   const half = P.dipPenPlan({press: 0.5});
@@ -428,23 +344,20 @@ checkQuotedText(deeper(capillaryActionLesson), {
   t.near(wide.tube.k / thin.tube.k, 4, 1e-12, 'a tube twice as wide climbs four times as fast');
   t.near(wide.height / thin.height, 0.5, 1e-12, 'though only half as high');
 }
-checkQuotedText(ballpointLimits, {[`a ${fixed(P.BALLPOINT.line, 0)} mm line at ${fixed(P.BALLPOINT.speed, 0)} mm a second`]: 'a 50 mm line at 10 mm a second', [`bore ${fixed(2 * P.BALLPOINT.boreRadius, 1)} mm across`]: 'bore 2.0 mm across', [`a ${fixed(P.BALLPOINT.column, 0)} mm column`]: 'a 60 mm column', [`pulled ${fixed(BP.REFILL.pulled, 0)} mm back`]: 'pulled 5 mm back', [`gravity of ${fixed(P.G, 2)}`]: 'gravity of 9.81'}, t);
 checkQuotedText(feltTipLimits, {[`a ${fixed(P.FELT.line, 0)} mm line`]: 'a 40 mm line', [`resting ${fixed(P.FELT.rest, 0)} s`]: 'resting 2 s', [`${fixed(P.WATER.tension * 1000, 1)} mN/m and a viscosity of ${Number((P.WATER.viscosity * 1000).toFixed(4))} mPa·s`]: '72.8 mN/m and a viscosity of 1.0016 mPa·s', [`${fixed(P.ETHANOL.tension * 1000, 2)} mN/m and ${fixed(P.ETHANOL.viscosity * 1000, 1)} mPa·s`]: '22.27 mN/m and 1.2 mPa·s', [`across ${fixed(P.FELT.contact, 1)} mm`]: 'across 1.0 mm', [`pores ${P.FELT.reservoirPore} μm`]: 'pores 50 μm', [`${P.FELT.nibPore} μm in the nib, which is ${fixed(P.FELT.nib, 0)} mm long`]: '10 μm in the nib, which is 10 mm long', [`ink ${fixed(P.FELT.pace, 1)} mm in its first second`]: 'ink 0.5 mm in its first second'}, t);
 checkQuotedText(dipPenLimits, {[`${fixed(P.NIB.length, 0)} mm long and ${fixed(P.NIB.width, 0)} mm wide`]: '30 mm long and 7 mm wide', [`${fixed(P.NIB.gap, 2)} mm wide at rest running ${fixed(P.NIB.slit, 0)} mm`]: '0.02 mm wide at rest running 10 mm', [`vent hole ${fixed(2 * P.NIB.vent, 0)} mm across`]: 'vent hole 2 mm across', [`dipped ${fixed(P.NIB.dip, 0)} mm`]: 'dipped 3 mm', [`splay ${fixed(P.NIB.compliance, 1)} mm for every newton`]: 'splay 0.1 mm for every newton', [`line is ${fixed(P.NIB.tip, 1)} mm wide`]: 'line is 0.1 mm wide'}, t);
 checkQuotedText(capillaryLimits, {[`dipped ${fixed(P.BENCH.depth, 0)} mm`]: 'dipped 15 mm', [`widths ${DP.WIDEN} times wider`]: 'widths 10 times wider', [`glass at ${fixed(P.MERCURY.angle, 0)}°`]: 'glass at 140°', [`a gap of ${fixed(P.BENCH.narrow, 1)} mm to one of ${fixed(P.BENCH.wide, 1)} mm across ${fixed(P.BENCH.width, 0)} mm`]: 'a gap of 0.1 mm to one of 1.0 mm across 40 mm'}, t);
-checkQuotedText(ballpointLesson.quiz.explanation, {[fixed(ballAt({ball: 0.3}).now.turns, 2)]: '53.05', [fixed(ballAt({ball: 1.4}).now.turns, 2)]: '11.37', [`${fixed(Math.PI * 0.3, 3)} mm against once every ${fixed(Math.PI * 1.4, 3)} mm`]: '0.942 mm against once every 4.398 mm'}, t);
 checkQuotedText(feltTipLesson.quiz.explanation, {[`${fixed(feltAt({speed: 5}).dwell, 3)} s under the tip and the ink soaks ${fixed(feltAt({speed: 5}).spread, 3)} mm`]: '0.200 s under the tip and the ink soaks 0.224 mm', [`${fixed(water.dwell, 3)} s and soaks ${fixed(water.spread, 3)} mm`]: '0.050 s and soaks 0.112 mm'}, t);
 checkQuotedText(dipPenLesson.quiz.explanation, {[`from ${fixed(P.NIB.gap, 2)} mm to ${fixed(P.dipPenPlan({press: 0.5}).tipGap, 2)} mm`]: 'from 0.02 mm to 0.07 mm', [`${fixed(P.dipPenPlan({press: 0.5}).flow, 0)} times`]: '43 times'}, t);
 checkQuotedText(capillaryActionLesson.quiz.explanation, {[`${fixed(narrow.height, 1)} mm in a 0.2 mm tube, ${fixed(dipAt({radius: 0.1}).height, 1)} mm in a 0.1 mm one`]: '74.2 mm in a 0.2 mm tube, 148.4 mm in a 0.1 mm one'}, t);
 const partText = (model, id) => model.parts.find(part => part.id === id).description;
 checkQuotedText(partText(felt, 'pores'), {[`drawn ${FT.PORES} times larger`]: 'drawn 200 times larger', [`${FT.KPA} mm tall for every kPa`]: '5 mm tall for every kPa'}, t);
 checkQuotedText(partText(dip, 'capillary'), {[`dipped ${fixed(P.BENCH.depth, 0)} mm`]: 'dipped 15 mm', [`drawn ${DP.WIDEN} times wider`]: 'drawn 10 times wider'}, t);
-checkQuotedText(partText(ballpoint, 'ball'), {[`drawn ${BP.DETAIL} times larger`]: 'drawn 40 times larger'}, t);
 for (const lesson of [ballpointLesson, feltTipLesson, dipPenLesson, capillaryActionLesson]) {
   t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${lesson.simple}: a quiz with its answer first`);
   for (const text of [lesson.simple, lesson.overview, lesson.misconception, lesson.limits, ...lesson.deeper.map(item => item.body), ...lesson.tryIt.flatMap(item => [item.instruction, item.observe])]) t.ok(!/[—–]| - |--/.test(text), 'no dashes as punctuation');
 }
-t.ok(ballpointLimits.includes('Whether an ordinary refill writes follows the source'), 'the limits say what decides when the ballpoint writes');
+t.ok(ballpointLimits.includes('does not predict air entry'), 'the limits exclude an unsupported failure prediction');
 
 // The component route: capillary action is the dip pen's bench, with its own lesson.
 {

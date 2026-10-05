@@ -27,50 +27,65 @@ export const sources = {
 // Ballpoint pen.
 // ---------------------------------------------------------------------------
 
-const ballSystem = trial(BALLPOINT_DEFAULTS, 'system'), ballDetail = trial(BALLPOINT_DEFAULTS, 'ball'), ballRefill = trial(BALLPOINT_DEFAULTS, 'refill');
+const ballTrial = (title, observe, values = {}, part = 'system', time = 5) => {
+  const settings = {...BALLPOINT_DEFAULTS, ...values};
+  return {title, instruction: 'The settings and observation time are applied. Press Play to continue or replay the stroke.', observe, values: settings, initialState: {settings, time}, reset: true, part, isolate: true, view: part === 'paper' ? 'top' : 'front'};
+};
 
-export const ballpointLimits = 'A ballpoint pen drawn at true size, writing a 50 mm line at 10 mm a second with its refill square to the paper. The ball rolls without slipping and starts clean, and ink touches it only at its top. Where it writes only turns the pen and the paper together. Illustrative: a refill bore 2.0 mm across holding a 60 mm column of ink, weighed as water of 1,000 kg/m³ under gravity of 9.81 m/s²; a line drawn half as wide as the ball; and an ordinary refill’s ink drawn pulled 5 mm back from the ball when it points up. Whether an ordinary refill writes follows the source: pointed up, gravity pulls its ink away from the tip and it stops, while pointed down, sideways or in orbit it writes. Not modeled: how the ink wets the ball and the socket, how much ink a line uses, how hard the pen is pressed, and the ink drying.';
+export const ballpointLimits = 'Original fixed-tip teaching pen, not a commercial product. Assigned dimensions include a 2 mm refill bore, a 60 mm ink column, a 50 mm stroke and a speed of 10 mm/s. One scene unit represents 100 mm; the separate tip view is enlarged 40 times. The ball rolls without slipping, perpendicular to the paper. The primed starting condition writes immediately. The clean-ball experiment starts with no surface ink, and the blocked-channel experiment starts with film but no replacement supply. Film pickup is idealized at the top and complete transfer at the bottom; neither the true wetted area nor ink thickness is solved. Line width is drawn as half the ball diameter; ink consumption, paper absorption, friction, drying, leakage and capillary flow are not calculated. Orientation changes only geometry and the hydrostatic term ρgh cos θ, using an assigned density of 1,000 kg/m³ and g = 9.81 m/s². The gas comparison adds an assigned 200 kPa gauge pressure; it is not a cartridge specification. The model does not predict air entry or how long an ordinary pen can write upside down. Free fall neglects hydrostatic head, not Earth’s gravity. Retraction and cap mechanisms are outside this fixed-tip lesson.';
 
 export const ballpointLesson = {
-  simple: 'How does a ballpoint pen roll ink onto the paper?',
-  overview: 'A ballpoint pen has a hard ball held in a socket at the end of a tube of thick ink. As the pen moves, the ball rolls: its top turns through the ink inside the socket and its bottom lays that ink on the paper. In most pens gravity keeps the ink down against the ball. Change the ball, which way the pen points and the refill to see how often the ball turns and when the ink stops reaching it.',
+  simple: 'How can a rolling ball carry ink from a narrow channel onto paper?',
+  overview: 'The socket holds a tiny ball while leaving its bottom exposed. Ink reaches the ball through a narrow channel; friction with the paper turns the ball and carries a film out of the tip. Start with a primed pen, watch ink arrive on a deliberately clean ball, or block the feed and use up its remaining film. Look inside exposes the reservoir; the enlarged tip shows the contact and rotation.',
   steps: [
-    {title: 'Ink against the ball', body: 'The ink sits in the refill’s tube, resting on the ball’s top inside its brass socket.'},
-    {title: 'Roll the ball', body: 'Moving the pen rolls the ball along the paper without slipping.'},
-    {title: 'Carry the ink round', body: 'Each point on the ball picks up ink at the top and turns round to the paper at the bottom.'},
-    {title: 'Keep it fed', body: 'Gravity, or gas pressure in a sealed refill, keeps the ink pressed down onto the ball.'},
+    {title: 'Supply the tip', body: 'A narrow channel connects the ink reservoir to the socket. Wetting and pressure help supply ink, but the exact flow depends on the ink and tip design.'},
+    {title: 'Roll against paper', body: 'Paper contact turns the exposed ball. In the ideal no-slip model, distance traveled equals ball radius times angle turned.'},
+    {title: 'Transfer a film', body: 'The rotating surface brings ink from inside the socket to the paper. A ready, primed ball can write from the beginning of its stroke.'},
+    {title: 'Keep the supply connected', body: 'A blocked channel prevents replacement ink from reaching the ball. Pressurizing a refill helps feed it at different orientations, but does not remove a physical blockage.'},
   ],
   parts: [
-    {name: 'Refill', role: 'The tube of ink, the brass socket and the ball.'},
-    {name: 'Ball, close up', role: 'The ball turning in its socket, carrying ink round to the paper.'},
-    {name: 'Paper and line', role: 'The line the ball lays.'},
-    {name: 'Weight along the refill', role: 'The ink’s weight, and how much of it pushes the ink toward the ball.'},
+    {name: 'Barrel and rear plug', role: 'Supports the refill; the front half can be hidden to expose it.'},
+    {name: 'Ink reservoir', role: 'Stores ink. The sealed comparison adds a separator, gas chamber and rear seal.'},
+    {name: 'Ball, socket and ink channel', role: 'Retains the ball, supplies ink and transfers it through rolling contact.'},
+    {name: 'Ball, close up', role: 'A separate enlarged inspection. Blue dots mark ink-bearing surface positions.'},
+    {name: 'Paper and line', role: 'Records where ink reached the contact point, including any initial blank or early stop.'},
+    {name: 'Weight along the refill', role: 'Compares downward weight with its component along the pen. Arrows represent gravity only, not total feed pressure.'},
   ],
   tryIt: [
-    ballSystem('Write a line', 'Keep the 0.7 mm ball on a desk and press Play.', 'The ball rolls along the paper and turns 22.74 times in the 50 mm. Its ink reaches the paper only after 1.100 mm, half a turn after the ball starts rolling, so the line is 48.9 mm long.'),
-    ballDetail('A fine ball', 'Choose the 0.3 mm ball and press Play.', 'A smaller ball must turn more often: 53.05 times in the same 50 mm, once every 0.942 mm, and its ink reaches the paper after only 0.471 mm.', {ball: 0.3}),
-    ballDetail('A broad ball', 'Choose the 1.4 mm ball and press Play.', 'This ball turns only 11.37 times in 50 mm, once every 4.398 mm: twice as wide as the 0.7 mm ball, it turns half as often.', {ball: 1.4}),
-    ballSystem('On a wall', 'Write on a wall.', 'Pointing sideways, none of the ink’s weight acts along the refill: gravity neither brings the ink to the ball nor pulls it away, as in orbit, where the ink’s capillary forces alone hold it at the ball.', {place: 1}),
-    ballSystem('On the ceiling', 'Write on the ceiling and press Play.', 'Pointing up, all of the ink’s weight, 588.6 Pa on the ball’s end of the refill, now pulls the ink away from the ball. Most ordinary ballpoints stop writing like this, and the ball rolls on dry.', {place: 2}),
-    ballRefill('A pressurized refill', 'Keep writing on the ceiling, choose the pressurized refill and press Play.', 'Nitrogen presses a float onto the ink at nearly 310 kPa, 527 times what the column of ink weighs, so the ink stays on the ball and the pen writes its 48.9 mm line pointing up.', {place: 2, refill: 1}),
-    ballSystem('In orbit', 'Take the ordinary refill into orbit and press Play.', 'Nothing weighs, so gravity neither feeds the ink nor takes it away. The capillary forces in the ink still hold it at the ball, and a regular ballpoint writes pointed any way.', {place: 3}),
+    ballTrial('Write with a primed pen', 'The 0.7 mm ball has turned 22.74 times during a 50.0 mm stroke. Ink covers all 50.000 mm because the ball was already primed.'),
+    ballTrial('A fine ball', 'The 0.3 mm ball makes 53.05 turns in the same 50.0 mm, one turn per 0.942 mm.', {ball: .3}, 'ball'),
+    ballTrial('A broad ball', 'The 1.4 mm ball makes 11.37 turns, half as many as the 0.7 mm ball. Ball diameter alone does not determine real line width.', {ball: 1.4}, 'ball'),
+    ballTrial('Before the first ink arrives', 'The deliberately clean ball has moved 0.500 mm. Ink has not yet crossed the half-turn path to the paper, so the line remains blank.', {condition: 1}, 'ball', .05),
+    ballTrial('Clean ball, completed stroke', 'The chosen clean start leaves 1.100 mm blank, followed by 48.900 mm of ink. A primed pen does not have this obligatory delay.', {condition: 1}, 'paper'),
+    ballTrial('Blocked channel, film still present', 'The ball has moved 0.500 mm and is still writing from its initial film. The dark plug prevents fresh ink from replacing that film.', {condition: 2}, 'ball', .05),
+    ballTrial('Blocked channel, film spent', 'Only the first 1.100 mm received ink. The ball continued rolling to 50.0 mm, but no replacement ink could pass the imposed blockage.', {condition: 2}, 'paper'),
+    ballTrial('Point sideways', 'The hydrostatic component along the horizontal refill is 0.0 Pa. The assumed primed, connected supply still writes a 50.000 mm line.', {place: 1}),
+    ballTrial('Point upward', 'Gravity contributes −588.6 Pa toward the tip, opposing supply. This short-stroke model keeps the tip primed; it does not invent an instant failure or predict air entry.', {place: 2}),
+    ballTrial('Add gas pressure', 'With the pen pointing up, the assigned 200 kPa gas pressure and opposing hydrostatic term combine to 199.411 kPa. The sealed refill shows gas, separator and ink.', {place: 2, refill: 1}, 'refill'),
+    ballTrial('A block still blocks', 'Added gas pressure does not remove the imposed plug. This schematic still leaves only 1.100 mm of ink from the film already on the ball.', {condition: 2, refill: 1}, 'ball'),
+    ballTrial('Write in free fall', 'The hydrostatic term is neglected because pen and ink fall together. The primed pen writes 50.000 mm. An ESA astronaut documented an ordinary ballpoint writing in orbit.', {place: 3}),
   ],
   deeper: [
-    {title: 'A ball in a socket', body: 'A ballpoint pen dispenses ink, usually a paste, over a hard ball rolling in its point. The ball is steel, brass or tungsten carbide, housed in a brass socket. Early inventors found that if the socket was too tight or the ink too thick, the ink never reached the paper; too loose or too thin, and the pen leaked or smeared.'},
-    {title: 'Rolling without slipping', body: 'Where a rolling ball touches the paper it does not slide, so it turns once for every π times its diameter of line. A 0.7 mm ball turns 454,728 times in a kilometer of writing, and every point on the ball’s middle passes through the ink and onto the paper once a turn.'},
-    {title: 'Ball sizes', body: 'Ballpoint tips hold balls from 0.28 mm to 1.6 mm across. Standard sizes include 0.3, 0.38, 0.4 and 0.5 mm; 0.7 mm, called fine; 0.8 mm; 1.0 mm, called medium; and 1.2 and 1.4 mm, called broad. The ball’s diameter is not the width of the line, which also depends on the ink and on how hard you press.'},
-    {title: 'Gravity and orbit', body: 'In most ballpoints gravity brings the ink down to the ball. Most do not work upside down, because gravity pulls the ink inside the pen away from the tip. In orbit a regular ballpoint still writes pointed any way, because the capillary forces in its ink are stronger than a weight that is not there; ESA astronaut Pedro Duque confirmed it in 2003.'},
-    {title: 'The Space Pen', body: 'The Space Pen seals a thixotropic ink in a pressurized reservoir. Compressed nitrogen at nearly 310 kPa pushes a sliding float against the ink, so the pen writes at any angle, in zero gravity and underwater, from −34 to 121 °C.'},
-    {title: 'Thick ink', body: 'Ballpoint ink is oil-based and viscous. The more viscous the ink, the faster it dries, but the harder you must press to lay it down. Rollerball pens use the same rolling ball with water-based inks that flow more easily.'},
+    {title: 'The source mechanism', body: 'The source book places the ballpoint beside other pens on page 141. Its essential connection is reservoir, narrow ink channel, ball in socket and paper. The cutaway retains that path; the enlarged duplicate is an inspection view rather than another working part.'},
+    {title: 'Count turns from travel', body: 'For ideal rolling, x = rθ, so turns = x/(πd). Across 50 mm, a 0.3 mm ball makes 53.05 turns and a 1.4 mm ball makes 11.37. The diameter sets the rotation count, while ink properties, paper and contact also affect the written line.'},
+    {title: 'A chosen starting condition matters', body: 'The clean-ball trial illustrates transport time from an ideal pickup point at the top to paper at the bottom. Half a turn takes πd/2 of travel. A primed pen already has ink there; the default therefore starts without a blank. The blocked trial demonstrates residual film, not a measured clogging distance.'},
+    {title: 'Upward is different from free fall', body: 'PILOT explains that continued upward writing can draw ink away and admit air. It gives no universal failure time. In orbit, pen and ink fall together; Earth’s gravity still acts, but the usual hydrostatic column is absent in their freely falling frame. Pedro Duque reported writing with an ordinary ballpoint aboard Soyuz in 2003.'},
+    {title: 'What pressurization adds', body: 'Fisher describes a sealed, gas-pressurized cartridge that supplies specially formulated ink at different orientations. The lesson uses an assigned pressure and schematic separator to illustrate that added push. It does not reproduce a specific product’s pressure, gas expansion or ink rheology.'},
+    {title: 'Viscosity is not drying speed', body: 'Resistance to flow and the processes that dry or set ink are different properties. This lesson calculates neither. It therefore makes no general claim that thicker ink dries faster.'},
   ],
-  misconception: 'A ballpoint pen does not squeeze ink out of its tip. The ball rolls, and its surface carries the ink round from the refill to the paper.',
+  misconception: 'Gravity is only one contribution to ink supply. A ballpoint’s writing cannot be decided from orientation alone, and a primed ball does not need an obligatory blank half-turn.',
   limits: ballpointLimits,
-  sources: [sources.ballpoint, sources.spacePen, sources.rollerball],
+  sources: [
+    {title: 'PILOT: upward writing, ink channels and tip damage', url: 'https://www.pilot.co.jp/media_english/008/'},
+    {title: 'Fisher Space Pen: sealed and pressurized cartridges', url: 'https://www.spacepen.com/faqs'},
+    {title: 'ESA: Pedro Duque writes with an ordinary ballpoint in orbit', url: 'https://www.esa.int/Space_in_Member_States/Spain/Pedro_Duque_s_diary_from_space'},
+    {title: 'BIC: examples of ballpoint tip sizes', url: 'https://nam.bic.com/en-us/stationery/bic-ballpoint-pens'},
+  ],
   quiz: {
-    question: 'Over the same line, why does a 0.3 mm ball turn more often than a 1.4 mm ball?',
-    options: ['It rolls without slipping, so it turns once for every π times its diameter of line, and a smaller ball has less far to go round.', 'Smaller balls are pressed harder against the paper.', 'The ink pushes a small ball round faster.'],
+    question: 'Why can the primed pen write immediately while the deliberately clean ball leaves an initial blank?',
+    options: ['The primed ball already carries ink at the paper contact; the clean ball must first rotate fresh ink there.', 'A clean ball has a different circumference.', 'Gravity switches off until the ball completes one turn.'],
     answer: 0,
-    explanation: 'In 50 mm the 0.3 mm ball turns 53.05 times and the 1.4 mm ball 11.37 times: once every 0.942 mm against once every 4.398 mm.',
+    explanation: 'Both balls roll by the same x = rθ relation. The difference is their initial ink film. For the clean 0.7 mm ball, the schematic half-turn path is 1.100 mm; the primed ball already has ink at the contact.',
   },
 };
 

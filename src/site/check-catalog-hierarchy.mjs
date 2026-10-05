@@ -177,3 +177,10 @@ assert.deepEqual(tags('stapler'), ['springs', 'levers', 'friction']);
 assert(hasCatalogPart('stapler', 'strip') && hasCatalogPart('stapler', 'springs'), 'Stapler part bookmarks remain available');
 assert.equal(catalog.groups.find(group => group.id === 'stapler').room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === 'stapler').place, 'home');
+
+const ballpoint = families.find(family => family.entry.id === 'ballpoint-pen');
+assert(ballpoint && ballpoint.components.length === 0, 'Ballpoint pen remains a whole item; ordinary parts stay in its viewer');
+assert.deepEqual(tags('ballpoint-pen'), ['pressure-power', 'friction', 'rotating-wheels']);
+assert(hasCatalogPart('ballpoint-pen', 'tip') && hasCatalogPart('ballpoint-pen', 'barrel'), 'Pen part bookmarks remain available');
+assert.equal(catalog.groups.find(group => group.id === ballpoint.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === ballpoint.entry.group).place, 'home');

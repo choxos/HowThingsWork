@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {solidArrow, surface} from './scene-kit.js';
-import {ballpointPlan, ballpointAt, BALLPOINT, BALL_OPTIONS, PLACE_OPTIONS, REFILL_OPTIONS, BALLPOINT_DEFAULTS, BALLPOINT_DOMAINS} from './pens-physics.js';
+import {ballpointPlan, ballpointAt, BALLPOINT, BALL_OPTIONS, PLACE_OPTIONS, REFILL_OPTIONS, CONDITION_OPTIONS, BALLPOINT_DEFAULTS, BALLPOINT_DOMAINS} from './pens-physics.js';
 
 // ---------------------------------------------------------------------------
 // Ballpoint pen: a pen writing a line, its ball and socket drawn larger
@@ -23,20 +23,20 @@ export const MM = 0.01;
 export const DETAIL = 40;
 export const DETAIL_ORIGIN = Object.freeze([1.3, 0.55, 0]);
 
-/** The refill, mm: the socket's top, the tube's wall, the tube's length above the socket, the float, where the socket's rim holds the ball (a share of the ball's radius above the paper), and how far pulled-back ink is drawn from the ball. */
-export const REFILL = Object.freeze({socket: 4, wall: 0.5, length: 100, float: 3, rim: 0.6, pulled: 5});
+/** Assigned refill dimensions in mm. The ball is retained by the normalized socket profile. */
+export const REFILL = Object.freeze({socket: 4, wall: 0.5, length: 100, float: 3, rim: 0.6, pulled: 0});
 export const PAPER = Object.freeze({x0: -15, x1: 65, z: 20, thick: 0.1});
 
 /** How far the drawn line stands above the paper, mm; the line's width as a share of the ball's diameter, illustrative. */
 export const FILM = 0.02;
 export const LINE_SHARE = 0.5;
 export const SPECKS = 24;
-export const SPECK_RING = Object.freeze({radius: 0.94, z: 0.342, size: 0.07});
+export const SPECK_RING = Object.freeze({radius: 0.94, z: 0.342, size: 0.035});
 export const ARROW = Object.freeze({length: 30, thick: 0.9, offset: 25});
 export const COLORS = Object.freeze({ink: 0x2b5d9c, weight: 0x5f7380, clean: 0x8d989c, ball: 0xc9d1d3, gas: 0xdfe8ea});
 
 /** The close-up socket's profile about the ball, in units of the ball's radius from its center: up the inside from the rim, over the top to the ink channel, and down the outside. */
-export const SOCKET_PROFILE = Object.freeze([[0.94, -0.4], [1.04, 0], [0.98, 0.45], [0.62, 0.85], [0.45, 0.85], [0.45, 1.7], [0.95, 1.7], [1.35, 0.2], [1.1, -0.4]]);
+export const SOCKET_PROFILE = Object.freeze([[0.94, -0.4], [1.04, 0], [0.92, 0.5], [0.69, 0.8], [0.46, 0.94], [0.4, 1.03], [0.4, 1.7], [0.95, 1.7], [1.35, 0.2], [1.1, -0.4], [0.94, -0.4]]);
 
 /** The pen's tip direction in the scene for a place, a unit vector. */
 export const pointing = place => { const a = (place.angle ?? 0) * Math.PI / 180; return [Math.sin(a), -Math.cos(a), 0]; };
@@ -47,8 +47,11 @@ export const toScene = (place, [x, y, z]) => { const a = (place.angle ?? 0) * Ma
 /** How far round the ball, the way it turns, speck `i` sits from the top after the ball has turned `turn` radians. */
 export const speckAlong = (i, turn) => { const along = (turn - 2 * Math.PI * i / SPECKS) % (2 * Math.PI); return along < 0 ? along + 2 * Math.PI : along; };
 
-/** A speck carries ink once it has passed the top since the ink began coming round, until it has laid it on the paper at the bottom. */
-export const speckInked = (along, reach) => along <= Math.min(reach, Math.PI) + 1e-12;
+/** Initial film occupies the transport half of the ball; later film requires an open feed at the last top crossing. */
+export const speckInked = (along, travel, radius, feeds, primed) => {
+  const pickup = travel - along * radius;
+  return along <= Math.PI + 1e-12 && (pickup >= -1e-12 ? feeds : primed);
+};
 
 export function createBallpointModel() {
   const kit = houseModel('Ballpoint pen'), {part, control, finish} = kit;
@@ -67,7 +70,7 @@ export function createBallpointModel() {
   const paint = (mesh, color) => { mesh.material = mesh.material.clone(); mesh.material.color.set(color); return mesh; };
   const halfShell = (color, parent) => surface(kit, new THREE.CylinderGeometry(1, 1, 1, 40, 1, true, Math.PI / 2, Math.PI), color, parent, true);
 
-  const system = part('system', 'Ballpoint pen, ball and weight', `A ballpoint pen writing a ${fixed(BALLPOINT.line, 0)} mm line, drawn at true size, with its ball drawn ${DETAIL} times larger beside it and the weight of its ink drawn along the refill. Choose the ball, where you write and the refill, then press Play.`, [0, 0, 0]);
+  const system = part('system', 'Ballpoint pen, ball and weight', `An original cutaway pen writes a ${fixed(BALLPOINT.line, 0)} mm stroke. A separate ${DETAIL}× close-up exposes the ball and ink channel. Choose the starting condition and press Play. Dimensions and pressure are assigned teaching values.`, [0, 0, 0]);
   const setup = new THREE.Group();
   system.add(setup);
 
@@ -79,12 +82,26 @@ export function createBallpointModel() {
   const inkMaterial = line.material;
 
   // The refill, cut open.
-  const refill = part('refill', 'Refill', `The refill cut open, drawn at true size: a ${fixed(BALLPOINT.column, 0)} mm column of ink in a bore ${fixed(2 * BALLPOINT.boreRadius, 1)} mm across, a brass socket and the ball, all illustrative but the ball. An ordinary refill is open at the back. A pressurized one is sealed, with nitrogen pressing a float onto the ink. Pointed up, an ordinary refill’s ink is drawn pulled back from the ball.`, [0, 0, 0], setup);
+  const carriage = new THREE.Group(); setup.add(carriage);
+  const barrel = part('barrel', 'Barrel and rear plug', 'The shell holds the refill and protects it. Look inside removes the front half. This is a fixed-tip pen; a retracting mechanism is not included.', [0, 0, 0], carriage);
+  const bodyBack = halfShell('leaf', barrel), bodyFront = halfShell('leaf', barrel);
+  bodyFront.rotation.y = Math.PI;
+  for (const mesh of [bodyBack, bodyFront]) {mesh.position.y = mm(56.5); mesh.scale.set(mm(4.2), mm(97), mm(4.2));}
+  const noseProfile = [[1.5, 4], [1.55, 8], [4.2, 8], [1.8, 4], [1.5, 4]].map(([x,y]) => new THREE.Vector2(mm(x),mm(y)));
+  const noseBack = surface(kit, new THREE.LatheGeometry(noseProfile, 40, Math.PI / 2, Math.PI), 'leaf', barrel, true);
+  const noseFront = surface(kit, new THREE.LatheGeometry(noseProfile, 40, -Math.PI / 2, Math.PI), 'leaf', barrel, true);
+  const rearProfile = [[.5, 104.5], [.5, 107], [4.2, 107], [4.2, 104.5], [.5, 104.5]].map(([x,y]) => new THREE.Vector2(mm(x),mm(y)));
+  const rearPlug = surface(kit, new THREE.LatheGeometry(rearProfile, 40), 'leaf', barrel); // Vent through the barrel remains open.
+  const refill = part('refill', 'Ink reservoir', `A teaching refill with a 60 mm ink column and 2 mm bore. A visible narrow channel connects it to the ball. The ordinary refill is vented; the sealed refill adds a gas chamber, separator and rear seal. Ink consumption during the short stroke is neglected.`, [0, 0, 0], carriage);
   const pen = new THREE.Group();
   refill.add(pen);
-  const ball = paint(kit.sphere(1, [0, 0, 0], 'metal', pen), COLORS.ball);
-  const socket = surface(kit, new THREE.BufferGeometry(), 'gold', pen, true);
-  const tube = halfShell('leaf', pen);
+  const tip = part('tip', 'Ball, socket and ink channel', 'The socket retains the rolling ball. Its central ink channel joins the reservoir to the ball. A dark plug appears only in the blocked-channel experiment; the block is imposed, not predicted from the pen’s angle.', [0, 0, 0], carriage);
+  const ball = paint(kit.sphere(1, [0, 0, 0], 'metal', tip), COLORS.ball);
+  const socket = surface(kit, new THREE.BufferGeometry(), 'gold', tip, true);
+  const collar = surface(kit, new THREE.BufferGeometry(), 'gold', tip, true);
+  const channelInk = surface(kit, new THREE.BufferGeometry(), 'blue', tip);
+  const channelBlock = rod('ink', tip);
+  const tube = halfShell('metal', pen);
   const ink = rod('blue', pen);
   ink.material = inkMaterial;
   const float = rod('clay', pen);
@@ -92,7 +109,7 @@ export function createBallpointModel() {
   const seal = rod('ink', pen);
 
   // The ball close up, in the pen's frame.
-  const detail = part('ball', 'Ball, close up', `The ball and its socket cut open and drawn ${DETAIL} times larger, as the pen sees them. The ball rolls without slipping; the dots on it turn with it, and those carrying ink take its color. They pick ink up at the top, inside the socket, and lay it on the paper half a turn later.`, DETAIL_ORIGIN, system);
+  const detail = part('ball', 'Ball, close up', `The ball and its socket cut open and drawn ${DETAIL} times larger, as the pen sees them. The ball rolls without slipping; the dots on it turn with it, and those carrying ink take its color. The blue markers show a schematic film traveling from the top to the paper. A primed ball already carries ink at the start; a deliberately clean ball needs half a turn. Surface wetting and film thickness are not solved.`, DETAIL_ORIGIN, system);
   const bigBall = new THREE.Group();
   detail.add(bigBall);
   const bigSphere = paint(kit.sphere(1, [0, 0, 0], 'metal', bigBall), COLORS.ball);
@@ -107,28 +124,36 @@ export function createBallpointModel() {
   const bigSocket = surface(kit, new THREE.LatheGeometry(SOCKET_PROFILE.map(([x, y]) => new THREE.Vector2(x, y)), 40, Math.PI / 2, Math.PI), 'gold', detail, true);
   const bigInk = rod('blue', detail);
   bigInk.material = inkMaterial;
+  const bigBlock = rod('ink', detail);
   const bigPaper = block('cream', detail);
   const bigLine = block('blue', detail);
   bigLine.material = inkMaterial;
 
   // The ink's weight, and the part of it along the refill.
-  const pulls = part('pulls', 'Weight along the refill', `Steel: the full weight of the ink, pointing straight down, ${fixed(ARROW.length, 0)} mm long. Blue: the part of that weight acting along the refill, toward the ball or away from it, on the same scale. In orbit nothing weighs, so neither is drawn.`, [0, 0, 0], system);
+  const pulls = part('pulls', 'Weight along the refill', `Steel: the full weight of the ink, pointing straight down, ${fixed(ARROW.length, 0)} mm long. Blue: the part of that weight acting along the refill, toward the ball or away from it, on the same scale. In the freely falling orbital frame the hydrostatic contribution is neglected; an oval zero marker replaces the force arrows. Earth’s gravity still acts on the orbiting spacecraft.`, [0, 0, 0], system);
   const weightArrow = solidArrow(kit, COLORS.weight, pulls, mm(ARROW.thick));
   const shareArrow = solidArrow(kit, COLORS.ink, pulls, mm(ARROW.thick));
+  const zeroHead = surface(kit, new THREE.TorusGeometry(mm(4), mm(.5), 12, 48), 'blue', pulls);
+  zeroHead.scale.y = 1.4; // A zero glyph for the free-fall approximation, not a force arrow.
 
-  control('ball', 'Ball', ...BALLPOINT_DOMAINS.ball, BALLPOINT_DEFAULTS.ball, 'mm', 'The ball’s diameter, from the standard sizes.', BALL_OPTIONS.map(option => ({...option})));
+  control('ball', 'Ball', ...BALLPOINT_DOMAINS.ball, BALLPOINT_DEFAULTS.ball, 'mm', 'Selected ball diameters. Fine and broad labels vary between manufacturers.', BALL_OPTIONS.map(option => ({...option})));
   control('place', 'Where you write', ...BALLPOINT_DOMAINS.place, BALLPOINT_DEFAULTS.place, '', 'Which way the pen points while it writes.', PLACE_OPTIONS.map(option => ({...option})));
   control('refill', 'Refill', ...BALLPOINT_DOMAINS.refill, BALLPOINT_DEFAULTS.refill, '', 'An ordinary refill open at the back, or a sealed one pressurized with nitrogen.', REFILL_OPTIONS.map(option => ({...option})));
+
+  control('condition', 'Starting condition', ...BALLPOINT_DOMAINS.condition, BALLPOINT_DEFAULTS.condition, '', 'Choose an already inked ball, a deliberately clean ball, or a blocked feed with ink still on the ball. The model does not predict clogging or the time to failure upside down.', CONDITION_OPTIONS.map(option => ({...option})));
 
   // What changes only with the settings: the socket fitted to the ball.
   let drawnBall = null;
   const fitSocket = radius => {
     if (radius === drawnBall) return;
     drawnBall = radius;
-    const rimY = REFILL.rim * radius, rimRadius = Math.sqrt(radius * radius - (radius - rimY) ** 2) * 1.02, top = BALLPOINT.boreRadius + REFILL.wall;
-    socket.geometry.dispose();
-    socket.geometry = new THREE.CylinderGeometry(mm(top), mm(rimRadius), mm(REFILL.socket - rimY), 40, 1, true, Math.PI / 2, Math.PI);
-    socket.position.set(0, mm(REFILL.socket + rimY) / 2, 0);
+    for (const mesh of [socket, collar, channelInk]) mesh.geometry.dispose();
+    socket.geometry = new THREE.LatheGeometry(SOCKET_PROFILE.map(([x, y]) => new THREE.Vector2(mm(x * radius), mm((y + 1) * radius))), 48, Math.PI / 2, Math.PI);
+    const low = 2.7 * radius, outer = BALLPOINT.boreRadius + REFILL.wall;
+    collar.geometry = new THREE.LatheGeometry([[.4 * radius, low], [BALLPOINT.boreRadius, REFILL.socket], [outer, REFILL.socket], [.95 * radius, low], [.4 * radius, low]].map(([x,y]) => new THREE.Vector2(mm(x),mm(y))), 40, Math.PI / 2, Math.PI);
+    channelInk.geometry = new THREE.LatheGeometry([[0, 2 * radius], [.4 * radius, 2 * radius], [.4 * radius, low], [BALLPOINT.boreRadius, REFILL.socket], [0, REFILL.socket]].map(([x,y]) => new THREE.Vector2(mm(x),mm(y))), 40);
+    setRod(channelBlock, .4 * radius, 2.1 * radius, 2.5 * radius);
+
   };
 
   let clock = 0, lastClock = 0, disposed = false;
@@ -138,14 +163,15 @@ export function createBallpointModel() {
 
     // The pen's frame turned to where it writes, and the pen at the end of its travel.
     setup.rotation.z = angle;
-    pen.position.set(mm(now.travel), 0, 0);
+    carriage.position.set(mm(now.travel), 0, 0);
     ball.position.set(0, mm(radius), 0);
     ball.scale.setScalar(mm(radius));
     ball.rotation.z = -now.turn;
     fitSocket(radius);
 
     // The refill: its tube, its ink, and the float and nitrogen of a pressurized one.
-    const top = REFILL.socket + REFILL.length, pulledBack = !plan.feeds ? REFILL.pulled : 0;
+    const top = REFILL.socket + REFILL.length, pulledBack = 0;
+    channelInk.visible = plan.feeds; channelBlock.visible = !plan.feeds;
     tube.position.set(0, mm(REFILL.socket + top) / 2, 0);
     tube.scale.set(mm(BALLPOINT.boreRadius + REFILL.wall), mm(REFILL.length), mm(BALLPOINT.boreRadius + REFILL.wall));
     const inkFrom = REFILL.socket + pulledBack, inkTo = inkFrom + BALLPOINT.column;
@@ -157,20 +183,21 @@ export function createBallpointModel() {
 
     // The line, from where the ink first reached the paper to the ball.
     const half = LINE_SHARE * plan.ball / 2;
-    setBox(line, [plan.delay, plan.delay + now.line], [0, FILM], [-half, half]);
+    setBox(line, [now.lineStart, now.lineEnd], [0, FILM], [-half, half]);
     line.visible = now.line > 0;
 
     // The ball close up: turning with the pen's ball, ink on the dots that carry it.
-    const R = DETAIL * radius, reach = now.ink / radius;
+    const R = DETAIL * radius;
     bigBall.scale.setScalar(big(radius));
     bigBall.rotation.z = -now.turn;
-    specks.forEach((speck, i) => { speck.material = speckInked(speckAlong(i, now.turn), reach) ? inkMaterial : cleanMaterial; });
+    specks.forEach((speck, i) => { speck.material = speckInked(speckAlong(i, now.turn), now.travel, radius, plan.feeds, plan.primed) ? inkMaterial : cleanMaterial; });
     bigSocket.scale.setScalar(big(radius));
-    setRod(bigInk, 0.45 * R - 0.05 * R, 0.85 * R, 1.7 * R);
+    setRod(bigInk, 0.4 * R, 1.0 * R, 1.7 * R);
+    setRod(bigBlock, .4 * R, 1.1 * R, 1.5 * R); bigBlock.visible = !plan.feeds;
     bigInk.visible = plan.feeds;
     setBox(bigPaper, [-3 * R, 3 * R], [-R - 0.06 * R, -R], [-1.5 * R, 1.5 * R]);
-    const drawnLine = Math.min(DETAIL * now.line, 3 * R);
-    setBox(bigLine, [-drawnLine, 0], [-R, -R + 0.02 * R], [-LINE_SHARE * R, LINE_SHARE * R]);
+    const end = Math.min(0, DETAIL * (now.lineEnd - now.travel)), start = Math.max(-3 * R, DETAIL * (now.lineStart - now.travel)), drawnLine = Math.max(0, end - start);
+    setBox(bigLine, [start, Math.max(start, end)], [-R, -R + 0.02 * R], [-LINE_SHARE * R, LINE_SHARE * R]);
     bigLine.visible = drawnLine > 0;
 
     // The ink's weight and its share along the refill, on one scale.
@@ -184,34 +211,35 @@ export function createBallpointModel() {
     shareArrow.userData.setLength(weighs ? mm(shareLength) : 0);
     shareArrow.position.set(mm(beside[0] - along[0] * shareLength / 2), mm(beside[1] - along[1] * shareLength / 2), 0);
 
+    zeroHead.visible = !weighs; zeroHead.position.set(mm(middle[0]), mm(middle[1]), 0);
+
     const placeName = ['on a desk', 'on a wall', 'on the ceiling', 'in orbit'][v.place];
     const status = clock <= 0 ? `Ready · ${fixed(plan.ball, 2)} mm ball ${placeName}; press Play`
-      : now.done ? (plan.feeds ? `A ${fixed(now.line, 1)} mm line · the ball turned ${fixed(now.turns, 2)} times` : 'No line: gravity pulls the ink away from the ball')
-      : plan.feeds ? `Writing · ${fixed(now.line, 1)} mm of line` : `Rolling dry · ${fixed(now.travel, 1)} mm and no ink on the ball`;
-    const weightText = [`All of it pulls the ink toward the ball`, `None of it acts along the refill`, `All of it pulls the ink away from the ball`, `Nothing weighs in orbit`][v.place];
+      : now.done ? `Stroke complete · ${fixed(now.line, 3)} mm of ink, ${fixed(now.turns, 2)} turns`
+      : now.wetContact ? `Writing · ${fixed(now.line, 3)} mm of ink` : `Rolling dry · ${fixed(now.line, 3)} mm of ink left on paper`;
+    const weightText = ['Toward the ball', 'No component along the refill', 'Away from the ball', 'Neglected in free fall'][v.place];
     return {
       state: {...plan, now, clock, angle, pulledBack, middle, beside, along, shareLength, weighs},
       readings: [
         r('Your result', status),
-        r('Ball', `Turned ${fixed(now.turns, 2)} times`, `A ball rolls without slipping, so it turns once for every π times its diameter of line: once every ${fixed(plan.circumference, 3)} mm for this ${fixed(plan.ball, 2)} mm ball, ${fixed(plan.turns, 2)} times in ${fixed(BALLPOINT.line, 0)} mm.`),
-        r('Ink', !plan.feeds ? 'Not reaching the ball' : now.ink < plan.delay ? `Coming round the ball · ${fixed(now.ink, 3)} of ${fixed(plan.delay, 3)} mm` : 'Reaching the paper', `The ball picks ink up at its top and lays it on the paper at its bottom, half a turn later, so the line starts ${fixed(plan.delay, 3)} mm after the ball begins to roll.`),
-        r('Weight', weightText, place.angle === null ? 'In orbit nothing weighs, yet a regular ballpoint still writes pointed any way, because the capillary forces in its ink hold it at the ball.' : `The ${fixed(BALLPOINT.column, 0)} mm column of ink, taken as water, presses with ${fixed(plan.weight, 1)} Pa when the pen points straight down. Only the cosine of the pen’s angle to straight down acts along the refill: ${place.share > 0 ? `here all ${fixed(plan.head, 1)} Pa, toward the ball` : place.share < 0 ? `here all ${fixed(-plan.head, 1)} Pa, away from the ball` : 'here none of it'}.`),
-        r('Refill', plan.pressurized ? `Nitrogen at nearly ${fixed(BALLPOINT.nitrogen, 0)} kPa` : 'Open at the back', plan.pressurized ? `A sliding float separates the ink from the gas, which presses at nearly ${fixed(BALLPOINT.nitrogen, 0)} kPa, ${fixed(BALLPOINT.nitrogen * 1000 / plan.weight, 0)} times what the column of ink weighs, so it writes at any angle.` : 'Gravity brings the ink down to the ball. Pointed up, gravity pulls the ink away from the tip, and most ordinary ballpoints stop writing.'),
+        r('Ball rotation', `${fixed(now.turns, 2)} turns · ${fixed(now.travel, 1)} mm traveled`, `Ideal rolling: one turn per π × diameter, or ${fixed(plan.circumference, 3)} mm. The selected ball makes ${fixed(plan.turns, 2)} turns in a 50 mm stroke.`),
+        r('Ink on paper', `${fixed(now.line, 3)} mm`, plan.primed ? plan.feeds ? 'The primed ball starts writing immediately. No mandatory blank half-turn is imposed.' : `The blocked feed cannot replace the starting film. In this schematic, that film writes only the first ${fixed(plan.delay, 3)} mm.` : `The deliberately clean ball writes after ${fixed(plan.delay, 3)} mm, half a turn. This is a chosen starting condition, not a prediction for a ready-to-use pen.`),
+        r('Ink channel', plan.feeds ? 'Open · ink reaches the ball' : 'Blocked · no replacement ink', 'Blue dots trace an ideal top-to-bottom film path. Real ink wets a finite area in the socket; neither wetting nor flow resistance is calculated.'),
+        r('Gravity along refill', `${weightText} · ${fixed(plan.head, 1)} Pa`, place.angle === null ? 'The spacecraft, pen and ink fall together. Earth’s gravity has not disappeared. This model neglects the hydrostatic head in that frame.' : 'A 60 mm column at an assigned density of 1,000 kg/m³ gives ρgh cos θ. This hydrostatic contribution alone does not decide whether a pen writes or when air enters.'),
+        r('Refill pressure', plan.pressurized ? `${fixed(plan.gasPressure / 1000, 0)} kPa added gauge pressure` : 'Vented · no added gas pressure', `Combined gas and hydrostatic contribution: ${fixed(now.feedPressure / 1000, 3)} kPa. Gas pressure is an assigned comparison, not a commercial cartridge rating. Capillary pressure, viscosity, air entry and a blocked channel’s stress are not solved.`),
       ],
     };
+
   });
 
   const render = result.update;
   const duration = () => result.getState().duration;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(duration(), clock + dt); return render(); };
+  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(duration(), Number((clock + dt).toFixed(12))); return render(); };
   result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
-  const inspect = time => { clock = Math.min(duration(), time); return render(); };
-  result.actions = [
-    {label: 'Inspect: the ball close up', part: 'ball', view: 'front', replay: false, run() { return inspect(duration() / 2); }},
-    {label: 'Inspect: the weight along the refill', part: 'pulls', view: 'front', replay: false, run() { return render(); }},
-    {label: 'Inspect: the line', part: 'paper', view: 'top', replay: false, run() { return inspect(duration()); }},
-  ];
+  result.reset = (initial = {}) => { clock = Number.isFinite(initial.time) ? Math.min(BALLPOINT.line / BALLPOINT.speed, Math.max(0, initial.time)) : 0; lastClock = 0; return render({...result.defaults, ...(initial.settings || {})}); };
+  result.replayState = () => ({settings: result.getState().values, time: 0});
+  result.actions = [['Inspect: complete pen', 'system'], ['Inspect: barrel', 'barrel'], ['Inspect: reservoir and gas chamber', 'refill'], ['Inspect: working tip', 'tip'], ['Inspect: enlarged ball', 'ball'], ['Inspect: paper and line', 'paper'], ['Inspect: gravity arrows', 'pulls']].map(([label, part]) => ({label, part, view: part === 'paper' ? 'top' : 'front', isolate: true, replay: false, run: () => render()}));
+
   result.playback = {
     label: 'Write',
     description: `The pen writes ${fixed(BALLPOINT.line, 0)} mm at ${fixed(BALLPOINT.speed, 0)} mm a second.`,
@@ -223,14 +251,31 @@ export function createBallpointModel() {
   };
   result.resultPart = {id: 'ball', label: 'Inspect the ball', view: 'front', focusOnComplete: false, available: () => clock >= duration()};
 
-  kit.root.rotation.set(0.3, -0.4, 0);
+  kit.root.rotation.set(0, 0, 0);
+  result.covers.push(bodyFront, noseFront); result.initialCutaway = true;
+  result.catalogParts = result.parts.filter(p => p.id !== 'system');
+  result.controls.find(c => c.key === 'condition').primary = true;
+  result.controls.find(c => c.key === 'refill').primary = true;
+  result.partViewDirections = Object.fromEntries(result.parts.map(p => [p.id, {front: [0, .35, 3]}]));
+  result.partViewDirections.ball.front = [0, 0, 3];
+  result.parts.find(p => p.id === 'tip').maxZoom = 300;
+  for (const object of [paper, detail, pulls]) object.userData.explosionExcluded = true;
+  for (const object of [barrel, refill, tip]) object.userData.explosionCategory = true;
+  result.thumbnailOmit = [paper, detail, pulls];
+  result.followParts = ['barrel', 'refill', 'tip', 'pulls'];
+  result.frameBoundsForPart = id => {
+    const current = result.getState(), a = (current.place.angle ?? 0) * Math.PI / 180;
+    const bounds = new THREE.Box3(new THREE.Vector3(-.535, -.025, -.21), new THREE.Vector3(.66, 1.075, .21)).applyMatrix4(new THREE.Matrix4().makeRotationZ(a));
+    if (id === 'system') { const R = current.ball / 2 * MM * DETAIL; bounds.union(new THREE.Box3(new THREE.Vector3(-3 * R, -1.1 * R, -1.5 * R), new THREE.Vector3(3 * R, 1.7 * R, 1.5 * R)).translate(new THREE.Vector3(...DETAIL_ORIGIN))); return bounds.applyMatrix4(kit.root.matrixWorld); }
+    return null;
+  };
   result.initialPart = 'system';
   result.initialView = 'front';
   result.frameVisibleOnly = true;
   result.framePadding = 0.62;
   result.selectionOutline = false;
   result.transparentBackground = true;
-  result.topology = {system, setup, paper, sheet, line, inkMaterial, refill, pen, ball, socket, tube, ink, float, gas, seal, detail, bigBall, bigSphere, specks, cleanMaterial, bigSocket, bigInk, bigPaper, bigLine, pulls, weightArrow, shareArrow};
+  result.topology = {system, setup, carriage, barrel, bodyBack, bodyFront, noseBack, noseFront, rearPlug, tip, collar, channelInk, channelBlock, bigBlock, paper, sheet, line, inkMaterial, refill, pen, ball, socket, tube, ink, float, gas, seal, detail, bigBall, bigSphere, specks, cleanMaterial, bigSocket, bigInk, bigPaper, bigLine, pulls, weightArrow, shareArrow, zeroHead};
   const dispose = result.dispose;
   result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;
