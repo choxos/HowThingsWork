@@ -2372,6 +2372,123 @@
       "parentId": "system"
     }
   ],
+  "rgb-subpixels": [
+    {
+      "id": "frame",
+      "name": "Retaining frame",
+      "parentId": "support"
+    },
+    {
+      "id": "backlight",
+      "name": "Common white backlight",
+      "parentId": "support"
+    },
+    {
+      "id": "light-guide",
+      "name": "Light guide and diffuser",
+      "parentId": "support"
+    },
+    {
+      "id": "rear-polarizer",
+      "name": "Rear polarizer",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "rear-glass",
+      "name": "Rear glass substrate",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "pixel-electrodes",
+      "name": "Three pixel electrodes",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "rear-alignment",
+      "name": "Rear alignment layer",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "liquid-crystal",
+      "name": "Three liquid-crystal shutters",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "seal",
+      "name": "Seal and gap spacers",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "front-alignment",
+      "name": "Front alignment layer",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "common-electrode",
+      "name": "Transparent common electrode",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "filter-mosaic",
+      "name": "RGB filter mosaic and black matrix",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "front-glass",
+      "name": "Front glass substrate",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "front-analyzer",
+      "name": "Front analyzer and transmitted apertures",
+      "parentId": "optical-stack"
+    },
+    {
+      "id": "board",
+      "name": "Illustrative driver support",
+      "parentId": "electronics"
+    },
+    {
+      "id": "data-lines",
+      "name": "Three independent data lines",
+      "parentId": "electronics"
+    },
+    {
+      "id": "tfts",
+      "name": "Three thin-film transistors",
+      "parentId": "electronics"
+    },
+    {
+      "id": "gate-line",
+      "name": "Common row gate line",
+      "parentId": "electronics"
+    },
+    {
+      "id": "storage",
+      "name": "Three storage capacitors",
+      "parentId": "electronics"
+    },
+    {
+      "id": "common-feed",
+      "name": "Common reference connection",
+      "parentId": "electronics"
+    },
+    {
+      "id": "optics-detail",
+      "name": "Three filtered optical paths",
+      "parentId": "system"
+    },
+    {
+      "id": "encoding-detail",
+      "name": "Encoded codes and linear light",
+      "parentId": "system"
+    },
+    {
+      "id": "color-detail",
+      "name": "Additive color and chromaticity",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",

@@ -860,9 +860,7 @@ t.ok(!model.playback.complete() && !model.resultPart.available() && model.result
   for (const values of [{}, {gap: 6, red: 3}]) t.ok(numbersIn(P.screenPlan(values)).every(value => typeof value !== 'number' || Number.isFinite(value)) && numbersIn(P.screenAt(P.screenPlan(values), 0.05)).every(value => typeof value !== 'number' || Number.isFinite(value)), 'no Infinity or NaN anywhere in the plan or the moment');
 }
 
-// The unreviewed child drafts retain their original model and lessons.
-// The reviewed parent is checked independently by check-tft-screen-model.mjs.
-for (const [name, lesson, part] of [['RGB subpixels', L.rgbSubpixelsLesson, 'subpixels'], ['OLED display', L.oledDisplayLesson, 'oled']]) {
+for (const [name, lesson, part] of [['OLED display', L.oledDisplayLesson, 'oled']]) {
   const component = houseComponents[name];
   t.ok(component.createModel === M.createLcdScreenModel, 'The child draft keeps its original factory');
   t.ok(component.machine === 'LCD screen' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the screen’s ${part} with its own lesson`);

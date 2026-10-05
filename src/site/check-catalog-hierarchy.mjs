@@ -222,12 +222,17 @@ assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.gro
 for (const id of ['electronic-ink', 'electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
 
 const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
-assert(lcdScreen && lcdScreen.components.length === 0, 'LCD screen is one whole item; ordinary parts and unfinished display lessons stay out of the directory');
+assert(lcdScreen, 'LCD screen is one whole item');
+assert.deepEqual(lcdScreen.components.map(entry => entry.id), ['rgb-subpixels'], 'Reviewed RGB apertures stay inside the LCD family');
+assert.equal(catalogMachineComponents(lcdScreen.components).length, 0, 'RGB apertures are an ordinary component study, not another machine');
 assert.deepEqual(tags('lcd-screen'), ['light-and-images', 'electricity', 'using-bits']);
 assert(hasCatalogPart('lcd-screen', 'front-polarizer') && hasCatalogPart('lcd-screen', 'matrix-detail'), 'Visible picture and stored-voltage inspection remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === lcdScreen.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === lcdScreen.entry.group).place, 'home');
-for (const id of ['rgb-subpixels', 'oled-display']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+assert(!entries.some(entry => entry.id === 'oled-display'), 'OLED remains an unpublished draft');
+assert.deepEqual(tags('rgb-subpixels'), ['light-and-images', 'electricity', 'using-bits']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'rgb-subpixels')).map(family => family.entry.id), ['lcd-screen'], 'An RGB-only search retains the complete parent screen');
+assert(hasCatalogPart('rgb-subpixels', 'filter-mosaic') && hasCatalogPart('rgb-subpixels', 'color-detail'), 'Physical filters and additive-color inspection remain bookmarkable');
 
 const smartphone = families.find(family => family.entry.id === 'smartphone');
 assert(smartphone, 'Smartphone remains one whole item');
