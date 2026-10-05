@@ -1,330 +1,206 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
-import {chartText, fillLine, lineObject, segmentLines, stripGeometry, surface, textLabel} from './scene-kit.js';
-import {dipPenPlan, dipPenAt, clockTime, clockSeconds, riseAt, wedgeAt, wedgeLength, BENCH, CLOCK, NIB, LIQUID_OPTIONS, DIP_DEFAULTS, DIP_DOMAINS} from './pens-physics.js';
+import {fillLine, lineObject, segmentLines, surface, textLabel} from './scene-kit.js';
+import {CAPILLARY as C, CAPILLARY_DEFAULTS, CAPILLARY_DOMAINS, CAPILLARY_FLUIDS, CAPILLARY_WETTING, capillaryPlan, capillaryAt, capillaryGap, capillaryWedge, capillarySurface} from './capillary-physics.js';
 
-// ---------------------------------------------------------------------------
-// Dip pen and capillary bench: a steel nib dipped into ink, its tip pressed
-// on paper close up, and beside them a glass tube and a wedge of glass plates
-// dipped into a dish, the top of the liquid in the tube close up, and a chart
-// of the rise.
-//
-// Scale: the nib, the inkwell and the bench are drawn at true size, 1 mm to
-// 0.01 scene units, with y up from the liquid's surface, except that the
-// bench tube's bore and the plates' gap are drawn 10 times wider so they
-// show; heights stay true. The nib's slit, 0.02 mm wide, is drawn as a line.
-// The tip close up is drawn 50 times larger, tipped back to look down onto the paper. The meniscus close up is drawn
-// with the bore always 20 mm across. The chart is not to scale.
-//
-// Time runs on a log scale: each second of playback shows ten times as much
-// time as the one before, from 1 ms to 1,000 s. The part text and a reading
-// say so, and the reading carries the real time since dipping.
-// ---------------------------------------------------------------------------
+export const MM = .01;
+export const APPARATUS = Object.freeze({floor: -66, bottom: -68, rim: 3, x0: -14, x1: 84, z0: -11, z1: 11, tubeOuter: 2, wedgeX: 40, plate: .5, railX: 96, clampY: 205});
+export const DETAIL = Object.freeze({bore: .32, wall: .08, bottom: -.65, top: .5, tangent: .19});
+export const PLOT = Object.freeze({x: -.55, y: -.5, width: 1.1, height: 1.25, low: -80, high: 160});
+const GLASS = 0xb9cbd0, GUIDE = 0xc08c36, INK = 0x394233, FAINT = 0x889781;
+const point = (x, y, z = 0) => [x * MM, y * MM, z * MM];
+const polygon = points => new THREE.Shape(points.map(([x,y]) => new THREE.Vector2(x,y)));
+const replace = (mesh, geometry) => {mesh.geometry.dispose(); mesh.geometry = geometry;};
 
-export const MM = 0.01;
-export const WIDEN = 10;
-export const TIP = 50;
-export const SHOULDER = 20;
-export const TIP_WINDOW = 1.5;
-export const TIP_TILT = 0.35;
-
-/** The inkwell and the holder, mm: the well's radius, floor and rim, and the wooden holder's radius and ends. */
-export const INKWELL = Object.freeze({radius: 12, floor: -20, rim: 8, holder: 4, holderFrom: 22, holderTo: 90});
-export const TIP_ORIGIN = Object.freeze([-0.75, 0.55, 0]);
-export const BENCH_ORIGIN = Object.freeze([0.45, 0, 0]);
-
-/** The bench as drawn, mm from its origin: the dish, the tube's place and glass, the wedge's place and plates, and its strips. */
-export const LAYOUT = Object.freeze({dishX0: 0, dishX1: 90, floor: -25, back: -20, front: -7, tubeX: 20, wedgeX: 45, wall: 1, plate: 0.5, strips: 40, mark: 0.5});
-export const MENISCUS = Object.freeze({origin: [1.75, 1.35, 0], bore: 10, wall: 2, below: 30, above: 20, steps: 24, tangent: 8});
-export const CHART = Object.freeze({x: 1.35, y: 0.2, w: 0.8, h: 0.7, z: 0, low: -20, high: 160, first: -3, decades: 6, levelTick: 40, tick: 0.02, points: 64, cursor: 0.025});
-export const COLORS = Object.freeze({liquids: Object.freeze([0x6fa8dc, 0xb9a3d6, 0xa9b1b8]), lines: Object.freeze([0x2f78b7, 0x7a5aa6, 0x6b737a]), ink: 0x2b5d9c, slit: 0x374736, chart: 0x374736, faint: 0x9aa39a, glass: 0xcfe0e6});
-
-/** A time since dipping, s, on the chart's log scale across. */
-export const chartX = time => CHART.x + Math.max(0, Math.min(1, (Math.log10(Math.max(time, 1e-300)) - CHART.first) / CHART.decades)) * CHART.w;
-
-/** A level about the liquid outside, mm, on the chart. */
-export const chartY = level => CHART.y + Math.max(0, Math.min(1, (level - CHART.low) / (CHART.high - CHART.low))) * CHART.h;
-
-/** The times the chart's curves are drawn at, evenly spread on the log scale. */
-export const chartTimes = () => Array.from({length: CHART.points}, (_, j) => 10 ** (CHART.first + CHART.decades * j / (CHART.points - 1)));
-
-/** A time for a reading. */
-export const timeText = t => (t < 0.01 ? `${fixed(t * 1000, 2)} ms` : t < 1 ? `${fixed(t * 1000, 0)} ms` : t < 100 ? `${fixed(t, 2)} s` : `${fixed(t, 0)} s`);
-
-/**
- * The top of a liquid in a tube of radius `a`, meeting the glass at `angle`
- * degrees through the liquid, as [radius, height] from the wall to the axis,
- * heights from where it meets the wall. A sphere of radius a / |cos θ|: dipping
- * in the middle when cos θ > 0, bulging up when cos θ < 0.
- */
-export function meniscusCurve(angle, a, steps = MENISCUS.steps) {
-  const c = Math.cos(angle * Math.PI / 180);
-  if (Math.abs(c) < 1e-12) return [[a, 0], [0, 0]];
-  const R = a / Math.abs(c), rise = Math.sqrt(Math.max(0, R * R - a * a)), sign = c > 0 ? -1 : 1;
-  return Array.from({length: steps + 1}, (_, i) => { const rho = a * (1 - i / steps); return [rho, sign * (Math.sqrt(Math.max(0, R * R - rho * rho)) - rise)]; });
+/** Solid annular tube wall, open at both ends, with a longitudinal cut face. */
+export function capillaryWall(radius, start, length = Math.PI) {
+  const points=[];
+  for (let i=0;i<=64;i++){const a=start+length*i/64;points.push([APPARATUS.tubeOuter*Math.sin(a),APPARATUS.tubeOuter*Math.cos(a)]);}
+  for (let i=64;i>=0;i--){const a=start+length*i/64;points.push([radius*Math.sin(a),radius*Math.cos(a)]);}
+  const geometry=new THREE.ExtrudeGeometry(polygon(points),{depth:C.length,bevelEnabled:false});
+  geometry.rotateX(-Math.PI/2);geometry.scale(MM,MM,-MM);
+  return geometry;
 }
 
-/** A tine's inner edge along the slit, mm from the nib's middle, `s` mm above the tip. The tines hinge at the vent hole, so a splay opens the tip most. */
-export const tineInner = (plan, s) => NIB.gap / 2 + plan.splay / 2 * (1 - s / NIB.slit);
+/** Constant-thickness glass plates bounding an actual 0.1–1.0 mm wedge. */
+export function capillaryPlate(side) {
+  const a = side * C.narrowGap / 2, b = side * C.wideGap / 2, d = side * APPARATUS.plate;
+  const outline = polygon([[0,a],[C.wedgeWidth,b],[C.wedgeWidth,b+d],[0,a+d]]);
+  const geometry = new THREE.ExtrudeGeometry(outline,{depth:C.length,bevelEnabled:false});
+  // Shape x/y are apparatus x/z; extrusion becomes height.
+  geometry.rotateX(-Math.PI/2); geometry.scale(MM,MM,-MM);
+  return geometry;
+}
 
-/** A tine's outer edge, mm from the nib's middle, `s` mm above the tip: the two tips together span the line the nib leaves. */
-export const tineOuter = (plan, s) => tineInner(plan, s) - NIB.gap / 2 + NIB.tip / 2 + (NIB.width / 2 - NIB.tip / 2) * s / SHOULDER;
+/** Closed liquid sheet; local parallel-plate equilibrium ignores along-wedge curvature. */
+export function capillarySheet(plan, count = 160) {
+  const vertices = [], indices = [];
+  const threshold = -2 * plan.liquid.tension * Math.cos(plan.angle*Math.PI/180) / (plan.liquid.density*C.gravity*plan.depth*.001) * 1000;
+  const from = Math.max(0, (threshold-C.narrowGap)/(C.wideGap-C.narrowGap)*C.wedgeWidth);
+  if (from >= C.wedgeWidth) return new THREE.BufferGeometry();
+  for (let i=0;i<=count;i++) {
+    const x=from+(C.wedgeWidth-from)*i/count, gap=capillaryGap(x), top=Math.max(-plan.depth,capillaryWedge(plan,x).height);
+    for (const [y,z] of [[-plan.depth,-gap/2],[-plan.depth,gap/2],[top,-gap/2],[top,gap/2]]) vertices.push(...point(x,y,z));
+    if (i) {const a=4*(i-1),b=4*i;for(const [p,q] of [[0,1],[1,3],[3,2],[2,0]])indices.push(a+p,b+p,a+q,a+q,b+p,b+q);}
+  }
+  indices.push(0,2,1,1,2,3);const end=4*count;indices.push(end,end+1,end+2,end+1,end+3,end+2);
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();return geometry;
+}
+
+/** Bath footprint has real openings for the tube and both glass plates. */
+export function capillaryBathShape() {
+  const A=APPARATUS, shape=polygon([[A.x0,A.z0],[A.x1,A.z0],[A.x1,A.z1],[A.x0,A.z1]]);
+  const tube=new THREE.Path();tube.absarc(0,0,A.tubeOuter,0,2*Math.PI,true);shape.holes.push(tube);
+  const wedge=new THREE.Path();wedge.moveTo(A.wedgeX,-C.narrowGap/2-A.plate);wedge.lineTo(A.wedgeX,C.narrowGap/2+A.plate);wedge.lineTo(A.wedgeX+C.wedgeWidth,C.wideGap/2+A.plate);wedge.lineTo(A.wedgeX+C.wedgeWidth,-C.wideGap/2-A.plate);wedge.closePath();shape.holes.push(wedge);
+  return shape;
+}
+export const capillaryChartPoint = (size, height) => [PLOT.x+(size-.1)/.9*PLOT.width,PLOT.y+(height-PLOT.low)/(PLOT.high-PLOT.low)*PLOT.height,0];
 
 export function createCapillaryModel() {
-  const kit = houseModel('Dip pen'), {part, control, finish} = kit;
-  const mm = value => value * MM;
-  const block = (color, parent) => surface(kit, new THREE.BoxGeometry(1, 1, 1), color, parent);
-  const setBox = (mesh, [x0, x1], [y0, y1], [z0, z1]) => {
-    mesh.position.set(mm(x0 + x1) / 2, mm(y0 + y1) / 2, mm(z0 + z1) / 2);
-    mesh.scale.set(Math.max(1e-9, mm(x1 - x0)), Math.max(1e-9, mm(y1 - y0)), Math.max(1e-9, mm(z1 - z0)));
-  };
-  const rod = (color, parent) => surface(kit, new THREE.CylinderGeometry(1, 1, 1, 40), color, parent);
-  const setRod = (mesh, x, radius, y0, y1) => {
-    mesh.position.set(mm(x), mm(y0 + y1) / 2, 0);
-    mesh.scale.set(Math.max(1e-9, mm(radius)), Math.max(1e-9, mm(y1 - y0)), Math.max(1e-9, mm(radius)));
-    mesh.visible = y1 - y0 > 1e-9;
-  };
-  const halfShell = (color, parent) => surface(kit, new THREE.CylinderGeometry(1, 1, 1, 40, 1, true, Math.PI / 2, Math.PI), color, parent, true);
-  const flat = points => new THREE.ShapeGeometry(new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(mm(x), mm(y)))));
-
-  const system = part('system', 'Dip pen and capillary bench', 'A dip pen dipped into ink, its tip pressed on paper close up, and beside it a capillary bench: a glass tube and a wedge of two glass plates standing in a dish. Choose the liquid on the bench, the tube’s radius and how hard the nib is pressed, then press Play. Time runs on a log scale.', [0, 0, 0]);
-
-  // The nib and its inkwell, true size.
-  const nib = part('nib', 'Nib and inkwell', `The nib and its inkwell, drawn at true size. The slit from the tip to the vent hole is ${fixed(NIB.gap, 2)} mm wide, far too narrow to see, so it is drawn as a line, with the ink climbing it in blue. The nib is dipped ${fixed(NIB.dip, 0)} mm with its tines at rest.`, [0, 0, 0], system);
-  const outline = new THREE.Shape([[0, 0], [NIB.width / 2, SHOULDER], [NIB.width / 2, NIB.length], [-NIB.width / 2, NIB.length], [-NIB.width / 2, SHOULDER]].map(([x, y]) => new THREE.Vector2(x, y)));
-  outline.holes.push(new THREE.Path().absarc(0, NIB.slit, NIB.vent, 0, 2 * Math.PI, true));
-  const plateGeometry = new THREE.ExtrudeGeometry(outline, {depth: NIB.thick, bevelEnabled: false, curveSegments: 24});
-  plateGeometry.scale(MM, MM, MM);
-  const plate = surface(kit, plateGeometry, 'metal', nib);
-  plate.position.set(0, mm(-NIB.dip), mm(-NIB.thick / 2));
-  const slitLine = segmentLines(1, COLORS.slit, nib);
-  fillLine(slitLine, [[0, mm(-NIB.dip), mm(NIB.thick)], [0, mm(NIB.slit - NIB.vent - NIB.dip), mm(NIB.thick)]]);
-  const slitInk = segmentLines(1, COLORS.ink, nib);
-  const holder = rod('wood', nib);
-  setRod(holder, 0, INKWELL.holder, INKWELL.holderFrom, INKWELL.holderTo);
-  const well = halfShell('blue', nib);
-  well.material.color.set(COLORS.glass);
-  well.position.set(0, mm(INKWELL.floor + INKWELL.rim) / 2, 0);
-  well.scale.set(mm(INKWELL.radius), mm(INKWELL.rim - INKWELL.floor), mm(INKWELL.radius));
-  const inkBody = halfShell('blue', nib);
-  inkBody.material.color.set(COLORS.ink);
-  inkBody.position.set(0, mm(INKWELL.floor) / 2, 0);
-  inkBody.scale.set(mm(INKWELL.radius - 0.5), mm(-INKWELL.floor), mm(INKWELL.radius - 0.5));
-  const inkTop = surface(kit, new THREE.CircleGeometry(1, 40, 0, Math.PI), 'blue', nib);
-  inkTop.material = inkBody.material;
-  inkTop.rotation.x = -Math.PI / 2;
-  inkTop.scale.setScalar(mm(INKWELL.radius - 0.5));
-
-  // The tip pressed on paper, close up.
-  const tip = part('tip', 'Tip on the paper, close up', `The same tip pressed on paper, drawn ${TIP} times larger: the last ${fixed(TIP_WINDOW, 1)} mm of the tines, the ink between them and the line they leave, tipped back to look down onto the paper. Pressing splays the tines ${fixed(NIB.compliance, 1)} mm for every newton, an illustrative springiness.`, TIP_ORIGIN, system);
-  tip.rotation.x = TIP_TILT;
-  const tines = [0, 1].map(() => surface(kit, new THREE.BufferGeometry(), 'metal', tip, true));
-  const gapInk = surface(kit, new THREE.BufferGeometry(), 'blue', tip, true);
-  gapInk.material.color.set(COLORS.ink);
-  const tipPaper = block('cream', tip);
-  setBox(tipPaper, [-25, 25], [-2, 0], [-40, 12]);
-  const tipLine = block('blue', tip);
-  tipLine.material = gapInk.material;
-
-  // The capillary bench.
-  const bench = part('capillary', 'Capillary bench', `A glass tube and a wedge of two glass plates, dipped ${fixed(BENCH.depth, 0)} mm into the dish. Heights are drawn at true size, but the tube’s bore and the plates’ gap are drawn ${WIDEN} times wider so they show. The wedge opens from ${fixed(BENCH.narrow, 1)} mm to ${fixed(BENCH.wide, 1)} mm across its ${fixed(BENCH.width, 0)} mm, its front plate drawn only in outline; the dark upright line marks where its gap equals the tube’s radius. Time runs on a log scale.`, BENCH_ORIGIN, system);
-  const dish = block('blue', bench);
-  const liquidMaterial = dish.material.clone();
-  liquidMaterial.side = THREE.DoubleSide;
-  dish.material = liquidMaterial;
-  setBox(dish, [LAYOUT.dishX0, LAYOUT.dishX1], [LAYOUT.floor, 0], [LAYOUT.back, LAYOUT.front]);
-  const surfaceLine = segmentLines(1, COLORS.faint, bench);
-  fillLine(surfaceLine, [[mm(LAYOUT.dishX0), 0, mm(8)], [mm(LAYOUT.dishX1), 0, mm(8)]]);
-  const tubeGlass = halfShell('blue', bench);
-  tubeGlass.material.color.set(COLORS.glass);
-  const column = rod('blue', bench);
-  column.material = liquidMaterial;
-  const backPlate = block('blue', bench);
-  backPlate.material = tubeGlass.material;
-  const plateZ = gap => WIDEN * gap / 2 + LAYOUT.plate / 2;
-  {
-    const x0 = LAYOUT.wedgeX, x1 = LAYOUT.wedgeX + BENCH.width, z0 = -plateZ(BENCH.narrow), z1 = -plateZ(BENCH.wide);
-    backPlate.position.set(mm(x0 + x1) / 2, mm(BENCH.tall - BENCH.depth) / 2, mm(z0 + z1) / 2);
-    backPlate.scale.set(mm(Math.hypot(x1 - x0, z1 - z0)), mm(BENCH.tall + BENCH.depth), mm(LAYOUT.plate));
-    backPlate.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
-  }
-  const frontPlate = lineObject(5, COLORS.faint, bench);
-  {
-    const x0 = LAYOUT.wedgeX, x1 = LAYOUT.wedgeX + BENCH.width, z0 = plateZ(BENCH.narrow), z1 = plateZ(BENCH.wide);
-    fillLine(frontPlate, [[mm(x0), mm(-BENCH.depth), mm(z0)], [mm(x1), mm(-BENCH.depth), mm(z1)], [mm(x1), mm(BENCH.tall), mm(z1)], [mm(x0), mm(BENCH.tall), mm(z0)], [mm(x0), mm(-BENCH.depth), mm(z0)]]);
-  }
-  const sheet = surface(kit, stripGeometry(LAYOUT.strips + 1), 'blue', bench);
-  sheet.material = liquidMaterial;
-  sheet.geometry.attributes.normal.array.fill(0);
-  for (let i = 0; i <= 2 * LAYOUT.strips + 1; i++) sheet.geometry.attributes.normal.array[3 * i + 2] = 1;
-  const matchMark = segmentLines(1, COLORS.chart, bench);
-
-  // The top of the liquid in the tube, close up.
-  const meniscus = part('meniscus', 'Meniscus, close up', `The top of the liquid in the tube, cut open and drawn so the bore is always ${fixed(2 * MENISCUS.bore, 0)} mm across, with a short line along the surface where it meets the glass. Its shape stays the same as the liquid climbs, so it is drawn for any liquid that gets in. Water and ethanol wet glass, so the surface meets it straight along the wall and dips in the middle; mercury meets it at 140° and bulges up.`, MENISCUS.origin, system);
-  const menWalls = [-1, 1].map(side => {
-    const wall = block('blue', meniscus);
-    wall.material = tubeGlass.material;
-    const inner = side * MENISCUS.bore, outer = side * (MENISCUS.bore + MENISCUS.wall);
-    setBox(wall, [Math.min(inner, outer), Math.max(inner, outer)], [-MENISCUS.below, MENISCUS.above], [-MENISCUS.wall, 0]);
-    return wall;
+  const kit=houseModel('Capillary action'), {part,control,finish}=kit, A=APPARATUS;
+  const box=(parent,color,x0,x1,y0,y1,z0,z1)=>{const mesh=surface(kit,new THREE.BoxGeometry((x1-x0)*MM,(y1-y0)*MM,(z1-z0)*MM),color,parent);mesh.position.set(...point((x0+x1)/2,(y0+y1)/2,(z0+z1)/2));return mesh;};
+  const system=part('system','Capillary action apparatus','An open tube and two nearly parallel plates share one liquid bath. Physical dimensions are drawn on one scale. Levels show ideal equilibrium immediately; playback guides the explanation, not filling time.');
+  const bench=part('capillary','Connected capillary bench','The glass extends 220 mm from each immersed mouth. Change depth to lower the glass through the same bath surface. A fixed reservoir level and ideal contact angles are assumed.',[0,0,0],system);
+  const stand=part('stand','Stand and adjustable clamps','A base and vertical rail hold a sliding crossbar. A collar grips the outside of the tube and pads grip both plates. Lowering this assembly changes immersion without changing the required height relative to the bath.',[0,0,0],bench);
+  const base=box(stand,'wood',-18,104,-73,-68,-16,16), rail=box(stand,'metal',94,98,-68,224,-3,3);
+  const carriage=new THREE.Group();stand.add(carriage);
+  const arm=box(carriage,'metal',2,94,203,207,-4,-2);
+  const collar=surface(kit,new THREE.LatheGeometry([[2,201],[3,201],[3,209],[2,209],[2,201]].map(([x,y])=>new THREE.Vector2(x*MM,y*MM)),48), 'metal',carriage);
+  const railSocket=polygon([[93,-4],[99,-4],[99,4],[93,4]]), railHole=new THREE.Path();railHole.moveTo(94,-3);railHole.lineTo(94,3);railHole.lineTo(98,3);railHole.lineTo(98,-3);railHole.closePath();railSocket.holes.push(railHole);
+  const sliderGeometry=new THREE.ExtrudeGeometry(railSocket,{depth:8,bevelEnabled:false});sliderGeometry.rotateX(-Math.PI/2);sliderGeometry.scale(MM,MM,-MM);
+  const slider=surface(kit,sliderGeometry,'metal',carriage);slider.position.y=201*MM;
+  const pads=[-1,1].map(side=>{
+    const inner=x=>side*(capillaryGap(x-40)/2+A.plate),outer=side<0?-4:1.5;
+    const geometry=new THREE.ExtrudeGeometry(polygon([[58,inner(58)],[62,inner(62)],[62,outer],[58,outer]]),{depth:19,bevelEnabled:false});
+    geometry.rotateX(-Math.PI/2);geometry.scale(MM,MM,-MM);
+    const mesh=surface(kit,geometry,'ink',carriage,true);mesh.position.y=201*MM;return mesh;
   });
-  const menColumn = surface(kit, new THREE.BufferGeometry(), 'blue', meniscus);
-  menColumn.material = liquidMaterial;
-  const tangents = segmentLines(2, COLORS.chart, meniscus);
+  const clampTop=box(carriage,'ink',58,62,220,222,-4,1.5);
 
-  // The chart of the rise, on a log scale of time.
-  const chart = part('chart', 'Rise over time', `The level in the tube against the time since dipping: from ${fixed(CHART.low, 0)} mm to ${fixed(CHART.high, 0)} mm about the liquid outside, and from 1 ms to 1,000 s across on a log scale, a tick at every tenfold. Solid: the tube. Faint: the wedge where its gap equals the tube’s radius. The faint level line is the liquid outside. A liquid that stays out draws no line.`, [0, 0, 0], system);
-  const frame = lineObject(5, COLORS.chart, chart);
-  fillLine(frame, [[CHART.x, CHART.y, CHART.z], [CHART.x + CHART.w, CHART.y, CHART.z], [CHART.x + CHART.w, CHART.y + CHART.h, CHART.z], [CHART.x, CHART.y + CHART.h, CHART.z], [CHART.x, CHART.y, CHART.z]]);
-  const zeroLine = segmentLines(1, COLORS.faint, chart);
-  fillLine(zeroLine, [[CHART.x, chartY(0), CHART.z], [CHART.x + CHART.w, chartY(0), CHART.z]]);
-  const ticks = segmentLines(8, COLORS.faint, chart);
-  const tickPoints = [];
-  for (let decade = CHART.first + 1; decade < CHART.first + CHART.decades; decade++) { const x = chartX(10 ** decade); tickPoints.push([x, CHART.y, CHART.z], [x, CHART.y - CHART.tick, CHART.z]); }
-  for (let level = CHART.levelTick; level < CHART.high; level += CHART.levelTick) { const y = chartY(level); tickPoints.push([CHART.x, y, CHART.z], [CHART.x - CHART.tick, y, CHART.z]); }
-  fillLine(ticks, tickPoints);
-  const tubeCurve = lineObject(CHART.points, COLORS.lines[0], chart), platesCurve = lineObject(CHART.points, COLORS.faint, chart);
-  const tubeCursor = segmentLines(2, COLORS.chart, chart), platesCursor = segmentLines(2, COLORS.faint, chart);
-  // The chart's words, every second tenfold named across it, and its key to its right.
-  const TEXT = 0.04, css = color => `#${color.toString(16).padStart(6, '0')}`;
-  const timeText = seconds => (seconds < 1 ? `${fixed(seconds * 1000, 0)} ms` : `${fixed(seconds, 0)} s`);
-  chartText(chart, (seconds, level) => [chartX(seconds), chartY(level), CHART.z], {
-    title: 'Rise over time', size: TEXT,
-    x: {min: 10 ** CHART.first, max: 10 ** (CHART.first + CHART.decades), title: 'Time since dipping, log scale', ticks: Array.from({length: CHART.decades / 2 + 1}, (_, i) => 10 ** (CHART.first + 2 * i)).map(seconds => [seconds, timeText(seconds)])},
-    y: {min: CHART.low, max: CHART.high, title: 'Level, mm', ticks: Array.from({length: CHART.high / CHART.levelTick + 1}, (_, i) => [i * CHART.levelTick, fixed(i * CHART.levelTick, 0)])},
-  });
-  // One 'Tube' word in each liquid's color; the one for the liquid chosen shows.
-  const tubeWords = COLORS.lines.map(color => textLabel(chart, 'Tube', {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.04, 0.001]}));
-  const wedgeWord = textLabel(chart, 'Wedge', {height: TEXT, align: 'left', color: css(COLORS.faint), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.1, 0.001]});
+  const bath=part('bath','Open liquid bath','The outside liquid surface is the zero-height reference. Look inside removes the front wall and the bulk liquid to expose the immersed mouths; the surface with openings remains. The bath is treated as large enough to keep a fixed level.',[0,0,0],bench);
+  const floor=box(bath,'cream',A.x0-1,A.x1+1,A.bottom,A.floor,A.z0-1,A.z1+1);
+  const back=box(bath,GLASS,A.x0-1,A.x1+1,A.floor,A.rim,A.z0-1,A.z0);
+  const left=box(bath,GLASS,A.x0-1,A.x0,A.floor,A.rim,A.z0,A.z1);
+  const right=box(bath,GLASS,A.x1,A.x1+1,A.floor,A.rim,A.z0,A.z1);
+  const front=box(bath,GLASS,A.x0-1,A.x1+1,A.floor,A.rim,A.z1,A.z1+1);
+  const liquidMaterial=new THREE.MeshToonMaterial({color:CAPILLARY_FLUIDS[0].color,side:THREE.DoubleSide});
+  const liquidMesh=(geometry,parent)=>{const mesh=surface(kit,geometry,'blue',parent);mesh.material=liquidMaterial;return mesh;};
+  const bathSurface=liquidMesh(new THREE.ShapeGeometry(capillaryBathShape(),64),bath);bathSurface.rotation.x=Math.PI/2;bathSurface.scale.setScalar(MM);
+  const bathBulk=liquidMesh(new THREE.ExtrudeGeometry(capillaryBathShape(),{depth:-A.floor,bevelEnabled:false,curveSegments:64}),bath);bathBulk.rotation.x=Math.PI/2;bathBulk.scale.setScalar(MM);
+  const lowerTube=liquidMesh(new THREE.BufferGeometry(),bath),lowerWedge=liquidMesh(new THREE.BufferGeometry(),bath);
+  const zero=segmentLines(1,FAINT,bath);fillLine(zero,[point(A.x0-3,0,13),point(A.x1+3,0,13)]);
 
-  control('press', 'Press on the nib', ...DIP_DOMAINS.press, DIP_DEFAULTS.press, 'N', 'How hard the nib is pressed on the paper, in the close up of its tip.');
-  control('liquid', 'Liquid on the bench', ...DIP_DOMAINS.liquid, DIP_DEFAULTS.liquid, '', 'The liquid in the bench’s dish. The nib is always dipped in water-based ink.', LIQUID_OPTIONS.map(option => ({...option})));
-  control('radius', 'Tube radius', ...DIP_DOMAINS.radius, DIP_DEFAULTS.radius, 'mm', 'The radius of the bench tube’s bore.');
+  const tube=part('tube','Open glass tube','The hollow bore has the selected true radius, with an outside radius of 2 mm. Its bottom is immersed and its top is open to the same ambient air as the bath. Look inside removes the front half of the glass.',[0,0,0],bench);
+  const tubeBack=surface(kit,new THREE.BufferGeometry(),GLASS,tube,true),tubeFront=surface(kit,new THREE.BufferGeometry(),GLASS,tube,true);
+  const column=liquidMesh(new THREE.BufferGeometry(),tube);
+  const tubeRim=lineObject(65,INK,tube);
+  const heightMark=segmentLines(3,GUIDE,tube);
+  const levelLabel=textLabel(tube,'',{height:.24,width:.95,align:'left',position:point(-103,85,3)});
 
-  // What changes only with the settings.
-  let drawnKey = '';
-  const redraw = plan => {
-    const key = JSON.stringify(plan.values);
-    if (key === drawnKey) return;
-    drawnKey = key;
-    const v = plan.values, bore = WIDEN * plan.radius;
-    liquidMaterial.color.set(COLORS.liquids[v.liquid]);
+  const wedge=part('wedge','Wedge of glass plates','Two 220 mm plates leave a gap from 0.10 to 1.00 mm across 40 mm. Each local gap uses the parallel-plate pressure balance. This neglects along-wedge curvature and flow; the curved height profile is an approximation.',[A.wedgeX*MM,0,0],bench);
+  const plates=[-1,1].map(side=>surface(kit,capillaryPlate(side),GLASS,wedge,true));
+  const sheet=liquidMesh(new THREE.BufferGeometry(),wedge);
+  const wedgeEdge=lineObject(161,INK,wedge),plateOutline=segmentLines(4,FAINT,wedge);
+  const match=segmentLines(1,GUIDE,wedge);
 
-    tines.forEach((mesh, i) => {
-      const side = i ? 1 : -1;
-      mesh.geometry.dispose();
-      mesh.geometry = flat([[side * tineInner(plan, 0), 0], [side * tineOuter(plan, 0), 0], [side * tineOuter(plan, TIP_WINDOW), TIP_WINDOW], [side * tineInner(plan, TIP_WINDOW), TIP_WINDOW]].map(([x, y]) => [x * TIP, y * TIP]));
-    });
-    gapInk.geometry.dispose();
-    gapInk.geometry = flat([[-tineInner(plan, 0), 0], [tineInner(plan, 0), 0], [tineInner(plan, TIP_WINDOW), TIP_WINDOW], [-tineInner(plan, TIP_WINDOW), TIP_WINDOW]].map(([x, y]) => [x * TIP, y * TIP]));
-    setBox(tipLine, [-plan.line / 2 * TIP, plan.line / 2 * TIP], [0, 0.3], [-40, 0]);
+  const meniscus=part('meniscus','Meniscus, enlarged','A uniformly enlarged cross-section through the tube axis. Wall contact, surface tangent and curved liquid meet in the same plane. This spherical-cap reference neglects gravity across the meniscus. If liquid cannot enter, it shows the required interior shape, not a liquid surface actually inside the tube.',[1.7,.6,0],system);
+  const menWalls=[-1,1].map(side=>{const mesh=surface(kit,new THREE.BoxGeometry(DETAIL.wall,DETAIL.top-DETAIL.bottom,.07),GLASS,meniscus);mesh.position.set(side*(DETAIL.bore+DETAIL.wall/2),(DETAIL.top+DETAIL.bottom)/2,-.035);return mesh;});
+  const menLiquid=liquidMesh(new THREE.BufferGeometry(),meniscus),menCurve=lineObject(129,INK,meniscus),tangents=segmentLines(2,GUIDE,meniscus);
+  const menTitle=textLabel(meniscus,'',{height:.15,width:1.5,position:[0,.83,0]}),menScale=textLabel(meniscus,'',{height:.15,width:1.5,position:[0,-.79,0]});
+  const menStatus=textLabel(meniscus,'',{height:.135,width:1.5,position:[0,.65,0]});
+  const contactDots=[-1,1].map(side=>{const mesh=kit.sphere(.014,[side*DETAIL.bore,0,.002],'gold',meniscus);return mesh;});
 
-    tubeGlass.position.set(mm(LAYOUT.tubeX), mm(BENCH.tall - BENCH.depth) / 2, 0);
-    tubeGlass.scale.set(mm(bore + LAYOUT.wall), mm(BENCH.tall + BENCH.depth), mm(bore + LAYOUT.wall));
-    const across = LAYOUT.wedgeX + wedgeAt(plan.radius);
-    fillLine(matchMark, [[mm(across), mm(-BENCH.depth), mm(LAYOUT.mark)], [mm(across), mm(BENCH.tall), mm(LAYOUT.mark)]]);
+  const chart=part('chart','Pressure-balance height chart','Required signed height versus tube radius or local plate gap. The same ideal expression applies to either dimension. A height below the immersed mouth cannot be realized inside an initially air-filled channel. The gold mouth reference is a geometric limit, not a second equilibrium.',[1.7,.6,0],system);
+  const chartFrame=segmentLines(4,INK,chart),chartZero=segmentLines(1,FAINT,chart),mouthLine=segmentLines(1,GUIDE,chart),curve=lineObject(181,INK,chart),cursor=segmentLines(2,GUIDE,chart);
+  fillLine(chartFrame,[[PLOT.x,PLOT.y,0],[PLOT.x+PLOT.width,PLOT.y,0],[PLOT.x+PLOT.width,PLOT.y,0],[PLOT.x+PLOT.width,PLOT.y+PLOT.height,0],[PLOT.x+PLOT.width,PLOT.y+PLOT.height,0],[PLOT.x,PLOT.y+PLOT.height,0],[PLOT.x,PLOT.y+PLOT.height,0],[PLOT.x,PLOT.y,0]]);
+  fillLine(chartZero,[capillaryChartPoint(.1,0),capillaryChartPoint(1,0)]);
+  for(const height of [-80,0,80,160])textLabel(chart,String(height),{height:.12,align:'right',position:[PLOT.x-.04,capillaryChartPoint(.1,height)[1],0]});
+  for(const size of [.1,.5,1])textLabel(chart,fixed(size,1),{height:.12,position:[capillaryChartPoint(size,0)[0],PLOT.y-.09,0]});
+  textLabel(chart,'Radius / gap (mm)',{height:.15,width:1.55,position:[0,PLOT.y-.25,0]});
+  textLabel(chart,'Required height (mm)',{height:.16,width:1.7,position:[0,PLOT.y+PLOT.height+.17,0]});
+  const chartNote=textLabel(chart,'',{height:.135,width:1.6,position:[0,PLOT.y-.44,0]});
 
-    const curve = meniscusCurve(plan.liquid.angle, MENISCUS.bore);
-    const profile = [[0, -MENISCUS.below], [MENISCUS.bore, -MENISCUS.below], ...curve].map(([x, y]) => new THREE.Vector2(mm(x), mm(y)));
-    menColumn.geometry.dispose();
-    menColumn.geometry = new THREE.LatheGeometry(profile, 40, Math.PI / 2, Math.PI);
-    const s = Math.sin(plan.liquid.angle * Math.PI / 180), c = Math.cos(plan.liquid.angle * Math.PI / 180);
-    fillLine(tangents, [[mm(MENISCUS.bore), 0, mm(MENISCUS.bore)], [mm(MENISCUS.bore - s * MENISCUS.tangent), mm(-c * MENISCUS.tangent), mm(MENISCUS.bore)], [mm(-MENISCUS.bore), 0, mm(MENISCUS.bore)], [mm(-MENISCUS.bore + s * MENISCUS.tangent), mm(-c * MENISCUS.tangent), mm(MENISCUS.bore)]]);
-
-    tubeCurve.material.color.set(COLORS.lines[v.liquid]);
-    const times = chartTimes();
-    fillLine(tubeCurve, plan.enters ? times.map(t => [chartX(t), chartY(1000 * riseAt(plan.tube, t) - BENCH.depth), CHART.z]) : []);
-    fillLine(platesCurve, plan.enters ? times.map(t => [chartX(t), chartY(1000 * riseAt(plan.plates, t) - BENCH.depth), CHART.z]) : []);
-    tubeWords.forEach((word, i) => { word.visible = plan.enters && i === v.liquid; });
-    wedgeWord.visible = plan.enters;
-  };
-
-  let clock = 0, lastClock = 0, disposed = false;
-  const result = finish(values => {
-    const plan = dipPenPlan(values), time = clockTime(clock), now = dipPenAt(plan, time), v = plan.values;
-    redraw(plan);
-
-    // The ink up the nib's slit, from the tip.
-    fillLine(slitInk, now.slit > 0 ? [[0, mm(-NIB.dip), mm(NIB.thick + 0.05)], [0, mm(now.slit - NIB.dip), mm(NIB.thick + 0.05)]] : []);
-
-    // The tube's column, from its bottom end to its level, and the sheet between the plates.
-    const bore = WIDEN * plan.radius, columnTop = plan.enters ? now.level : -BENCH.depth;
-    setRod(column, LAYOUT.tubeX, bore, -BENCH.depth, columnTop);
-    const positions = sheet.geometry.attributes.position.array, tops = [];
-    for (let i = 0; i <= LAYOUT.strips; i++) {
-      const x = BENCH.width * i / LAYOUT.strips, top = wedgeLength(plan.liquid, x, time) - BENCH.depth;
-      tops.push(top);
-      positions.set([mm(LAYOUT.wedgeX + x), mm(-BENCH.depth), 0, mm(LAYOUT.wedgeX + x), mm(top), 0], i * 6);
+  control('liquid','Liquid',...CAPILLARY_DOMAINS.liquid,CAPILLARY_DEFAULTS.liquid,'','Rounded reference properties. Mercury is a virtual comparison only.',CAPILLARY_FLUIDS.map((x,value)=>({value,label:x.name})),{primary:true});
+  control('radius','Tube inner radius',...CAPILLARY_DOMAINS.radius,CAPILLARY_DEFAULTS.radius,'mm','Halving the radius doubles the ideal signed height. The glass outside diameter stays 4 mm.');
+  control('depth','Immersion depth',...CAPILLARY_DOMAINS.depth,CAPILLARY_DEFAULTS.depth,'mm','Distance from the bath surface to the bottom openings. Required height stays fixed; sufficient depth can admit a nonwetting liquid.');
+  control('wetting','Contact angle',...CAPILLARY_DOMAINS.wetting,CAPILLARY_DEFAULTS.wetting,'','Use reference glass or an assigned angle to isolate wetting. Assigned angles are not claims about a particular coating.',CAPILLARY_WETTING.map(x=>({...x})));
+  let clock=0,lastClock=0,key='',disposed=false;
+  const result=finish(values=>{
+    const plan=capillaryPlan(values),now=capillaryAt(plan,clock),next=JSON.stringify(values);
+    if(next!==key){
+      key=next;liquidMaterial.color.set(plan.liquid.color);
+      carriage.position.y=-plan.depth*MM;
+      replace(lowerTube,new THREE.CylinderGeometry(A.tubeOuter*MM,A.tubeOuter*MM,(-plan.depth-A.floor)*MM,128));lowerTube.position.y=(A.floor-plan.depth)*MM/2;
+      const lowerShape=polygon([[A.wedgeX,-C.narrowGap/2-A.plate],[A.wedgeX+C.wedgeWidth,-C.wideGap/2-A.plate],[A.wedgeX+C.wedgeWidth,C.wideGap/2+A.plate],[A.wedgeX,C.narrowGap/2+A.plate]]);
+      const lowerGeometry=new THREE.ExtrudeGeometry(lowerShape,{depth:-plan.depth-A.floor,bevelEnabled:false});lowerGeometry.rotateX(-Math.PI/2);lowerGeometry.scale(MM,MM,-MM);replace(lowerWedge,lowerGeometry);lowerWedge.position.y=A.floor*MM;
+      tubeBack.position.y=tubeFront.position.y=-plan.depth*MM;
+      replace(tubeBack,capillaryWall(plan.radius,Math.PI/2));replace(tubeFront,capillaryWall(plan.radius,-Math.PI/2));
+      plates.forEach(mesh=>mesh.position.y=-plan.depth*MM);
+      const rim=Array.from({length:65},(_,i)=>point(plan.radius*Math.cos(2*Math.PI*i/64),C.length-plan.depth,plan.radius*Math.sin(2*Math.PI*i/64)));fillLine(tubeRim,rim);
+      const profile=[[0,-plan.depth],[plan.radius,-plan.depth]];
+      for(let i=0;i<=64;i++){const radius=plan.radius*(1-i/64);profile.push([radius,plan.height+capillarySurface(plan.angle,plan.radius,radius)]);}
+      replace(column,new THREE.LatheGeometry(profile.map(([x,y])=>new THREE.Vector2(x*MM,y*MM)),64));column.visible=plan.enters;
+      fillLine(heightMark,plan.enters&&Math.abs(plan.height)>1e-8?[point(-5,0),point(-5,plan.height),point(-7,0),point(-3,0),point(-7,plan.height),point(-3,plan.height)]:[]);
+      const levelText=plan.enters?`${fixed(plan.height,1)} mm`:'No entry';levelLabel.userData.setText(levelText);levelLabel.userData.place(-1.03,(plan.enters?plan.height: -plan.depth)*MM+.12,.03);
+      replace(sheet,capillarySheet(plan));sheet.visible=Boolean(sheet.geometry.attributes.position?.count);
+      const edge=[];for(let i=0;i<=160;i++){const x=C.wedgeWidth*i/160,balance=capillaryWedge(plan,x);if(balance.accessible)edge.push(point(x,balance.height,capillaryGap(x)/2));}fillLine(wedgeEdge,edge);
+      const a=capillaryGap(0)/2+A.plate,b=capillaryGap(C.wedgeWidth)/2+A.plate,bottom=-plan.depth,top=C.length-plan.depth;
+      fillLine(plateOutline,[point(0,bottom,a),point(40,bottom,b),point(40,bottom,b),point(40,top,b),point(40,top,b),point(0,top,a),point(0,top,a),point(0,bottom,a)]);
+      const x=(plan.radius-C.narrowGap)/(C.wideGap-C.narrowGap)*C.wedgeWidth;
+      fillLine(match,plan.enters?[point(x,bottom,.6),point(x,capillaryWedge(plan,x).height,.6)]:[]);
+      const scale=DETAIL.bore/plan.radius,points=[];
+      for(let i=0;i<=128;i++){const x=-plan.radius+2*plan.radius*i/128;points.push([x*scale,capillarySurface(plan.angle,plan.radius,Math.abs(x))*scale]);}
+      replace(menLiquid,new THREE.ShapeGeometry(polygon([[-DETAIL.bore,DETAIL.bottom],[DETAIL.bore,DETAIL.bottom],...points.slice().reverse()])));
+      fillLine(menCurve,points.map(([x,y])=>[x,y,.001]));
+      const angle=plan.angle*Math.PI/180;
+      fillLine(tangents,[-1,1].flatMap(side=>[[side*DETAIL.bore,0,.002],[side*(DETAIL.bore-Math.sin(angle)*DETAIL.tangent),-Math.cos(angle)*DETAIL.tangent,.002]]));
+      menTitle.userData.setText(`${fixed(plan.angle,0)}° contact angle`);
+      menStatus.userData.setText(plan.enters?'Interior surface':'Required shape only');
+      menScale.userData.setText(`${fixed(scale/MM,0)}× · ${fixed(2*plan.radius,2)} mm bore`);
+      const plot=[];for(let i=0;i<=180;i++){const size=.1+.9*i/180,height=plan.height*plan.radius/size;plot.push(capillaryChartPoint(size,height));}fillLine(curve,plot);curve.material.color.set(plan.liquid.color);
+      fillLine(mouthLine,[capillaryChartPoint(.1,-plan.depth),capillaryChartPoint(1,-plan.depth)]);
+      const [cx,cy]=capillaryChartPoint(plan.radius,plan.height);fillLine(cursor,[[cx-.025,cy,.003],[cx+.025,cy,.003],[cx,cy-.025,.003],[cx,cy+.025,.003]]);
+      chartNote.userData.setText(`Mouth: −${fixed(plan.depth,0)} mm`);
     }
-    sheet.geometry.attributes.position.needsUpdate = true;
-    sheet.geometry.computeBoundingBox();
-    sheet.geometry.computeBoundingSphere();
-
-    // The meniscus close up: its shape does not change as the liquid climbs, so it shows for any liquid that gets in.
-    const inTube = plan.enters;
-    menColumn.visible = inTube;
-    tangents.visible = inTube;
-
-    // Where the rise is on the chart.
-    const cross = (line, level) => fillLine(line, level === null ? [] : [[chartX(time) - CHART.cursor, chartY(level), CHART.z], [chartX(time) + CHART.cursor, chartY(level), CHART.z], [chartX(time), chartY(level) - CHART.cursor, CHART.z], [chartX(time), chartY(level) + CHART.cursor, CHART.z]]);
-    cross(tubeCursor, plan.enters && time > 0 ? now.level : null);
-    cross(platesCursor, plan.enters && time > 0 ? now.plateLevel : null);
-
-    const name = plan.liquid.name, lower = name.toLowerCase(), tube = `${fixed(plan.radius, 2)} mm tube`;
-    const levelText = level => (level >= 0 ? `${fixed(level, 1)} mm above the ${lower} outside` : `${fixed(-level, 1)} mm below the ${lower} outside`);
-    const finalText = plan.enters ? (plan.height >= 0 ? `${name} stands ${fixed(plan.height, 1)} mm up the ${tube}` : `${name} stands ${fixed(-plan.height, 1)} mm below the level outside the ${tube}`) : `${name} stays out of the ${tube}`;
-    const status = clock <= 0 ? `Ready · ${lower} and a ${tube}; press Play` : clock >= CLOCK.seconds ? finalText : `${timeText(time)} · ${plan.enters ? levelText(now.level) : `${lower} stays out`}`;
-    const tubeHint = plan.enters
-      ? `Jurin’s law gives ${fixed(Math.abs(plan.height), 1)} mm ${plan.height >= 0 ? 'up' : 'down'} for a ${tube}: there the curved surface’s ${plan.pull >= 0 ? 'pull' : 'push'} of ${fixed(Math.abs(plan.pull), 0)} Pa balances the weight of that much ${lower}. It gets 90% of the way in ${timeText(plan.tube90)}. The capillary length of ${lower} is ${fixed(plan.capillary, 2)} mm, and every tube here is narrower, as Jurin’s law needs.`
-      : `Mercury does not wet glass, so its surface bulges up and pushes down with ${fixed(-plan.pull / 1000, 2)} kPa. Mercury ${fixed(BENCH.depth, 0)} mm deep pushes up with only ${fixed(plan.head / 1000, 2)} kPa, so none gets in: the level would sit ${fixed(-plan.height, 1)} mm down, deeper than the tube is dipped.`;
-    const platesHint = `Between two plates, the gap times the height stays the same, so where the wedge’s gap equals the tube’s radius the ${lower} stands exactly as ${plan.height >= 0 ? 'high' : 'deep'}${plan.enters ? `, but it takes 1.5 times as long, 90% of the way in ${timeText(plan.plates90)}` : ''}. Across the wedge its edge traces a hyperbola.`;
-    return {
-      state: {...plan, now, clock, time, bore, columnTop, tops, inTube},
-      readings: [
-        r('Your result', status),
-        r('Clock', time > 0 ? `${timeText(time)} after dipping` : 'Not yet dipped', 'Time runs on a log scale: each second of playback shows ten times as much time as the one before, from 1 ms to 1,000 s.'),
-        r('Tube', !plan.enters ? `Stays out: its level would be ${fixed(-plan.height, 1)} mm down` : time > 0 ? levelText(now.level) : `Its bottom end ${fixed(BENCH.depth, 0)} mm under the ${lower}`, tubeHint),
-        r('Plates', !plan.enters ? `Stays out where the gap is ${fixed(plan.radius, 2)} mm` : time > 0 ? `${levelText(now.plateLevel)}, where the gap is ${fixed(plan.radius, 2)} mm` : `Their bottom edge ${fixed(BENCH.depth, 0)} mm under the ${lower}`, platesHint),
-        r('Nib', now.filled ? 'Ink up the slit to the vent hole' : time > 0 ? `Ink ${fixed(now.slit, 2)} mm up the slit` : `Dipped ${fixed(NIB.dip, 0)} mm into the ink`, `The slit, ${fixed(NIB.gap, 2)} mm wide at rest, is a pair of plates: it could hold water-based ink ${fixed(plan.holdRest, 0)} mm up, far more than its ${fixed(NIB.slit, 0)} mm to the vent hole, which the ink reaches ${timeText(plan.fill)} after dipping.`),
-        r('Press', `${fixed(v.press, 1)} N · tip open ${fixed(plan.tipGap, 2)} mm`, v.press > 0 ? `Pressing splays the tines ${fixed(NIB.compliance, 1)} mm for every newton, an illustrative springiness. The line widens to ${fixed(plan.line, 2)} mm, the slit lets ink through ${fixed(plan.flow, 0)} times as easily, since flow between plates grows with the cube of the gap, and it could still hold ink ${fixed(plan.hold, 0)} mm up.` : `Resting on the paper, the tines stand ${fixed(NIB.gap, 2)} mm apart and leave a line ${fixed(plan.line, 2)} mm wide. Pressing splays them ${fixed(NIB.compliance, 1)} mm for every newton, an illustrative springiness.`),
-        r('Liquid', `${name}: ${fixed(plan.liquid.tension * 1000, 2)} mN/m`, `Surface tension ${fixed(plan.liquid.tension * 1000, 2)} mN/m, density ${fixed(plan.liquid.density, plan.liquid.density % 1 ? 2 : 0)} kg/m³, viscosity ${Number((plan.liquid.viscosity * 1000).toFixed(4))} mPa·s, and a contact angle on glass of ${fixed(plan.liquid.angle, 0)}°.`),
-      ],
-    };
+    const emphasis=now.stage==='contact'?GUIDE:INK;tangents.material.color.set(emphasis);contactDots.forEach(dot=>dot.material.color.set(now.stage==='contact'?GUIDE:0x9caa8e));
+    heightMark.material.color.set(now.stage==='height'?0xc04f35:GUIDE);match.material.color.copy(heightMark.material.color);
+    const stages={ready:'Equilibrium shown · Play explains why',contact:'1. Contact angle sets the surface curvature',pressure:'2. Curvature creates a pressure difference',height:'3. Hydrostatic pressure balances the surface pressure',complete:'Guide complete · change a setting to compare'};
+    liquidMaterial.color.set(plan.liquid.color);if(now.stage==='pressure')liquidMaterial.color.lerp(new THREE.Color(GUIDE),.25);
+    const level=plan.enters?(Math.abs(plan.height)<1e-8?'Level with the bath':`${fixed(Math.abs(plan.height),1)} mm ${plan.height>0?'above':'below'} the bath`):'Liquid cannot enter this ideal dry tube';
+    return {state:{...plan,now,clock,time:clock},readings:[
+      r('Your result',level,stages[now.stage]),
+      r('Guide',stages[now.stage],'The six-second guide changes emphasis, not liquid level. It is not a prediction of filling time.'),
+      r('Surface pressure',`${fixed(plan.pull,1)} Pa: air minus liquid`,`2γ cos θ / r, using ${fixed(plan.angle,0)}°. Liquid pressure just below the ideal meniscus is ${fixed(plan.tube.liquidGauge,1)} Pa relative to ambient air. Both open air spaces have the same ambient pressure.`),
+      r('Required height',`${fixed(plan.height,2)} mm relative to the bath`,plan.enters?'This signed Jurin height balances hydrostatic pressure. The meniscus-volume correction is neglected.':`The required level is below the mouth at −${fixed(plan.depth,0)} mm. An initially dry channel therefore cannot reach that interior equilibrium at this depth; its entrance surface is not calculated.`),
+      r('Immersed opening',`${fixed(plan.depth,0)} mm below the bath`,`The bath supplies ${fixed(plan.head,1)} Pa of hydrostatic pressure at this depth. The tube and plates move together on their support; depth does not change the required signed height.`),
+      r('Wedge comparison',`${fixed(capillaryWedge(plan,0).height,1)} to ${fixed(capillaryWedge(plan,40).height,1)} mm required`,`Local gaps run from 0.10 to 1.00 mm. The ideal plate-gap formula equals the tube formula when gap equals radius. Only regions with a required level above their mouth contain liquid in this model.`),
+      r('Liquid reference',`${plan.liquid.name} · ${fixed(plan.liquid.tension*1000,1)} mN/m`,`Density ${plan.liquid.density} kg/m³. Rounded textbook values are not a calibrated set at one exact temperature. Assigned contact angles isolate wetting; viscosity affects motion but not this equilibrium.`),
+    ]};
   });
-
-  const render = result.update;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(CLOCK.seconds, clock + dt); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
-  const at = seconds => { clock = Math.min(CLOCK.seconds, seconds); return render(); };
-  result.actions = [
-    {label: 'Inspect: the tube and the wedge', part: 'capillary', view: 'front', replay: false, run() { return at(CLOCK.seconds); }},
-    {label: 'Inspect: the meniscus', part: 'meniscus', view: 'front', replay: false, run() { return at(CLOCK.seconds); }},
-    {label: 'Inspect: the rise over time', part: 'chart', view: 'front', replay: false, run() { return at(CLOCK.seconds); }},
-    {label: 'Inspect: the nib in the ink', part: 'nib', view: 'front', replay: false, run() { return at(clockSeconds(result.getState().fill)); }},
-    {label: 'Inspect: the tip on the paper', part: 'tip', view: 'front', replay: false, run() { return render(); }},
-  ];
-  result.playback = {
-    label: 'Dip',
-    description: 'The nib, the tube and the wedge are dipped at once. Time runs on a log scale: each second of playback shows ten times as much time as the one before, from 1 ms to 1,000 s.',
-    stepLabel: 'Advance 0.1 s of playback',
-    advance: result.advance,
-    step: () => result.advance(0.1),
-    complete: () => clock >= CLOCK.seconds,
-    blocked: () => false,
+  const render=result.update;
+  result.advance=dt=>{if(Number.isFinite(dt)&&dt>0)clock=Math.min(C.duration,Number((clock+dt).toFixed(12)));return render();};
+  result.animate=t=>{const dt=Number.isFinite(t)?Math.max(0,t-lastClock):0;if(Number.isFinite(t))lastClock=t;return result.advance(dt);};
+  result.reset=(initial={})=>{clock=Number.isFinite(initial.time)?Math.max(0,Math.min(C.duration,initial.time)):0;lastClock=0;return render({...result.defaults,...(initial.settings||{})});};
+  result.replayState=()=>({settings:result.getState().values,time:0});
+  result.actions=[['Inspect: complete apparatus','capillary'],['Inspect: tube and level','tube'],['Inspect: plate wedge','wedge'],['Inspect: enlarged meniscus','meniscus'],['Inspect: pressure-balance chart','chart'],['Inspect: liquid bath','bath'],['Inspect: adjustable stand','stand']].map(([label,part])=>({label,part,view:'front',isolate:true,replay:false,run:()=>render()}));
+  result.playback={label:'Explain the balance',description:'Contact angle, pressure difference, then hydrostatic balance. Levels remain at equilibrium throughout; six seconds is an explanation schedule, not a filling time.',stepLabel:'Advance guide 0.1 s',advance:result.advance,step:()=>result.advance(.1),complete:()=>clock>=C.duration,blocked:()=>false};
+  result.resultPart={id:'capillary',label:'Inspect the balanced apparatus',view:'front',focusOnComplete:false,available:()=>true};
+  result.covers.push(front,bathBulk,lowerTube,lowerWedge,tubeFront,plates[1]);result.initialCutaway=true;
+  for(const group of [meniscus,chart]){group.userData.inspectionOnly=group===meniscus?'meniscus':'chart';group.userData.explosionExcluded=true;}
+  for(const group of [stand,bath,tube,wedge]){group.userData.explosionCategory=true;group.userData.explosionRigid=true;}
+  for(const group of [tube,wedge])group.traverse(o=>{if(o.userData.textLabel||o.isLine)o.userData.explosionExcluded=true;});
+  result.catalogParts=result.parts.filter(p=>!['system','capillary'].includes(p.id));
+  result.partViewDirections=Object.fromEntries(result.parts.map(p=>[p.id,{front:['meniscus','chart'].includes(p.id)?[0,0,3]:[.5,.3,3]}]));
+  result.parts.find(p=>p.id==='meniscus').framePadding=.66;result.parts.find(p=>p.id==='chart').framePadding=.60;
+  result.initialPart='capillary';result.initialView='front';result.frameVisibleOnly=true;result.framePadding=.67;result.selectionOutline=false;result.transparentBackground=true;
+  result.frameBoundsForPart=id=>{
+    if(id==='meniscus'||id==='chart')return new THREE.Box3().setFromObject(id==='meniscus'?meniscus:chart);
+    if(id==='tube')return new THREE.Box3(new THREE.Vector3(-1.03,-.6,-.02),new THREE.Vector3(.03,2.15,.03)).applyMatrix4(kit.root.matrixWorld);
+    if(id==='wedge')return new THREE.Box3(new THREE.Vector3(.4,-.6,-.01),new THREE.Vector3(.8,2.15,.01)).applyMatrix4(kit.root.matrixWorld);
+    return null;
   };
-  result.resultPart = {id: 'capillary', label: 'Inspect the bench', view: 'front', focusOnComplete: false, available: () => clock >= CLOCK.seconds};
-
-  kit.root.rotation.set(0.12, -0.25, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, nib, plate, slitLine, slitInk, holder, well, inkBody, inkTop, tip, tines, gapInk, tipPaper, tipLine, bench, dish, liquidMaterial, surfaceLine, tubeGlass, column, backPlate, frontPlate, sheet, matchMark, meniscus, menWalls, menColumn, tangents, chart, frame, zeroLine, ticks, tubeCurve, platesCurve, tubeCursor, platesCursor};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  result.topology={system,bench,stand,base,rail,carriage,arm,collar,slider,pads,clampTop,bath,floor,back,left,right,front,bathSurface,bathBulk,lowerTube,lowerWedge,zero,tube,tubeBack,tubeFront,column,tubeRim,heightMark,levelLabel,wedge,plates,sheet,wedgeEdge,plateOutline,match,meniscus,menWalls,menLiquid,menCurve,tangents,contactDots,menTitle,menScale,menStatus,chart,chartFrame,chartZero,mouthLine,curve,cursor,chartNote,liquidMaterial};
+  const dispose=result.dispose;result.dispose=()=>{if(!disposed){disposed=true;dispose();}};
   return result;
 }

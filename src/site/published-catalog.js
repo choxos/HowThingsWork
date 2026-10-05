@@ -2,6 +2,7 @@ import {neighborhoodCatalog as drafts} from './catalog-data.js';
 
 // Add routes only after the item's source, controls, browser, and review gates pass.
 export const publishedEntryIds = [
+  "capillary-action",
   "dip-pen",
   "felt-tip-pen",
   "ballpoint-pen",

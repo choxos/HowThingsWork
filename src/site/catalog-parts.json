@@ -1523,6 +1523,38 @@
       "parentId": "system"
     }
   ],
+  "capillary-action": [
+    {
+      "id": "stand",
+      "name": "Stand and adjustable clamps",
+      "parentId": "capillary"
+    },
+    {
+      "id": "bath",
+      "name": "Open liquid bath",
+      "parentId": "capillary"
+    },
+    {
+      "id": "tube",
+      "name": "Open glass tube",
+      "parentId": "capillary"
+    },
+    {
+      "id": "wedge",
+      "name": "Wedge of glass plates",
+      "parentId": "capillary"
+    },
+    {
+      "id": "meniscus",
+      "name": "Meniscus, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Pressure-balance height chart",
+      "parentId": "system"
+    }
+  ],
   "microwave-oven": [
     {
       "id": "cavity",

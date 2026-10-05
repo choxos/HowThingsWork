@@ -1,5 +1,6 @@
-import {BALLPOINT_DEFAULTS, DIP_DEFAULTS, FELT_DEFAULTS} from './pens-physics.js';
+import {BALLPOINT_DEFAULTS, FELT_DEFAULTS} from './pens-physics.js';
 import {DIP_WRITE_DEFAULTS} from './dip-pen-physics.js';
+import {CAPILLARY_DEFAULTS} from './capillary-physics.js';
 
 const trial = (defaults, part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
 
@@ -215,48 +216,65 @@ export const dipPenLesson = {
   },
 };
 
-const capBench = trial(DIP_DEFAULTS, 'capillary'), capMeniscus = trial(DIP_DEFAULTS, 'meniscus'), capChart = trial(DIP_DEFAULTS, 'chart');
+const capTrial = (title, observe, values = {}, part = 'capillary', time = 6) => {
+  const settings = {...CAPILLARY_DEFAULTS, ...values};
+  return {title, instruction: 'Settings and guide stage are applied. Levels show equilibrium immediately; Play explains the balance without predicting filling time.', observe, values: settings, initialState: {settings, time}, reset: true, part, isolate: true, view: 'front'};
+};
 
-export const capillaryLimits = 'A glass tube and a wedge of two glass plates dipped 15 mm into a dish, drawn with heights at true size and widths 10 times wider. Water and ethanol at 20 °C, both taken to wet clean glass completely; mercury meeting glass at 140°, with its surface tension at 20 °C, its density near room temperature and its viscosity at 25 °C. Gravity 9.81 m/s². The rise follows Poiseuille’s law with the column’s weight and no inertia, starting as the empty tube is dipped; each strip of the wedge rises on its own, from a gap of 0.1 mm to one of 1.0 mm across 40 mm. Jurin’s law leaves out the liquid in the meniscus itself. Time runs on a log scale from 1 ms to 1,000 s. Not modeled: liquid climbing the outside of the glass, the dish’s level falling, evaporation, and dirt on the glass, to which contact angles are extremely sensitive.';
+export const capillaryLimits = 'Ideal equilibrium in an open circular tube of radius 0.10–0.50 mm and a slowly opening plate wedge with a 0.10–1.00 mm gap across 40 mm. Both glass channels are 220 mm long and immersed 5–60 mm in a reservoir whose level is fixed. Physical apparatus dimensions use one scale; the meniscus cross-section is uniformly enlarged and its magnification is labeled. Signed height is 2γ cos θ/(ρ g r) for the tube and 2γ cos θ/(ρ g b) for a local plate gap b, with g = 9.81 m/s². The small-tube approximation neglects meniscus volume; the separate spherical-cap drawing also neglects gravity across the curved surface. The wedge treats local slices as parallel plates and neglects curvature along the wedge. Rounded textbook references use surface tensions 72.8, 22.3 and 465 mN/m, densities 1000, 790 and 13600 kg/m³, and reference glass contact angles 0°, 0° and 140° for water, ethanol and mercury. These are reference values, not a calibrated common-temperature property set. Assigned angles of 60°, 90° and 120° are comparisons, not measured coatings. A required depressed level below the immersed opening is marked inaccessible for an initially dry channel; entrance shape and pinning are not calculated. The six-second playback guides the explanation only. There is no predicted filling time, transient flow, inertia, dynamic contact angle, overshoot, evaporation, bath depletion, outside-glass wetting or contamination model.';
 
 export const capillaryActionLesson = {
-  simple: 'Why does water climb a narrow glass tube, and why does mercury sink in one?',
-  overview: 'Where a liquid meets glass its surface curves. Water wets glass, so its surface curves up the walls and pulls the water up the tube until the weight of the column balances the pull. Mercury does not wet glass: its surface bulges and pushes it down. Change the liquid and the tube’s radius, press Play, and watch the tube and a wedge of two plates fill.',
+  simple: 'Why does water stand higher inside narrow glass, while a nonwetting liquid can stand lower?',
+  overview: 'An open tube and two glass plates share one bath. Where liquid meets glass, the contact angle sets the surface curvature. That curvature changes the pressure below the surface. The liquid level balances this pressure against gravity. Change radius, liquid, contact angle or immersion and compare the equilibrium immediately. Play walks through the explanation; it does not simulate how long filling takes.',
   steps: [
-    {title: 'Meet the glass', body: 'Where the liquid touches the glass it either spreads over it or draws back from it, which sets the angle at which its surface meets the wall.'},
-    {title: 'Curve the surface', body: 'In a narrow tube the whole surface curves, and a curved surface pulls with twice the surface tension over the tube’s radius.'},
-    {title: 'Climb', body: 'The pull drives the liquid up, held back by its viscosity along the walls.'},
-    {title: 'Balance', body: 'The liquid stops where the weight of the column balances the pull.'},
+    {title: 'Meet the glass', body: 'The contact angle is measured through the liquid. An angle below 90° gives a concave surface; above 90° gives a convex one. Surface condition and contamination can change real contact angles.'},
+    {title: 'Compare the pressures', body: 'Both open air spaces have the same ambient pressure. For the ideal tube, air pressure minus liquid pressure just below the meniscus is 2γ cos θ/r. Its sign changes at 90°.'},
+    {title: 'Balance against gravity', body: 'A raised surface has lower liquid pressure than the bath surface; a depressed surface has higher liquid pressure. Hydrostatic pressure balances the curved-surface pressure at the signed Jurin height.'},
+    {title: 'Check the immersed mouth', body: 'The required level must lie above the bottom opening to exist inside the tube. A shallow mouth can prevent entry of a nonwetting liquid in this initially dry-channel model. Greater immersion can make the depressed level accessible.'},
   ],
   parts: [
-    {name: 'Capillary bench', role: 'A glass tube and a wedge of two plates standing in a dish.'},
-    {name: 'Meniscus, close up', role: 'The curved top of the liquid in the tube.'},
-    {name: 'Rise over time', role: 'The level in the tube and between the plates after dipping.'},
-    {name: 'Nib and inkwell', role: 'A dip pen’s slit, filling by the same pull.'},
+    {name: 'Stand and adjustable clamps', role: 'Holds the glass and lowers the tube and plates together into the bath.'},
+    {name: 'Open liquid bath', role: 'Sets the outside zero-height reference and supplies liquid at the immersed openings.'},
+    {name: 'Open glass tube', role: 'Provides the selected circular bore, drawn at its actual radius.'},
+    {name: 'Wedge of glass plates', role: 'Compares local plate gaps from 0.10 to 1.00 mm.'},
+    {name: 'Meniscus, enlarged', role: 'Shows the contact angle and spherical-cap reference on a readable uniform scale.'},
+    {name: 'Pressure-balance height chart', role: 'Compares signed required height with size and marks the immersed mouth.'},
   ],
   tryIt: [
-    capBench('Water in a narrow tube', 'Keep water and a 0.2 mm tube, and press Play.', 'Water climbs the tube and settles 74.2 mm above the water outside, getting 90% of the way in 2.56 s. The capillary action page rounds this rise to 70 mm.'),
-    capBench('Half the radius', 'Set the tube radius to 0.1 mm and press Play.', 'In a tube half as wide the water stands twice as high, 148.4 mm, but it takes 18.72 s to get 90% of the way: 7.3 times as long.', {radius: 0.1}),
-    capChart('Plates rise as high, more slowly', 'Keep the 0.2 mm tube, press Play and watch the chart.', 'Where the wedge’s gap is 0.20 mm the water stands exactly as high as in the tube, 74.2 mm, but the faint line lags behind: 90% of the way takes 3.83 s, 1.5 times as long.'),
-    capMeniscus('The pull of a curved surface', 'Press Play and look at the meniscus.', 'Water wets glass, so its surface meets the wall straight along it and dips into a bowl in the middle. That curved surface pulls with 728 Pa, just what a column of water 74.2 mm tall weighs.'),
-    capBench('Ethanol', 'Choose ethanol and press Play.', 'Ethanol’s surface tension is less than a third of water’s, and it is lighter too, so it climbs only 28.8 mm, getting 90% of the way in 1.90 s.', {liquid: 1}),
-    capBench('Mercury stays out', 'Choose mercury and press Play.', 'Mercury does not wet glass: its surface bulges up and pushes down with 3.73 kPa. The 15 mm of mercury around the tube pushes up with only 1.99 kPa, so none gets in.', {liquid: 2}),
-    capBench('Mercury pushed down', 'Choose mercury, set the tube radius to 0.5 mm and press Play.', 'In the wider tube mercury gets in, but its bulging surface holds it 11.2 mm below the level outside.', {liquid: 2, radius: 0.5}),
+    capTrial('Water in the reference tube', 'Water stands 74.2 mm above the bath in the 0.20 mm-radius tube. The ideal air-minus-liquid pressure is 728 Pa.'),
+    capTrial('Half the radius', 'At 0.10 mm radius, the ideal water height doubles to 148.4 mm. This is an equilibrium comparison, not a claim about filling speed.', {radius:.1}),
+    capTrial('A wider tube', 'At 0.50 mm radius, water stands only 29.7 mm above the bath. The smaller curvature supports a smaller pressure difference.', {radius:.5}),
+    capTrial('Compare the glass wedge', 'The ideal required water height falls from 148.4 mm at the 0.10 mm gap to 14.8 mm at the 1.00 mm gap. At a gap of 0.20 mm it matches the selected tube’s 74.2 mm height.', {}, 'wedge'),
+    capTrial('See the water meniscus', 'The reference 0° contact angle gives a concave surface with vertical tangents where it meets the walls. The enlarged diagram uses one scale in both directions.', {}, 'meniscus', 1),
+    capTrial('Change to ethanol', 'The reference ethanol height is 28.8 mm with a 223 Pa surface-pressure difference. Its lower surface tension outweighs its lower density in this comparison.', {liquid:1}),
+    capTrial('Mercury cannot enter', 'For reference mercury and a 0.20 mm radius, the required level is 26.7 mm below the bath. The opening is only 15 mm deep, so that interior equilibrium is inaccessible.', {liquid:2}),
+    capTrial('Let mercury enter a wider tube', 'At 0.50 mm radius, the required mercury depression is 10.7 mm. The 15 mm immersion is enough to contain that level inside the tube.', {liquid:2,radius:.5}),
+    capTrial('Immerse the narrow tube farther', 'At 30 mm immersion, mercury can enter the 0.20 mm-radius tube and stand 26.7 mm below the bath. Immersion changes accessibility, not the required height.', {liquid:2,depth:30}),
+    capTrial('Assign a 60° contact angle', 'For water at 60°, cos θ is one half. Required height is 37.1 mm, half the fully wetting value, while radius, density and surface tension stay unchanged.', {wetting:1}, 'meniscus'),
+    capTrial('Remove the height difference', 'At an assigned 90° contact angle, the ideal surface is flat. Surface-pressure difference and height relative to the bath are both zero.', {wetting:2}, 'meniscus'),
+    capTrial('Reverse wetting', 'At an assigned 120° contact angle, water stands 37.1 mm below the bath. A 60 mm immersion keeps that depressed level above the mouth.', {wetting:3,depth:60}),
+    capTrial('Read the inaccessible region', 'The mercury curve gives required height. The gold mouth line is −15 mm; curve points below it cannot be realized inside an initially dry tube at that immersion.', {liquid:2}, 'chart'),
   ],
   deeper: [
-    {title: 'Jurin’s law', body: 'The height a liquid climbs in a tube is twice its surface tension times the cosine of its contact angle, over its density, gravity and the tube’s radius. The narrower the tube, the higher the liquid. The law holds only in tubes narrower than the capillary length, 2.72 mm for water.'},
-    {title: 'Rounded on the page', body: 'For water in a glass tube, with a surface tension of 0.0728 N/m, a density of 1,000 kg/m³ and gravity of 9.81 m/s², the capillary action page gives a rise of 70 mm in a tube 0.2 mm in radius. The formula gives 74.2 mm, which the page rounds. Its 0.7 mm for a tube 2 cm in radius is 0.742 mm, though a tube that wide is far beyond the capillary length, where Jurin’s law no longer holds.'},
-    {title: 'Two plates', body: 'Between two glass plates the gap times the height of the liquid stays the same. Tilt two plates into a wedge and the water’s edge between them traces a hyperbola, highest where they are closest.'},
-    {title: 'Rising over time', body: 'A liquid climbing a narrow tube is held back by its viscosity along the walls, and the narrower the tube, the harder it is held back: a tube twice as wide lets it climb four times as fast, though only half as high. Early on, while the column hardly weighs anything, the length climbed grows with the square root of time, as Washburn’s equation has it; later the weight slows it, and it creeps up to the height where it balances.'},
-    {title: 'Mercury', body: 'With some pairs, such as mercury and glass, the liquid holds itself together more strongly than it holds the solid, so its surface bulges and capillary action works in reverse, as in barometers and thermometers. A tube dipped 15 mm lets mercury in only if the depression is shallower than the dip: here, from a radius of 0.4 mm.'},
+    {title: 'Force around the rim', body: 'The upward component of surface tension around a circular contact line is 2πrγ cos θ. Balancing it against the signed column weight ρgπr²h gives h = 2γ cos θ/(ρgr). For a nonwetting liquid, both the vertical component and the signed height are negative.'},
+    {title: 'One ambient pressure, different liquid pressures', body: 'The bath and tube are open to the same air. A curved interface creates the liquid pressure difference; a vacuum above the tube is not required. Moving down from the meniscus adds hydrostatic pressure until it matches the connected bath at the same height.'},
+    {title: 'Why plates use gap, not half-gap', body: 'For a narrow pair of parallel plates, two contact lines supply 2γ cos θ per unit width. The signed liquid weight per unit width is ρg b h, so h = 2γ cos θ/(ρg b). A gap equal to the tube radius gives the same ideal height.'},
+    {title: 'Wedge approximation', body: 'The plates open slowly across their width. Treating each narrow strip as parallel gives a height proportional to one over the local gap. The rendered sheet uses this local approximation; it is not a full three-dimensional free-surface solution.'},
+    {title: 'Height is not speed', body: 'Viscosity resists flow but drops out of the static balance. In the restricted early viscous regime, with gravity and inertia negligible, Washburn’s law gives penetration squared proportional to radius times time for a wetting circular tube. It does not say a tube twice as wide always fills four times faster. Entry and inertia can matter before that regime.'},
+    {title: 'Where the approximation ends', body: 'The tube radii are small compared with each liquid’s capillary length, supporting a small-meniscus approximation. Even so, a spherical cap omits gravity across the curved surface. Real contact angles, pinning, cleanliness and dynamic motion require more information than these four controls provide.'},
   ],
-  misconception: 'Capillary action is not suction from the top of the tube. The liquid’s curved surface pulls it up, and it stops where the weight of the column balances that pull.',
+  misconception: 'A narrower tube does not squeeze liquid upward, and capillary action does not require lower air pressure above the tube. Wetting and surface curvature create a liquid-pressure difference; gravity sets the equilibrium height.',
   limits: capillaryLimits,
-  sources: [sources.capillary, sources.jurin, sources.capillaryLength, sources.meniscus, sources.wetting, sources.contactAngle, sources.washburn, sources.tension, sources.viscosity, sources.ethanol, sources.mercury],
+  sources: [
+    {title: 'OpenStax: Surface tension, contact angles and capillary action', url: 'https://openstax.org/books/college-physics-2e/pages/11-8-cohesion-and-adhesion-in-liquids-surface-tension-and-capillary-action'},
+    {title: 'OpenStax: Reference densities', url: 'https://openstax.org/books/college-physics-2e/pages/11-2-density'},
+    {title: 'Washburn: The Dynamics of Capillary Flow (1921)', url: 'https://journals.aps.org/pr/abstract/10.1103/PhysRev.17.273'},
+    {title: 'Yelkhovsky and Pinczewski: Inertial effects in capillary flow (2018)', url: 'https://journals.aps.org/prfluids/abstract/10.1103/PhysRevFluids.3.044003'},
+  ],
   quiz: {
-    question: 'Why does water climb higher in a narrower tube?',
-    options: ['Its curved surface pulls with twice the surface tension over the radius, so a narrower tube pulls harder and holds up a taller column.', 'A narrow tube squeezes the water upward.', 'The air pressure is lower inside a narrow tube.'],
+    question: 'For the same liquid and contact angle in this equilibrium model, what happens when the tube radius is halved?',
+    options: ['The signed height relative to the bath doubles, provided that level is accessible inside the tube.', 'The equilibrium height stays unchanged because air pressure is unchanged.', 'The liquid always reaches its new level four times faster.'],
     answer: 0,
-    explanation: 'The pull balances the column’s weight, so the height grows as the radius shrinks: 74.2 mm in a 0.2 mm tube, 148.4 mm in a 0.1 mm one.',
+    explanation: 'Jurin height is inversely proportional to radius. Reference water rises from 74.2 to 148.4 mm when radius changes from 0.20 to 0.10 mm. This equilibrium equation does not predict filling time.',
   },
 };
