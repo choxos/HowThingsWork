@@ -1459,6 +1459,38 @@
       "parentId": "system"
     }
   ],
+  "felt-tip-pen": [
+    {
+      "id": "paper",
+      "name": "Paper and ink",
+      "parentId": "system"
+    },
+    {
+      "id": "barrel",
+      "name": "Barrel and rear plug",
+      "parentId": "system"
+    },
+    {
+      "id": "reservoir",
+      "name": "Porous ink reservoir",
+      "parentId": "system"
+    },
+    {
+      "id": "nib",
+      "name": "Porous writing nib",
+      "parentId": "system"
+    },
+    {
+      "id": "pores",
+      "name": "Pores and capillary pressure",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Paper contact-time chart",
+      "parentId": "system"
+    }
+  ],
   "microwave-oven": [
     {
       "id": "cavity",

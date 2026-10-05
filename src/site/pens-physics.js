@@ -216,8 +216,8 @@ export const INK_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'Water
 
 /** The felt tip, mm, μm, s and mm/s^½: pore radii, the nib's length and contact, the stroke, the rest, and the paper's pace for water. */
 export const FELT = Object.freeze({reservoirPore: 50, nibPore: 10, nib: 10, contact: 1, line: 40, rest: 2, pace: 0.5});
-export const FELT_DEFAULTS = Object.freeze({ink: 0, speed: 20});
-export const FELT_DOMAINS = Object.freeze({ink: [0, 1, 1], speed: [5, 40, 5]});
+export const FELT_DEFAULTS = Object.freeze({ink: 0, speed: 20, hold: 2, pore: 10});
+export const FELT_DOMAINS = Object.freeze({ink: [0, 1, 1], speed: [5, 40, 5], hold: [0, 4, 1], pore: [5, 25, 5]});
 
 /** How fast an ink soaks in, relative to water: the square root of surface tension times cos θ over viscosity. */
 export const paceRatio = liquid => Math.sqrt((liquid.tension * cosine(liquid) / liquid.viscosity) / (WATER.tension / WATER.viscosity));
@@ -229,17 +229,28 @@ export function feltTipPlan(input = {}) {
   const stroke = FELT.line / values.speed;
   return Object.freeze({
     values, ink, speed: values.speed, pace, dwell, spread, width: FELT.contact + 2 * spread,
-    nibPull: pullOf(ink, FELT.nibPore * 1e-6), reservoirPull: pullOf(ink, FELT.reservoirPore * 1e-6),
-    hold: jurinHeight(ink, FELT.nibPore * 1e-6), wick: washburnTime(ink, FELT.nibPore * 1e-6, FELT.nib / 1000),
-    stroke, duration: stroke + FELT.rest,
-    blot: FELT.contact / 2 + pace * Math.sqrt(dwell + FELT.rest),
+    nibPull: pullOf(ink, values.pore * 1e-6), reservoirPull: pullOf(ink, FELT.reservoirPore * 1e-6),
+    hold: jurinHeight(ink, values.pore * 1e-6), wick: washburnTime(ink, values.pore * 1e-6, FELT.nib / 1000),
+    stroke, duration: stroke + values.hold,
+    endWidth: FELT.contact + 2 * pace * Math.sqrt(dwell / 2 + values.hold),
   });
 }
 
-/** The felt tip `time` s into its stroke and rest: travel mm, rest s, and the blot's radius where it stops, mm. */
+/** Local contact with an assigned square tip. Each paper row spreads sideways only while fed. */
+export function feltTipPaperAt(plan, time, x) {
+  if (!Number.isFinite(x)) throw new RangeError('Paper position must be finite');
+  const t = Math.min(plan.duration, validTime(time)), half = FELT.contact / 2;
+  const entry = Math.max(0, (x - half) / plan.speed);
+  const exit = x >= FELT.line - half ? plan.duration : (x + half) / plan.speed;
+  const wet = t > 0 && x >= -half && x <= FELT.line + half && entry <= t + 1e-12;
+  const exposure = wet ? Math.max(0, Math.min(t, exit) - entry) : 0;
+  return {wet, exposure, width: wet ? FELT.contact + 2 * plan.pace * Math.sqrt(exposure) : 0};
+}
+
+/** The primed marker writes a stroke, then holds at its end. Time is bounded to this experiment. */
 export function feltTipAt(plan, time) {
-  const t = validTime(time), travel = Math.min(FELT.line, plan.speed * t), rest = Math.min(FELT.rest, Math.max(0, t - plan.stroke));
-  return {t, travel, rest, done: t >= plan.duration, blot: rest > 0 ? FELT.contact / 2 + plan.pace * Math.sqrt(plan.dwell + rest) : 0};
+  const t = Math.min(plan.duration, validTime(time)), travel = Math.min(FELT.line, plan.speed * t), rest = Math.max(0, t - plan.stroke);
+  return {t, travel, rest, done: t >= plan.duration, middle: feltTipPaperAt(plan, t, FELT.line / 2), end: feltTipPaperAt(plan, t, FELT.line)};
 }
 
 export const sampleFeltTip = (input, time = 0) => feltTipAt(feltTipPlan(input), time);

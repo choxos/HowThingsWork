@@ -184,3 +184,10 @@ assert.deepEqual(tags('ballpoint-pen'), ['pressure-power', 'friction', 'rotating
 assert(hasCatalogPart('ballpoint-pen', 'tip') && hasCatalogPart('ballpoint-pen', 'barrel'), 'Pen part bookmarks remain available');
 assert.equal(catalog.groups.find(group => group.id === ballpoint.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === ballpoint.entry.group).place, 'home');
+
+const feltTip = families.find(family => family.entry.id === 'felt-tip-pen');
+assert(feltTip && feltTip.components.length === 0, 'Felt-tip pen remains one item; ordinary parts and teaching diagrams stay inside its viewer');
+assert.deepEqual(tags('felt-tip-pen'), ['pressure-power']);
+assert(hasCatalogPart('felt-tip-pen', 'nib') && hasCatalogPart('felt-tip-pen', 'reservoir'), 'Marker part bookmarks remain available');
+assert.equal(catalog.groups.find(group => group.id === feltTip.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === feltTip.entry.group).place, 'home');

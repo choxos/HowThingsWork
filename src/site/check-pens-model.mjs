@@ -143,54 +143,8 @@ const ballpoint = BP.createBallpointModel();
 // 5. The felt-tip pen, read off its drawing.
 // ---------------------------------------------------------------------------
 
-const felt = FT.createFeltTipModel(), F = felt.topology;
-const paceOf = ink => 0.5 * Math.sqrt((SRC[ink.name].tension / SRC[ink.name].viscosity) / (SRC.Water.tension / SRC.Water.viscosity));
-for (const ink of [0, 1]) {
-  for (let speed = 5; speed <= 40; speed += 5) {
-    const liquid = P.INKS[ink], pace = paceOf(liquid), dwell = 1 / speed, width = 1 + 2 * pace * Math.sqrt(dwell), stroke = 40 / speed;
-    for (const seconds of [0, 0.4, stroke / 2, stroke - 0.01, stroke + 0.3, stroke + 1.1, stroke + 2, stroke + 5]) {
-      const s = pose(felt, {ink, speed}, seconds), travel = Math.min(40, speed * Math.min(seconds, stroke + 2)), rest = Math.min(2, Math.max(0, Math.min(seconds, stroke + 2) - stroke));
-      t.near(s.width, width, 1e-12, 'line width: the tip and the soaking on each side');
-      t.near(F.pen.position.x / FT.MM, travel, 1e-9, 'the pen at the end of its line');
-      t.ok(F.line.visible === travel > 0, 'the line shows once the pen moves');
-      if (travel > 0) {
-        const [[x0, x1], [y0, y1], [z0, z1]] = span(F.line, FT.MM);
-        t.near(x0, 0, 1e-9, 'the line starts where the pen landed');
-        t.near(x1, travel, 1e-9, 'the line reaches the pen');
-        t.near(z1 - z0, width, 1e-9, 'the drawn line is as wide as the ink soaked');
-        t.near(y1 - y0, FT.FILM, 1e-12, 'the ink film');
-        t.near(F.endCap.scale.x / FT.MM, width / 2, 1e-9, 'the line’s round end under the tip');
-        t.near(F.endCap.position.x / FT.MM, travel, 1e-9, 'the round end at the tip');
-      }
-      const blot = rest > 0 ? 0.5 + pace * Math.sqrt(dwell + rest) : 0;
-      t.ok(F.blot.visible === blot > 0, 'a blot only once the pen rests');
-      if (blot > 0) {
-        t.near(F.blot.scale.x / FT.MM, blot, 1e-9, 'the blot grows with the square root of time under the tip');
-        t.near(F.blot.position.x / FT.MM, 40, 1e-9, 'the blot where the line ends');
-      }
-      const pulls = [2 * liquid.tension / 50e-6, 2 * liquid.tension / 10e-6];
-      F.bars.forEach((bar, i) => t.near(bar.scale.y / FT.MM / FT.KPA, pulls[i] / 1000, 1e-9, 'each pore’s pull, 5 mm for every kPa'));
-      const cursor = points(F.cursor), soakTime = rest > 0 ? dwell + rest : Math.min(dwell, seconds), point = FT.chartPoint(soakTime, pace * Math.sqrt(soakTime));
-      t.near((cursor[0][0] + cursor[1][0]) / 2, point[0], 1e-6, 'the chart’s cross at the spot under the tip');
-      t.near(cursor[0][1], point[1], 1e-6, 'at the depth it has soaked');
-      counts.poses++;
-    }
-  }
-}
-F.curves.forEach((curve, i) => {
-  const pace = paceOf(P.INKS[i]);
-  for (const [x, y] of points(curve)) {
-    const time = (x - FT.CHART.x) / FT.CHART.w * FT.CHART.time, soak = (y - FT.CHART.y) / FT.CHART.h * FT.CHART.soak;
-    if (soak < FT.CHART.soak - 1e-6) t.near(time, (soak / pace) ** 2, 1e-5, 'the chart’s curve soaks with the square root of time, read back as the time each depth takes');
-    counts.charts++;
-  }
-});
-for (const [i, size] of [50, 10].entries()) {
-  const box = new THREE.Box3().setFromBufferAttribute(F.poreInks[i].geometry.attributes.position);
-  t.near((box.max.x - box.min.x) / 2 / FT.MM, size / 1000 * FT.PORES, 1e-6, 'each pore drawn 200 times larger');
-  t.near((box.max.y - box.min.y) / FT.MM, FT.CLOSE.tall, 1e-6, 'the pores as tall as drawn');
-}
-t.near(P.feltTipPlan({speed: 5}).spread, 2 * P.feltTipPlan({speed: 20}).spread, 1e-15, 'four times as long under the tip soaks twice as far');
+// Detailed felt-tip laws, contact histories and mesh checks live in check-felt-tip-model.mjs.
+const felt = FT.createFeltTipModel();
 
 // ---------------------------------------------------------------------------
 // 6. The dip pen and the bench, read off their drawing.
@@ -290,17 +244,6 @@ for (let press = 0; press <= 1.0001; press += 0.1) {
 // ---------------------------------------------------------------------------
 
 const settled = (model, values) => pose(model, values, 1e3);
-const feltAt = values => settled(felt, values), water = feltAt({});
-checkTrialNumbers(feltTipLesson, {
-  'Write a line': s => { t.ok(s.stroke === 2 && P.FELT.rest === 2, 'a 2 s stroke and a 2 s rest'); return {'40': P.FELT.line, '2': s.stroke, '0.050': s.dwell, '1.0': P.FELT.contact, '0.112': s.spread, '1.22': s.width, '2.43': 2 * s.blot}; },
-  'Write slowly': s => { t.near(s.dwell, 4 * water.dwell, 1e-15, 'four times as long'); t.near(s.spread, 2 * water.spread, 1e-15, 'twice as far'); return {'0.200': s.dwell, '0.224': s.spread, '1.45': s.width}; },
-  'Write fast': s => ({'0.025': s.dwell, '1.16': s.width}),
-  'Alcohol-based ink': s => ({'0.51': P.paceRatio(P.ETHANOL), '1.11': s.width, '1.72': 2 * s.blot, '2.43': 2 * water.blot}),
-  'Narrow pores pull harder': s => ({'10': P.FELT.nibPore, '14.6': s.nibPull / 1000, '5': s.nibPull / s.reservoirPull, '50': P.FELT.reservoirPore, '2.91': s.reservoirPull / 1000, '0.28': s.wick}),
-  'Whichever way it points': s => ({'10': P.FELT.nibPore, '1.48': s.hold, '0.58': P.feltTipPlan({ink: 1}).hold}),
-  'The square root of time': s => ({'0.500': s.pace * Math.sqrt(1), '1': 1, '4': (1 / s.pace) ** 2, '1.000': s.pace * Math.sqrt(4)}),
-}, feltAt, t);
-
 const dipAt = values => settled(dip, values), rest = dipAt({});
 checkTrialNumbers(dipPenLesson, {
   'Dip the nib': s => ({'0.02': P.NIB.gap, '10': P.NIB.slit, '207': 1000 * s.fill}),
@@ -325,7 +268,6 @@ checkTrialNumbers(capillaryActionLesson, {
 const firstIn = P.DIP_DOMAINS.radius, entering = [];
 for (let i = 0; i <= 8; i++) { const radius = Number((firstIn[0] + i * firstIn[2]).toFixed(2)); if (P.dipPenPlan({liquid: 2, radius}).enters) entering.push(radius); }
 const deeper = lesson => lesson.deeper.map(item => item.body).join(' ');
-checkQuotedText(deeper(feltTipLesson), {[`pulls ${fixed(P.FELT.reservoirPore / P.FELT.nibPore, 0)} times as hard`]: 'pulls 5 times as hard', [`climbs ${fixed(5.0 * Math.sqrt(1) / 0.25, 0)} mm in the first minute`]: 'climbs 20 mm in the first minute', [`only ${fixed(5.0 * Math.sqrt(4) / 0.25, 0)} mm by the fourth`]: 'only 40 mm by the fourth'}, t);
 {
   const half = P.dipPenPlan({press: 0.5});
   checkQuotedText(deeper(dipPenLesson), {[`${fixed(half.tipGap / P.NIB.gap, 1)} times its width`]: '3.5 times its width', [`lets ${fixed(half.flow, 0)} times as much ink`]: 'lets 43 times as much ink'}, t);
@@ -344,14 +286,11 @@ checkQuotedText(deeper(capillaryActionLesson), {
   t.near(wide.tube.k / thin.tube.k, 4, 1e-12, 'a tube twice as wide climbs four times as fast');
   t.near(wide.height / thin.height, 0.5, 1e-12, 'though only half as high');
 }
-checkQuotedText(feltTipLimits, {[`a ${fixed(P.FELT.line, 0)} mm line`]: 'a 40 mm line', [`resting ${fixed(P.FELT.rest, 0)} s`]: 'resting 2 s', [`${fixed(P.WATER.tension * 1000, 1)} mN/m and a viscosity of ${Number((P.WATER.viscosity * 1000).toFixed(4))} mPa·s`]: '72.8 mN/m and a viscosity of 1.0016 mPa·s', [`${fixed(P.ETHANOL.tension * 1000, 2)} mN/m and ${fixed(P.ETHANOL.viscosity * 1000, 1)} mPa·s`]: '22.27 mN/m and 1.2 mPa·s', [`across ${fixed(P.FELT.contact, 1)} mm`]: 'across 1.0 mm', [`pores ${P.FELT.reservoirPore} μm`]: 'pores 50 μm', [`${P.FELT.nibPore} μm in the nib, which is ${fixed(P.FELT.nib, 0)} mm long`]: '10 μm in the nib, which is 10 mm long', [`ink ${fixed(P.FELT.pace, 1)} mm in its first second`]: 'ink 0.5 mm in its first second'}, t);
 checkQuotedText(dipPenLimits, {[`${fixed(P.NIB.length, 0)} mm long and ${fixed(P.NIB.width, 0)} mm wide`]: '30 mm long and 7 mm wide', [`${fixed(P.NIB.gap, 2)} mm wide at rest running ${fixed(P.NIB.slit, 0)} mm`]: '0.02 mm wide at rest running 10 mm', [`vent hole ${fixed(2 * P.NIB.vent, 0)} mm across`]: 'vent hole 2 mm across', [`dipped ${fixed(P.NIB.dip, 0)} mm`]: 'dipped 3 mm', [`splay ${fixed(P.NIB.compliance, 1)} mm for every newton`]: 'splay 0.1 mm for every newton', [`line is ${fixed(P.NIB.tip, 1)} mm wide`]: 'line is 0.1 mm wide'}, t);
 checkQuotedText(capillaryLimits, {[`dipped ${fixed(P.BENCH.depth, 0)} mm`]: 'dipped 15 mm', [`widths ${DP.WIDEN} times wider`]: 'widths 10 times wider', [`glass at ${fixed(P.MERCURY.angle, 0)}°`]: 'glass at 140°', [`a gap of ${fixed(P.BENCH.narrow, 1)} mm to one of ${fixed(P.BENCH.wide, 1)} mm across ${fixed(P.BENCH.width, 0)} mm`]: 'a gap of 0.1 mm to one of 1.0 mm across 40 mm'}, t);
-checkQuotedText(feltTipLesson.quiz.explanation, {[`${fixed(feltAt({speed: 5}).dwell, 3)} s under the tip and the ink soaks ${fixed(feltAt({speed: 5}).spread, 3)} mm`]: '0.200 s under the tip and the ink soaks 0.224 mm', [`${fixed(water.dwell, 3)} s and soaks ${fixed(water.spread, 3)} mm`]: '0.050 s and soaks 0.112 mm'}, t);
 checkQuotedText(dipPenLesson.quiz.explanation, {[`from ${fixed(P.NIB.gap, 2)} mm to ${fixed(P.dipPenPlan({press: 0.5}).tipGap, 2)} mm`]: 'from 0.02 mm to 0.07 mm', [`${fixed(P.dipPenPlan({press: 0.5}).flow, 0)} times`]: '43 times'}, t);
 checkQuotedText(capillaryActionLesson.quiz.explanation, {[`${fixed(narrow.height, 1)} mm in a 0.2 mm tube, ${fixed(dipAt({radius: 0.1}).height, 1)} mm in a 0.1 mm one`]: '74.2 mm in a 0.2 mm tube, 148.4 mm in a 0.1 mm one'}, t);
 const partText = (model, id) => model.parts.find(part => part.id === id).description;
-checkQuotedText(partText(felt, 'pores'), {[`drawn ${FT.PORES} times larger`]: 'drawn 200 times larger', [`${FT.KPA} mm tall for every kPa`]: '5 mm tall for every kPa'}, t);
 checkQuotedText(partText(dip, 'capillary'), {[`dipped ${fixed(P.BENCH.depth, 0)} mm`]: 'dipped 15 mm', [`drawn ${DP.WIDEN} times wider`]: 'drawn 10 times wider'}, t);
 for (const lesson of [ballpointLesson, feltTipLesson, dipPenLesson, capillaryActionLesson]) {
   t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${lesson.simple}: a quiz with its answer first`);

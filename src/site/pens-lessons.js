@@ -93,48 +93,61 @@ export const ballpointLesson = {
 // Felt-tip pen.
 // ---------------------------------------------------------------------------
 
-const feltSystem = trial(FELT_DEFAULTS, 'system'), feltPaper = trial(FELT_DEFAULTS, 'paper', 'top'), feltPores = trial(FELT_DEFAULTS, 'pores'), feltChart = trial(FELT_DEFAULTS, 'chart');
+const feltTrial = (title, observe, values = {}, part = 'system', time = 4) => {
+  const settings = {...FELT_DEFAULTS, ...values};
+  return {title, instruction: 'Settings and observation time are applied. Press Play to continue or replay.', observe, values: settings, initialState: {settings, time}, reset: true, part, isolate: true, view: part === 'paper' ? 'top' : 'front'};
+};
 
-export const feltTipLimits = 'A felt-tip pen drawn at true size, writing a 40 mm line at a steady speed and then resting 2 s where it stops. Water stands in for a water-based ink and ethanol for an alcohol-based one, both at 20 °C and both taken to wet the fibers completely: water with a surface tension of 72.8 mN/m and a viscosity of 1.0016 mPa·s, ethanol with 22.27 mN/m and 1.2 mPa·s. Illustrative: a tip touching the paper across 1.0 mm; pores 50 μm in radius in the core and 10 μm in the nib, which is 10 mm long; and paper that soaks up the water-based ink 0.5 mm in its first second, at a pace that grows with the square root of time and, for another ink, with the square root of its surface tension over its viscosity, as Washburn’s equation has it. Ink soaks sideways only while the tip is over it, and the blot grows out from under the resting tip. Not modeled: evaporation, the ink running low, paper fibers that lie one way, and ink soaking through to the back of the page.';
+export const feltTipLimits = 'Original primed marker with assigned geometry: a barrel reaching 80 mm above the paper, a 10 mm path from reservoir contact to paper, a 1 mm square footprint and a 40 mm stroke. One scene unit represents 100 mm; pore samples are enlarged 200 times. The writing nib starts wet. Separate ideal dry-pore estimates use cylindrical pores, complete wetting and Washburn flow without gravity or inertia. Assigned water reference: 72.8 mN/m and 1.0016 mPa·s; ethanol reference: 22.27 mN/m and 1.2 mPa·s. These values are comparisons, not commercial ink specifications. Core pore radius is 50 μm; nib radius can be 5 to 25 μm. Paper uses an assigned transverse spread coefficient of 0.5 mm/√s for water, scaled by √(γ/η) for ethanol. Every row spreads sideways only while the square tip feeds it; initial contact immediately colors the footprint. No spreading along the stroke, redistribution after contact, drying, depletion, leakage, pressure squeezing, paper anisotropy, or through-thickness flow is solved. Supply is assumed sufficient at every nib setting. The pore comparison does not calculate coupled reservoir, nib and paper flow. The storage cap is removed and omitted.';
 
 export const feltTipLesson = {
-  simple: 'How does a felt-tip pen get ink onto the paper with no moving parts?',
-  overview: 'Nothing pushes the ink out of a felt-tip pen. Its ink soaks a core of fibers, a nib of pressed fibers touches that core, and the paper touches the nib. Each is finer than the one before, and finer pores pull harder, so ink moves on from core to nib to paper. Change the ink and how fast you write to see how wide the line comes out and how the ink keeps soaking out where the pen stops.',
+  simple: 'How can a porous nib carry ink without a rolling ball or a pump?',
+  overview: 'Ink fills connected spaces among the reservoir fibers. The wet nib touches that reservoir and passes ink to paper. Surface tension and wetting create capillary pressure; viscous resistance limits the flow. Watch a primed marker write, slow it down, or hold it at the end. Then compare ideal pores to see why stronger suction does not always mean faster filling.',
   steps: [
-    {title: 'Soak the core', body: 'The ink sits in a core of loose fibers inside the barrel.'},
-    {title: 'Pull it into the nib', body: 'The nib’s pores are narrower, so they pull harder and draw the ink out of the core.'},
-    {title: 'Touch the paper', body: 'The paper’s fibers draw ink out of the nib wherever the tip touches.'},
-    {title: 'Soak outward', body: 'Ink keeps spreading into the paper for as long as the tip stays over it: the longer, the wider.'},
+    {title: 'Store ink among fibers', body: 'A porous reservoir holds ink inside the barrel and remains in contact with the nib.'},
+    {title: 'Keep a connected wet path', body: 'Wetting and curved liquid surfaces help draw ink through the nib. Real flow also depends on resistance and air replacement.'},
+    {title: 'Touch the paper', body: 'The already wet tip transfers ink where it touches. Rows farther along the page remain dry until the tip reaches them.'},
+    {title: 'Give ink time to spread', body: 'In this assigned paper example, longer feeding lets ink spread farther sideways. Holding at the end widens the final stain.'},
   ],
   parts: [
-    {name: 'Marker', role: 'The barrel, the ink-soaked core and the nib of pressed fibers.'},
-    {name: 'Paper and ink', role: 'The line, and the blot where the pen stops.'},
-    {name: 'Pores, close up', role: 'A pore of the core and a pore of the nib, and how hard each pulls.'},
-    {name: 'Soaking in over time', role: 'How far ink soaks into the paper, against how long it has been there.'},
+    {name: 'Barrel and rear plug', role: 'Support and protection, with a replacement-air vent.'},
+    {name: 'Porous ink reservoir', role: 'Stores ink among fibers and touches the nib.'},
+    {name: 'Porous writing nib', role: 'A connected 10 mm path from reservoir to paper.'},
+    {name: 'Paper and ink', role: 'Each row records its own contact and feeding history.'},
+    {name: 'Pores and capillary pressure', role: 'Enlarged local menisci compare pressure and ideal filling time.'},
+    {name: 'Paper contact-time chart', role: 'The cross follows the marked end row’s sideways spread.'},
   ],
   tryIt: [
-    feltSystem('Write a line', 'Keep the water-based ink at 20 mm/s and press Play.', 'The tip writes 40 mm in 2 s. Each spot spends 0.050 s under the 1.0 mm tip, and the ink soaks 0.112 mm past it on each side, so the line is 1.22 mm wide. Where the pen stops the ink keeps soaking out, and after resting there the blot is 2.43 mm across.'),
-    feltPaper('Write slowly', 'Set the writing speed to 5 mm/s and press Play.', 'Each spot now spends 0.200 s under the tip, four times as long, but the ink soaks only twice as far past it: 0.224 mm on each side, for a line 1.45 mm wide.', {speed: 5}),
-    feltPaper('Write fast', 'Set the writing speed to 40 mm/s and press Play.', 'Each spot spends only 0.025 s under the tip, and the line narrows to 1.16 mm: most of its width is the tip itself.', {speed: 40}),
-    feltPaper('Alcohol-based ink', 'Choose the alcohol-based ink and press Play.', 'Ethanol pulls more weakly than water and flows a little less easily, so it soaks in 0.51 times as fast. The line is 1.11 mm wide, and the blot only 1.72 mm across, against 2.43 mm with the water-based ink.', {ink: 1}),
-    feltPores('Narrow pores pull harder', 'Look at the two pores.', 'The nib’s 10 μm pores pull the ink with 14.6 kPa, 5 times as hard as the core’s 50 μm pores at 2.91 kPa. Ink moves toward the harder pull: out of the core, along the nib in 0.28 s, and into the paper.'),
-    feltPores('Whichever way it points', 'Keep the water-based ink and look at the nib’s pore.', 'A pore 10 μm in radius could hold this ink up a column 1.48 m tall, and the alcohol-based ink 0.58 m. A pen is far shorter, so the ink’s own weight cannot drain the nib, whichever way the pen points.'),
-    feltChart('The square root of time', 'Look at the chart.', 'The water-based ink soaks 0.500 mm into the paper in its first 1 s, but needs 4 s to soak 1.000 mm: soaking twice as far takes four times as long.'),
+    feltTrial('Write a line', 'The primed marker travels 40 mm in 2 s, then holds for 2 s. A fully passed interior row is 1.22 mm wide. The marked end row is fed for 2.025 s and reaches 2.42 mm.', {}, 'paper'),
+    feltTrial('Before the tip arrives', 'After 0.5 s the marker has traveled 10 mm. The middle and end rows are still dry. Ink appears only where the tip has reached.', {}, 'system', .5),
+    feltTrial('Write slowly', 'At 5 mm/s an interior row is fed for 0.200 s. Sideways spread is 0.224 mm per side and total width is 1.45 mm. Four times the feeding time gives twice the spread.', {speed: 5}, 'paper', 10),
+    feltTrial('Write fast', 'At 40 mm/s an interior row is fed for 0.025 s and finishes 1.16 mm wide. The square contact itself still contributes 1 mm.', {speed: 40}, 'paper', 3),
+    feltTrial('No hold at the end', 'The marker stops after 2 s. The end center has received only 0.025 s of ink, half a transit time, so its width is 1.16 mm. The interior has already reached 1.22 mm.', {hold: 0}, 'paper', 2),
+    feltTrial('Hold for four seconds', 'The end row is fed for 4.025 s and reaches 3.01 mm. Interior rows stay at 1.22 mm because this example stops their sideways spread when the tip leaves.', {hold: 4}, 'paper', 6),
+    feltTrial('Compare the reference fluids', 'With the assigned ethanol properties and identical wetting, paper spread is 0.51 times the water reference. Interior width is 1.11 mm and final end width is 1.72 mm. Real marker formulations need not follow that ordering.', {ink: 1}, 'paper'),
+    feltTrial('Smaller pore, slower filling', 'A 5 μm nib pore gives 29.12 kPa of capillary pressure but takes 0.550 s to fill an initially dry 10 mm ideal channel. Higher pressure does not cancel the increased flow resistance.', {pore: 5}, 'pores', 0),
+    feltTrial('Larger pore, faster filling', 'A 25 μm nib pore gives only 5.82 kPa, yet its ideal 10 mm filling time is 0.110 s. Radius is five times larger than in the small-pore trial; pressure and filling time are both one fifth as large.', {pore: 25}, 'pores', 0),
+    feltTrial('One second of local feeding', 'The cross follows the end row after exactly 1 s of feeding. Water-reference spread is 0.500 mm on each side, giving a 2.00 mm width including the tip.', {hold: 4}, 'chart', 2.975),
+    feltTrial('Four seconds of local feeding', 'After 4 s of feeding, sideways spread is 1.000 mm and end-row width is 3.00 mm. Four times the time gives twice the spread, not twice the total line width.', {hold: 4}, 'chart', 5.975),
+    feltTrial('Trace the connected nib', 'The square contact touches the paper. The nib widens to its supporting shank and meets the porous core 10 mm above the page. Inspection preserves the current time and settings.', {}, 'nib', 1),
   ],
   deeper: [
-    {title: 'A pen of fibers', body: 'A marker pen is a pen with its own ink source and a tip of porous, pressed fibers such as felt. Its container holds a core of absorbent material that holds the ink; the tip is usually made of highly compressed synthetic fibers or porous ceramics; and a cap keeps the marker from drying out.'},
-    {title: 'Why narrow pores pull harder', body: 'Ink that wets the fibers curves its surface inward in each pore, and a curved surface pulls with twice the surface tension over the pore’s radius. A pore one fifth as wide pulls 5 times as hard, so the finest pores win: ink leaves the loose core for the pressed nib, and the nib for the paper.'},
-    {title: 'The square root of time', body: 'Washburn’s equation says a liquid soaks into a pore a distance that grows with the square root of time, and with the square root of the pore’s radius and of the liquid’s surface tension over its viscosity. In inkjet printing that last ratio, the page notes, stands for the speed at which ink soaks into the paper. A brick behaves the same way: with a sorptivity of 5.0 mm for every square root of a minute and a porosity of 0.25, its wet edge climbs 20 mm in the first minute and only 40 mm by the fourth.'},
-    {title: 'What the ink is made on', body: 'Until the early 1990s the inks in permanent markers were mostly made on toluene and xylene, which are harmful and smell strongly. Today the ink is usually made on alcohols such as 1-propanol and 1-butanol, and its water content can be up to 10%. Water and ethanol stand in for the two kinds here.'},
+    {title: 'A matched porous system', body: 'Manufacturers tune fiber density, porosity, reservoir wrapping and nib shape together. Real inks include ingredients that affect viscosity and wetting. A pair of pore sizes alone cannot predict a marker’s delivery or leakage.'},
+    {title: 'Pressure and resistance', body: 'For a cylindrical pore that the liquid wets completely, capillary pressure is 2γ/r. Washburn filling gives L² = γrt/(2η). Reducing radius increases pressure but also increases resistance enough to slow the advancing wet front.'},
+    {title: 'A paper example with a clear boundary', body: 'The drawn square footprint gives each interior row contact time equal to tip length divided by speed. Assigned sideways spread is C√t during that contact. It illustrates exposure time; a real stain can keep redistributing after the pen leaves and can spread in several directions.'},
+    {title: 'Why a cap matters', body: 'A storage cap reduces exposure of the wet tip to air. Drying and solvent loss change a real marker’s behavior. This short primed writing experiment omits the cap and evaporation rather than inventing a drying deadline.'},
   ],
-  misconception: 'Ink is not pushed out of a felt-tip pen, and gravity does not pour it. Ever finer pores pull it along: from the core to the nib, and from the nib into the paper.',
+  misconception: 'Stronger capillary suction does not guarantee faster flow. Pressure, viscous resistance, wetting and the connected porous structure all matter. A simple pore comparison cannot prove that a real marker never leaks.',
   limits: feltTipLimits,
-  sources: [sources.marker, sources.washburn, sources.capillary, sources.tension, sources.viscosity, sources.ethanol],
+  sources: [
+    {title: 'Porex: Permanent marker nibs and reservoirs', url: 'https://www.porex.com/consumer-goods/writing-instruments/permanent-marker-nibs-and-reservoirs/'},
+    {title: 'Washburn: The Dynamics of Capillary Flow (1921)', url: 'https://journals.aps.org/pr/abstract/10.1103/PhysRev.17.273'},
+  ],
   quiz: {
-    question: 'Why does writing slowly with a felt-tip pen make a wider line?',
-    options: ['Each spot stays under the tip longer, and ink soaks farther into the paper the longer it has.', 'Pressing longer squeezes more ink out of the core.', 'A slow tip is wetter, because gravity has more time to pour the ink down.'],
+    question: 'In this paper example, what happens to sideways spread when feeding time becomes four times longer?',
+    options: ['It doubles, because spread grows with the square root of feeding time.', 'It becomes four times larger.', 'It stays unchanged because the nib has no moving parts.'],
     answer: 0,
-    explanation: 'At 5 mm/s each spot spends 0.200 s under the tip and the ink soaks 0.224 mm past it each side; at 20 mm/s it spends 0.050 s and soaks 0.112 mm. Four times as long soaks twice as far.',
+    explanation: 'At 5 mm/s an interior row receives 0.200 s of ink and spread is 0.224 mm per side. At 20 mm/s it receives 0.050 s and spread is 0.112 mm. The fixed 1 mm tip width is added afterward.',
   },
 };
 
