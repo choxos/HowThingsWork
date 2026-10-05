@@ -312,7 +312,7 @@ export function createUnicycleModel() {
   result.partViewDirections = {};
   for (const p of result.parts) {
     result.partViewDirections[p.id] = {front: ['lean', 'speed', 'torque'].includes(p.id) ? [0, 0, 3] : [.3, .25, 3]};
-    p.framePadding = .7; p.maxZoom = 300;
+    p.framePadding = ['lean', 'speed', 'torque'].includes(p.id) ? .54 : .7; p.maxZoom = 300;
   }
   for (const object of [ground, rider, center, push]) object.userData.explosionExcluded = true;
   for (const object of [wheel, frame, cranks]) object.userData.explosionCategory = true;

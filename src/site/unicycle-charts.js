@@ -41,15 +41,15 @@ export function createUnicycleCharts(kit, system, scale) {
   const charts = Object.fromEntries(specs.map(([id, name, unit, legends, description]) => {
     const object = kit.part(id, name, description, [0, 0, 0], system);
     object.userData.inspectionOnly = id; object.userData.explosionExcluded = true;
-    const label = (text, x, y, options = {}) => textLabel(object, text, {height: .11 * scale, width: 3.1 * scale, position: point(x, y), ...options});
-    label(name, 0, 1.3, {height: .15 * scale, weight: 'bold'});
-    legends.forEach(([text, color], i) => label(text, i ? .65 : -.65, 1.07, {width: 1.25 * scale, color: css(color)}));
-    label(unit, 0, -1.26, {height: .10 * scale});
-    label('Seconds · full run, cursor marks current time', 0, -1.48, {height: .10 * scale});
+    const label = (text, x, y, options = {}) => textLabel(object, text, {height: .26 * scale, width: 3.1 * scale, position: point(x, y), ...options});
+    label(name, 0, 1.48, {height: .30 * scale, weight: 'bold'});
+    legends.forEach(([text, color], i) => label(text, i ? .65 : -.65, 1.12, {width: 1.25 * scale, color: css(color)}));
+    label(unit, 0, -1.30, {height: .24 * scale});
+    label('Time (s) · full run · cursor: now', 0, -1.64, {height: .24 * scale});
     const b = CHARTS[id], axes = lineObject(5, CHART_COLORS.guide, object);
     fill(axes, [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h], [b.x, b.y]]);
-    const yWords = [0, .5, 1].map(f => label('', b.x - .1, b.y + b.h * f, {width: .65 * scale, align: 'right', height: .10 * scale}));
-    for (const time of [0, 5, 10]) label(String(time), chartX(b, time), b.y - .16, {width: .5 * scale, height: .10 * scale});
+    const yWords = [0, .5, 1].map(f => label('', b.x - .1, b.y + b.h * f, {width: .65 * scale, align: 'right', height: .24 * scale}));
+    for (const time of [0, 5, 10]) label(String(time), chartX(b, time), b.y - .19, {width: .5 * scale, height: .24 * scale});
     const line = lineObject(Math.round(RUN.duration / RUN.step) + 1, CHART_COLORS.truth, object);
     const second = id === 'torque'
       ? new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3)), new THREE.LineBasicMaterial({color: legends[1][1]}))
