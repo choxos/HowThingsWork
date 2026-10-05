@@ -122,7 +122,9 @@
     "check:dip-pen-model": "node src/site/check-dip-pen-model.mjs && node src/site/check-dip-pen-inspection.mjs",
     "check:dip-pen": "node src/site/check-dip-pen.mjs",
     "check:capillary-model": "node src/site/check-capillary-physics.mjs && node src/site/check-capillary-model.mjs && node src/site/check-capillary-inspection.mjs",
-    "check:capillary": "node src/site/check-capillary.mjs"
+    "check:capillary": "node src/site/check-capillary.mjs",
+    "check:blu-ray-player-model": "node src/site/check-blu-ray-player-physics.mjs && node src/site/check-blu-ray-player-model.mjs && node src/site/check-blu-ray-player-inspection.mjs",
+    "check:blu-ray-player": "node src/site/check-blu-ray-player.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

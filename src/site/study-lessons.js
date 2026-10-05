@@ -1,6 +1,6 @@
 import {staplerLesson} from './stapler-lessons.js';
 import {ballpointLesson, feltTipLesson, dipPenLesson} from './pens-lessons.js';
-import {bluRayLesson} from './optical-lessons.js';
+import {bluRayPlayerLesson} from './blu-ray-player-lesson.js';
 import {electronicPaperLesson} from './epaper-lessons.js';
 import {smartphoneLesson} from './phone-lessons.js';
 import {speechRecognitionLesson} from './speech-lessons.js';
@@ -12,7 +12,7 @@ export const studyLessons={
  'Felt-tip pen':feltTipLesson,
  'Dip pen':dipPenLesson,
  'Stapler':staplerLesson,
- 'Blu-ray player':bluRayLesson,
+ 'Blu-ray player':bluRayPlayerLesson,
  'Electronic paper':electronicPaperLesson,
  'Smartphone':smartphoneLesson,
  'LCD screen':lcdScreenLesson,

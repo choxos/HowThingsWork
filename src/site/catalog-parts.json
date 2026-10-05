@@ -1815,6 +1815,78 @@
       "parentId": "system"
     }
   ],
+  "blu-ray-player": [
+    {
+      "id": "chassis",
+      "name": "Chassis and case",
+      "parentId": "player"
+    },
+    {
+      "id": "spindle",
+      "name": "Spindle motor and hub",
+      "parentId": "player"
+    },
+    {
+      "id": "disc",
+      "name": "Disc and retaining clamp",
+      "parentId": "player"
+    },
+    {
+      "id": "traverse",
+      "name": "Rails and carriage drive",
+      "parentId": "player"
+    },
+    {
+      "id": "pickup",
+      "name": "Sliding optical pickup",
+      "parentId": "player"
+    },
+    {
+      "id": "laser",
+      "name": "Laser and collimator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "objective",
+      "name": "Objective lens and actuator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "detector",
+      "name": "Photodetector",
+      "parentId": "pickup"
+    },
+    {
+      "id": "electronics",
+      "name": "Decoder board and connections",
+      "parentId": "player"
+    },
+    {
+      "id": "optics",
+      "name": "Optical path, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "track",
+      "name": "Track and channel clock, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "layers",
+      "name": "Disc layers and focus, enlarged",
+      "parentId": "system"
+    },
+    {
+      "id": "phase",
+      "name": "Two-wave interference demonstration",
+      "parentId": "system"
+    },
+    {
+      "id": "spin",
+      "name": "Constant-speed track comparison",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",

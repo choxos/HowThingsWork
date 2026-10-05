@@ -1,5 +1,6 @@
 import {Box3,Vector3} from 'three';
 import {createCapillaryModel} from './capillary-model.js';
+import {createBluRayModel} from './blu-ray-model.js';
 import {createSiphonModel} from './siphon-model.js';
 import {createPolarizedLightModel} from './polarized-light-model.js';
 import {createLCDModel} from './lcd-model.js';
@@ -125,10 +126,10 @@ export const houseComponents={
  'Rotating spray arm':{machine:'Dishwasher',createModel:()=>createDishwasherModel({sprayArmLesson:true}),part:'system',isolate:false,view:'front',lesson:rotatingSprayArmLesson,intro:rotatingSprayArmLesson.simple},
  'Capillary action':{machine:'Capillary action',createModel:createCapillaryModel,part:'capillary',isolate:false,view:'front',lesson:capillaryActionLesson,intro:capillaryActionLesson.simple},
  'Refrigerant compressor':{machine:'Refrigerator',createModel:createRefrigerantCompressorModel,part:'system',isolate:false,view:'front',lesson:refrigerantCompressorLesson,intro:refrigerantCompressorLesson.simple},
- 'CD':{machine:'Blu-ray player',part:'track',isolate:false,view:'front',values:{format:0},lesson:cdLesson,intro:cdLesson.simple},
- 'DVD':{machine:'Blu-ray player',part:'track',isolate:false,view:'front',values:{format:1},lesson:dvdLesson,intro:dvdLesson.simple},
- 'CD-ROM':{machine:'Blu-ray player',part:'signal',isolate:false,view:'front',values:{format:0},lesson:cdRomLesson,intro:cdRomLesson.simple},
- 'Optical-disc readout':{machine:'Blu-ray player',part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
+ 'CD':{machine:'Blu-ray player',createModel:createBluRayModel,part:'track',isolate:false,view:'front',values:{format:0},lesson:cdLesson,intro:cdLesson.simple},
+ 'DVD':{machine:'Blu-ray player',createModel:createBluRayModel,part:'track',isolate:false,view:'front',values:{format:1},lesson:dvdLesson,intro:dvdLesson.simple},
+ 'CD-ROM':{machine:'Blu-ray player',createModel:createBluRayModel,part:'signal',isolate:false,view:'front',values:{format:0},lesson:cdRomLesson,intro:cdRomLesson.simple},
+ 'Optical-disc readout':{machine:'Blu-ray player',createModel:createBluRayModel,part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
  'Electronic ink':{machine:'Electronic paper',part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
  'Electrowetting display':{machine:'Electronic paper',part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
  'E-reader':{machine:'Electronic paper',part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},

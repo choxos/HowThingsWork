@@ -204,3 +204,11 @@ assert.deepEqual(tags('capillary-action'), ['pressure-power']);
 assert(hasCatalogPart('capillary-action', 'tube') && hasCatalogPart('capillary-action', 'meniscus'), 'Capillary apparatus and diagram bookmarks remain available');
 assert.equal(catalog.groups.find(group => group.id === capillary.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === capillary.entry.group).place, 'home');
+
+const bluRay = families.find(family => family.entry.id === 'blu-ray-player');
+assert(bluRay && bluRay.components.length === 0, 'Blu-ray player is one complete item; ordinary parts and unfinished optical lessons stay out of the directory');
+assert.deepEqual(tags('blu-ray-player'), ['light-and-images', 'using-bits', 'rotating-wheels', 'screws', 'electricity']);
+assert(hasCatalogPart('blu-ray-player', 'pickup') && hasCatalogPart('blu-ray-player', 'track'), 'Player and timing inspections remain bookmarkable');
+assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).place, 'home');
+for (const id of ['cd', 'dvd', 'cd-rom', 'optical-disc-readout']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);

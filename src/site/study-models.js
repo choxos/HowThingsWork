@@ -2,7 +2,7 @@ import {createStaplerModel} from './stapler-model.js';
 import {createBallpointModel} from './ballpoint-model.js';
 import {createFeltTipModel} from './felt-tip-model.js';
 import {createDipPenModel} from './dip-pen-model.js';
-import {createBluRayModel} from './blu-ray-model.js';
+import {createBluRayPlayerModel} from './blu-ray-player-model.js';
 import {createElectronicPaperModel} from './epaper-model.js';
 import {createSmartphoneModel} from './phone-model.js';
 import {createSpeechModel} from './speech-model.js';
@@ -14,7 +14,7 @@ export function createStudyModel(name){
  if(name==='Ballpoint pen')return createBallpointModel();
  if(name==='Felt-tip pen')return createFeltTipModel();
  if(name==='Dip pen')return createDipPenModel();
- if(name==='Blu-ray player')return createBluRayModel();
+ if(name==='Blu-ray player')return createBluRayPlayerModel();
  if(name==='Electronic paper')return createElectronicPaperModel();
  if(name==='Smartphone')return createSmartphoneModel();
  if(name==='Speech recognition')return createSpeechModel();
