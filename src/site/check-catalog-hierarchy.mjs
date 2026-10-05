@@ -229,7 +229,14 @@ assert.deepEqual(tags('lcd-screen'), ['light-and-images', 'electricity', 'using-
 assert(hasCatalogPart('lcd-screen', 'front-polarizer') && hasCatalogPart('lcd-screen', 'matrix-detail'), 'Visible picture and stored-voltage inspection remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === lcdScreen.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === lcdScreen.entry.group).place, 'home');
-assert(!entries.some(entry => entry.id === 'oled-display'), 'OLED remains an unpublished draft');
+const oledDisplay = families.find(family => family.entry.id === 'oled-display');
+assert(oledDisplay && !componentParentIds['oled-display'], 'An OLED display is a whole self-emissive display, not an LCD component');
+assert.equal(oledDisplay.components.length, 0);
+assert.deepEqual(tags('oled-display'), ['light-and-images', 'electricity', 'using-bits']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'oled-display')).map(family => family.entry.id), ['oled-display']);
+assert(hasCatalogPart('oled-display', 'rear-shell') && hasCatalogPart('oled-display', 'anodes') && hasCatalogPart('oled-display', 'circuit-detail') && hasCatalogPart('oled-display', 'carriers-detail') && hasCatalogPart('oled-display', 'energy-detail'), 'Physical OLED hardware and its explanatory inspections remain bookmarkable');
+assert.equal(catalog.groups.find(group => group.id === oledDisplay.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === oledDisplay.entry.group).place, 'home');
 assert.deepEqual(tags('rgb-subpixels'), ['light-and-images', 'electricity', 'using-bits']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'rgb-subpixels')).map(family => family.entry.id), ['lcd-screen'], 'An RGB-only search retains the complete parent screen');
 assert(hasCatalogPart('rgb-subpixels', 'filter-mosaic') && hasCatalogPart('rgb-subpixels', 'color-detail'), 'Physical filters and additive-color inspection remain bookmarkable');

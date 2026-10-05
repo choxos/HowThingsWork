@@ -14,7 +14,6 @@ import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinit
 import * as P from './lcd-physics.js';
 import * as M from './lcd-screen-model.js';
 import * as L from './lcd-lessons.js';
-import {houseComponents} from './house-components.js';
 
 const t = tally();
 const counts = {energies: 0, layers: 0, poses: 0, points: 0, instances: 0, numbers: 0, pixels: 0, steps: 0};
@@ -860,13 +859,7 @@ t.ok(!model.playback.complete() && !model.resultPart.available() && model.result
   for (const values of [{}, {gap: 6, red: 3}]) t.ok(numbersIn(P.screenPlan(values)).every(value => typeof value !== 'number' || Number.isFinite(value)) && numbersIn(P.screenAt(P.screenPlan(values), 0.05)).every(value => typeof value !== 'number' || Number.isFinite(value)), 'no Infinity or NaN anywhere in the plan or the moment');
 }
 
-for (const [name, lesson, part] of [['OLED display', L.oledDisplayLesson, 'oled']]) {
-  const component = houseComponents[name];
-  t.ok(component.createModel === M.createLcdScreenModel, 'The child draft keeps its original factory');
-  t.ok(component.machine === 'LCD screen' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the screen’s ${part} with its own lesson`);
-  assert.equal(component.values, undefined);
-}
 const released = checkDisposal((() => { const fresh = M.createLcdScreenModel(); fresh.advance(2); return fresh; })(), t);
 model.dispose();
 
-console.log(`PASS LCD screen: ${t.count} checks, ${counts.energies} energies of the crystal compared, ${counts.layers} layers of light worked through, ${counts.steps} first steps of the flow, ${counts.poses} poses, ${counts.instances} drawn pieces and ${counts.points} rod, ellipse and chart points read back, ${counts.pixels} pixels counted for power, ${counts.numbers} quoted numbers traced, 3 lessons, ${released} resources released exactly once.`);
+console.log(`PASS legacy LCD draft calculations: ${t.count} checks, ${counts.energies} energies of the crystal compared, ${counts.layers} layers of light worked through, ${counts.steps} first steps of the flow, ${counts.poses} poses, ${counts.instances} drawn pieces and ${counts.points} rod, ellipse and chart points read back, ${counts.pixels} pixels counted for power, ${counts.numbers} quoted numbers traced, 3 legacy lessons, ${released} resources released exactly once. These checks do not accept the current LCD, RGB or OLED lessons.`);

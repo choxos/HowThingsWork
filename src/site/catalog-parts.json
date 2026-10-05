@@ -2489,6 +2489,118 @@
       "parentId": "system"
     }
   ],
+  "oled-display": [
+    {
+      "id": "frame",
+      "name": "Retaining frame",
+      "parentId": "housing"
+    },
+    {
+      "id": "rear-shell",
+      "name": "Rear protective cover",
+      "parentId": "housing"
+    },
+    {
+      "id": "stand",
+      "name": "Display stand",
+      "parentId": "housing"
+    },
+    {
+      "id": "encapsulation",
+      "name": "Rear encapsulation and edge seal",
+      "parentId": "panel-stack"
+    },
+    {
+      "id": "cathode",
+      "name": "Common metal cathode",
+      "parentId": "panel-stack"
+    },
+    {
+      "id": "electron-transport",
+      "name": "Electron injection and transport region",
+      "parentId": "panel-stack"
+    },
+    {
+      "id": "red-emitters",
+      "name": "Red organic emitters",
+      "parentId": "emissive-layer"
+    },
+    {
+      "id": "green-emitters",
+      "name": "Green organic emitters",
+      "parentId": "emissive-layer"
+    },
+    {
+      "id": "blue-emitters",
+      "name": "Blue organic emitters",
+      "parentId": "emissive-layer"
+    },
+    {
+      "id": "hole-transport",
+      "name": "Hole injection and transport region",
+      "parentId": "panel-stack"
+    },
+    {
+      "id": "anodes",
+      "name": "Patterned transparent anodes",
+      "parentId": "panel-stack"
+    },
+    {
+      "id": "glass",
+      "name": "Transparent front substrate",
+      "parentId": "panel-stack"
+    },
+    {
+      "id": "driver-board",
+      "name": "Driver support and insulating backplane",
+      "parentId": "electronics"
+    },
+    {
+      "id": "data-driver",
+      "name": "Data driver and column lines",
+      "parentId": "electronics"
+    },
+    {
+      "id": "row-driver",
+      "name": "Row driver and select lines",
+      "parentId": "electronics"
+    },
+    {
+      "id": "write-tfts",
+      "name": "Row-selected write TFTs",
+      "parentId": "electronics"
+    },
+    {
+      "id": "drive-tfts",
+      "name": "Current-setting drive TFTs",
+      "parentId": "electronics"
+    },
+    {
+      "id": "storage",
+      "name": "Storage capacitors",
+      "parentId": "electronics"
+    },
+    {
+      "id": "emitter-feed",
+      "name": "Emitter supply and return",
+      "parentId": "electronics"
+    },
+    {
+      "id": "circuit-detail",
+      "name": "Stored signal and emitter current",
+      "parentId": "system"
+    },
+    {
+      "id": "carriers-detail",
+      "name": "From charge carriers to light",
+      "parentId": "system"
+    },
+    {
+      "id": "energy-detail",
+      "name": "Picture and energy budget",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",

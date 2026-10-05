@@ -8,6 +8,7 @@ import {createSmartphoneLearningModel} from './smartphone-model.js';
 import {createSpeechModel} from './speech-model.js';
 import {createCalculatorModel} from './calculator-model.js';
 import {createTftScreenModel} from './tft-screen-model.js';
+import {createOledDisplayModel} from './oled-display-model.js';
 import {createRemoteControlModel} from './remote-model.js';
 export function createStudyModel(name){
  if(name==='Stapler')return createStaplerModel();
@@ -20,6 +21,7 @@ export function createStudyModel(name){
  if(name==='Speech recognition')return createSpeechModel();
  if(name==='Calculator')return createCalculatorModel();
  if(name==='LCD screen')return createTftScreenModel();
+ if(name==='OLED display')return createOledDisplayModel();
  if(name==='Remote control')return createRemoteControlModel();
  return null;
 }
