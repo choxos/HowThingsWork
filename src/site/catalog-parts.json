@@ -2066,6 +2066,98 @@
       "parentId": "system"
     }
   ],
+  "accelerometer": [
+    {
+      "id": "board",
+      "name": "Module circuit board",
+      "parentId": "module"
+    },
+    {
+      "id": "frame",
+      "name": "Fixed silicon frame and anchors",
+      "parentId": "module"
+    },
+    {
+      "id": "mass",
+      "name": "Shared suspended proof mass",
+      "parentId": "module"
+    },
+    {
+      "id": "electrodes",
+      "name": "Opposed fixed sensing fingers",
+      "parentId": "module"
+    },
+    {
+      "id": "springs",
+      "name": "Flexible silicon suspensions",
+      "parentId": "module"
+    },
+    {
+      "id": "electronics",
+      "name": "Excitation, demodulation and amplifier",
+      "parentId": "module"
+    },
+    {
+      "id": "channel-x",
+      "name": "X output filter and terminal",
+      "parentId": "module"
+    },
+    {
+      "id": "filter-x",
+      "name": "X output capacitor",
+      "parentId": "channel-x"
+    },
+    {
+      "id": "output-x",
+      "name": "X output terminal",
+      "parentId": "channel-x"
+    },
+    {
+      "id": "channel-y",
+      "name": "Y output filter and terminal",
+      "parentId": "module"
+    },
+    {
+      "id": "filter-y",
+      "name": "Y output capacitor",
+      "parentId": "channel-y"
+    },
+    {
+      "id": "output-y",
+      "name": "Y output terminal",
+      "parentId": "channel-y"
+    },
+    {
+      "id": "channel-z",
+      "name": "Z output filter and terminal",
+      "parentId": "module"
+    },
+    {
+      "id": "filter-z",
+      "name": "Z output capacitor",
+      "parentId": "channel-z"
+    },
+    {
+      "id": "output-z",
+      "name": "Z output terminal",
+      "parentId": "channel-z"
+    },
+    {
+      "id": "supply",
+      "name": "3 V supply and decoupling",
+      "parentId": "module"
+    },
+    {
+      "id": "capacitive-detail",
+      "name": "Capacitance and electrical readout",
+      "parentId": "system"
+    },
+    {
+      "id": "response-detail",
+      "name": "Input and filtered output",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",

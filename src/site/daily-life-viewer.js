@@ -293,10 +293,14 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   function releaseReadingsHeight(){tallestReadings=0;host.querySelector('.daily-readings').style.minHeight='';}
   function stop(){const wasPlaying=playing;playing=false;model.playback?.setPlaying?.(false);cancelAnimationFrame(frame);if(wasPlaying&&!disposed)readings(model.getState?.().readings);else syncPlaybackButton();releaseReadingsHeight();}
   function apply(next){restoreAssembly();const resume=playing;stop();for(const [key,value] of Object.entries(next)){const control=controlsByKey.get(key);if(!control||!Number.isFinite(Number(value)))continue;const bounded=within(Number(value),control.min,control.max);if(control.options&&!control.options.some(option=>Number(option.value)===bounded))continue;values[key]=control.step?Number(within(control.min+Math.round((bounded-control.min)/control.step)*control.step,control.min,control.max).toPrecision(12)):bounded;if(control.replay!==false)configuredValues[key]=values[key];}syncControls();update();if(model.autoFramePart)selectPart(model.autoFramePart);if(resume)start();}
-  function selectPart(id,focus=true){
+  function selectPart(id,focus=true,inspectionDefaults=true){
     hidePartPopup();
     if(focus){restoreAssembly();host.scrollTop=0;}
     followPosition=null;selected=id;const part=model.parts.find(part=>part.id===id);
+    if(focus&&inspectionDefaults&&part?.object.userData.inspectionOnly){
+      const inspection=model.actions.find(action=>action.part===id&&action.replay===false);
+      isolated=inspection?.isolate??true;options.querySelector('[data-isolate]').checked=isolated;setView(inspection?.view||'front');
+    }
     if(part&&cutaway&&model.covers.some(cover=>isWithin(part.object,cover))){cutaway=false;options.querySelector('[data-cutaway]').checked=false;restoreVisibility();}
     const ancestry=[];let current=part;const seen=new Set();
     while(current&&!seen.has(current.id)){ancestry.unshift(current);seen.add(current.id);current=model.parts.find(candidate=>candidate.id===current.parentId);}
@@ -376,19 +380,19 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
       for(const index of experiment.actions)host.querySelector(`[data-action="${index}"]`).click();
       apply(experiment.values);
     }
-    if(experiment.inspection){isolated=experiment.inspection.isolated;options.querySelector('[data-isolate]').checked=isolated;camera.position.copy(orbit?.target||new THREE.Vector3()).add(experiment.inspection.direction);orbit?.update();selectPart(experiment.inspection.selected);}
+    if(experiment.inspection){isolated=experiment.inspection.isolated;options.querySelector('[data-isolate]').checked=isolated;camera.position.copy(orbit?.target||new THREE.Vector3()).add(experiment.inspection.direction);orbit?.update();selectPart(experiment.inspection.selected,true,false);}
   }
   controlsHost.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>{
     restoreAssembly();stop();const index=Number(button.dataset.action),action=model.actions[index],before={...model.getState?.().values};
     restoreVisibility();action.run();Object.assign(values,model.getState?.().values);if(action.replay!==false)setupActions.push(index);
     for(const control of model.controls)if(control.replay!==false&&before[control.key]!==values[control.key])configuredValues[control.key]=values[control.key];
-    if(action.part){isolated=Boolean(action.isolate);options.querySelector('[data-isolate]').checked=isolated;selectPart(action.part);}else update();
+    if(action.part){isolated=Boolean(action.isolate);options.querySelector('[data-isolate]').checked=isolated;selectPart(action.part,true,false);}else update();
     if(action.view)host.querySelector(`[data-view="${action.view}"]`)?.click();
   }));
   host.querySelector('.daily-part-buttons').addEventListener('click',event=>{const id=event.target.closest('[data-part]')?.dataset.part;if(id)selectPart(id);});
   function tick(now){if(!playing||disposed||!active)return;const elapsed=Math.min((now-lastTime)/1000,.1);lastTime=now;phase+=elapsed*speed;restoreVisibility();if(model.playback)model.playback.advance(elapsed);else model.animate(phase);Object.assign(values,model.getState?.().values);filterVisibility();if(now-lastReading>200){readings(model.getState?.().readings);lastReading=now;}draw();if(model.playback?.complete()||model.playback?.blocked()){readings(model.getState().readings);stop();return;}frame=requestAnimationFrame(tick);}
   function start(){restoreAssembly();if(!model.animate||disposed||!active||model.playback?.complete()||model.playback?.blocked())return;playing=true;model.playback?.setPlaying?.(true);syncPlaybackButton();lastTime=performance.now();frame=requestAnimationFrame(tick);}
-  function selectResult(isolate=false){if(selected!==model.resultPart.id)inspectionBeforeResult={selected,isolated,direction:camera.position.clone().sub(orbit?.target||new THREE.Vector3())};if(isolate){isolated=true;options.querySelector('[data-isolate]').checked=true;}selectPart(model.resultPart.id);if(model.resultPart.view)host.querySelector(`[data-view="${model.resultPart.view}"]`)?.click();}
+  function selectResult(isolate=false){if(selected!==model.resultPart.id)inspectionBeforeResult={selected,isolated,direction:camera.position.clone().sub(orbit?.target||new THREE.Vector3())};if(isolate){isolated=true;options.querySelector('[data-isolate]').checked=true;}selectPart(model.resultPart.id,true,false);if(model.resultPart.view)host.querySelector(`[data-view="${model.resultPart.view}"]`)?.click();}
   host.querySelector('[data-result]')?.addEventListener('click',()=>{stop();selectResult(true);});
   host.querySelector('[data-step]')?.addEventListener('click',()=>{restoreAssembly();stop();restoreVisibility();model.playback.step();filterVisibility();readings(model.getState().readings);draw();});
   if(model.playback){host.querySelector('[data-speed]').closest('label').hidden=true;const playback=host.querySelector('.daily-playback');if(model.playback.description)playback.querySelector('p').textContent=model.playback.description;playback.prepend(host.querySelector('[data-play]'),host.querySelector('[data-step]'),...controlsHost.querySelectorAll('[data-action]'));controlsHost.querySelector('.daily-controls-heading').after(playback);}
@@ -432,6 +436,6 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   }
   const resize=new ResizeObserver(resizeViewer);resize.observe(wrap);
   const onVisibility=()=>{if(document.hidden)stop();};document.addEventListener('visibilitychange',onVisibility);
-  syncControls();selectPart(selected);setView(openingView);if(model.animate&&!model.playback&&!matchMedia('(prefers-reduced-motion: reduce)').matches)start();
+  syncControls();selectPart(selected);if(!model.parts.find(part=>part.id===selected)?.object.userData.inspectionOnly)setView(openingView);if(model.animate&&!model.playback&&!matchMedia('(prefers-reduced-motion: reduce)').matches)start();
   return {apply,reset,selectPart,isReplaying:()=>Boolean(pendingReplay),setIsolated(value){isolated=Boolean(value);options.querySelector('[data-isolate]').checked=isolated;update();},setActive(value){active=value;if(!value){stop();restoreAssembly();}else draw();},setInteractionEnabled(value){if(orbit)orbit.enabled=value;},dispose(){disposed=true;restoreAssembly();stop();resize.disconnect();document.removeEventListener('visibilitychange',onVisibility);document.removeEventListener('click',onOutsideClick,true);document.removeEventListener('keydown',onEscape);orbit?.dispose();highlight.geometry.dispose();highlight.material.dispose();model.dispose();reflectionTarget?.dispose();renderer?.dispose();renderer?.forceContextLoss();}};
 }

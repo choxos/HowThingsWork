@@ -222,9 +222,13 @@ assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.gro
 for (const id of ['electronic-ink', 'electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
 
 const smartphone = families.find(family => family.entry.id === 'smartphone');
-assert(smartphone && smartphone.components.length === 0, 'Smartphone is one whole item; ordinary parts and unfinished component lessons stay out of the directory');
+assert(smartphone, 'Smartphone remains one whole item');
+assert.deepEqual(catalogMachineComponents(smartphone.components).map(entry => entry.id), ['accelerometer'], 'Only the reviewed accelerometer appears as a smaller machine');
+assert(!families.some(family => family.entry.id === 'accelerometer'), 'Accelerometer stays nested under its phone');
+assert.deepEqual(tags('accelerometer'), ['sensors-and-detectors', 'springs', 'electricity']);
+assert(hasCatalogPart('accelerometer', 'mass') && hasCatalogPart('accelerometer', 'response-detail'), 'Sensor and response inspections remain bookmarkable');
 assert.deepEqual(tags('smartphone'), ['sensors-and-detectors', 'using-bits', 'electricity', 'springs', 'rotating-wheels']);
 assert(hasCatalogPart('smartphone', 'board') && hasCatalogPart('smartphone', 'sensor-detail'), 'Hardware and enlarged mechanism inspections remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === smartphone.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === smartphone.entry.group).place, 'home');
-for (const id of ['accelerometer', 'vibration-motor']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+assert(!entries.some(entry => entry.id === 'vibration-motor'), 'Vibration motor remains an unpublished draft');
