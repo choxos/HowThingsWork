@@ -26,10 +26,10 @@ import {capillaryActionLesson} from './pens-lessons.js';
 import {cdLesson, dvdLesson, cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
 import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
 import {createElectronicPaperModel} from './epaper-model.js';
-import {vibrationMotorLesson} from './phone-lessons.js';
+import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
+import {createVibrationMotorModel} from './vibration-motor-model.js';
 import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
 import {createAccelerometerModel} from './accelerometer-model.js';
-import {createSmartphoneModel} from './phone-model.js';
 import {infraredSignalingLesson, diodeLesson, lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
 import {rgbSubpixelsLesson, oledDisplayLesson} from './lcd-lessons.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
@@ -138,7 +138,7 @@ export const houseComponents={
  'Electrowetting display':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
  'E-reader':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},
  'Accelerometer':{machine:'Smartphone',createModel:createAccelerometerModel,part:'module',isolate:false,view:'front',lesson:capacitiveAccelerometerLesson,intro:capacitiveAccelerometerLesson.simple},
- 'Vibration motor':{machine:'Smartphone',createModel:createSmartphoneModel,part:'motor',isolate:false,view:'front',lesson:vibrationMotorLesson,intro:vibrationMotorLesson.simple},
+ 'Vibration motor':{machine:'Smartphone',createModel:createVibrationMotorModel,part:'system',isolate:false,view:'front',lesson:eccentricVibrationMotorLesson,intro:eccentricVibrationMotorLesson.simple},
  'RGB subpixels':{machine:'LCD screen',part:'subpixels',isolate:false,view:'front',lesson:rgbSubpixelsLesson,intro:rgbSubpixelsLesson.simple},
  'OLED display':{machine:'LCD screen',part:'oled',isolate:false,view:'front',lesson:oledDisplayLesson,intro:oledDisplayLesson.simple},
  'Electrostatic precipitator':{machine:'Air cleaner',createModel:createElectrostaticPrecipitatorModel,part:'stage',isolate:false,view:'front',lesson:electrostaticPrecipitatorLesson,intro:electrostaticPrecipitatorLesson.simple},

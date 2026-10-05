@@ -2158,6 +2158,98 @@
       "parentId": "system"
     }
   ],
+  "vibration-motor": [
+    {
+      "id": "fixture",
+      "name": "Fixed test fixture",
+      "parentId": "system"
+    },
+    {
+      "id": "carriage",
+      "name": "Guided moving carriage",
+      "parentId": "system"
+    },
+    {
+      "id": "housing",
+      "name": "Cutaway case and end frames",
+      "parentId": "motor"
+    },
+    {
+      "id": "bearings",
+      "name": "Two shaft bearings",
+      "parentId": "motor"
+    },
+    {
+      "id": "stator",
+      "name": "Opposed permanent magnets",
+      "parentId": "motor"
+    },
+    {
+      "id": "shaft",
+      "name": "Rotor shaft and weight hub",
+      "parentId": "rotor"
+    },
+    {
+      "id": "armature",
+      "name": "Three-pole iron armature",
+      "parentId": "rotor"
+    },
+    {
+      "id": "windings",
+      "name": "Three connected copper windings",
+      "parentId": "rotor"
+    },
+    {
+      "id": "commutator",
+      "name": "Three-segment commutator",
+      "parentId": "rotor"
+    },
+    {
+      "id": "brushes",
+      "name": "Fixed brushes and insulated holders",
+      "parentId": "motor"
+    },
+    {
+      "id": "weight",
+      "name": "Eccentric half-annulus weight",
+      "parentId": "rotor"
+    },
+    {
+      "id": "counterweight",
+      "name": "Optional opposed weight",
+      "parentId": "rotor"
+    },
+    {
+      "id": "mount",
+      "name": "Clamps, springs and dampers",
+      "parentId": "system"
+    },
+    {
+      "id": "drive",
+      "name": "Ideal reversible DC drive",
+      "parentId": "system"
+    },
+    {
+      "id": "leads",
+      "name": "Flexible motor leads",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit-detail",
+      "name": "Drive, current and back EMF",
+      "parentId": "system"
+    },
+    {
+      "id": "response-detail",
+      "name": "Weight force and carriage response",
+      "parentId": "system"
+    },
+    {
+      "id": "energy-detail",
+      "name": "Energy account",
+      "parentId": "system"
+    }
+  ],
   "air-cleaner": [
     {
       "id": "body",
