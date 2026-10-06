@@ -306,3 +306,11 @@ for (const id of ['foil', 'reference-shell', 'source', 'balance', 'circuit', 'ch
 assert.deepEqual(tags('optical-smoke-detector'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'optical-smoke-detector')).map(family => family.entry.id), ['smoke-detector'], 'An optical-only search retains its parent alarm');
 for (const id of ['emitter', 'receiver', 'cover', 'pulse', 'beam', 'pattern', 'chart']) assert(hasCatalogPart('optical-smoke-detector', id), `${id} remains bookmarkable in the optical study`);
+
+const activeAlarm = families.find(family => family.entry.id === 'active-burglar-alarm');
+assert(activeAlarm && !componentParentIds['active-burglar-alarm'], 'Active burglar alarm is a complete sensing and powered alarm system');
+assert.deepEqual(activeAlarm.components, [], 'Unreviewed comparison lessons remain unpublished');
+assert(!entries.some(entry => entry.id === 'passive-infrared-movement-detector'), 'The separate PIR draft remains unpublished');
+assert.deepEqual(tags('active-burglar-alarm'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
+assert.equal(catalog.groups.find(group => group.id === activeAlarm.entry.group).room, 'Safety corner');
+for (const id of ['radar-head', 'pair', 'beam-emitter', 'beam-receiver', 'processor', 'horn', 'principle', 'signal', 'record']) assert(hasCatalogPart('active-burglar-alarm', id), `${id} remains bookmarkable in the active alarm`);

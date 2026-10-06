@@ -126,10 +126,11 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   function restoreVisibility(){for(const [object,visible] of overrides)object.visible=visible;overrides.clear();}
   function isWithin(object,parent){for(let current=object;current;current=current.parent)if(current===parent)return true;return false;}
   function filterVisibility(showCovers=false){
+    for(const object of model.inspectionObjects?.(selected)||[])if(!object.visible){overrides.set(object,false);object.visible=true;}
     const context=selected===model.resultPart?.id?model.resultPart.context:undefined;
     const part=model.parts.find(part=>part.id===(context||selected));
     model.root.traverse(object=>{
-      if((object.userData.inspectionOnly&&selected!==object.userData.inspectionOnly)||(cutaway&&!showCovers&&model.covers.includes(object))||(isolated&&part&&!isWithin(object,part.object)&&!isWithin(part.object,object))){overrides.set(object,object.visible);object.visible=false;}
+      if((object.userData.inspectionOnly&&selected!==object.userData.inspectionOnly)||(cutaway&&!showCovers&&model.covers.includes(object))||(isolated&&part&&!isWithin(object,part.object)&&!isWithin(part.object,object))){if(!overrides.has(object))overrides.set(object,object.visible);object.visible=false;}
     });
   }
   function shown(object){for(let current=object;current;current=current.parent)if(!current.visible)return false;return true;}
@@ -280,7 +281,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   separation.querySelector('button').addEventListener('click',()=>separate(0));
   inventoryLabels.addEventListener('click',event=>{const id=event.target.closest('[data-category]')?.dataset.category;if(id&&id!=='__structure')selectPart(id,false);});
   function update(showReadings=true){restoreVisibility();const result=model.update(values);filterVisibility();if(showReadings)readings(result);draw();}
-  function syncControls(){for(const control of model.controls){const input=host.querySelector(`[data-control="${control.key}"]`),number=host.querySelector(`[data-number="${control.key}"]`);input.value=values[control.key];input.disabled=control.enabledWhen?!control.enabledWhen(values):false;input.closest('.daily-control').hidden=control.visibleWhen?!control.visibleWhen(values):false;if(number){if(document.activeElement!==number)number.value=values[control.key];number.disabled=input.disabled;}input.setAttribute('aria-valuetext',`${values[control.key]}${control.unit?' '+control.unit:''}`);}if(model.frameVisibleOnly)for(const button of host.querySelectorAll('[data-part]')){const part=model.parts.find(part=>part.id===button.dataset.part);button.disabled=Boolean(part&&!shown(part.object)&&!coverCanBeRevealed(part));button.title=button.disabled?'Not visible at this stage or in this arrangement':'';}}
+  function syncControls(){for(const control of model.controls){const input=host.querySelector(`[data-control="${control.key}"]`),number=host.querySelector(`[data-number="${control.key}"]`);input.value=values[control.key];input.disabled=control.enabledWhen?!control.enabledWhen(values):false;input.closest('.daily-control').hidden=control.visibleWhen?!control.visibleWhen(values):false;if(number){if(document.activeElement!==number)number.value=values[control.key];number.disabled=input.disabled;}input.setAttribute('aria-valuetext',`${values[control.key]}${control.unit?' '+control.unit:''}`);}if(model.frameVisibleOnly)for(const button of host.querySelectorAll('[data-part]')){const part=model.parts.find(part=>part.id===button.dataset.part);button.disabled=Boolean(part&&!shown(part.object)&&!coverCanBeRevealed(part)&&!model.inspectionObjects?.(part.id)?.includes(part.object));button.title=button.disabled?'Not visible at this stage or in this arrangement':'';}}
   function syncPlaybackButton(){
     const button=host.querySelector('[data-play]');if(!button)return;
     const complete=Boolean(model.playback?.complete()),blocked=Boolean(model.playback?.blocked());

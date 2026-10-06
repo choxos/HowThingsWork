@@ -1,4 +1,6 @@
-// Checks the burglar alarm model, its beam barrier and its passive infrared
+// Regression checks for the preserved, unpublished intruder drafts. Their
+// historical calibration assumptions do not validate the reviewed alarm.
+// Checks the old model, its beam barrier and its passive infrared
 // movement detector, against the sheets typed in again and the physics worked
 // out by other routes: Planck's law integrated numerically against the series
 // the module sums and against the percentile table, Wien's constant found by
@@ -693,22 +695,24 @@ for (const lesson of [L.activeBurglarAlarmLesson, L.passiveInfraredLesson]) {
   t.ok(lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, 'every source a link, none twice');
   t.ok(lesson.tryIt.every(item => model.parts.some(part => part.id === item.part) && item.view === 'front' && item.reset === true && item.isolate === false), 'every trial on a part the model has');
 }
-t.ok(safetyLessons['Active burglar alarm'] === L.activeBurglarAlarmLesson, 'the safety corner’s lesson is this one');
+t.ok(safetyLessons['Active burglar alarm'] !== L.activeBurglarAlarmLesson, 'the reviewed whole alarm does not reuse the beam-only draft lesson');
 {
   const component = houseComponents['Passive infrared movement detector'];
   t.ok(component.machine === 'Active burglar alarm' && component.part === 'lens' && component.lesson === L.passiveInfraredLesson && component.intro === L.passiveInfraredLesson.simple && component.view === 'front' && component.isolate === false, 'the movement detector routes to the alarm’s lens with its own lesson');
   assert.deepEqual(component.values, {mode: 1});
+  t.ok(component.createModel === M.createIntruderModel, 'the unpublished PIR child retains its original model factory');
   t.ok(L.passiveInfraredLesson.tryIt.every(item => item.values.mode === 1), 'and every one of its trials watches the passive detector');
 }
 {
-  // The safety corner builds this model for the name, and both pages are routed in the preview alone.
+  // The reviewed whole alarm uses a separate Doppler model. The PIR draft stays hidden.
   const built = createSafetyModel('Active burglar alarm');
-  t.ok(built && built.controls.map(control => control.key).join() === model.controls.map(control => control.key).join() && built.parts.map(part => part.id).join() === model.parts.map(part => part.id).join(), 'the safety corner builds this model for the alarm');
+  t.ok(built && built.controls.some(control => control.key === 'path') && built.getState().values.mode === 0, 'the safety corner opens the reviewed microwave experiment');
   built?.dispose();
   for (const [id, name] of [['active-burglar-alarm', 'Active burglar alarm'], ['passive-infrared-movement-detector', 'Passive infrared movement detector']]) {
     t.ok(neighborhoodCatalog.entries.some(entry => entry.id === id && entry.name === name), `${id} is the catalog’s entry for ${name}`);
-    t.ok(previewEntryIds.includes(id) && !publishedEntryIds.includes(id), `${id} is built into the preview and stays unpublished`);
+    t.ok(previewEntryIds.includes(id), `${id} remains available in the local preview`);
   }
+  t.ok(!publishedEntryIds.includes('passive-infrared-movement-detector'), 'the unreviewed PIR child stays unpublished');
 }
 
 // ---------------------------------------------------------------------------
@@ -775,4 +779,4 @@ t.ok(!model.playback.complete() && !model.resultPart.available(), 'nothing to in
 const released = checkDisposal((() => { const fresh = M.createIntruderModel(); fresh.update({mode: 1}); fresh.advance(3); return fresh; })(), t);
 model.dispose();
 
-console.log(`PASS burglar alarms: ${t.count} checks, ${counts.steps} steps integrated by other routes, ${counts.rays} rays traced onto the elements, ${counts.samples} covers and interruptions measured, ${counts.poses} poses, ${counts.points} drawn points, ${counts.numbers} quoted numbers traced, 2 lessons, ${released} resources released exactly once.`);
+console.log(`PASS preserved intruder drafts: ${t.count} checks, ${counts.steps} steps integrated by other routes, ${counts.rays} rays traced onto the elements, ${counts.samples} covers and interruptions measured, ${counts.poses} poses, ${counts.points} drawn points, ${counts.numbers} historical quoted numbers traced, 2 drafts, ${released} resources released exactly once. This does not validate their historical product calibration.`);

@@ -11,7 +11,7 @@ import {createLightingModel} from './lighting-model.js';
 import {createFireExtinguisherModel} from './extinguisher-model.js';
 import {createLightningConductorModel} from './lightning-model.js';
 import {createReviewedSmokeDetectorModel} from './smoke-detector-model.js';
-import {createIntruderModel} from './intruder-model.js';
+import {createBurglarAlarmModel} from './burglar-alarm-model.js';
 const TAU=Math.PI*2;
 export function createSafetyModel(name){
  if(name==='Power socket')return createSocketModel();
@@ -24,7 +24,7 @@ export function createSafetyModel(name){
  if(name==='Fire extinguisher')return createFireExtinguisherModel();
  if(name==='Lightning conductor')return createLightningConductorModel();
  if(name==='Smoke detector')return createReviewedSmokeDetectorModel();
- if(name==='Active burglar alarm')return createIntruderModel();
+ if(name==='Active burglar alarm')return createBurglarAlarmModel();
  if(name==='Magnetic burglar alarm')return createReedAlarmModel();
  if(!['Two-way light switch'].includes(name))return null;
  const m=houseModel(name),{root,part,box,cylinder,disk,sphere,ring,rod,tube,control,finish,covers}=m;

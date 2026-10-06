@@ -5917,6 +5917,113 @@
       "parentId": "system"
     }
   ],
+  "active-burglar-alarm": [
+    {
+      "id": "room",
+      "name": "Room and target path",
+      "parentId": "system"
+    },
+    {
+      "id": "target",
+      "name": "Prescribed moving target",
+      "parentId": "room"
+    },
+    {
+      "id": "fixed",
+      "name": "Fixed reflector",
+      "parentId": "room"
+    },
+    {
+      "id": "electronics",
+      "name": "Powered processing assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Twelve-volt supply",
+      "parentId": "electronics"
+    },
+    {
+      "id": "contact",
+      "name": "Supply contact",
+      "parentId": "electronics"
+    },
+    {
+      "id": "regulator",
+      "name": "Regulated sensor supply",
+      "parentId": "electronics"
+    },
+    {
+      "id": "reference",
+      "name": "Reference and sensor front end",
+      "parentId": "electronics"
+    },
+    {
+      "id": "processor",
+      "name": "Filter, threshold and confirmation",
+      "parentId": "electronics"
+    },
+    {
+      "id": "driver",
+      "name": "Latched sounder driver",
+      "parentId": "electronics"
+    },
+    {
+      "id": "horn",
+      "name": "Powered piezoelectric sounder",
+      "parentId": "electronics"
+    },
+    {
+      "id": "sensor",
+      "name": "Sensing head",
+      "parentId": "system"
+    },
+    {
+      "id": "radar-head",
+      "name": "Microwave transmit and receive antennas",
+      "parentId": "sensor"
+    },
+    {
+      "id": "pir-head",
+      "name": "Passive infrared window and paired elements",
+      "parentId": "sensor"
+    },
+    {
+      "id": "pair",
+      "name": "Opposed pyroelectric pair",
+      "parentId": "pir-head"
+    },
+    {
+      "id": "beam-posts",
+      "name": "Infrared transmitter and receiver posts",
+      "parentId": "room"
+    },
+    {
+      "id": "beam-emitter",
+      "name": "Pulsed infrared emitter",
+      "parentId": "beam-posts"
+    },
+    {
+      "id": "beam-receiver",
+      "name": "Beam photodiode",
+      "parentId": "beam-posts"
+    },
+    {
+      "id": "principle",
+      "name": "How the selected sensor works",
+      "parentId": "system"
+    },
+    {
+      "id": "signal",
+      "name": "Signals before and after conditioning",
+      "parentId": "system"
+    },
+    {
+      "id": "record",
+      "name": "Observation record",
+      "parentId": "system"
+    }
+  ],
   "games-controller": [
     {
       "id": "experiment",
