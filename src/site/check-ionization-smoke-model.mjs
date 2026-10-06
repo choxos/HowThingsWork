@@ -6,7 +6,7 @@ import {reviewedIonizationSmokeLesson as lesson} from './ionization-smoke-lesson
 import {ION_SMOKE_DEFAULTS as D} from './ionization-smoke-physics.js';
 import {SMOKE_SCIENCE as C} from './smoke-detector-science.js';
 import {houseComponents} from './house-components.js';
-import {createSmokeDetectorModel} from './smoke-model.js';
+import {createOpticalSmokeModel} from './optical-smoke-model.js';
 import {tally,checkFinite,checkDisposal,checkControlsMove,checkTrialNumbers} from './model-check-kit.mjs';
 import {ionSmokePlan,ionSmokeAt,ionNormalAlpha} from './ionization-smoke-physics.js';
 import {smokeParticle} from './smoke-detector-science.js';
@@ -77,7 +77,7 @@ m.reset();m.playback.step();t.near(m.getState().time,5,0,'Step is five simulated
 m.reset();m.actions.find(a=>a.label==='Advance to next sample').run();t.near(m.getState().time,1.67,1e-12,'Next sample action lands on actual check');m.actions.find(a=>a.label==='Finish observation').run();t.ok(m.playback.complete(),'Finish reaches completion');m.reset(m.replayState());t.near(m.getState().time,0,0,'Replay restores start');
 m.reset({time:150});const mass=m.getState().mass;m.actions.find(a=>a.label==='Clear smoke now').run();t.near(m.getState().mass,mass,1e-16,'Clear action preserves present concentration');m.advance(5);t.ok(m.getState().mass<mass&&!m.getState().active,'Clear action changes subsequent behavior and releases alarm');
 for(const part of m.parts)t.ok(!new THREE.Box3().setFromObject(part.object).isEmpty(),part.id+' has inspectable geometry');
-assert.equal(houseComponents['Ionization smoke detector'].createModel,createIonizationSmokeModel);assert.equal(houseComponents['Ionization smoke detector'].lesson,lesson);assert.equal(houseComponents['Optical smoke detector'].createModel,createSmokeDetectorModel);t.add(3);
+assert.equal(houseComponents['Ionization smoke detector'].createModel,createIonizationSmokeModel);assert.equal(houseComponents['Ionization smoke detector'].lesson,lesson);assert.equal(houseComponents['Optical smoke detector'].createModel,createOpticalSmokeModel);t.add(3);
 const parts=m.parts.map(p=>p.id),resources=checkDisposal(m,t),report={passed:true,checks:t.count,parts,resources,outcomes};
 if(process.env.EVIDENCE_DIR){await mkdir(process.env.EVIDENCE_DIR,{recursive:true});await writeFile(process.env.EVIDENCE_DIR+'/model.json',JSON.stringify(report,null,2));}
 console.log(`PASS ionization model: ${t.count} checks; ${parts.length} parts; ${resources} resources; ${outcomes.length} trials`);

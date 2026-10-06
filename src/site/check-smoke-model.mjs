@@ -796,11 +796,9 @@ for (const lesson of [L.smokeDetectorLesson, L.ionizationDetectorLesson, L.optic
   t.ok(lesson.tryIt.every(item => model.parts.some(part => part.id === item.part) && item.view === 'front' && item.reset === true && item.isolate === false), 'every trial on a part the model has');
   t.ok(lesson.parts.every(item => model.parts.some(part => part.name === item.name)), 'every part it names is drawn');
 }
-for (const [name, lesson, part, values] of [['Optical smoke detector', L.opticalDetectorLesson, 'chamber', {size: 3}]]) {
+for (const [name, lesson] of [['Ionization smoke detector', L.ionizationDetectorLesson], ['Optical smoke detector', L.opticalDetectorLesson]]) {
   const component = houseComponents[name];
-  t.ok(component.machine === 'Smoke detector' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the smoke detector’s ${part} with its own lesson`);
-  assert.deepEqual(component.values, values);
-  t.ok(lesson.tryIt.some(item => item.values.size === values.size), `${name}: its trials start from that smoke`);
+  t.ok(component.machine === 'Smoke detector' && component.lesson !== lesson && component.createModel !== M.createSmokeDetectorModel, `${name} has a dedicated replacement while the original draft remains testable`);
 }
 
 // ---------------------------------------------------------------------------

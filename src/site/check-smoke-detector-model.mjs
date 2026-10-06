@@ -8,7 +8,7 @@ import {SMOKE_SCIENCE as C} from './smoke-detector-science.js';
 import {createSafetyModel} from './safety-models.js';
 import {safetyLessons} from './safety-lessons.js';
 import {houseComponents} from './house-components.js';
-import {createSmokeDetectorModel} from './smoke-model.js';
+import {createOpticalSmokeModel} from './optical-smoke-model.js';
 import {tally,checkFinite,checkDisposal,checkControlsMove} from './model-check-kit.mjs';
 
 const t=tally(),m=createReviewedSmokeDetectorModel(),g=m.topology,outcomes=[];
@@ -72,7 +72,7 @@ for(const invalid of [-1,NaN,Infinity]){const state=m.getState();m.advance(inval
 for(const part of m.parts)t.ok(!new THREE.Box3().setFromObject(part.object).isEmpty(),part.id+' has inspectable geometry');
 assert.equal(safetyLessons['Smoke detector'],lesson);const routed=createSafetyModel('Smoke detector');assert.deepEqual(routed.controls.map(c=>c.key),Object.keys(D));routed.dispose();
 assert.notEqual(houseComponents['Ionization smoke detector'].createModel,createReviewedSmokeDetectorModel,'Reviewed ionization child has its own model');
-assert.equal(houseComponents['Optical smoke detector'].createModel,createSmokeDetectorModel,'Unreviewed optical child retains its preserved draft');t.add(4);
+assert.equal(houseComponents['Optical smoke detector'].createModel,createOpticalSmokeModel,'Optical child uses its own dedicated model');t.add(4);
 const parts=m.parts.map(p=>p.id),resources=checkDisposal(m,t),report={passed:true,checks:t.count,parts,resources,outcomes};
 if(process.env.EVIDENCE_DIR){await mkdir(process.env.EVIDENCE_DIR,{recursive:true});await writeFile(process.env.EVIDENCE_DIR+'/model.json',JSON.stringify(report,null,2));}
 console.log(`PASS smoke detector model: ${t.count} checks; ${outcomes.length} trials; ${parts.length} parts; ${resources} resources`);

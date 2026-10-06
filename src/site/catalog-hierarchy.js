@@ -4,6 +4,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 // components, close-up studies or alternate names for a published machine.
 export const componentParentIds = {
   'ionization-smoke-detector': 'smoke-detector',
+  'optical-smoke-detector': 'smoke-detector',
   'photodiode': 'remote-control',
   'light-emitting-diode': 'remote-control',
   'diode': 'remote-control',
@@ -95,6 +96,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 
 const nestedMachineIds = new Set([
   "ionization-smoke-detector",
+  "optical-smoke-detector",
   "vibration-motor",
   "accelerometer",
   "joystick",

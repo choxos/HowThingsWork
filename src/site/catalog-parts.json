@@ -5845,6 +5845,78 @@
       "parentId": "system"
     }
   ],
+  "optical-smoke-detector": [
+    {
+      "id": "battery",
+      "name": "Three-volt battery supply",
+      "parentId": "system"
+    },
+    {
+      "id": "contact",
+      "name": "Battery contact",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Pulse controller and horn driver",
+      "parentId": "system"
+    },
+    {
+      "id": "reservoir",
+      "name": "Pulse supply and energy reservoir",
+      "parentId": "system"
+    },
+    {
+      "id": "horn",
+      "name": "Piezoelectric sounder",
+      "parentId": "system"
+    },
+    {
+      "id": "chamber",
+      "name": "Optical sensing chamber",
+      "parentId": "system"
+    },
+    {
+      "id": "shell",
+      "name": "Dark chamber shell",
+      "parentId": "chamber"
+    },
+    {
+      "id": "cover",
+      "name": "Front chamber cover",
+      "parentId": "chamber"
+    },
+    {
+      "id": "emitter",
+      "name": "Infrared emitter and hood",
+      "parentId": "chamber"
+    },
+    {
+      "id": "receiver",
+      "name": "Photodiode and viewing tube",
+      "parentId": "chamber"
+    },
+    {
+      "id": "pulse",
+      "name": "Pulse measurement and confirmation",
+      "parentId": "system"
+    },
+    {
+      "id": "beam",
+      "name": "Short and long beam paths",
+      "parentId": "system"
+    },
+    {
+      "id": "pattern",
+      "name": "One sphere and its angular pattern",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Observation record",
+      "parentId": "system"
+    }
+  ],
   "games-controller": [
     {
       "id": "experiment",

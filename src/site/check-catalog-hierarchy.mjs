@@ -291,15 +291,18 @@ for (const id of ['cover', 'die', 'bond-wire', 'junction', 'response', 'noise'])
 
 const smokeDetector = families.find(family => family.entry.id === 'smoke-detector');
 assert(smokeDetector && !componentParentIds['smoke-detector'], 'Smoke detector is one complete sensing and alarm system');
-assert.deepEqual(smokeDetector.components.map(entry => entry.id), ['ionization-smoke-detector'], 'Only reviewed child lessons join the published alarm family');
+assert.deepEqual(smokeDetector.components.map(entry => entry.id), ['ionization-smoke-detector', 'optical-smoke-detector'], 'Both reviewed sensing subsystems join the published alarm family');
 assert.deepEqual(tags('smoke-detector'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'smoke-detector')).map(family => family.entry.id), ['smoke-detector']);
 for (const id of ['cover', 'battery', 'source-foil', 'receiver', 'horn', 'source', 'circuit', 'chart', 'beam-comparison']) assert(hasCatalogPart('smoke-detector', id), `${id} remains bookmarkable in the alarm`);
 assert.equal(catalog.groups.find(group => group.id === smokeDetector.entry.group).room, 'Safety corner');
 assert.equal(catalog.groups.find(group => group.id === smokeDetector.entry.group).place, 'home');
-assert(!entries.some(entry => entry.id === 'optical-smoke-detector'), 'Optical smoke detector remains an unpublished draft');
+assert.equal(componentParentIds['optical-smoke-detector'], 'smoke-detector');
 assert.equal(componentParentIds['ionization-smoke-detector'], 'smoke-detector');
-assert.deepEqual(catalogMachineComponents(smokeDetector.components).map(entry => entry.id), ['ionization-smoke-detector'], 'The complete ionization subsystem stays nested under its alarm');
+assert.deepEqual(catalogMachineComponents(smokeDetector.components).map(entry => entry.id), ['ionization-smoke-detector', 'optical-smoke-detector'], 'Complete sensing subsystems stay nested under their alarm');
 assert.deepEqual(tags('ionization-smoke-detector'), ['sensors-and-detectors', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'ionization-smoke-detector')).map(family => family.entry.id), ['smoke-detector'], 'An ionization-only search retains its parent alarm');
 for (const id of ['foil', 'reference-shell', 'source', 'balance', 'circuit', 'chart']) assert(hasCatalogPart('ionization-smoke-detector', id), `${id} remains bookmarkable in the ionization study`);
+assert.deepEqual(tags('optical-smoke-detector'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'optical-smoke-detector')).map(family => family.entry.id), ['smoke-detector'], 'An optical-only search retains its parent alarm');
+for (const id of ['emitter', 'receiver', 'cover', 'pulse', 'beam', 'pattern', 'chart']) assert(hasCatalogPart('optical-smoke-detector', id), `${id} remains bookmarkable in the optical study`);
