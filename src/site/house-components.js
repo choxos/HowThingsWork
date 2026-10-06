@@ -30,7 +30,9 @@ import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
 import {createVibrationMotorModel} from './vibration-motor-model.js';
 import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
 import {createAccelerometerModel} from './accelerometer-model.js';
-import {lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
+import {photodiodeLesson} from './remote-lessons.js';
+import {lightEmittingDiodeLesson} from './led-lesson.js';
+import {createLedModel} from './led-model.js';
 import {diodeLesson} from './diode-lesson.js';
 import {createDiodeModel} from './diode-model.js';
 import {infraredSignalingLesson} from './infrared-signaling-lesson.js';
@@ -152,7 +154,7 @@ export const houseComponents={
  'Piezoelectricity':{machine:'Quartz clock',createModel:createPiezoelectricityModel,part:'apparatus',isolate:false,view:'iso',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
  'Infrared signaling':{machine:'Remote control',createModel:createInfraredSignalingModel,part:'system',view:'front',isolate:true,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
  'Diode':{machine:'Remote control',createModel:createDiodeModel,part:'circuit',view:'front',isolate:true,lesson:diodeLesson,intro:diodeLesson.simple},
- 'Light-emitting diode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'led',view:'front',isolate:false,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
+ 'Light-emitting diode':{machine:'Remote control',createModel:createLedModel,part:'circuit',view:'front',isolate:true,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
  'Photodiode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'receiver',view:'front',isolate:false,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
  'Ionization smoke detector':{machine:'Smoke detector',part:'ions',values:{size:0.1},view:'front',isolate:false,lesson:ionizationDetectorLesson,intro:ionizationDetectorLesson.simple},
  'Optical smoke detector':{machine:'Smoke detector',part:'chamber',values:{size:3},view:'front',isolate:false,lesson:opticalDetectorLesson,intro:opticalDetectorLesson.simple},

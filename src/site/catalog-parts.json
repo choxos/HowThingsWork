@@ -3270,6 +3270,113 @@
       "parentId": "circuit"
     }
   ],
+  "light-emitting-diode": [
+    {
+      "id": "source",
+      "name": "Adjustable source",
+      "parentId": "circuit"
+    },
+    {
+      "id": "positive-terminal",
+      "name": "Positive terminal",
+      "parentId": "circuit"
+    },
+    {
+      "id": "return-terminal",
+      "name": "Return terminal",
+      "parentId": "circuit"
+    },
+    {
+      "id": "switch",
+      "name": "Circuit switch",
+      "parentId": "circuit"
+    },
+    {
+      "id": "switch-blade",
+      "name": "Switch blade",
+      "parentId": "circuit"
+    },
+    {
+      "id": "resistor",
+      "name": "Current-limiting resistor",
+      "parentId": "circuit"
+    },
+    {
+      "id": "led",
+      "name": "Light-emitting diode",
+      "parentId": "circuit"
+    },
+    {
+      "id": "lens",
+      "name": "Domed package",
+      "parentId": "led"
+    },
+    {
+      "id": "anode",
+      "name": "Anode lead",
+      "parentId": "led"
+    },
+    {
+      "id": "cathode",
+      "name": "Cathode lead and cup",
+      "parentId": "led"
+    },
+    {
+      "id": "die",
+      "name": "Semiconductor die",
+      "parentId": "led"
+    },
+    {
+      "id": "bond-wire",
+      "name": "Bond wire",
+      "parentId": "led"
+    },
+    {
+      "id": "sockets",
+      "name": "LED sockets",
+      "parentId": "circuit"
+    },
+    {
+      "id": "driver",
+      "name": "Pulse switch",
+      "parentId": "circuit"
+    },
+    {
+      "id": "meter",
+      "name": "Current meter",
+      "parentId": "circuit"
+    },
+    {
+      "id": "wiring",
+      "name": "Outgoing and return wires",
+      "parentId": "circuit"
+    },
+    {
+      "id": "rail",
+      "name": "Target rail",
+      "parentId": "circuit"
+    },
+    {
+      "id": "target",
+      "name": "On-axis light target",
+      "parentId": "circuit"
+    },
+    {
+      "id": "junction",
+      "name": "Carrier recombination",
+      "parentId": "circuit"
+    },
+    {
+      "id": "power",
+      "name": "Photon energy and conversion",
+      "parentId": "circuit"
+    },
+    {
+      "id": "pulses",
+      "name": "Pulse timing and accumulated light",
+      "parentId": "circuit"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",

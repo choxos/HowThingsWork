@@ -42,6 +42,13 @@ const views = new Set(['iso', 'front', 'side', 'back', 'top', 'bottom', 'in', 'o
 const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
 
+function checkSources(name, lesson) {
+ for (const [index, source] of (lesson.sources || []).entries()) {
+  check(typeof source.title === 'string' && source.title.trim().length > 0, `${name}: source[${index}] needs a visible link title`);
+  check(typeof source.url === 'string' && /^https?:\/\/\S+$/.test(source.url), `${name}: source[${index}] needs an HTTP(S) URL`);
+ }
+}
+
 function checkViewDirections(where, model) {
  const partIds = new Set(model.parts.map(part => part.id));
  const directions = [[where, model.viewDirections], ...Object.entries(model.partViewDirections || {}).map(([part, value]) => {
@@ -70,6 +77,7 @@ function checkControlValues(where, model, values) {
 }
 
 for (const [name, lesson] of Object.entries(lessons)) {
+ checkSources(name, lesson);
  // A lesson with no model leaves mountDailyLifeViewer throwing and the route blank.
  const model = create(name);
  check(model, `${name}: no model`);
@@ -150,6 +158,7 @@ for (const [name, component] of Object.entries(houseComponents)) {
  checkControlValues(name, model, component.values);
  check(entryNames.has(component.machine), `${name}: machine "${component.machine}" is not a catalog entry`);
  if (component.lesson) {
+  checkSources(name, component.lesson);
   check(Number.isInteger(component.lesson.quiz.answer) && component.lesson.quiz.answer < component.lesson.quiz.options.length,
    `${name}: component quiz answer is outside its options`);
   for (const [index, experiment] of component.lesson.tryIt.entries()) {

@@ -67,10 +67,10 @@ export const diodeLesson={
   misconception:'A diode has neither a perfect 0.7 V on/off threshold nor exactly zero reverse current. Its current depends on bias, the surrounding circuit, temperature and the particular device.',
   limits:'This is an assigned bench experiment linked to the general diode principle, not a reconstruction of a remote circuit. The static 25 °C current curve uses selected Nexperia parameters; full SPICE dynamics, temperature scaling, breakdown and device spread are excluded. The ideal source, switch and meter add no impedance. Load resistance is fixed during heating; its thermal constants are assigned. Geometry, depletion width, carrier counts and motion are schematic. Meter range changes are labeled. Curve axes show current magnitude, with separate voltage scales; zero current lies below the log axis.',
   sources:[
-    {label:'Nexperia: 1N4148 and 1N4448 data sheet',url:'https://assets.nexperia.com/documents/data-sheet/1N4148_1N4448.pdf'},
-    {label:'Nexperia: 1N4148 SPICE parameters',url:'https://assets.nexperia.com/documents/spice-model/1N4148.txt'},
-    {label:'MIT: p–n junction electrostatics',url:'https://ocw.mit.edu/courses/6-012-microelectronic-devices-and-circuits-fall-2009/resources/mit6_012f09_lec04/'},
-    {label:'MIT: p–n junction current and voltage',url:'https://ocw.mit.edu/courses/6-012-microelectronic-devices-and-circuits-fall-2009/resources/mit6_012f09_lec06/'},
+    {title:'Nexperia: 1N4148 and 1N4448 data sheet',url:'https://assets.nexperia.com/documents/data-sheet/1N4148_1N4448.pdf'},
+    {title:'Nexperia: 1N4148 SPICE parameters',url:'https://assets.nexperia.com/documents/spice-model/1N4148.txt'},
+    {title:'MIT: p–n junction electrostatics',url:'https://ocw.mit.edu/courses/6-012-microelectronic-devices-and-circuits-fall-2009/resources/mit6_012f09_lec04/'},
+    {title:'MIT: p–n junction current and voltage',url:'https://ocw.mit.edu/courses/6-012-microelectronic-devices-and-circuits-fall-2009/resources/mit6_012f09_lec06/'},
   ],
   quiz:{question:'What happens when both the source and the diode are reversed?',options:['The diode is forward biased again, and the load receives power.','The diode must block all current.','The load cools instantly.'],answer:0,explanation:'Bias depends on which diode terminal is more positive. Reversing both restores forward bias, while reversing conventional current around the loop.'},
 };
