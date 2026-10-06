@@ -208,16 +208,20 @@ assert.equal(catalog.groups.find(group => group.id === capillary.entry.group).pl
 const bluRay = families.find(family => family.entry.id === 'blu-ray-player');
 assert(bluRay, 'Blu-ray player remains one complete item');
 assert.equal(componentParentIds.cd, 'blu-ray-player');
-assert.deepEqual(bluRay.components.map(entry => entry.id), ['cd'], 'Only the reviewed CD study joins its disc-player family');
-assert.deepEqual(catalogMachineComponents(bluRay.components), [], 'The CD medium is a study, not a smaller machine');
+assert.equal(componentParentIds.dvd, 'blu-ray-player');
+assert.deepEqual(bluRay.components.map(entry => entry.id), ['cd', 'dvd'], 'Reviewed CD and DVD studies join their disc-player family');
+assert.deepEqual(catalogMachineComponents(bluRay.components), [], 'The optical media are studies, not smaller machines');
 assert.deepEqual(tags('cd'), ['using-bits', 'light-and-images', 'sound-and-music', 'rotating-wheels', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'cd')).map(family => family.entry.id), ['blu-ray-player'], 'A CD-only search retains its complete parent');
 for (const id of ['pickup', 'optics', 'track', 'codec', 'errors', 'waveform', 'layers', 'phase', 'spin']) assert(hasCatalogPart('cd', id), `${id} remains bookmarkable in the CD study`);
+assert.deepEqual(tags('dvd'), ['using-bits', 'light-and-images', 'rotating-wheels', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'dvd')).map(family => family.entry.id), ['blu-ray-player'], 'A DVD-only search retains its complete parent');
+for (const id of ['pickup', 'optics', 'track', 'codec', 'sectors', 'errors', 'video', 'layers', 'comparison', 'phase', 'spin', 'capacity']) assert(hasCatalogPart('dvd', id), `${id} remains bookmarkable in the DVD study`);
 assert.deepEqual(tags('blu-ray-player'), ['light-and-images', 'using-bits', 'rotating-wheels', 'screws', 'electricity']);
 assert(hasCatalogPart('blu-ray-player', 'pickup') && hasCatalogPart('blu-ray-player', 'track'), 'Player and timing inspections remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).place, 'home');
-for (const id of ['dvd', 'cd-rom', 'optical-disc-readout']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+for (const id of ['cd-rom', 'optical-disc-readout']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
 
 const electronicPaper = families.find(family => family.entry.id === 'electronic-paper');
 assert(electronicPaper && electronicPaper.components.length === 0, 'Electronic paper stays one whole lesson; ordinary parts and unfinished components stay out of the directory');

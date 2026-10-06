@@ -26,7 +26,9 @@ import {createVideoGamesConsoleModel} from './video-games-console-model.js';
 import {headTrackingLesson} from './head-tracking-lesson.js';
 import {createHeadTrackingModel} from './head-tracking-model.js';
 import {capillaryActionLesson} from './pens-lessons.js';
-import {dvdLesson, cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
+import {cdRomLesson, opticalReadoutLesson} from './optical-lessons.js';
+import {dvdLesson} from './dvd-lesson.js';
+import {createDvdModel} from './dvd-model.js';
 import {reviewedCdLesson as cdLesson} from './cd-lesson.js';
 import {createCdModel} from './cd-model.js';
 import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
@@ -144,7 +146,7 @@ export const houseComponents={
  'Capillary action':{machine:'Capillary action',createModel:createCapillaryModel,part:'capillary',isolate:false,view:'front',lesson:capillaryActionLesson,intro:capillaryActionLesson.simple},
  'Refrigerant compressor':{machine:'Refrigerator',createModel:createRefrigerantCompressorModel,part:'system',isolate:false,view:'front',lesson:refrigerantCompressorLesson,intro:refrigerantCompressorLesson.simple},
  'CD':{machine:'Blu-ray player',createModel:createCdModel,part:'player',isolate:true,view:'front',lesson:cdLesson,intro:cdLesson.simple},
- 'DVD':{machine:'Blu-ray player',createModel:createBluRayModel,part:'track',isolate:false,view:'front',values:{format:1},lesson:dvdLesson,intro:dvdLesson.simple},
+ 'DVD':{machine:'Blu-ray player',createModel:createDvdModel,part:'player',isolate:true,view:'front',lesson:dvdLesson,intro:dvdLesson.simple},
  'CD-ROM':{machine:'Blu-ray player',createModel:createBluRayModel,part:'signal',isolate:false,view:'front',values:{format:0},lesson:cdRomLesson,intro:cdRomLesson.simple},
  'Optical-disc readout':{machine:'Blu-ray player',createModel:createBluRayModel,part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
  'Electronic ink':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},

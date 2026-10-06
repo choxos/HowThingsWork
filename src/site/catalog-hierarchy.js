@@ -4,6 +4,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 // components, close-up studies or alternate names for a published machine.
 export const componentParentIds = {
   'cd': 'blu-ray-player',
+  'dvd': 'blu-ray-player',
   'phonemes': 'speech-recognition',
   'ionization-smoke-detector': 'smoke-detector',
   'optical-smoke-detector': 'smoke-detector',
