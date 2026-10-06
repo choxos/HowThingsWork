@@ -1,0 +1,55 @@
+Speech Commands recordings
+
+Collected by Google and volunteer contributors; dataset introduced by Pete Warden.
+Creative Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Dataset announcement and license:
+https://research.google/blog/launching-the-speech-commands-dataset/
+Dataset paper:
+https://arxiv.org/abs/1804.03209
+Source subset:
+https://storage.googleapis.com/download.tensorflow.org/data/mini_speech_commands.zip
+
+This lesson includes 32 original one-second recordings as lossless PCM16 data.
+Two anonymized dataset speakers are called Voice A and Voice B. For each word
+and speaker, the first filename in sorted order is the reference recording;
+the second is the separate input example. Selection was based on availability,
+not recognition accuracy. During an experiment, the program adjusts gain,
+optionally adds deterministic noise, and optionally filters and downsamples.
+Those transformations are teaching experiments, not original recording conditions.
+No endorsement by Google or the contributors is implied.
+
+Selected files:
+down/3c257192_nohash_0.wav [reference]
+down/3c257192_nohash_2.wav [input example]
+down/8012c69d_nohash_0.wav [reference]
+down/8012c69d_nohash_1.wav [input example]
+go/3c257192_nohash_0.wav [reference]
+go/3c257192_nohash_1.wav [input example]
+go/8012c69d_nohash_1.wav [reference]
+go/8012c69d_nohash_2.wav [input example]
+left/3c257192_nohash_0.wav [reference]
+left/3c257192_nohash_1.wav [input example]
+left/8012c69d_nohash_0.wav [reference]
+left/8012c69d_nohash_1.wav [input example]
+no/3c257192_nohash_1.wav [reference]
+no/3c257192_nohash_2.wav [input example]
+no/8012c69d_nohash_2.wav [reference]
+no/8012c69d_nohash_3.wav [input example]
+right/3c257192_nohash_0.wav [reference]
+right/3c257192_nohash_3.wav [input example]
+right/8012c69d_nohash_0.wav [reference]
+right/8012c69d_nohash_3.wav [input example]
+stop/3c257192_nohash_1.wav [reference]
+stop/3c257192_nohash_2.wav [input example]
+stop/8012c69d_nohash_0.wav [reference]
+stop/8012c69d_nohash_1.wav [input example]
+up/3c257192_nohash_0.wav [reference]
+up/3c257192_nohash_2.wav [input example]
+up/8012c69d_nohash_0.wav [reference]
+up/8012c69d_nohash_3.wav [input example]
+yes/3c257192_nohash_0.wav [reference]
+yes/3c257192_nohash_1.wav [input example]
+yes/8012c69d_nohash_0.wav [reference]
+yes/8012c69d_nohash_1.wav [input example]

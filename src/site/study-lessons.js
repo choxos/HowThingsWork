@@ -3,7 +3,7 @@ import {ballpointLesson, feltTipLesson, dipPenLesson} from './pens-lessons.js';
 import {bluRayPlayerLesson} from './blu-ray-player-lesson.js';
 import {electronicPaperDisplayLesson} from './electronic-paper-lesson.js';
 import {smartphoneLearningLesson} from './smartphone-lesson.js';
-import {speechRecognitionLesson} from './speech-lessons.js';
+import {recordedSpeechRecognitionLesson} from './speech-recognition-lesson.js';
 import {calculatorLesson} from './calculator-lessons.js';
 import {tftScreenLesson} from './tft-screen-lesson.js';
 import {oledDisplayLesson} from './oled-display-lesson.js';
@@ -19,6 +19,6 @@ export const studyLessons={
  'LCD screen':tftScreenLesson,
  'OLED display':oledDisplayLesson,
  'Remote control':infraredRemoteLesson,
- 'Speech recognition':speechRecognitionLesson,
+ 'Speech recognition':recordedSpeechRecognitionLesson,
  'Calculator':calculatorLesson,
 };

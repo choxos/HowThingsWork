@@ -61,6 +61,7 @@ import {createHairspringModel} from './hairspring-model.js';
 import {powerLineInsulatorLesson} from './power-line-insulator-lesson.js';
 import {createPowerLineInsulatorModel} from './power-line-insulator-model.js';
 import {phonemesLesson} from './speech-lessons.js';
+import {createSpeechModel} from './speech-model.js';
 import {createCrashSensorModel} from './crash-sensor-model.js';
 import {createPrinterModel} from './printer-model.js';
 import {createSewingModel} from './sewing-model.js';
@@ -162,7 +163,7 @@ export const houseComponents={
  'Optical smoke detector':{machine:'Smoke detector',createModel:createOpticalSmokeModel,part:'system',view:'front',isolate:true,lesson:reviewedOpticalSmokeLesson,intro:reviewedOpticalSmokeLesson.simple},
  'Joystick':{machine:'Games controller',createModel:createJoystickModel,part:'rig',isolate:true,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},
  'Video games console':{machine:'Games controller',createModel:createVideoGamesConsoleModel,part:'console-experiment',isolate:true,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
- 'Phonemes':{machine:'Speech recognition',part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
+ 'Phonemes':{machine:'Speech recognition',createModel:createSpeechModel,part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
  'Head tracking':{machine:'Virtual reality headset',createModel:createHeadTrackingModel,part:'system',isolate:true,view:'front',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
  'Polarizing filter':{machine:'Polarized light',createModel:()=>{const model=createPolarizedLightModel();model.parts.find(part=>part.id==='first').framePadding=1.6;return model;},part:'first',isolate:false,view:'front',values:{mode:0,insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
  'Liquid crystals':{machine:'Liquid crystal display',createModel:()=>{const model=createLCDModel();model.parts.find(part=>part.id==='molecules').framePadding=1.6;return model;},part:'molecules',isolate:false,view:'front',values:{mode:0,drive:0,battery:1},lesson:liquidCrystalsLesson,intro:liquidCrystalsLesson.simple},

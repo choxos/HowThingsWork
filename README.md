@@ -77,4 +77,4 @@ Reference documents, review evidence, local drafts outside the source tree, and 
 
 ## License
 
-[MIT](LICENSE).
+Source code: [MIT](LICENSE). Speech Commands recordings used by the speech-recognition lesson are licensed under CC BY 4.0; see [recording attribution and transformations](public/speech-recordings.txt).

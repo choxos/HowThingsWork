@@ -17,6 +17,7 @@ import * as M from './speech-model.js';
 import * as L from './speech-lessons.js';
 import {houseComponents} from './house-components.js';
 import {studyLessons} from './study-lessons.js';
+import {recordedSpeechRecognitionLesson} from './speech-recognition-lesson.js';
 
 const t = tally();
 const counts = {frames: 0, lines: 0, steps: 0, measurements: 0, poses: 0, points: 0, numbers: 0};
@@ -744,9 +745,10 @@ t.ok(!model.playback.complete() && !model.resultPart.available(), 'nothing to in
   for (const text of allText) t.ok(!/[—–]| - |--/.test(text), `no dashes as punctuation: ${text.slice(0, 60)}`);
   for (const text of allText) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|analysed|recognise|recognised|favour|fibre|programme)\b/i.test(text), `American spelling: ${text.slice(0, 60)}`);
 }
-t.ok(studyLessons['Speech recognition'] === L.speechRecognitionLesson, 'the speech recognition lesson is routed');
+t.ok(studyLessons['Speech recognition'] === recordedSpeechRecognitionLesson, 'the reviewed whole speech recognition lesson is routed');
 {
   const component = houseComponents.Phonemes;
+  t.ok(component.createModel === M.createSpeechModel, 'Phonemes preserves its own draft factory');
   t.ok(component.machine === 'Speech recognition' && component.part === 'vowels' && component.lesson === L.phonemesLesson && component.intro === L.phonemesLesson.simple && component.view === 'front' && component.isolate === false && component.values === undefined, 'Phonemes routes to the vowel chart with its own lesson');
 }
 const released = checkDisposal((() => { const fresh = M.createSpeechModel(); fresh.advance(3); return fresh; })(), t);

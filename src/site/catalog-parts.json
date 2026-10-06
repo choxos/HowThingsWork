@@ -6207,6 +6207,118 @@
       "parentId": "console-experiment"
     }
   ],
+  "speech-recognition": [
+    {
+      "id": "phone",
+      "name": "Open phone assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "shell",
+      "name": "Phone frame",
+      "parentId": "phone"
+    },
+    {
+      "id": "rear-cover",
+      "name": "Rear cover",
+      "parentId": "phone"
+    },
+    {
+      "id": "board",
+      "name": "Circuit board",
+      "parentId": "phone"
+    },
+    {
+      "id": "battery",
+      "name": "Phone battery",
+      "parentId": "phone"
+    },
+    {
+      "id": "power",
+      "name": "Power and microphone switch",
+      "parentId": "phone"
+    },
+    {
+      "id": "microphone",
+      "name": "Microphone capsule",
+      "parentId": "phone"
+    },
+    {
+      "id": "diaphragm",
+      "name": "Microphone diaphragm",
+      "parentId": "microphone"
+    },
+    {
+      "id": "adc",
+      "name": "Sampler and converter",
+      "parentId": "phone"
+    },
+    {
+      "id": "processor",
+      "name": "Processor",
+      "parentId": "phone"
+    },
+    {
+      "id": "memory",
+      "name": "Stored voice examples",
+      "parentId": "phone"
+    },
+    {
+      "id": "clock",
+      "name": "Sampling clock",
+      "parentId": "phone"
+    },
+    {
+      "id": "display",
+      "name": "Connected display assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "bezel",
+      "name": "Display frame",
+      "parentId": "display"
+    },
+    {
+      "id": "screen",
+      "name": "Word and application screen",
+      "parentId": "display"
+    },
+    {
+      "id": "display-cable",
+      "name": "Display flex cable",
+      "parentId": "system"
+    },
+    {
+      "id": "voice",
+      "name": "Supplied voice recording",
+      "parentId": "system"
+    },
+    {
+      "id": "samples",
+      "name": "Samples and short frames",
+      "parentId": "system"
+    },
+    {
+      "id": "features",
+      "name": "Spectrum and spectrogram",
+      "parentId": "system"
+    },
+    {
+      "id": "mel",
+      "name": "Mel filters and matching features",
+      "parentId": "system"
+    },
+    {
+      "id": "matches",
+      "name": "Stored examples and matching",
+      "parentId": "system"
+    },
+    {
+      "id": "context",
+      "name": "Same sound, different words",
+      "parentId": "system"
+    }
+  ],
   "virtual-reality-headset": [
     {
       "id": "wearer",
