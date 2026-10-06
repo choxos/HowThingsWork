@@ -1,0 +1,77 @@
+const experiment = (title, instruction, observe, part, settings = {}, time = 0) => {
+  const values = { content: 0, location: 0, loss: 0, laser: 1, format: 0, depth: 0, ...settings };
+  return { title, instruction, observe, values, reset: true, part, isolate: true, cutaway: true, view: 'front', initialState: { settings: { ...values }, time } };
+};
+
+export const cdRomLesson = {
+  simple: 'What does a CD-ROM supply to a computer?',
+  overview: 'A CD-ROM supplies stored files. Its drive turns reflected light into channel transitions, recovers bytes and checks their sectors. The computer reads a directory to find a file, then interprets its bytes as text, a picture or data. Press Play to follow that chain all the way to the computer screen. Change the file or block some reads to see when a file can, and cannot, become available.',
+  steps: [
+    { title: 'Read the optical track', body: 'The spindle turns while a movable pickup follows the spiral. Both pits and lands reflect light. Changes in the collected signal lead to detected channel transitions.' },
+    { title: 'Recover and check sectors', body: 'EFM recovers bytes and CIRC reverses their interleaving. CD-ROM Mode 1 adds P/Q parity and a checksum around each 2,048-byte payload. Missing or invalid data stays unavailable.' },
+    { title: 'Find the requested file', body: 'Volume-descriptor sector 16 points to the root directory. The recovered directory gives the file name, first sector and exact byte count. The pickup then seeks to that address.' },
+    { title: 'Open the retrieved bytes', body: 'Only a complete, checked file reaches the viewer. Its content becomes readable text, an actual BMP picture or a plot of example CSV values.' },
+  ],
+  parts: [
+    { name: 'Complete drive and computer', role: 'Follow the connected disc, pickup, decoder and computer output.' },
+    { name: 'Spindle motor and hub', role: 'Turn the disc at the speed needed for a steady data rate.' },
+    { name: 'Sliding optical pickup', role: 'Move to the file address and read the spiral with infrared light.' },
+    { name: 'Channel frame and EFM', role: 'Turn channel words into bytes before CIRC restores their order.' },
+    { name: 'Mode 1 sector and checks', role: 'Recover 2,048 user bytes from a protected 2,352-byte raw sector.' },
+    { name: 'CIRC and sector parity repair', role: 'Recover known missing bytes or reject failed sectors.' },
+    { name: 'Find the stored file', role: 'Recover its name, extent location and exact length from the directory.' },
+    { name: 'Computer and processor', role: 'Interpret the filesystem and open the retrieved file.' },
+    { name: 'Open the recovered file', role: 'See actual text, pixels or data values from the read.' },
+  ],
+  tryIt: [
+    experiment('From disc to computer', 'Press Play with the connected drive and computer in view.', 'The drive reads the volume, then directory, then file. The computer opens README.TXT only after all its bytes are retrieved and checked.', 'player'),
+    experiment('Sectors at a steady rate', 'Press Play with files mastered near the outer track.', 'The pickup first seeks outward to the directory’s file address. Outer tracks need fewer rpm, while the reference read rate stays at 75 sectors/s and 150 KiB/s.', 'spin', { location: 2 }, 6.5),
+    experiment('One frame of track', 'Press Play and watch a received EFM word become a byte.', 'A channel frame has 588 cells. Fourteen cells encode one byte, with merging and sync cells around the words. Before interleaving, 98 F1 frames carry one 2,352-byte raw sector.', 'codec', {}, 7.5),
+    experiment('What loss can be repaired?', 'Press Play with the separated channel losses selected.', 'CIRC leaves 48 missing raw-sector bytes in this pattern. Sector P parity recovers them, and the file becomes available. This is a coding example, not a universal scratch-length limit.', 'errors', { loss: 3 }, 7.5),
+    experiment('The sector', 'Press Play until the example file sector is checked.', 'The header identifies its address and Mode 1. Of its 2,352 bytes, 2,048 are user data. The checksum and parity checks must pass before those bytes can supply the file.', 'sectors', {}, 7.5),
+    experiment('A whole disc', 'Follow the conversion from channel frames to user capacity.', 'A 74-minute example holds 333,000 sectors, or 681,984,000 user bytes: about 650.4 MiB. Filesystem metadata and sector padding use some of that space.', 'capacity'),
+    experiment('Find the file first', 'Press Play from the completed volume read.', 'Sector 16 supplies the root-directory address. The directory then reveals three real filenames, their first sectors and exact lengths. The selected row directs the file seek.', 'directory', {}, 5),
+    experiment('Open a stored picture', 'Press Play with GARDEN.BMP selected.', 'Three file sectors recover a 4,662-byte BMP. Its decoded 48 by 32 pixels make the house, sky and garden on the computer screen.', 'files', { content: 1 }, 7.5),
+    experiment('Plot a data file', 'Press Play with WEATHER.CSV selected.', 'The computer parses eight hour and temperature pairs from the 74 retrieved bytes, then plots those example values. The plot comes from the CSV content.', 'files', { content: 2 }, 7.5),
+    experiment('Repair four words with C1', 'Press Play with four missing channel words selected.', 'The first CIRC stage repairs these known erasures. No sector bytes remain missing, so later checks admit the complete text file.', 'errors', { loss: 1 }, 7.5),
+    experiment('Let interleaving help C2', 'Press Play with the short burst selected.', 'The burst defeats some C1 words, but interleaving spreads those flags across C2 words. C2 recovers the data before sector parity is needed.', 'errors', { loss: 2 }, 7.5),
+    experiment('An unreadable file sector', 'Press Play with the larger loss selected.', 'A required sector cannot be recovered. The computer reports the file unavailable instead of filling gaps with invented text or a hidden source copy.', 'files', { loss: 4 }, 7.5),
+    experiment('Lose the directory', 'Press Play with the directory loss selected.', 'The volume is readable, but the directory fails. No reliable filename-to-sector map is available, so the reader stops before attempting the file.', 'directory', { loss: 5 }, 5.5),
+    experiment('Turn off the read laser', 'Press Play with the laser already off.', 'The stored marks remain and the spindle can turn. No detected channel data, checked sector or file reaches the computer.', 'optics', { laser: 0 }),
+    experiment('Follow the stored transitions', 'Press Play, or step through individual cells.', 'The close-up uses the actual encoded track. A channel one marks a level change. The spot circle gives a size reference; it is not an analog detector-voltage prediction.', 'track'),
+    experiment('Compare optical formats', 'Change Optical comparison between CD, DVD and Blu-ray.', 'Wavelength, aperture, track pitch and minimum run length change together in the reference diagram. The live file read remains CD-ROM.', 'comparison'),
+    experiment('Look through the disc', 'Compare the clear read layers using Optical comparison.', 'The CD reference reads through 1.2 mm of plastic; DVD uses 0.6 mm and Blu-ray 0.1 mm. Refraction makes the cone narrower in plastic than in air.', 'layers'),
+    experiment('A separate wave experiment', 'Change Separate wave-depth example and watch the wave sum.', 'Optical height changes the relative phase and normalized intensity of two equal waves. It leaves the stored file and digital reader unchanged.', 'phase'),
+  ],
+  deeper: [
+    { title: 'Files need a map', body: 'The optical drive supplies sectors. A filesystem gives them meaning as files. This classic ISO 9660 volume starts its descriptor sequence at logical sector 16; a root-directory record points to entries containing names, extent addresses and lengths. Reading a filename is not enough unless its file sectors can also be retrieved.' },
+    { title: 'Two layers of correction', body: 'Every CD uses CIRC. Mode 1 adds a sector code with 172 P and 104 Q parity bytes. Its two byte planes contain column and diagonal Reed-Solomon vectors, each with two parity symbols. This reader repairs known erasures only and checks the final EDC before exposing a payload.' },
+    { title: 'Raw capacity differs from file capacity', body: 'At 1×, 4,321,800 channel cells per second form 7,350 frames or 75 raw sectors. Each sector contains 2,352 bytes, but only 2,048 are user data. Filesystem metadata and padding then take space within that user area. Faster reading changes transfer time, not stored capacity.' },
+    { title: 'A file format is another interpretation', body: 'The text file contains character bytes. The BMP holds a header followed by bottom-up rows of blue, green and red values. The CSV names two columns and stores eight numeric pairs. The same sector reader supplies all three, while the computer interprets each file differently.' },
+    { title: 'Seeking differs from following the spiral', body: 'A seek moves the pickup across many tracks to a known address. Reading then follows the spiral outward by a tiny amount while the spindle maintains the reference track speed. File-location changes rebuild this authored example; they do not rewrite an existing read-only disc.' },
+  ],
+  misconception: 'A pit is not a file bit, and recovered sectors are not yet a named file. Channel decoding, error checks, a directory lookup and file-format interpretation all stand between reflected light and the computer’s result.',
+  limits: [
+    'This example builds a classic single-root ISO 9660 logical volume and reads finite encoded excerpts for its metadata and selected file. It is not a full physical disc image with lead-in, TOC and Q-channel addressing.',
+    'The supported files are the authored UTF-8 text, uncompressed 24-bit bottom-up BMP and two-column CSV. The filesystem reader supports this single-volume, single-extent Level 1 subset, without Joliet, Rock Ridge, UDF, executable software or arbitrary file-format support.',
+    'Detected transitions are ideal. Analog HF voltage, noise, PLL timing recovery and focus/tracking servo loops are outside the model. Both pits and lands reflect light.',
+    'Loss controls inject known unreadable EFM words. They demonstrate CIRC and sector-parity behavior, not calibrated scratches or general unknown-error correction. Failed sectors remain unavailable.',
+    'The mechanism is an illustrative connected drive and computer. Disc dimensions and reference rates follow the stated format. Reading uses a thin-spiral approximation; seek motion is schematic and its displayed duration is not a drive-performance measurement.',
+    'Playback expands time: 64 cells take four seconds, the rest of the volume read one, directory reading one and file reading two. Schematic seeks take another 1.5 seconds. Each finite read includes 111 CIRC tail frames; these are guards, not added file capacity.',
+    'Format and depth controls affect separate diagrams. Scalar spot size and equal-wave intensity do not predict a real detector contrast or establish a hard optical readability limit.',
+  ].join(' '),
+  sources: [
+    { title: 'ECMA-130, second edition (1996): CD-ROM sectors, CIRC, EFM and reference optics', url: 'https://ecma-international.org/wp-content/uploads/ECMA-130_2nd_edition_june_1996.pdf' },
+    { title: 'ECMA-119, second edition (1987): classic ISO 9660 volume and file structure', url: 'https://ecma-international.org/wp-content/uploads/ECMA-119_2nd_edition_december_1987.pdf' },
+    { title: 'Microsoft: BITMAPFILEHEADER', url: 'https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapfileheader' },
+    { title: 'Microsoft: bitmap dimensions, row order and stride', url: 'https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader' },
+    { title: 'ECMA-267: DVD reference format', url: 'https://ecma-international.org/publications-and-standards/standards/ecma-267/' },
+    { title: 'Blu-ray Disc Association: BD-ROM physical format white paper (2010, archived copy)', url: 'https://blog.ligos.net/images/The-Reliability-Of-Optical-Disks/BD-ROM_physical_format_specifications-18327.pdf' },
+  ],
+  quiz: {
+    question: 'The directory is readable, but one required file sector still fails its checks. What should the computer receive?',
+    options: ['An unavailable file result until all required bytes can be recovered.', 'The intended file from a separate hidden copy.', 'A guessed file with the missing bytes filled in.'],
+    answer: 0,
+    explanation: 'The directory locates the file, but it cannot replace missing file content. This reader opens a file only after every required sector passes its checks.',
+  },
+};

@@ -2101,6 +2101,128 @@
       "parentId": "system"
     }
   ],
+  "cd-rom": [
+    {
+      "id": "chassis",
+      "name": "Chassis and case",
+      "parentId": "player"
+    },
+    {
+      "id": "spindle",
+      "name": "Spindle motor and hub",
+      "parentId": "player"
+    },
+    {
+      "id": "disc",
+      "name": "Disc and retaining clamp",
+      "parentId": "player"
+    },
+    {
+      "id": "traverse",
+      "name": "Rails and carriage drive",
+      "parentId": "player"
+    },
+    {
+      "id": "pickup",
+      "name": "Sliding optical pickup",
+      "parentId": "player"
+    },
+    {
+      "id": "laser",
+      "name": "Laser and collimator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "objective",
+      "name": "Objective lens and actuator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "detector",
+      "name": "Photodetector",
+      "parentId": "pickup"
+    },
+    {
+      "id": "electronics",
+      "name": "Decoder board and connections",
+      "parentId": "player"
+    },
+    {
+      "id": "outputs",
+      "name": "Computer and file display",
+      "parentId": "player"
+    },
+    {
+      "id": "monitor",
+      "name": "Monitor and stand",
+      "parentId": "outputs"
+    },
+    {
+      "id": "computer",
+      "name": "Computer and processor",
+      "parentId": "outputs"
+    },
+    {
+      "id": "optics",
+      "name": "Laser to detector",
+      "parentId": "system"
+    },
+    {
+      "id": "track",
+      "name": "Stored marks and transitions",
+      "parentId": "system"
+    },
+    {
+      "id": "codec",
+      "name": "Channel frame and EFM",
+      "parentId": "system"
+    },
+    {
+      "id": "sectors",
+      "name": "Mode 1 sector and checks",
+      "parentId": "system"
+    },
+    {
+      "id": "errors",
+      "name": "CIRC and sector parity repair",
+      "parentId": "system"
+    },
+    {
+      "id": "directory",
+      "name": "Find the stored file",
+      "parentId": "system"
+    },
+    {
+      "id": "files",
+      "name": "Open the recovered file",
+      "parentId": "system"
+    },
+    {
+      "id": "layers",
+      "name": "Cover layer and light cone",
+      "parentId": "system"
+    },
+    {
+      "id": "comparison",
+      "name": "Compare optical formats",
+      "parentId": "system"
+    },
+    {
+      "id": "phase",
+      "name": "Separate two-wave experiment",
+      "parentId": "system"
+    },
+    {
+      "id": "spin",
+      "name": "Seek, then follow the spiral",
+      "parentId": "system"
+    },
+    {
+      "id": "capacity",
+      "name": "Frames, sectors and capacity",
+      "parentId": "system"
+    }
+  ],
   "electronic-paper": [
     {
       "id": "case",

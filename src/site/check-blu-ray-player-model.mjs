@@ -99,7 +99,8 @@ t.ok([T.chassis,T.spindle,T.disc,T.traverse,T.pickup,T.electronics].every(o=>o.u
 const routed=createStudyModel('Blu-ray player');t.ok(routed.parts.some(p=>p.id==='traverse')&&studyLessons['Blu-ray player']===lesson,'whole-player route selects rebuilt model and lesson');routed.dispose();
 const cd=houseComponents.CD.createModel();t.ok(cd.parts.some(p=>p.id==='codec')&&cd.parts.some(p=>p.id==='waveform'),'reviewed CD keeps its dedicated decoding and recovered-audio views');cd.dispose();
 const dvd=houseComponents.DVD.createModel();t.ok(dvd.parts.some(p=>p.id==='codec')&&dvd.parts.some(p=>p.id==='video'),'DVD keeps its dedicated sector decoding and recovered-video views');dvd.dispose();
-for(const name of ['CD-ROM','Optical-disc readout']){const draft=houseComponents[name].createModel();t.ok(draft.parts.some(p=>p.id==='pit'),'separate optical drafts preserve their own model');draft.dispose();}
+const cdrom=houseComponents['CD-ROM'].createModel();t.ok(cdrom.parts.some(p=>p.id==='directory')&&cdrom.parts.some(p=>p.id==='files'),'CD-ROM keeps its dedicated directory and retrieved-file views');cdrom.dispose();
+for(const name of ['Optical-disc readout']){const draft=houseComponents[name].createModel();t.ok(draft.parts.some(p=>p.id==='pit'),'separate optical drafts preserve their own model');draft.dispose();}
 checkFinite(model.root,t);
 const released=checkDisposal(model,t);
 console.log(`PASS Blu-ray player model: ${t.count} checks, ${poses} setting poses, ${rayProbes} physical bearing probes, ${lesson.tryIt.length} preset states, ${released} resources released exactly once.`);

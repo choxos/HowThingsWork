@@ -75,6 +75,8 @@
 
 .daily-grouped-readings>div:first-child{grid-column:1/-1}@media(max-width:650px){.daily-grouped-readings>div:nth-child(4){grid-column:1/-1}}
 
+.daily-readings>.daily-reading-wide{grid-column:1/-1}.daily-reading-wide>dd{white-space:pre-line;font-weight:400;line-height:1.5}
+
 /* Type choices belong beside the scene, before the scrollable action list. */
 .daily-scene-heading{margin-bottom:.8rem}.daily-primary-controls .daily-control{padding:.6rem .8rem;border:1px solid #c1c5ab;border-radius:8px;background:#fff9e6}.daily-primary-controls select{min-height:44px;min-width:0;max-width:100%}.daily-primary-controls .daily-control p{margin:.4rem 0 0}
 @media(max-width:650px){
