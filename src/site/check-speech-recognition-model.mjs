@@ -8,7 +8,7 @@ import {recognitionSpectrum} from './speech-recognition-geometry.js';
 import {tally,checkFinite,checkDisposal,checkTrialNumbers} from './model-check-kit.mjs';
 import {createStudyModel} from './study-models.js';
 import {houseComponents} from './house-components.js';
-import {createSpeechModel} from './speech-model.js';
+import {createPhonemesModel} from './phonemes-model.js';
 const t=tally(),m=createSpeechRecognitionModel(),g=m.topology,outcomes=[],controlCases=[];
 const expected=['up','up','up','up','up','no','go',null,'right','write','up','stop','yes','no','left',null,'left',null];
 const run=values=>{const p=recognitionPlan(values);return {plan:p,end:recognitionAt(p,3)};};
@@ -66,7 +66,7 @@ m.reset();m.playback.step();t.near(m.getState().time,.01,1e-12,'10 ms step');m.u
 for(const rate of [8,16]){m.reset({settings:{rate}});m.actions.at(-1).run();t.ok(m.playback.complete(),'Finish from exactly zero completes before Play');t.near(m.getState().time,m.duration(),0,'Completion and clock use identical endpoint');m.reset(m.replayState());t.near(m.getState().time,0,0,'Finish replay starts from zero');t.near(m.getState().values.rate,rate,0,'Finish replay keeps prepared rate');}
 for(const part of m.parts)t.ok(!new THREE.Box3().setFromObject(part.object).isEmpty(),part.id+' has geometry');
 t.ok(lesson.parts.every(p=>m.parts.some(x=>x.name===p.name)),'Lesson parts map to visible parts');
-assert.equal(houseComponents.Phonemes.createModel,createSpeechModel);t.add();const registered=createStudyModel('Speech recognition');t.ok(registered.controls.some(c=>c.key==='word'),'New whole-word factory routed');registered.dispose();
+assert.equal(houseComponents.Phonemes.createModel,createPhonemesModel);t.add();const registered=createStudyModel('Speech recognition');t.ok(registered.controls.some(c=>c.key==='word'),'New whole-word factory routed');registered.dispose();
 const resources=checkDisposal(m,t);
 
 // Audio lifecycle and source samples can be checked without a browser permission.

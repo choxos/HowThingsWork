@@ -6319,6 +6319,43 @@
       "parentId": "system"
     }
   ],
+  "phonemes": [
+    {
+      "id": "source",
+      "name": "Periodic voice or turbulence",
+      "parentId": "system"
+    },
+    {
+      "id": "filters",
+      "name": "Vowel resonances or frication band",
+      "parentId": "system"
+    },
+    {
+      "id": "output",
+      "name": "Resulting sound",
+      "parentId": "system"
+    },
+    {
+      "id": "spectrum",
+      "name": "One frame and its spectrum",
+      "parentId": "system"
+    },
+    {
+      "id": "spectrogram",
+      "name": "Changing frequencies through time",
+      "parentId": "system"
+    },
+    {
+      "id": "vowels",
+      "name": "Measured vowel chart",
+      "parentId": "system"
+    },
+    {
+      "id": "comparison",
+      "name": "Compare the two sounds",
+      "parentId": "system"
+    }
+  ],
   "virtual-reality-headset": [
     {
       "id": "wearer",

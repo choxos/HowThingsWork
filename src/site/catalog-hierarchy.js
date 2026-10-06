@@ -3,6 +3,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 // A catalog group can contain several whole machines. These entries identify
 // components, close-up studies or alternate names for a published machine.
 export const componentParentIds = {
+  'phonemes': 'speech-recognition',
   'ionization-smoke-detector': 'smoke-detector',
   'optical-smoke-detector': 'smoke-detector',
   'photodiode': 'remote-control',

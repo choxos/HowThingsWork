@@ -320,3 +320,13 @@ for (const id of ['pir-head', 'pair', 'processor', 'horn', 'principle', 'signal'
 assert.deepEqual(tags('active-burglar-alarm'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
 assert.equal(catalog.groups.find(group => group.id === activeAlarm.entry.group).room, 'Safety corner');
 for (const id of ['radar-head', 'pair', 'beam-emitter', 'beam-receiver', 'processor', 'horn', 'principle', 'signal', 'record']) assert(hasCatalogPart('active-burglar-alarm', id), `${id} remains bookmarkable in the active alarm`);
+
+const speechRecognition = families.find(family => family.entry.id === 'speech-recognition');
+assert(speechRecognition && !componentParentIds['speech-recognition'], 'Speech recognition remains a whole item');
+assert.equal(componentParentIds.phonemes, 'speech-recognition');
+assert.deepEqual(speechRecognition.components.map(entry => entry.id), ['phonemes']);
+assert.deepEqual(catalogMachineComponents(speechRecognition.components), [], 'Phonemes is a sound-category study, not a smaller machine');
+assert.deepEqual(tags('phonemes'), ['sound-and-music', 'making-bits']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'phonemes')).map(family => family.entry.id), ['speech-recognition'], 'A phoneme search retains its parent lesson');
+for (const id of ['source', 'filters', 'output', 'spectrum', 'spectrogram', 'vowels', 'comparison']) assert(hasCatalogPart('phonemes', id), `${id} remains bookmarkable in the phoneme study`);
+assert.equal(catalog.groups.find(group => group.id === speechRecognition.entry.group).room, 'Study');
