@@ -3,6 +3,7 @@ import {fireExtinguisherLesson} from './extinguisher-lessons.js';
 import {lightningLesson} from './lightning-lesson.js';
 import {reviewedSmokeDetectorLesson} from './smoke-detector-lesson.js';
 import {reviewedBurglarAlarmLesson} from './burglar-alarm-lesson.js';
+import {reviewedPassiveInfraredLesson} from './passive-infrared-lesson.js';
 const steps=rows=>rows.map(([title,body])=>({title,body})),parts=rows=>rows.map(([name,role])=>({name,role}));
 const exp=(title,instruction,observe,values)=>({title,instruction,observe,values});
 const quiz=(question,options,answer,explanation)=>({question,options,answer,explanation});
@@ -113,7 +114,8 @@ export const safetyLessons={
  quiz:quiz('Both switches select Upper traveler and the lamp is lit. You change only the second switch. What happens?',['The route opens and the lamp goes out.','The lamp gets brighter because there are two travelers.','Nothing changes until both switches move.'],0,'The contacts now select different travelers. Changing either one breaks the previously complete route.')},
  'Magnetic burglar alarm':reedAlarmLesson,
  'Smoke detector':reviewedSmokeDetectorLesson,
- 'Active burglar alarm':reviewedBurglarAlarmLesson,
+  'Active burglar alarm':reviewedBurglarAlarmLesson,
+  'Passive infrared movement detector':reviewedPassiveInfraredLesson,
  'Lightning conductor':lightningLesson,
  'Fire extinguisher':fireExtinguisherLesson,
 };

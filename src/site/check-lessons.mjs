@@ -51,6 +51,7 @@ function checkSources(name, lesson) {
 
 function checkViewDirections(where, model) {
  const partIds = new Set(model.parts.map(part => part.id));
+ for (const part of model.parts) if (part.inspectionView !== undefined) check(['iso', 'front', 'side', 'back', 'top', 'bottom'].includes(part.inspectionView), `${where}: ${part.id} has an unknown inspection view`);
  const directions = [[where, model.viewDirections], ...Object.entries(model.partViewDirections || {}).map(([part, value]) => {
   check(partIds.has(part), `${where}: camera names missing part "${part}"`);
   return [`${where}: ${part}`, value];

@@ -301,7 +301,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     if(focus&&inspectionDefaults&&part?.object.userData.inspectionOnly){
       const inspection=model.actions.find(action=>action.part===id&&action.replay===false);
       isolated=inspection?.isolate??true;options.querySelector('[data-isolate]').checked=isolated;setView(inspection?.view||'front');
-    }
+    }else if(focus&&inspectionDefaults&&part?.inspectionView)setView(part.inspectionView);
     if(part&&cutaway&&model.covers.some(cover=>isWithin(part.object,cover))){cutaway=false;options.querySelector('[data-cutaway]').checked=false;restoreVisibility();}
     const ancestry=[];let current=part;const seen=new Set();
     while(current&&!seen.has(current.id)){ancestry.unshift(current);seen.add(current.id);current=model.parts.find(candidate=>candidate.id===current.parentId);}

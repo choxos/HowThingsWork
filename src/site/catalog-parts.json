@@ -6024,6 +6024,83 @@
       "parentId": "system"
     }
   ],
+  "passive-infrared-movement-detector": [
+    {
+      "id": "room",
+      "name": "Room and thermal fields",
+      "parentId": "system"
+    },
+    {
+      "id": "target",
+      "name": "Warm moving surface",
+      "parentId": "room"
+    },
+    {
+      "id": "electronics",
+      "name": "Powered processing assembly",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Twelve-volt supply",
+      "parentId": "electronics"
+    },
+    {
+      "id": "contact",
+      "name": "Supply contact",
+      "parentId": "electronics"
+    },
+    {
+      "id": "regulator",
+      "name": "Ten-volt sensor supply",
+      "parentId": "electronics"
+    },
+    {
+      "id": "processor",
+      "name": "Filter, threshold and confirmation",
+      "parentId": "electronics"
+    },
+    {
+      "id": "driver",
+      "name": "Latched sounder driver",
+      "parentId": "electronics"
+    },
+    {
+      "id": "horn",
+      "name": "Powered piezoelectric sounder",
+      "parentId": "electronics"
+    },
+    {
+      "id": "sensor",
+      "name": "Passive sensing head",
+      "parentId": "system"
+    },
+    {
+      "id": "pir-head",
+      "name": "Passive infrared window and paired elements",
+      "parentId": "sensor"
+    },
+    {
+      "id": "pair",
+      "name": "Opposed pyroelectric pair",
+      "parentId": "pir-head"
+    },
+    {
+      "id": "principle",
+      "name": "Lens-to-element mapping",
+      "parentId": "system"
+    },
+    {
+      "id": "signal",
+      "name": "Thermal inputs and changing output",
+      "parentId": "system"
+    },
+    {
+      "id": "record",
+      "name": "Observation record",
+      "parentId": "system"
+    }
+  ],
   "games-controller": [
     {
       "id": "experiment",

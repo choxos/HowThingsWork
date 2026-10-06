@@ -697,14 +697,15 @@ for (const lesson of [L.activeBurglarAlarmLesson, L.passiveInfraredLesson]) {
 }
 t.ok(safetyLessons['Active burglar alarm'] !== L.activeBurglarAlarmLesson, 'the reviewed whole alarm does not reuse the beam-only draft lesson');
 {
-  const component = houseComponents['Passive infrared movement detector'];
-  t.ok(component.machine === 'Active burglar alarm' && component.part === 'lens' && component.lesson === L.passiveInfraredLesson && component.intro === L.passiveInfraredLesson.simple && component.view === 'front' && component.isolate === false, 'the movement detector routes to the alarm’s lens with its own lesson');
-  assert.deepEqual(component.values, {mode: 1});
-  t.ok(component.createModel === M.createIntruderModel, 'the unpublished PIR child retains its original model factory');
-  t.ok(L.passiveInfraredLesson.tryIt.every(item => item.values.mode === 1), 'and every one of its trials watches the passive detector');
+  t.ok(!houseComponents['Passive infrared movement detector'], 'the passive detector is no longer classified as a component of the active detector');
+  t.ok(safetyLessons['Passive infrared movement detector'] !== L.passiveInfraredLesson, 'the dedicated thermal lesson does not reuse historical calibration claims');
+  const passive=createSafetyModel('Passive infrared movement detector');
+  t.ok(passive.scientificPlan().values.mode===2 && !passive.controls.some(control=>control.key==='mode'), 'the dedicated passive model has no active-method selector');
+  passive.dispose();
+  t.ok(L.passiveInfraredLesson.tryIt.every(item => item.values.mode === 1), 'all seven preserved draft trials still watch the historical passive model');
 }
 {
-  // The reviewed whole alarm uses a separate Doppler model. The PIR draft stays hidden.
+  // The reviewed whole alarm and passive detector use their own dedicated models.
   const built = createSafetyModel('Active burglar alarm');
   t.ok(built && built.controls.some(control => control.key === 'path') && built.getState().values.mode === 0, 'the safety corner opens the reviewed microwave experiment');
   built?.dispose();
@@ -712,7 +713,7 @@ t.ok(safetyLessons['Active burglar alarm'] !== L.activeBurglarAlarmLesson, 'the 
     t.ok(neighborhoodCatalog.entries.some(entry => entry.id === id && entry.name === name), `${id} is the catalog’s entry for ${name}`);
     t.ok(previewEntryIds.includes(id), `${id} remains available in the local preview`);
   }
-  t.ok(!publishedEntryIds.includes('passive-infrared-movement-detector'), 'the unreviewed PIR child stays unpublished');
+  t.ok(publishedEntryIds.includes('passive-infrared-movement-detector'), 'the reviewed passive detector has its own published route');
 }
 
 // ---------------------------------------------------------------------------

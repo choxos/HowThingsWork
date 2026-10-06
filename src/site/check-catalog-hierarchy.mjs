@@ -309,8 +309,14 @@ for (const id of ['emitter', 'receiver', 'cover', 'pulse', 'beam', 'pattern', 'c
 
 const activeAlarm = families.find(family => family.entry.id === 'active-burglar-alarm');
 assert(activeAlarm && !componentParentIds['active-burglar-alarm'], 'Active burglar alarm is a complete sensing and powered alarm system');
-assert.deepEqual(activeAlarm.components, [], 'Unreviewed comparison lessons remain unpublished');
-assert(!entries.some(entry => entry.id === 'passive-infrared-movement-detector'), 'The separate PIR draft remains unpublished');
+assert.deepEqual(activeAlarm.components, [], 'The active alarm has no physical passive-detector child');
+const passiveDetector = families.find(family => family.entry.id === 'passive-infrared-movement-detector');
+assert(passiveDetector && !componentParentIds['passive-infrared-movement-detector'], 'The passive detector is an independent whole sensing and alarm system');
+assert.deepEqual(passiveDetector.components, []);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'passive-infrared-movement-detector')).map(family => family.entry.id), ['passive-infrared-movement-detector'], 'A passive-only search returns its own complete detector');
+assert.deepEqual(tags('passive-infrared-movement-detector'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
+assert.equal(catalog.groups.find(group => group.id === passiveDetector.entry.group).room, 'Safety corner');
+for (const id of ['pir-head', 'pair', 'processor', 'horn', 'principle', 'signal', 'record']) assert(hasCatalogPart('passive-infrared-movement-detector', id), `${id} remains bookmarkable in the passive detector`);
 assert.deepEqual(tags('active-burglar-alarm'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
 assert.equal(catalog.groups.find(group => group.id === activeAlarm.entry.group).room, 'Safety corner');
 for (const id of ['radar-head', 'pair', 'beam-emitter', 'beam-receiver', 'processor', 'horn', 'principle', 'signal', 'record']) assert(hasCatalogPart('active-burglar-alarm', id), `${id} remains bookmarkable in the active alarm`);

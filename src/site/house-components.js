@@ -1,5 +1,4 @@
 import {Box3,Vector3} from 'three';
-import {createIntruderModel} from './intruder-model.js';
 import {createOpticalSmokeModel} from './optical-smoke-model.js';
 import {createIonizationSmokeModel} from './ionization-smoke-model.js';
 import {reviewedIonizationSmokeLesson} from './ionization-smoke-lesson.js';
@@ -89,7 +88,6 @@ import {crashSensorProofSquareAndSensingStripsLesson} from './crash-sensor-proof
 import {scaleCalibratingPlateLesson} from './scale-calibrating-plate-lesson.js';
 import {createBathroomScaleModel} from './bathroom-scale-model.js';
 import {reviewedOpticalSmokeLesson} from './optical-smoke-lesson.js';
-import {passiveInfraredLesson} from './intruder-lessons.js';
 export const houseComponents={
  'Crash-sensor proof square and sensing strips':{machine:'Crash sensor',createModel:()=>createCrashSensorModel({mechanicsLesson:true}),part:'chip',view:'iso',isolate:true,lesson:crashSensorProofSquareAndSensingStripsLesson,intro:crashSensorProofSquareAndSensingStripsLesson.simple},
  'Microchip deceleration sensor':{machine:'Crash sensor',part:'chip',redirectTo:'crash-sensor',lesson:microchipDecelerationSensorLesson},
@@ -162,7 +160,6 @@ export const houseComponents={
  'Photodiode':{machine:'Remote control',createModel:createPhotodiodeModel,part:'bench',view:'front',isolate:true,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
  'Ionization smoke detector':{machine:'Smoke detector',createModel:createIonizationSmokeModel,part:'system',view:'front',isolate:true,lesson:reviewedIonizationSmokeLesson,intro:reviewedIonizationSmokeLesson.simple},
  'Optical smoke detector':{machine:'Smoke detector',createModel:createOpticalSmokeModel,part:'system',view:'front',isolate:true,lesson:reviewedOpticalSmokeLesson,intro:reviewedOpticalSmokeLesson.simple},
- 'Passive infrared movement detector':{machine:'Active burglar alarm',createModel:createIntruderModel,part:'lens',isolate:false,view:'front',values:{mode:1},lesson:passiveInfraredLesson,intro:passiveInfraredLesson.simple},
  'Joystick':{machine:'Games controller',createModel:createJoystickModel,part:'rig',isolate:true,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},
  'Video games console':{machine:'Games controller',createModel:createVideoGamesConsoleModel,part:'console-experiment',isolate:true,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
  'Phonemes':{machine:'Speech recognition',part:'vowels',isolate:false,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
