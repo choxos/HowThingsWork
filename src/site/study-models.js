@@ -9,7 +9,7 @@ import {createSpeechModel} from './speech-model.js';
 import {createCalculatorModel} from './calculator-model.js';
 import {createTftScreenModel} from './tft-screen-model.js';
 import {createOledDisplayModel} from './oled-display-model.js';
-import {createRemoteControlModel} from './remote-model.js';
+import {createInfraredRemoteModel} from './remote-control-model.js';
 export function createStudyModel(name){
  if(name==='Stapler')return createStaplerModel();
  if(name==='Ballpoint pen')return createBallpointModel();
@@ -22,6 +22,6 @@ export function createStudyModel(name){
  if(name==='Calculator')return createCalculatorModel();
  if(name==='LCD screen')return createTftScreenModel();
  if(name==='OLED display')return createOledDisplayModel();
- if(name==='Remote control')return createRemoteControlModel();
+ if(name==='Remote control')return createInfraredRemoteModel();
  return null;
 }

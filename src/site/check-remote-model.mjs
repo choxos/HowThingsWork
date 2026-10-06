@@ -846,13 +846,14 @@ t.ok(!model.playback.complete() && !model.resultPart.available(), 'nothing to in
 }
 const released = checkDisposal((() => { const fresh = M.createRemoteControlModel(); fresh.advance(2); return fresh; })(), t);
 
-// Last, the routes: the remote control's lesson and its four components.
+// The reviewed whole lesson is independent; four component drafts keep this model.
 const {houseComponents} = await import('./house-components.js');
 const {studyLessons} = await import('./study-lessons.js');
-t.ok(studyLessons['Remote control'] === L.remoteControlLesson, 'the remote control’s lesson');
+const {infraredRemoteLesson} = await import('./remote-control-lesson.js');
+t.ok(studyLessons['Remote control'] === infraredRemoteLesson, 'the reviewed whole remote lesson is registered');
 for (const [name, lesson, part] of [['Infrared signaling', L.infraredSignalingLesson, 'signal'], ['Diode', L.diodeLesson, 'junction'], ['Light-emitting diode', L.lightEmittingDiodeLesson, 'led'], ['Photodiode', L.photodiodeLesson, 'receiver']]) {
   const component = houseComponents[name];
-  t.ok(component && component.machine === 'Remote control' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the remote control’s ${part} with its own lesson`);
+  t.ok(component && component.machine === 'Remote control' && component.createModel === M.createRemoteControlModel && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} retains its draft factory and its own ${part} lesson`);
   assert.equal(component.values, undefined);
 }
 model.dispose();

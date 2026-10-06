@@ -56,7 +56,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
   // numbers the learner actually dialed in, so they are kept alongside.
   const configuredValues={...values};
   let initialStateForReplay,pendingReplay,inspectionBeforeResult,setupActions=[];
-  let overviewZoom=1.15,followPosition=null,tallestReadings=0,lastReadingsWidth=0;
+  let overviewZoom=model.overviewZoom??1.15,followPosition=null,tallestReadings=0,lastReadingsWidth=0;
   let explosion=null,explosionAmount=0,explosionTarget=0,explosionFrame=0,explosionTime=0,assembledCamera=null,separationZoom=1;
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const overrides=new Map();
@@ -336,7 +336,7 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     camera.position.copy(orbit?.target||new THREE.Vector3()).add(new THREE.Vector3(...(custom?custom.map(n=>n*radius):(directions[view]||directions.iso))));
     orbit?.update();draw();
   }
-  function resetView(){restoreAssembly();overviewZoom=1.15;if(orbit){orbit.minZoom=overviewZoom;orbit.maxZoom=3;}camera.zoom=overviewZoom;orbit?.target.set(0,0,0);camera.updateProjectionMatrix();setView(openingView);}
+  function resetView(){restoreAssembly();overviewZoom=model.overviewZoom??1.15;if(orbit){orbit.minZoom=overviewZoom;orbit.maxZoom=3;}camera.zoom=overviewZoom;orbit?.target.set(0,0,0);camera.updateProjectionMatrix();setView(openingView);}
   function zoom(factor,gesture=false){
     if(gesture&&(explosion||(factor<1&&camera.zoom<=overviewZoom+1e-6))&&separate(explosionTarget-Math.log(factor)*.65)!==false)return;
     const previous=camera.zoom;

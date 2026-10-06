@@ -245,6 +245,14 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 for (const id of ['air-terminal', 'walls', 'roof', 'bonding-bar', 'tip-detail', 'gap-detail', 'pulse-detail', 'earth-detail']) assert(hasCatalogPart('lightning-conductor', id), `${id} remains bookmarkable`);
 assert.equal(catalog.groups.find(group => group.id === lightningConductor.entry.group).room, 'Safety corner');
 assert.equal(catalog.groups.find(group => group.id === lightningConductor.entry.group).place, 'home');
+const remoteControl = families.find(family => family.entry.id === 'remote-control');
+assert(remoteControl && !componentParentIds['remote-control'], 'Remote control is a whole handset-to-television system');
+assert.equal(remoteControl.components.length, 0, 'Unreviewed remote component lessons remain private drafts');
+assert.deepEqual(tags('remote-control'), ['electricity', 'light-and-images', 'using-bits']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'remote-control')).map(family => family.entry.id), ['remote-control']);
+for (const id of ['cover', 'cells', 'emitter', 'receiver-module', 'screen', 'signal', 'led', 'photo', 'junction']) assert(hasCatalogPart('remote-control', id), `${id} remains bookmarkable`);
+assert.equal(catalog.groups.find(group => group.id === remoteControl.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === remoteControl.entry.group).place, 'home');
 assert.deepEqual(tags('rgb-subpixels'), ['light-and-images', 'electricity', 'using-bits']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'rgb-subpixels')).map(family => family.entry.id), ['lcd-screen'], 'An RGB-only search retains the complete parent screen');
 assert(hasCatalogPart('rgb-subpixels', 'filter-mosaic') && hasCatalogPart('rgb-subpixels', 'color-detail'), 'Physical filters and additive-color inspection remain bookmarkable');

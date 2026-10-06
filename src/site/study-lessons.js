@@ -7,7 +7,7 @@ import {speechRecognitionLesson} from './speech-lessons.js';
 import {calculatorLesson} from './calculator-lessons.js';
 import {tftScreenLesson} from './tft-screen-lesson.js';
 import {oledDisplayLesson} from './oled-display-lesson.js';
-import {remoteControlLesson} from './remote-lessons.js';
+import {infraredRemoteLesson} from './remote-control-lesson.js';
 export const studyLessons={
  'Ballpoint pen':ballpointLesson,
  'Felt-tip pen':feltTipLesson,
@@ -18,7 +18,7 @@ export const studyLessons={
  'Smartphone':smartphoneLearningLesson,
  'LCD screen':tftScreenLesson,
  'OLED display':oledDisplayLesson,
- 'Remote control':remoteControlLesson,
+ 'Remote control':infraredRemoteLesson,
  'Speech recognition':speechRecognitionLesson,
  'Calculator':calculatorLesson,
 };

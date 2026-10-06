@@ -31,6 +31,7 @@ import {createVibrationMotorModel} from './vibration-motor-model.js';
 import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
 import {createAccelerometerModel} from './accelerometer-model.js';
 import {infraredSignalingLesson, diodeLesson, lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
+import {createRemoteControlModel as createRemoteComponentDraft} from './remote-model.js';
 import {rgbAperturesLesson} from './rgb-subpixels-lesson.js';
 import {createRgbSubpixelsModel} from './rgb-subpixels-model.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
@@ -145,10 +146,10 @@ export const houseComponents={
  'Ionizer':{machine:'Air cleaner',createModel:createIonizerModel,part:'fan',isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
  'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzOscillatorModel,part:'circuit',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
  'Piezoelectricity':{machine:'Quartz clock',createModel:createPiezoelectricityModel,part:'apparatus',isolate:false,view:'iso',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
- 'Infrared signaling':{machine:'Remote control',part:'signal',view:'front',isolate:false,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
- 'Diode':{machine:'Remote control',part:'junction',view:'front',isolate:false,lesson:diodeLesson,intro:diodeLesson.simple},
- 'Light-emitting diode':{machine:'Remote control',part:'led',view:'front',isolate:false,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
- 'Photodiode':{machine:'Remote control',part:'receiver',view:'front',isolate:false,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
+ 'Infrared signaling':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'signal',view:'front',isolate:false,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
+ 'Diode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'junction',view:'front',isolate:false,lesson:diodeLesson,intro:diodeLesson.simple},
+ 'Light-emitting diode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'led',view:'front',isolate:false,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
+ 'Photodiode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'receiver',view:'front',isolate:false,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
  'Ionization smoke detector':{machine:'Smoke detector',part:'ions',values:{size:0.1},view:'front',isolate:false,lesson:ionizationDetectorLesson,intro:ionizationDetectorLesson.simple},
  'Optical smoke detector':{machine:'Smoke detector',part:'chamber',values:{size:3},view:'front',isolate:false,lesson:opticalDetectorLesson,intro:opticalDetectorLesson.simple},
  'Passive infrared movement detector':{machine:'Active burglar alarm',part:'lens',isolate:false,view:'front',values:{mode:1},lesson:passiveInfraredLesson,intro:passiveInfraredLesson.simple},
