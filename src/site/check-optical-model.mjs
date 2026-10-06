@@ -16,6 +16,8 @@ import * as L from './optical-lessons.js';
 import {houseComponents} from './house-components.js';
 import {studyLessons} from './study-lessons.js';
 import {bluRayPlayerLesson} from './blu-ray-player-lesson.js';
+import {createCdModel} from './cd-model.js';
+import {reviewedCdLesson} from './cd-lesson.js';
 
 const t = tally();
 const counts = {edges: 0, swings: 0, runs: 0, pits: 0, points: 0, waves: 0, poses: 0, numbers: 0};
@@ -629,7 +631,8 @@ for (const lesson of [L.bluRayLesson, L.cdLesson, L.dvdLesson, L.cdRomLesson, L.
   t.ok(lesson.sources.every(source => /^https:\/\//.test(source.url)), 'every source a link');
 }
 t.ok(studyLessons['Blu-ray player'] === bluRayPlayerLesson, 'the rebuilt player has its own lesson; optical drafts retain this model');
-for (const [name, lesson, part, values] of [['CD', L.cdLesson, 'track', {format: 0}], ['DVD', L.dvdLesson, 'track', {format: 1}], ['CD-ROM', L.cdRomLesson, 'signal', {format: 0}], ['Optical-disc readout', L.opticalReadoutLesson, 'pickup', undefined]]) {
+t.ok(houseComponents.CD.createModel === createCdModel && houseComponents.CD.lesson === reviewedCdLesson && houseComponents.CD.part === 'player', 'CD uses its own reviewed player and actual stereo decoding model');
+for (const [name, lesson, part, values] of [['DVD', L.dvdLesson, 'track', {format: 1}], ['CD-ROM', L.cdRomLesson, 'signal', {format: 0}], ['Optical-disc readout', L.opticalReadoutLesson, 'pickup', undefined]]) {
   const component = houseComponents[name];
   t.ok(component.createModel === BR.createBluRayModel, `${name} retains its separate draft model`);
   t.ok(component.machine === 'Blu-ray player' && component.part === part && component.lesson === lesson && component.intro === lesson.simple, `${name} routes to the Blu-ray player’s ${part} with its own lesson`);

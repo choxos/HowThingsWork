@@ -1887,6 +1887,108 @@
       "parentId": "system"
     }
   ],
+  "cd": [
+    {
+      "id": "chassis",
+      "name": "Chassis and case",
+      "parentId": "player"
+    },
+    {
+      "id": "spindle",
+      "name": "Spindle motor and hub",
+      "parentId": "player"
+    },
+    {
+      "id": "disc",
+      "name": "Disc and retaining clamp",
+      "parentId": "player"
+    },
+    {
+      "id": "traverse",
+      "name": "Rails and carriage drive",
+      "parentId": "player"
+    },
+    {
+      "id": "pickup",
+      "name": "Sliding optical pickup",
+      "parentId": "player"
+    },
+    {
+      "id": "laser",
+      "name": "Laser and collimator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "objective",
+      "name": "Objective lens and actuator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "detector",
+      "name": "Photodetector",
+      "parentId": "pickup"
+    },
+    {
+      "id": "electronics",
+      "name": "Decoder board and connections",
+      "parentId": "player"
+    },
+    {
+      "id": "outputs",
+      "name": "Recovered stereo sound",
+      "parentId": "player"
+    },
+    {
+      "id": "left-output",
+      "name": "Left powered speaker",
+      "parentId": "outputs"
+    },
+    {
+      "id": "right-output",
+      "name": "Right powered speaker",
+      "parentId": "outputs"
+    },
+    {
+      "id": "optics",
+      "name": "Laser to photodetector",
+      "parentId": "system"
+    },
+    {
+      "id": "track",
+      "name": "Spot, marks and transitions",
+      "parentId": "system"
+    },
+    {
+      "id": "codec",
+      "name": "One channel frame and EFM",
+      "parentId": "system"
+    },
+    {
+      "id": "errors",
+      "name": "Repair or report missing data",
+      "parentId": "system"
+    },
+    {
+      "id": "waveform",
+      "name": "Recovered stereo waveform",
+      "parentId": "system"
+    },
+    {
+      "id": "layers",
+      "name": "Read through the transparent disc",
+      "parentId": "system"
+    },
+    {
+      "id": "phase",
+      "name": "A separate two-wave experiment",
+      "parentId": "system"
+    },
+    {
+      "id": "spin",
+      "name": "Constant track speed and outward spiral",
+      "parentId": "system"
+    }
+  ],
   "electronic-paper": [
     {
       "id": "case",
