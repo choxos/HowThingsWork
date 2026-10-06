@@ -30,14 +30,14 @@ import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
 import {createVibrationMotorModel} from './vibration-motor-model.js';
 import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
 import {createAccelerometerModel} from './accelerometer-model.js';
-import {photodiodeLesson} from './remote-lessons.js';
+import {photodiodeLesson} from './photodiode-lesson.js';
+import {createPhotodiodeModel} from './photodiode-model.js';
 import {lightEmittingDiodeLesson} from './led-lesson.js';
 import {createLedModel} from './led-model.js';
 import {diodeLesson} from './diode-lesson.js';
 import {createDiodeModel} from './diode-model.js';
 import {infraredSignalingLesson} from './infrared-signaling-lesson.js';
 import {createInfraredSignalingModel} from './infrared-signaling-model.js';
-import {createRemoteControlModel as createRemoteComponentDraft} from './remote-model.js';
 import {rgbAperturesLesson} from './rgb-subpixels-lesson.js';
 import {createRgbSubpixelsModel} from './rgb-subpixels-model.js';
 import {polarizingFilterLesson, liquidCrystalsLesson, polarizingSunglassesLesson, binocularPrismsLesson} from './polarizers-lessons.js';
@@ -155,7 +155,7 @@ export const houseComponents={
  'Infrared signaling':{machine:'Remote control',createModel:createInfraredSignalingModel,part:'system',view:'front',isolate:true,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
  'Diode':{machine:'Remote control',createModel:createDiodeModel,part:'circuit',view:'front',isolate:true,lesson:diodeLesson,intro:diodeLesson.simple},
  'Light-emitting diode':{machine:'Remote control',createModel:createLedModel,part:'circuit',view:'front',isolate:true,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
- 'Photodiode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'receiver',view:'front',isolate:false,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
+ 'Photodiode':{machine:'Remote control',createModel:createPhotodiodeModel,part:'bench',view:'front',isolate:true,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
  'Ionization smoke detector':{machine:'Smoke detector',part:'ions',values:{size:0.1},view:'front',isolate:false,lesson:ionizationDetectorLesson,intro:ionizationDetectorLesson.simple},
  'Optical smoke detector':{machine:'Smoke detector',part:'chamber',values:{size:3},view:'front',isolate:false,lesson:opticalDetectorLesson,intro:opticalDetectorLesson.simple},
  'Passive infrared movement detector':{machine:'Active burglar alarm',part:'lens',isolate:false,view:'front',values:{mode:1},lesson:passiveInfraredLesson,intro:passiveInfraredLesson.simple},

@@ -846,16 +846,10 @@ t.ok(!model.playback.complete() && !model.resultPart.available(), 'nothing to in
 }
 const released = checkDisposal((() => { const fresh = M.createRemoteControlModel(); fresh.advance(2); return fresh; })(), t);
 
-// Historical lesson fixtures remain here; only the unreviewed photodiode uses this model.
-const {houseComponents} = await import('./house-components.js');
+// Historical lesson fixtures remain here after all five studies gained their own models.
 const {studyLessons} = await import('./study-lessons.js');
 const {infraredRemoteLesson} = await import('./remote-control-lesson.js');
 t.ok(studyLessons['Remote control'] === infraredRemoteLesson, 'the reviewed whole remote lesson is registered');
-for (const [name, lesson, part] of [['Photodiode', L.photodiodeLesson, 'receiver']]) {
-  const component = houseComponents[name];
-  t.ok(component && component.machine === 'Remote control' && component.createModel === M.createRemoteControlModel && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} retains its draft factory and its own ${part} lesson`);
-  assert.equal(component.values, undefined);
-}
 model.dispose();
 
 console.log(`PASS remote control: ${t.count} checks, ${counts.bisections} bisections, ${counts.frames} frames rebuilt and decoded, ${counts.poses} poses, ${counts.carriers} carriers and pairs placed, ${counts.points} curve points, ${counts.numbers} quoted numbers traced, 5 lessons, ${released} resources released exactly once.`);

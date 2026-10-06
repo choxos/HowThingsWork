@@ -3377,6 +3377,188 @@
       "parentId": "circuit"
     }
   ],
+  "photodiode": [
+    {
+      "id": "source",
+      "name": "950 nm light source",
+      "parentId": "bench"
+    },
+    {
+      "id": "source-support",
+      "name": "Source support",
+      "parentId": "bench"
+    },
+    {
+      "id": "rail",
+      "name": "Distance rail",
+      "parentId": "bench"
+    },
+    {
+      "id": "detector",
+      "name": "BPW34-style photodiode",
+      "parentId": "bench"
+    },
+    {
+      "id": "cover",
+      "name": "Clear flat package",
+      "parentId": "detector"
+    },
+    {
+      "id": "cathode",
+      "name": "Cathode lead and support",
+      "parentId": "detector"
+    },
+    {
+      "id": "die",
+      "name": "Silicon sensing die",
+      "parentId": "detector"
+    },
+    {
+      "id": "anode",
+      "name": "Anode lead",
+      "parentId": "detector"
+    },
+    {
+      "id": "top-contact",
+      "name": "Front contact pad",
+      "parentId": "detector"
+    },
+    {
+      "id": "bond-wire",
+      "name": "Fine bond wire",
+      "parentId": "detector"
+    },
+    {
+      "id": "cathode-mark",
+      "name": "Cathode mark",
+      "parentId": "cover"
+    },
+    {
+      "id": "cradle",
+      "name": "Detector cradle",
+      "parentId": "bench"
+    },
+    {
+      "id": "sockets",
+      "name": "Anode and cathode sockets",
+      "parentId": "bench"
+    },
+    {
+      "id": "shutter",
+      "name": "Direct-beam shutter",
+      "parentId": "bench"
+    },
+    {
+      "id": "shutter-blade",
+      "name": "Sliding opaque blade",
+      "parentId": "shutter"
+    },
+    {
+      "id": "shutter-support",
+      "name": "Shutter guide",
+      "parentId": "shutter"
+    },
+    {
+      "id": "wiring",
+      "name": "Anode and cathode buses",
+      "parentId": "bench"
+    },
+    {
+      "id": "selector",
+      "name": "Two-pole measurement selector",
+      "parentId": "bench"
+    },
+    {
+      "id": "reverse-meter",
+      "name": "Reverse-bias current meter",
+      "parentId": "bench"
+    },
+    {
+      "id": "contact-0-0",
+      "name": "Reverse anode contacts",
+      "parentId": "selector"
+    },
+    {
+      "id": "blade-0-0",
+      "name": "Reverse anode switch blade",
+      "parentId": "selector"
+    },
+    {
+      "id": "contact-0-1",
+      "name": "Reverse cathode contacts",
+      "parentId": "selector"
+    },
+    {
+      "id": "blade-0-1",
+      "name": "Reverse cathode switch blade",
+      "parentId": "selector"
+    },
+    {
+      "id": "short-meter",
+      "name": "Zero-bias current meter",
+      "parentId": "bench"
+    },
+    {
+      "id": "contact-1-0",
+      "name": "Zero-bias anode contacts",
+      "parentId": "selector"
+    },
+    {
+      "id": "blade-1-0",
+      "name": "Zero-bias anode switch blade",
+      "parentId": "selector"
+    },
+    {
+      "id": "contact-1-1",
+      "name": "Zero-bias cathode contacts",
+      "parentId": "selector"
+    },
+    {
+      "id": "blade-1-1",
+      "name": "Zero-bias cathode switch blade",
+      "parentId": "selector"
+    },
+    {
+      "id": "voltmeter",
+      "name": "Open-circuit voltmeter",
+      "parentId": "bench"
+    },
+    {
+      "id": "contact-2-0",
+      "name": "Open-circuit anode contacts",
+      "parentId": "selector"
+    },
+    {
+      "id": "blade-2-0",
+      "name": "Open-circuit anode switch blade",
+      "parentId": "selector"
+    },
+    {
+      "id": "contact-2-1",
+      "name": "Open-circuit cathode contacts",
+      "parentId": "selector"
+    },
+    {
+      "id": "blade-2-1",
+      "name": "Open-circuit cathode switch blade",
+      "parentId": "selector"
+    },
+    {
+      "id": "junction",
+      "name": "From absorption to separated charge",
+      "parentId": "bench"
+    },
+    {
+      "id": "response",
+      "name": "Light and electrical response",
+      "parentId": "bench"
+    },
+    {
+      "id": "noise",
+      "name": "Signal, baseline and noise",
+      "parentId": "bench"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",
