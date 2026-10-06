@@ -1,7 +1,7 @@
 import {reedAlarmLesson} from './reed-alarm-lessons.js';
 import {fireExtinguisherLesson} from './extinguisher-lessons.js';
 import {lightningLesson} from './lightning-lesson.js';
-import {smokeDetectorLesson} from './smoke-lessons.js';
+import {reviewedSmokeDetectorLesson} from './smoke-detector-lesson.js';
 import {activeBurglarAlarmLesson} from './intruder-lessons.js';
 const steps=rows=>rows.map(([title,body])=>({title,body})),parts=rows=>rows.map(([name,role])=>({name,role}));
 const exp=(title,instruction,observe,values)=>({title,instruction,observe,values});
@@ -112,7 +112,7 @@ export const safetyLessons={
  sources:[{title:'Leviton: controlling a light from two locations',url:'https://leviton.com/support/resources/product-support/dimmers-and-switches/switches/what-is-a-3-way-switch'},{title:'OpenStax: resistance and simple circuits',url:'https://openstax.org/books/college-physics-2e/pages/20-2-ohms-law-resistance-and-simple-circuits'},{title:'OpenStax: electric power and charge',url:'https://openstax.org/books/college-physics-2e/pages/20-4-electric-power-and-energy'}],
  quiz:quiz('Both switches select Upper traveler and the lamp is lit. You change only the second switch. What happens?',['The route opens and the lamp goes out.','The lamp gets brighter because there are two travelers.','Nothing changes until both switches move.'],0,'The contacts now select different travelers. Changing either one breaks the previously complete route.')},
  'Magnetic burglar alarm':reedAlarmLesson,
- 'Smoke detector':smokeDetectorLesson,
+ 'Smoke detector':reviewedSmokeDetectorLesson,
  'Active burglar alarm':activeBurglarAlarmLesson,
  'Lightning conductor':lightningLesson,
  'Fire extinguisher':fireExtinguisherLesson,

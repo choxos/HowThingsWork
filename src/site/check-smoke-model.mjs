@@ -1,4 +1,4 @@
-// Checks the smoke detector model and its ionization and optical lessons
+// Characterizes the preserved ionization and optical smoke-detector drafts
 // against their sources typed in again and their physics worked out by other
 // routes: ASTAR’s ranges rebuilt by integrating the reciprocal stopping power,
 // an alpha’s energy loss integrated again with Runge-Kutta, the ion pairs a
@@ -17,7 +17,6 @@ import * as P from './smoke-physics.js';
 import * as M from './smoke-model.js';
 import * as L from './smoke-lessons.js';
 import {houseComponents} from './house-components.js';
-import {safetyLessons} from './safety-lessons.js';
 
 const t = tally();
 const counts = {rows: 0, alphas: 0, steps: 0, angles: 0, dots: 0, poses: 0, points: 0, numbers: 0};
@@ -797,7 +796,6 @@ for (const lesson of [L.smokeDetectorLesson, L.ionizationDetectorLesson, L.optic
   t.ok(lesson.tryIt.every(item => model.parts.some(part => part.id === item.part) && item.view === 'front' && item.reset === true && item.isolate === false), 'every trial on a part the model has');
   t.ok(lesson.parts.every(item => model.parts.some(part => part.name === item.name)), 'every part it names is drawn');
 }
-t.ok(safetyLessons['Smoke detector'] === L.smokeDetectorLesson, 'the smoke detector’s lesson');
 for (const [name, lesson, part, values] of [['Ionization smoke detector', L.ionizationDetectorLesson, 'ions', {size: 0.1}], ['Optical smoke detector', L.opticalDetectorLesson, 'chamber', {size: 3}]]) {
   const component = houseComponents[name];
   t.ok(component.machine === 'Smoke detector' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} routes to the smoke detector’s ${part} with its own lesson`);

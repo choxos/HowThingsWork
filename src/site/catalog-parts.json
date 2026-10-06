@@ -5636,6 +5636,118 @@
       "parentId": "system"
     }
   ],
+  "smoke-detector": [
+    {
+      "id": "cover",
+      "name": "Outer cover",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Battery and terminals",
+      "parentId": "system"
+    },
+    {
+      "id": "power-switch",
+      "name": "Battery contact",
+      "parentId": "system"
+    },
+    {
+      "id": "regulator",
+      "name": "3 V regulator",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Signal comparison and horn driver",
+      "parentId": "system"
+    },
+    {
+      "id": "horn",
+      "name": "Piezoelectric sounder",
+      "parentId": "system"
+    },
+    {
+      "id": "ions",
+      "name": "Ionization chambers",
+      "parentId": "system"
+    },
+    {
+      "id": "common-electrode",
+      "name": "Shared source electrode",
+      "parentId": "ions"
+    },
+    {
+      "id": "source-foil",
+      "name": "Sealed americium source",
+      "parentId": "ions"
+    },
+    {
+      "id": "divider",
+      "name": "Absorbing divider",
+      "parentId": "ions"
+    },
+    {
+      "id": "reference",
+      "name": "Smoke-free reference chamber",
+      "parentId": "ions"
+    },
+    {
+      "id": "reference-electrode",
+      "name": "Reference electrode: battery positive",
+      "parentId": "reference"
+    },
+    {
+      "id": "sensing",
+      "name": "Open sensing chamber",
+      "parentId": "ions"
+    },
+    {
+      "id": "sensing-electrode",
+      "name": "Sensing electrode: battery negative",
+      "parentId": "sensing"
+    },
+    {
+      "id": "chamber",
+      "name": "Optical smoke chamber",
+      "parentId": "system"
+    },
+    {
+      "id": "optical-shell",
+      "name": "Dark optical enclosure",
+      "parentId": "chamber"
+    },
+    {
+      "id": "emitter",
+      "name": "Infrared emitter and hood",
+      "parentId": "chamber"
+    },
+    {
+      "id": "receiver",
+      "name": "Photodiode and viewing tube",
+      "parentId": "chamber"
+    },
+    {
+      "id": "source",
+      "name": "Inside the sealed source",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit",
+      "name": "From signal to alarm request",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Observation record",
+      "parentId": "system"
+    },
+    {
+      "id": "beam-comparison",
+      "name": "Short and long optical paths",
+      "parentId": "system"
+    }
+  ],
   "games-controller": [
     {
       "id": "experiment",

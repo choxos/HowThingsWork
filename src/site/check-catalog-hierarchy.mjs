@@ -288,3 +288,13 @@ assert.equal(componentParentIds.photodiode, 'remote-control');
 assert.deepEqual(tags('photodiode'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'photodiode')).map(family => family.entry.id), ['remote-control'], 'A photodiode-only search retains its complete parent');
 for (const id of ['cover', 'die', 'bond-wire', 'junction', 'response', 'noise']) assert(hasCatalogPart('photodiode', id), `${id} remains bookmarkable in the photodiode study`);
+
+const smokeDetector = families.find(family => family.entry.id === 'smoke-detector');
+assert(smokeDetector && !componentParentIds['smoke-detector'], 'Smoke detector is one complete sensing and alarm system');
+assert.equal(smokeDetector.components.length, 0, 'Unreviewed child lessons stay outside the published alarm family');
+assert.deepEqual(tags('smoke-detector'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'smoke-detector')).map(family => family.entry.id), ['smoke-detector']);
+for (const id of ['cover', 'battery', 'source-foil', 'receiver', 'horn', 'source', 'circuit', 'chart', 'beam-comparison']) assert(hasCatalogPart('smoke-detector', id), `${id} remains bookmarkable in the alarm`);
+assert.equal(catalog.groups.find(group => group.id === smokeDetector.entry.group).room, 'Safety corner');
+assert.equal(catalog.groups.find(group => group.id === smokeDetector.entry.group).place, 'home');
+for (const id of ['ionization-smoke-detector', 'optical-smoke-detector']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);

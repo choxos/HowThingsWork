@@ -10,7 +10,7 @@ import {createFuseModel} from './fuse-model.js';
 import {createLightingModel} from './lighting-model.js';
 import {createFireExtinguisherModel} from './extinguisher-model.js';
 import {createLightningConductorModel} from './lightning-model.js';
-import {createSmokeDetectorModel} from './smoke-model.js';
+import {createReviewedSmokeDetectorModel} from './smoke-detector-model.js';
 import {createIntruderModel} from './intruder-model.js';
 const TAU=Math.PI*2;
 export function createSafetyModel(name){
@@ -23,7 +23,7 @@ export function createSafetyModel(name){
  if(name==='Two-way light switch')return createLightingModel();
  if(name==='Fire extinguisher')return createFireExtinguisherModel();
  if(name==='Lightning conductor')return createLightningConductorModel();
- if(name==='Smoke detector')return createSmokeDetectorModel();
+ if(name==='Smoke detector')return createReviewedSmokeDetectorModel();
  if(name==='Active burglar alarm')return createIntruderModel();
  if(name==='Magnetic burglar alarm')return createReedAlarmModel();
  if(!['Two-way light switch'].includes(name))return null;
