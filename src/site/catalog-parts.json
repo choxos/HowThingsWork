@@ -2799,6 +2799,83 @@
       "parentId": "system"
     }
   ],
+  "lightning-conductor": [
+    {
+      "id": "walls",
+      "name": "Walls and front cover",
+      "parentId": "house"
+    },
+    {
+      "id": "roof",
+      "name": "Roof and ridge",
+      "parentId": "house"
+    },
+    {
+      "id": "air-terminal",
+      "name": "Air terminal",
+      "parentId": "system"
+    },
+    {
+      "id": "left-route",
+      "name": "Left roof and down conductor",
+      "parentId": "system"
+    },
+    {
+      "id": "right-route",
+      "name": "Right roof and down conductor",
+      "parentId": "system"
+    },
+    {
+      "id": "right-connection",
+      "name": "Second-route connection",
+      "parentId": "right-route"
+    },
+    {
+      "id": "bonding-bar",
+      "name": "Common bonding bar",
+      "parentId": "system"
+    },
+    {
+      "id": "bonded-pipe",
+      "name": "Bottom-bonded metal pipe",
+      "parentId": "system"
+    },
+    {
+      "id": "earth-termination",
+      "name": "Earth termination and soil contact",
+      "parentId": "system"
+    },
+    {
+      "id": "soil",
+      "name": "Soil and spreading potential",
+      "parentId": "system"
+    },
+    {
+      "id": "step-probes",
+      "name": "One-meter ground probes",
+      "parentId": "system"
+    },
+    {
+      "id": "tip-detail",
+      "name": "Field at the terminal tip",
+      "parentId": "system"
+    },
+    {
+      "id": "gap-detail",
+      "name": "Voltage beside the bonded pipe",
+      "parentId": "system"
+    },
+    {
+      "id": "earth-detail",
+      "name": "Ground potential and probe spacing",
+      "parentId": "system"
+    },
+    {
+      "id": "pulse-detail",
+      "name": "Pulse and conductor voltage",
+      "parentId": "system"
+    }
+  ],
   "kinetic-quartz-watch": [
     {
       "id": "movement",

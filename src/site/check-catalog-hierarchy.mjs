@@ -237,6 +237,14 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 assert(hasCatalogPart('oled-display', 'rear-shell') && hasCatalogPart('oled-display', 'anodes') && hasCatalogPart('oled-display', 'circuit-detail') && hasCatalogPart('oled-display', 'carriers-detail') && hasCatalogPart('oled-display', 'energy-detail'), 'Physical OLED hardware and its explanatory inspections remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === oledDisplay.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === oledDisplay.entry.group).place, 'home');
+const lightningConductor = families.find(family => family.entry.id === 'lightning-conductor');
+assert(lightningConductor && !componentParentIds['lightning-conductor'], 'Lightning conductor is a whole external installation');
+assert.equal(lightningConductor.components.length, 0, 'Ordinary conductors, bonds and inspection diagrams remain inside their installation');
+assert.deepEqual(tags('lightning-conductor'), ['electricity', 'magnetism']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'lightning-conductor')).map(family => family.entry.id), ['lightning-conductor']);
+for (const id of ['air-terminal', 'walls', 'roof', 'bonding-bar', 'tip-detail', 'gap-detail', 'pulse-detail', 'earth-detail']) assert(hasCatalogPart('lightning-conductor', id), `${id} remains bookmarkable`);
+assert.equal(catalog.groups.find(group => group.id === lightningConductor.entry.group).room, 'Safety corner');
+assert.equal(catalog.groups.find(group => group.id === lightningConductor.entry.group).place, 'home');
 assert.deepEqual(tags('rgb-subpixels'), ['light-and-images', 'electricity', 'using-bits']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'rgb-subpixels')).map(family => family.entry.id), ['lcd-screen'], 'An RGB-only search retains the complete parent screen');
 assert(hasCatalogPart('rgb-subpixels', 'filter-mosaic') && hasCatalogPart('rgb-subpixels', 'color-detail'), 'Physical filters and additive-color inspection remain bookmarkable');
