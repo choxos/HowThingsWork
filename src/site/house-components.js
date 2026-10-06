@@ -30,7 +30,9 @@ import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
 import {createVibrationMotorModel} from './vibration-motor-model.js';
 import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
 import {createAccelerometerModel} from './accelerometer-model.js';
-import {infraredSignalingLesson, diodeLesson, lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
+import {diodeLesson, lightEmittingDiodeLesson, photodiodeLesson} from './remote-lessons.js';
+import {infraredSignalingLesson} from './infrared-signaling-lesson.js';
+import {createInfraredSignalingModel} from './infrared-signaling-model.js';
 import {createRemoteControlModel as createRemoteComponentDraft} from './remote-model.js';
 import {rgbAperturesLesson} from './rgb-subpixels-lesson.js';
 import {createRgbSubpixelsModel} from './rgb-subpixels-model.js';
@@ -146,7 +148,7 @@ export const houseComponents={
  'Ionizer':{machine:'Air cleaner',createModel:createIonizerModel,part:'fan',isolate:false,view:'front',lesson:ionizerLesson,intro:ionizerLesson.simple},
  'Quartz oscillator':{machine:'Quartz clock',createModel:createQuartzOscillatorModel,part:'circuit',isolate:false,view:'front',lesson:quartzOscillatorLesson,intro:quartzOscillatorLesson.simple},
  'Piezoelectricity':{machine:'Quartz clock',createModel:createPiezoelectricityModel,part:'apparatus',isolate:false,view:'iso',lesson:piezoelectricityLesson,intro:piezoelectricityLesson.simple},
- 'Infrared signaling':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'signal',view:'front',isolate:false,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
+ 'Infrared signaling':{machine:'Remote control',createModel:createInfraredSignalingModel,part:'system',view:'front',isolate:true,lesson:infraredSignalingLesson,intro:infraredSignalingLesson.simple},
  'Diode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'junction',view:'front',isolate:false,lesson:diodeLesson,intro:diodeLesson.simple},
  'Light-emitting diode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'led',view:'front',isolate:false,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
  'Photodiode':{machine:'Remote control',createModel:createRemoteComponentDraft,part:'receiver',view:'front',isolate:false,lesson:photodiodeLesson,intro:photodiodeLesson.simple},

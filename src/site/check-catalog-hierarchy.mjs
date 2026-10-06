@@ -247,7 +247,12 @@ assert.equal(catalog.groups.find(group => group.id === lightningConductor.entry.
 assert.equal(catalog.groups.find(group => group.id === lightningConductor.entry.group).place, 'home');
 const remoteControl = families.find(family => family.entry.id === 'remote-control');
 assert(remoteControl && !componentParentIds['remote-control'], 'Remote control is a whole handset-to-television system');
-assert.equal(remoteControl.components.length, 0, 'Unreviewed remote component lessons remain private drafts');
+assert.deepEqual(remoteControl.components.map(entry => entry.id), ['infrared-signaling'], 'Only the reviewed signaling study joins the remote');
+assert.equal(componentParentIds['infrared-signaling'], 'remote-control');
+assert.equal(catalogMachineComponents(remoteControl.components).length, 0, 'Signaling is an ordinary principle study inside the remote');
+assert.deepEqual(tags('infrared-signaling'), ['sending-bits', 'light-and-images', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'infrared-signaling')).map(family => family.entry.id), ['remote-control'], 'A signaling-only search retains its complete parent');
+for (const id of ['emitter', 'receiver-module', 'signal', 'bit', 'photo']) assert(hasCatalogPart('infrared-signaling', id), `${id} remains bookmarkable in the signaling study`);
 assert.deepEqual(tags('remote-control'), ['electricity', 'light-and-images', 'using-bits']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'remote-control')).map(family => family.entry.id), ['remote-control']);
 for (const id of ['cover', 'cells', 'emitter', 'receiver-module', 'screen', 'signal', 'led', 'photo', 'junction']) assert(hasCatalogPart('remote-control', id), `${id} remains bookmarkable`);

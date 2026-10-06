@@ -3071,6 +3071,118 @@
       "parentId": "system"
     }
   ],
+  "infrared-signaling": [
+    {
+      "id": "shell",
+      "name": "Handset shell",
+      "parentId": "handset"
+    },
+    {
+      "id": "board",
+      "name": "Circuit board and rails",
+      "parentId": "handset"
+    },
+    {
+      "id": "cover",
+      "name": "Keypad cover",
+      "parentId": "handset"
+    },
+    {
+      "id": "keys",
+      "name": "Keys and contacts",
+      "parentId": "handset"
+    },
+    {
+      "id": "cells",
+      "name": "Two series cells",
+      "parentId": "handset"
+    },
+    {
+      "id": "encoder",
+      "name": "Encoder chip",
+      "parentId": "handset"
+    },
+    {
+      "id": "transistor",
+      "name": "Emitter switching transistor",
+      "parentId": "handset"
+    },
+    {
+      "id": "emitter-resistor",
+      "name": "Emitter resistor",
+      "parentId": "handset"
+    },
+    {
+      "id": "indicator-resistor",
+      "name": "Indicator resistor",
+      "parentId": "handset"
+    },
+    {
+      "id": "emitter",
+      "name": "Infrared LED",
+      "parentId": "handset"
+    },
+    {
+      "id": "indicator",
+      "name": "Visible indicator LED",
+      "parentId": "handset"
+    },
+    {
+      "id": "capacitor",
+      "name": "Supply capacitor",
+      "parentId": "handset"
+    },
+    {
+      "id": "tv-chassis",
+      "name": "TV chassis and cover",
+      "parentId": "television"
+    },
+    {
+      "id": "tv-board",
+      "name": "Receiver board and connections",
+      "parentId": "television"
+    },
+    {
+      "id": "screen",
+      "name": "Television screen",
+      "parentId": "television"
+    },
+    {
+      "id": "receiver-module",
+      "name": "Infrared receiver module",
+      "parentId": "television"
+    },
+    {
+      "id": "decoder",
+      "name": "TV decoder",
+      "parentId": "television"
+    },
+    {
+      "id": "tv-supply",
+      "name": "TV power connection",
+      "parentId": "television"
+    },
+    {
+      "id": "blocker",
+      "name": "Hand in the light path",
+      "parentId": "system"
+    },
+    {
+      "id": "signal",
+      "name": "Code and carrier",
+      "parentId": "system"
+    },
+    {
+      "id": "photo",
+      "name": "Detecting the infrared",
+      "parentId": "system"
+    },
+    {
+      "id": "bit",
+      "name": "One bit and its next mark",
+      "parentId": "system"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",
