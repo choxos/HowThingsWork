@@ -846,12 +846,12 @@ t.ok(!model.playback.complete() && !model.resultPart.available(), 'nothing to in
 }
 const released = checkDisposal((() => { const fresh = M.createRemoteControlModel(); fresh.advance(2); return fresh; })(), t);
 
-// Historical lesson fixtures remain here; only three unreviewed children use this model.
+// Historical lesson fixtures remain here; only two unreviewed children use this model.
 const {houseComponents} = await import('./house-components.js');
 const {studyLessons} = await import('./study-lessons.js');
 const {infraredRemoteLesson} = await import('./remote-control-lesson.js');
 t.ok(studyLessons['Remote control'] === infraredRemoteLesson, 'the reviewed whole remote lesson is registered');
-for (const [name, lesson, part] of [['Diode', L.diodeLesson, 'junction'], ['Light-emitting diode', L.lightEmittingDiodeLesson, 'led'], ['Photodiode', L.photodiodeLesson, 'receiver']]) {
+for (const [name, lesson, part] of [['Light-emitting diode', L.lightEmittingDiodeLesson, 'led'], ['Photodiode', L.photodiodeLesson, 'receiver']]) {
   const component = houseComponents[name];
   t.ok(component && component.machine === 'Remote control' && component.createModel === M.createRemoteControlModel && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front' && component.isolate === false, `${name} retains its draft factory and its own ${part} lesson`);
   assert.equal(component.values, undefined);

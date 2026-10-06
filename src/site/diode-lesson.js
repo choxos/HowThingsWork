@@ -1,0 +1,76 @@
+import {DIODE_DEFAULTS as D,LOAD,supplyForDiode,TEN_MILLIAMP_VOLTAGE} from './diode-physics.js';
+
+const trial=(title,instruction,observe,values={},part='circuit',temperature=LOAD.ambient)=>{
+  const settings={...D,...values};
+  return {title,instruction,observe,values:settings,initialState:{settings:{...settings},time:0,temperature},reset:true,part,isolate:true,view:'front'};
+};
+
+export const diodeLesson={
+  simple:'Why does reversing a diode change the current so much?',
+  overview:'A diode has two terminals, called anode and cathode. Make the anode more positive and current can pass easily; reverse the bias and only a tiny leakage current remains. Try it in this test circuit: forward current warms a resistive load, while reverse bias leaves it nearly unpowered. Look inside the junction to see how electrons, holes and a built-in electric field create this difference. The same junction idea underlies the light-emitting and light-sensing diodes in a remote control.',
+  steps:[
+    {title:'Complete a circuit',body:'The source, switch, diode, load and current meter form one closed path. The load resistance limits the current. Opening the switch breaks that path.'},
+    {title:'Find the two sides',body:'The anode connects to the p-type region, where holes are the majority mobile carriers. The cathode connects to the n-type region, where electrons are the majority. The package band marks the cathode.'},
+    {title:'A field exists before you connect power',body:'Near the junction, diffusion leaves ionized dopants that are fixed in the crystal. Their electric field opposes further diffusion. At zero applied bias, opposing carrier flows balance: zero net current does not mean nothing moves.'},
+    {title:'Lower the barrier',body:'Forward bias lowers the junction barrier and increases carrier injection. Electrons move from n toward p, and holes from p toward n. Both contribute to conventional current from anode to cathode.'},
+    {title:'Reverse the bias',body:'Reverse bias widens the depleted region and strongly suppresses majority-carrier injection. Thermally available minority carriers and other leakage mechanisms still permit a small reverse current. The meter changes range so you can read it.'},
+    {title:'See where the power goes',body:'The load receives I²R electrical power. Play follows twelve seconds of heating or cooling; the thermometer shows the result. A control change starts a new run at the load’s current temperature. Each experiment and Reset prepare their own starting temperature.'},
+  ],
+  parts:[
+    ['source','Adjustable source','Change its signed voltage to reverse the source connections electrically.'],
+    ['upper-terminal','Upper terminal','Positive for a positive source setting; negative for a negative setting.'],
+    ['return-terminal','Return terminal','The other end of the source closes the loop.'],
+    ['switch','Switch contacts','Opening the circuit stops current without instantly removing stored heat.'],
+    ['switch-blade','Moving blade','The blade visibly meets both contacts when closed.'],
+    ['diode','Signal diode','The test component passes much more current in forward bias.'],
+    ['diode-case','Glass and band','The band identifies the cathode; Look inside reveals the enlarged die.'],
+    ['anode-lead','Anode lead','The terminal connected to the p-type side.'],
+    ['cathode-lead','Cathode lead','The terminal connected to the n-type side.'],
+    ['die','Silicon die','Doping creates two regions within a semiconductor crystal.'],
+    ['sockets','Diode sockets','Turn the diode around while keeping both leads connected.'],
+    ['load','Resistive load','Its resistance sets the circuit current together with the diode curve.'],
+    ['thermometer','Load thermometer','Its column follows calculated load temperature.'],
+    ['meter','Current meter','Read the number and the range; a nanoampere is one millionth of a milliampere.'],
+    ['wiring','Outgoing and return leads','Gold markers indicate conventional loop current, opposite electron motion in a metal.'],
+    ['board','Mounting board','Supports the parts of this experiment.'],
+    ['junction','Junction close-up','Separate fixed ions from mobile carriers and compare forward, reverse and zero bias.'],
+    ['curve','Current-voltage curve','Locate the actual operating point, with separate reverse and forward voltage scales.'],
+  ].map(([id,name,role])=>({id,name,role})),
+  tryIt:[
+    trial('Power the load','Press Play with a 6 V source.','About 23.75 mA flows. The assigned load warms from 25 °C to about 32.1 °C in twelve seconds.'),
+    trial('Reverse the source','Press Play with the source set to −6 V.','The diode is reverse biased. About 5.38 nA flows backward, leaving the load at essentially 25 °C.',{voltage:-6}),
+    trial('Turn the diode around','Keep the source positive and reverse the diode.','The cathode band moves to the opposite socket. The reversed diode again leaves only leakage.',{orientation:-1}),
+    trial('Reverse both','Press Play with both source and diode reversed.','The anode is positive relative to the cathode again. The load warms just as before, while loop current runs the other way.',{voltage:-6,orientation:-1}),
+    trial('Near 0.70 V','Inspect the junction, then press Play.','The prepared source puts about 0.7000 V across the diode, giving about 6.45 mA.',{voltage:supplyForDiode(.7)},'junction'),
+    trial('A small increase','Compare this with the 0.70 V experiment.','About 0.7201 V across the diode gives about 9.36 mA. A small voltage change produces a much larger current change.',{voltage:supplyForDiode(.72)},'curve'),
+    trial('Near 0.80 V','Press Play and inspect the operating point.','About 0.8000 V gives 34.41 mA, over five times the current near 0.70 V. The series load absorbs most of the source voltage.',{voltage:supplyForDiode(.8)},'curve'),
+    trial('Twenty volts reversed','Inspect the junction and current range.','Almost 20 V appears across the reverse-biased diode. About 7.78 nA leaks backward; the load receives negligible power.',{voltage:-20},'junction'),
+    trial('Zero applied voltage','Press Play in the junction view.','Net current is zero. The built-in field remains, and the schematic shows balancing carrier motion.',{voltage:0},'junction'),
+    trial('Below a fixed drop','Inspect the curve near 0.60 V.','The diode already passes about 0.907 mA. A fixed 0.7 V on/off shortcut misses this smooth rise.',{voltage:supplyForDiode(.6)},'curve'),
+    trial('Ten times the load resistance','Compare with the first experiment.','At the same 6 V source, 2200 Ω permits much less current and the load warms less.',{resistance:2200}),
+    trial('Open the path','Press Play with the switch open.','The blade misses the second contact. No current flows, despite the 6 V source setting.',{closed:0}),
+    trial('Let a warm load cool','This experiment starts the load at 100 °C with the switch open.','With no electrical heating, the assigned thermal model cools the load to about 46.5 °C after twelve seconds.',{closed:0},'circuit',100),
+    trial('More forward power','Press Play at 20 V.','About 86.91 mA flows. The load receives about 1.66 W and reaches about 119.9 °C in this assigned thermal model.',{voltage:20}),
+    trial('Five volts reversed','Compare with twenty volts reversed.','About 5.21 nA leaks backward. Reverse current stays small here; it is not exactly constant because the curve includes a fitted leakage term.',{voltage:-5},'curve'),
+    trial('Near the 10 mA test current','Inspect the curve and its red limit marker.','The model reaches roughly 10 mA near 0.724 V. The data sheet specifies an upper limit of 1 V at 10 mA, not a required 1 V drop.',{voltage:supplyForDiode(TEN_MILLIAMP_VOLTAGE)},'curve'),
+  ],
+  deeper:[
+    {title:'Two voltages, one circuit',body:'The supply setting is not the diode voltage. In this series circuit, Vs = I R + Vd when the diode points forward around the loop. Reversing the diode changes the sign of Vd in that loop equation. The meter and readings distinguish loop current from current measured anode to cathode.'},
+    {title:'A smooth exponential curve',body:'The idealized junction law is Ij = Is[exp(Vj/(nVT)) − 1], where VT = kT/q. At 25 °C, VT is about 25.69 mV. This fixed-temperature curve uses Is = 4.352 nA and n = 1.906 from the published 1N4148 model. Its ideal exponential region gains a factor of ten per roughly 113 mV; it is not a switch at exactly 0.7 V.'},
+    {title:'Internal resistance and a fitted leakage term',body:'The published model places 0.6458 Ω in series with the ideal junction, so Vd = Vj + Ij Rs. A 5.827 GΩ modeling resistor lies across that entire branch; total current is Ij + Vd/R1. R1 is a fitting device, not a resistor physically mounted beside the diode. At −20 V it contributes about 3.43 nA to the total 7.78 nA.'},
+    {title:'A limit is not a typical curve',body:'At 25 °C the 1N4148 data sheet specifies at most 1 V at 10 mA and at most 25 nA at 20 V reverse bias. Red crosses mark those limits. The adjacent 1N4448 has a different 5 mA voltage specification; it must not be presented as a guaranteed 1N4148 range. A typical model curve does not certify every manufactured diode.'},
+    {title:'What the junction drawing can show',body:'An abrupt-junction depletion approximation gives width proportional to the square root of built-in potential minus applied junction voltage. It explains reverse-bias widening under its assumptions. Strong forward injection weakens that approximation. This drawing uses a qualitative width cue, not measured 1N4148 dimensions or a capacitance prediction. The SPICE parameter VJ is part of a fitted capacitance law, not proof of the real doping profile.'},
+    {title:'Why zero current still includes motion',body:'At equilibrium, thermal motion and concentration gradients favor diffusion while the junction field produces opposing drift. Their current contributions balance. Forward bias changes injection across the junction; reverse leakage includes thermally available minority carriers and other device-dependent effects. It should not all be identified with pair generation inside the depleted region.'},
+    {title:'The load keeps its heat',body:'The assigned load follows C dT/dt = I²R − (T − Ta)/Rθ, with C = 0.12 J/K, Rθ = 80 K/W and Ta = 25 °C. The thermal time constant is 9.6 s. Temperature changes continuously when the switch opens. The load remains electrically ohmic, and the diode is held at 25 °C; temperature feedback is excluded.'},
+    {title:'Beyond this experiment',body:'Heating strongly changes a real diode’s leakage: the sheet allows 50 μA at 20 V and 150 °C. Large reverse voltage can also cause breakdown. Neither temperature-dependent semiconductor behavior nor breakdown is simulated here. Switching storage and recovery happen on much shorter time scales than this heating experiment.'},
+  ],
+  misconception:'A diode has neither a perfect 0.7 V on/off threshold nor exactly zero reverse current. Its current depends on bias, the surrounding circuit, temperature and the particular device.',
+  limits:'This is an assigned bench experiment linked to the general diode principle, not a reconstruction of a remote circuit. The static 25 °C current curve uses selected Nexperia parameters; full SPICE dynamics, temperature scaling, breakdown and device spread are excluded. The ideal source, switch and meter add no impedance. Load resistance is fixed during heating; its thermal constants are assigned. Geometry, depletion width, carrier counts and motion are schematic. Meter range changes are labeled. Curve axes show current magnitude, with separate voltage scales; zero current lies below the log axis.',
+  sources:[
+    {label:'Nexperia: 1N4148 and 1N4448 data sheet',url:'https://assets.nexperia.com/documents/data-sheet/1N4148_1N4448.pdf'},
+    {label:'Nexperia: 1N4148 SPICE parameters',url:'https://assets.nexperia.com/documents/spice-model/1N4148.txt'},
+    {label:'MIT: p–n junction electrostatics',url:'https://ocw.mit.edu/courses/6-012-microelectronic-devices-and-circuits-fall-2009/resources/mit6_012f09_lec04/'},
+    {label:'MIT: p–n junction current and voltage',url:'https://ocw.mit.edu/courses/6-012-microelectronic-devices-and-circuits-fall-2009/resources/mit6_012f09_lec06/'},
+  ],
+  quiz:{question:'What happens when both the source and the diode are reversed?',options:['The diode is forward biased again, and the load receives power.','The diode must block all current.','The load cools instantly.'],answer:0,explanation:'Bias depends on which diode terminal is more positive. Reversing both restores forward bias, while reversing conventional current around the loop.'},
+};

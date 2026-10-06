@@ -3183,6 +3183,93 @@
       "parentId": "system"
     }
   ],
+  "diode": [
+    {
+      "id": "source",
+      "name": "Adjustable source",
+      "parentId": "circuit"
+    },
+    {
+      "id": "upper-terminal",
+      "name": "Upper source terminal",
+      "parentId": "circuit"
+    },
+    {
+      "id": "return-terminal",
+      "name": "Return source terminal",
+      "parentId": "circuit"
+    },
+    {
+      "id": "switch",
+      "name": "Switch contacts",
+      "parentId": "circuit"
+    },
+    {
+      "id": "switch-blade",
+      "name": "Switch blade",
+      "parentId": "circuit"
+    },
+    {
+      "id": "diode",
+      "name": "Signal diode",
+      "parentId": "circuit"
+    },
+    {
+      "id": "diode-case",
+      "name": "Glass package and cathode band",
+      "parentId": "diode"
+    },
+    {
+      "id": "anode-lead",
+      "name": "Anode lead",
+      "parentId": "diode"
+    },
+    {
+      "id": "cathode-lead",
+      "name": "Cathode lead",
+      "parentId": "diode"
+    },
+    {
+      "id": "die",
+      "name": "Silicon die",
+      "parentId": "diode"
+    },
+    {
+      "id": "sockets",
+      "name": "Diode sockets",
+      "parentId": "circuit"
+    },
+    {
+      "id": "load",
+      "name": "Resistive load",
+      "parentId": "circuit"
+    },
+    {
+      "id": "thermometer",
+      "name": "Load thermometer",
+      "parentId": "load"
+    },
+    {
+      "id": "meter",
+      "name": "Current meter",
+      "parentId": "circuit"
+    },
+    {
+      "id": "wiring",
+      "name": "Complete conducting path",
+      "parentId": "circuit"
+    },
+    {
+      "id": "junction",
+      "name": "Inside the p–n junction",
+      "parentId": "circuit"
+    },
+    {
+      "id": "curve",
+      "name": "Current against diode voltage",
+      "parentId": "circuit"
+    }
+  ],
   "electromagnet": [
     {
       "id": "gantry",
