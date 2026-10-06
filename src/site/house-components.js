@@ -1,5 +1,7 @@
 import {Box3,Vector3} from 'three';
 import {createSmokeDetectorModel} from './smoke-model.js';
+import {createIonizationSmokeModel} from './ionization-smoke-model.js';
+import {reviewedIonizationSmokeLesson} from './ionization-smoke-lesson.js';
 import {createCapillaryModel} from './capillary-model.js';
 import {createBluRayModel} from './blu-ray-model.js';
 import {createSiphonModel} from './siphon-model.js';
@@ -85,7 +87,7 @@ import {microchipDecelerationSensorLesson} from './microchip-deceleration-sensor
 import {crashSensorProofSquareAndSensingStripsLesson} from './crash-sensor-proof-square-and-sensing-strips-lesson.js';
 import {scaleCalibratingPlateLesson} from './scale-calibrating-plate-lesson.js';
 import {createBathroomScaleModel} from './bathroom-scale-model.js';
-import {ionizationDetectorLesson, opticalDetectorLesson} from './smoke-lessons.js';
+import {opticalDetectorLesson} from './smoke-lessons.js';
 import {passiveInfraredLesson} from './intruder-lessons.js';
 export const houseComponents={
  'Crash-sensor proof square and sensing strips':{machine:'Crash sensor',createModel:()=>createCrashSensorModel({mechanicsLesson:true}),part:'chip',view:'iso',isolate:true,lesson:crashSensorProofSquareAndSensingStripsLesson,intro:crashSensorProofSquareAndSensingStripsLesson.simple},
@@ -157,7 +159,7 @@ export const houseComponents={
  'Diode':{machine:'Remote control',createModel:createDiodeModel,part:'circuit',view:'front',isolate:true,lesson:diodeLesson,intro:diodeLesson.simple},
  'Light-emitting diode':{machine:'Remote control',createModel:createLedModel,part:'circuit',view:'front',isolate:true,lesson:lightEmittingDiodeLesson,intro:lightEmittingDiodeLesson.simple},
  'Photodiode':{machine:'Remote control',createModel:createPhotodiodeModel,part:'bench',view:'front',isolate:true,lesson:photodiodeLesson,intro:photodiodeLesson.simple},
- 'Ionization smoke detector':{machine:'Smoke detector',createModel:createSmokeDetectorModel,part:'ions',values:{size:0.1},view:'front',isolate:false,lesson:ionizationDetectorLesson,intro:ionizationDetectorLesson.simple},
+ 'Ionization smoke detector':{machine:'Smoke detector',createModel:createIonizationSmokeModel,part:'system',view:'front',isolate:true,lesson:reviewedIonizationSmokeLesson,intro:reviewedIonizationSmokeLesson.simple},
  'Optical smoke detector':{machine:'Smoke detector',createModel:createSmokeDetectorModel,part:'chamber',values:{size:3},view:'front',isolate:false,lesson:opticalDetectorLesson,intro:opticalDetectorLesson.simple},
  'Passive infrared movement detector':{machine:'Active burglar alarm',part:'lens',isolate:false,view:'front',values:{mode:1},lesson:passiveInfraredLesson,intro:passiveInfraredLesson.simple},
  'Joystick':{machine:'Games controller',createModel:createJoystickModel,part:'rig',isolate:true,view:'front',lesson:joystickLesson,intro:joystickLesson.simple},

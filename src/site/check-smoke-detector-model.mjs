@@ -71,7 +71,8 @@ m.reset();m.playback.advance(1);m.update({pace:.25});t.near(m.getState().time,20
 for(const invalid of [-1,NaN,Infinity]){const state=m.getState();m.advance(invalid);assert.deepEqual(m.getState(),state);t.add();}
 for(const part of m.parts)t.ok(!new THREE.Box3().setFromObject(part.object).isEmpty(),part.id+' has inspectable geometry');
 assert.equal(safetyLessons['Smoke detector'],lesson);const routed=createSafetyModel('Smoke detector');assert.deepEqual(routed.controls.map(c=>c.key),Object.keys(D));routed.dispose();
-for(const name of ['Ionization smoke detector','Optical smoke detector'])assert.equal(houseComponents[name].createModel,createSmokeDetectorModel,'Child draft remains explicitly independent of new whole lesson');t.add(4);
+assert.notEqual(houseComponents['Ionization smoke detector'].createModel,createReviewedSmokeDetectorModel,'Reviewed ionization child has its own model');
+assert.equal(houseComponents['Optical smoke detector'].createModel,createSmokeDetectorModel,'Unreviewed optical child retains its preserved draft');t.add(4);
 const parts=m.parts.map(p=>p.id),resources=checkDisposal(m,t),report={passed:true,checks:t.count,parts,resources,outcomes};
 if(process.env.EVIDENCE_DIR){await mkdir(process.env.EVIDENCE_DIR,{recursive:true});await writeFile(process.env.EVIDENCE_DIR+'/model.json',JSON.stringify(report,null,2));}
 console.log(`PASS smoke detector model: ${t.count} checks; ${outcomes.length} trials; ${parts.length} parts; ${resources} resources`);

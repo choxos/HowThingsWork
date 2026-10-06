@@ -3,6 +3,7 @@ import catalogParts from './catalog-parts.json' with {type: 'json'};
 // A catalog group can contain several whole machines. These entries identify
 // components, close-up studies or alternate names for a published machine.
 export const componentParentIds = {
+  'ionization-smoke-detector': 'smoke-detector',
   'photodiode': 'remote-control',
   'light-emitting-diode': 'remote-control',
   'diode': 'remote-control',
@@ -93,6 +94,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 }
 
 const nestedMachineIds = new Set([
+  "ionization-smoke-detector",
   "vibration-motor",
   "accelerometer",
   "joystick",

@@ -291,10 +291,15 @@ for (const id of ['cover', 'die', 'bond-wire', 'junction', 'response', 'noise'])
 
 const smokeDetector = families.find(family => family.entry.id === 'smoke-detector');
 assert(smokeDetector && !componentParentIds['smoke-detector'], 'Smoke detector is one complete sensing and alarm system');
-assert.equal(smokeDetector.components.length, 0, 'Unreviewed child lessons stay outside the published alarm family');
+assert.deepEqual(smokeDetector.components.map(entry => entry.id), ['ionization-smoke-detector'], 'Only reviewed child lessons join the published alarm family');
 assert.deepEqual(tags('smoke-detector'), ['sensors-and-detectors', 'light-and-images', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'smoke-detector')).map(family => family.entry.id), ['smoke-detector']);
 for (const id of ['cover', 'battery', 'source-foil', 'receiver', 'horn', 'source', 'circuit', 'chart', 'beam-comparison']) assert(hasCatalogPart('smoke-detector', id), `${id} remains bookmarkable in the alarm`);
 assert.equal(catalog.groups.find(group => group.id === smokeDetector.entry.group).room, 'Safety corner');
 assert.equal(catalog.groups.find(group => group.id === smokeDetector.entry.group).place, 'home');
-for (const id of ['ionization-smoke-detector', 'optical-smoke-detector']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+assert(!entries.some(entry => entry.id === 'optical-smoke-detector'), 'Optical smoke detector remains an unpublished draft');
+assert.equal(componentParentIds['ionization-smoke-detector'], 'smoke-detector');
+assert.deepEqual(catalogMachineComponents(smokeDetector.components).map(entry => entry.id), ['ionization-smoke-detector'], 'The complete ionization subsystem stays nested under its alarm');
+assert.deepEqual(tags('ionization-smoke-detector'), ['sensors-and-detectors', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'ionization-smoke-detector')).map(family => family.entry.id), ['smoke-detector'], 'An ionization-only search retains its parent alarm');
+for (const id of ['foil', 'reference-shell', 'source', 'balance', 'circuit', 'chart']) assert(hasCatalogPart('ionization-smoke-detector', id), `${id} remains bookmarkable in the ionization study`);

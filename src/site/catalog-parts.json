@@ -5748,6 +5748,103 @@
       "parentId": "system"
     }
   ],
+  "ionization-smoke-detector": [
+    {
+      "id": "battery",
+      "name": "Battery and terminals",
+      "parentId": "system"
+    },
+    {
+      "id": "contact",
+      "name": "Battery contact",
+      "parentId": "system"
+    },
+    {
+      "id": "comparator",
+      "name": "Comparator and horn driver",
+      "parentId": "system"
+    },
+    {
+      "id": "guard",
+      "name": "Guard around detect input",
+      "parentId": "system"
+    },
+    {
+      "id": "horn",
+      "name": "Piezoelectric sounder",
+      "parentId": "system"
+    },
+    {
+      "id": "ions",
+      "name": "Two ionization chambers",
+      "parentId": "system"
+    },
+    {
+      "id": "common",
+      "name": "Shared electrode and detect node",
+      "parentId": "ions"
+    },
+    {
+      "id": "foil",
+      "name": "Sealed source foil",
+      "parentId": "ions"
+    },
+    {
+      "id": "divider",
+      "name": "Smoke barrier and alpha stop",
+      "parentId": "ions"
+    },
+    {
+      "id": "reference",
+      "name": "Smoke-free reference gas",
+      "parentId": "ions"
+    },
+    {
+      "id": "reference-electrode",
+      "name": "Reference electrode: positive supply",
+      "parentId": "reference"
+    },
+    {
+      "id": "reference-shell",
+      "name": "Reference shell",
+      "parentId": "reference"
+    },
+    {
+      "id": "sensing",
+      "name": "Smoke-sensing gas",
+      "parentId": "ions"
+    },
+    {
+      "id": "sensing-electrode",
+      "name": "Sensing electrode: return",
+      "parentId": "sensing"
+    },
+    {
+      "id": "sensing-shell",
+      "name": "Sensing inlet screen",
+      "parentId": "sensing"
+    },
+    {
+      "id": "balance",
+      "name": "Where the mobile ions go",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit",
+      "name": "Two series currents, one moving voltage",
+      "parentId": "system"
+    },
+    {
+      "id": "source",
+      "name": "One alpha and its ion pairs",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Observation record",
+      "parentId": "system"
+    }
+  ],
   "games-controller": [
     {
       "id": "experiment",
