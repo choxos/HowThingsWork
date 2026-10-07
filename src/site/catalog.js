@@ -170,7 +170,7 @@ async function renderPlan() {
   const routeEntry=route.startsWith('machine/')?entriesById.get(route.slice(8)):null;
   if(route==='place/home'||route.startsWith('room/')||routeEntry){
     planApp.setAttribute('aria-busy','true');
-    if(!planApp.childElementCount)planApp.innerHTML='<p role="status">Loading this page…</p>';
+    if(!planApp.childElementCount||planApp.querySelector('.daily-layout'))planApp.innerHTML='<p role="status">Loading this page…</p>';
     try{
       const module=await (['cd','dvd','cd-rom','cd-r','dvd-r'].includes(routeEntry?.id)?import('./optical-disc-route.js'):import('./house-route.js'));
       if(generation!==houseGeneration)return;
