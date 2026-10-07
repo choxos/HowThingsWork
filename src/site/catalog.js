@@ -168,7 +168,7 @@ async function renderPlan() {
   }
   const routeEntry=route.startsWith('machine/')?entriesById.get(route.slice(8)):null;
   if(route==='place/home'||route.startsWith('room/')||routeEntry){
-    const {mountHouse}=await import('./house.js');
+    const {mountHouse}=await (['cd','dvd','cd-rom','cd-r','dvd-r'].includes(routeEntry?.id)?import('./optical-disc-route.js'):import('./house.js'));
     if(generation!==houseGeneration)return;
     housePage=mountHouse(planApp,route,neighborhoodCatalog,{part:requestedPart});
     if(housePage){document.querySelector('#map-link').setAttribute('aria-current','page');document.querySelector('#list-link').setAttribute('aria-current','false');return;}

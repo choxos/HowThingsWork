@@ -1,3 +1,4 @@
+import {opticalDiscEntries} from './optical-disc-entries.js';
 import {Box3,Vector3} from 'three';
 import {createOpticalSmokeModel} from './optical-smoke-model.js';
 import {createIonizationSmokeModel} from './ionization-smoke-model.js';
@@ -27,16 +28,6 @@ import {headTrackingLesson} from './head-tracking-lesson.js';
 import {createHeadTrackingModel} from './head-tracking-model.js';
 import {capillaryActionLesson} from './pens-lessons.js';
 import {opticalReadoutLesson} from './optical-lessons.js';
-import {cdRomLesson} from './cdrom-lesson.js';
-import {createCdromModel} from './cdrom-model.js';
-import {cdrLesson} from './cdr-lesson.js';
-import {createCdrModel} from './cdr-model.js';
-import {dvdrLesson} from './dvdr-lesson.js';
-import {createDvdrModel} from './dvdr-model.js';
-import {dvdLesson} from './dvd-lesson.js';
-import {createDvdModel} from './dvd-model.js';
-import {reviewedCdLesson as cdLesson} from './cd-lesson.js';
-import {createCdModel} from './cd-model.js';
 import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
 import {createElectronicPaperModel} from './epaper-model.js';
 import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
@@ -151,11 +142,7 @@ export const houseComponents={
  'Rotating spray arm':{machine:'Dishwasher',createModel:()=>createDishwasherModel({sprayArmLesson:true}),part:'system',isolate:false,view:'front',lesson:rotatingSprayArmLesson,intro:rotatingSprayArmLesson.simple},
  'Capillary action':{machine:'Capillary action',createModel:createCapillaryModel,part:'capillary',isolate:false,view:'front',lesson:capillaryActionLesson,intro:capillaryActionLesson.simple},
  'Refrigerant compressor':{machine:'Refrigerator',createModel:createRefrigerantCompressorModel,part:'system',isolate:false,view:'front',lesson:refrigerantCompressorLesson,intro:refrigerantCompressorLesson.simple},
- 'CD':{machine:'Blu-ray player',createModel:createCdModel,part:'player',isolate:true,view:'front',lesson:cdLesson,intro:cdLesson.simple},
- 'DVD':{machine:'Blu-ray player',createModel:createDvdModel,part:'player',isolate:true,view:'front',lesson:dvdLesson,intro:dvdLesson.simple},
- 'CD-ROM':{machine:'Blu-ray player',createModel:createCdromModel,part:'player',isolate:true,view:'front',lesson:cdRomLesson,intro:cdRomLesson.simple},
- 'CD-R':{machine:'Blu-ray player',createModel:createCdrModel,part:'player',isolate:true,view:'front',lesson:cdrLesson,intro:cdrLesson.simple},
- 'DVD-R':{machine:'Blu-ray player',createModel:createDvdrModel,part:'player',isolate:true,view:'front',lesson:dvdrLesson,intro:dvdrLesson.simple},
+ ...opticalDiscEntries,
  'Optical-disc readout':{machine:'Blu-ray player',createModel:createBluRayModel,part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
  'Electronic ink':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
  'Electrowetting display':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},

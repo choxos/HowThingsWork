@@ -9,7 +9,7 @@ try{
  await page.goto(base+'#machine/nail-clippers');
  await page.locator('.daily-canvas-wrap canvas').waitFor();
  await page.evaluate(async()=>{
-  const source=await (await fetch('/src/site/daily-life-viewer.js')).text();
+  const source=await (await fetch('/src/site/daily-life-viewer-core.js')).text();
   const moduleUrl=source.match(/import \* as THREE from ["']([^"']+)["']/)[1];
   const THREE=await import(moduleUrl);
   THREE.Object3D.prototype.onBeforeRender=function(renderer,scene,camera){window.panCamera=camera;window.panScene=scene;window.panTHREE=THREE;};
