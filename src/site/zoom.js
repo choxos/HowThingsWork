@@ -1,5 +1,5 @@
 import {neighborhoodCatalog} from './published-catalog.js';
-import {groupCatalogEntries,previewOf} from './catalog-hierarchy.js';
+import {groupCatalogEntries} from './catalog-hierarchy.js';
 import {scenePageSize, sceneSpots} from './scene-locations.js';
 import {allEntries, entriesByName, placesById, escapeText, shortName, illustration, renderPlan} from './catalog.js';
 import {imageUrl} from './image-url.js';
@@ -17,7 +17,7 @@ function zoomMarkup() {
 let disposeZoom = () => {};
 let previewModules;
 function acceptedPreviews(){
-  return previewModules ||= Promise.all([import('./machine-viewer.js'),import('./house.js'),import('./house-components.js')]).then(([viewer,house,{houseComponents}])=>({render:(container,entries)=>viewer.renderRoomMachines(container,entries.map(entry=>previewOf(entry,houseComponents)),house.createHouseModel)}));
+  return previewModules ||= import('./house-route.js').then(module=>module.prepareRoomPreviews(neighborhoodCatalog)).then(render=>({render})).catch(error=>{previewModules=null;throw error;});
 }
 function houseIntroMarkup(place) {
   return `<span class="badge">Look around</span><h1 tabindex="-1">The house</h1><p class="intro">${escapeText(place.description)}</p><p class="intro">Point at a room and zoom closer. Then move toward an object to find the mechanism inside.</p><a class="primary" href="#list">All machines & ideas</a><p class="plan-note">Choose a room in the illustration, or browse the rooms below.</p>`;
@@ -33,9 +33,8 @@ function bindZoom(initialPlace,initialEntry) {
   const navigation=document.createElement('div');navigation.className='zoom-navigation';
   navigation.append(document.querySelector('.zoom-tools'),document.querySelector('.zoom-help'),picker);
   scene.closest('.plan-layout').after(navigation);
-  const modulePromise=acceptedPreviews();
   const intro=document.querySelector('.plan-intro'), initialIntro=initialPlace?'<span class="badge">Explore the neighborhood</span><h1 tabindex="-1">A little neighborhood.<br>A world to discover.</h1><p class="intro">Zoom toward a place, look around inside, then move closer to a machine.</p><a class="primary" href="#list">All machines & ideas</a>':intro.innerHTML;
-  let houseHandoff=false,machineHandoff=false,disposed=false;
+  let houseHandoff=false,machineHandoff=false,disposed=false,disposePreviews;
   const motion=matchMedia('(prefers-reduced-motion: reduce)');
   let depth=initialEntry?2:initialPlace?1:0, place=initialPlace||neighborhoodCatalog.places[0], objects=[], chosen, lastStage='', frame=0;
   const pointers=new Map();
@@ -46,6 +45,8 @@ function bindZoom(initialPlace,initialEntry) {
     return place.id==='home'?[]:room?sceneEntries.filter(entry=>entry.place===place.id&&entry.room===room):[...new Map(place.featured.map(name=>groupCatalogEntries(allEntries,[entriesByName.get(name)])[0]?.entry).filter(Boolean).map(entry=>[entry.id,entry])).values()];
   }
   function populate(room='') {
+    houseHandoff=false;
+    disposePreviews?.();disposePreviews=undefined;
     const entries=placeEntries(room);
     const page=Number(select.selectedOptions[0]?.dataset.page||0);
     const shown=entries.slice(page*scenePageSize,(page+1)*scenePageSize),spots=sceneSpots(place.id,shown.map(entry=>entry.id));
@@ -57,7 +58,7 @@ function bindZoom(initialPlace,initialEntry) {
     const background=interior.querySelector('img');
     background.addEventListener('load',()=>{if(!disposed&&background.isConnected)paint();},{once:true});
     const currentObjects=objects;
-    modulePromise.then(module=>{if(!disposed&&interior.isConnected&&objects===currentObjects)module.render(interior,currentObjects);}).catch(()=>{});
+    if(currentObjects.length)acceptedPreviews().then(module=>{if(!disposed&&interior.isConnected&&objects===currentObjects)disposePreviews=module.render(interior,currentObjects);}).catch(()=>{});
     chosen=objects[0];
   }
   function setPlace(next) {
@@ -101,15 +102,23 @@ function bindZoom(initialPlace,initialEntry) {
       lastStage=stage;
     }
     if(home&&depth>=1&&!houseHandoff){
-      houseHandoff=true;
-      Promise.all([import('./house.js'),background.decode()]).then(()=>{
+      houseHandoff=background;
+      Promise.all([import('./house-route.js'),background.decode()]).then(()=>{
         requestAnimationFrame(()=>{
+          if(houseHandoff!==background)return;
           houseHandoff=false;
           if(disposed||!scene.isConnected||place.id!=='home'||depth<1)return;
           scene.dataset.handoffRoute='#place/home';
           if(location.hash==='#place/home')renderPlan();else location.hash='place/home';
         });
-      }).catch(()=>{houseHandoff=false;if(!disposed)document.querySelector('.zoom-tools output').textContent='The house could not load. Zoom out and try again.';});
+      }).catch(()=>{
+        if(houseHandoff!==background)return;
+        houseHandoff=false;
+        if(disposed||!scene.isConnected||place.id!=='home'||depth<1)return;
+        const reload=document.createElement('a');reload.href='#place/home';reload.className='primary';reload.textContent='Reload this page';
+        reload.addEventListener('click',event=>{event.preventDefault();history.replaceState(null,'','#place/home');location.reload();});
+        document.querySelector('.zoom-tools output').replaceChildren('The house could not load. ',reload);
+      });
     }
   }
   function change(amount,x=50,y=50) {
@@ -142,7 +151,7 @@ function bindZoom(initialPlace,initialEntry) {
     select.selectedIndex=[...select.options].findIndex(option=>option.value===initialEntry.room&&Number(option.dataset.page)===page);
     populate(initialEntry.room);chosen=objects.find(e=>e.id===initialEntry.id)||initialEntry;
   }
-  disposeZoom=()=>{disposed=true;cancelAnimationFrame(frame);pointers.clear();};
+  disposeZoom=()=>{disposed=true;disposePreviews?.();cancelAnimationFrame(frame);pointers.clear();};
   paint();
 }
 

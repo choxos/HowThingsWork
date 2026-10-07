@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "sitemap": "node scripts/sitemap.ts",
-    "prebuild": "npm run sitemap && node scripts/catalog-parts.mjs",
+    "prebuild": "npm run sitemap && node scripts/catalog-parts.mjs && node scripts/house-routes.mjs",
+    "check:house-routes": "node scripts/house-routes.mjs --check && node src/site/check-house-routes.mjs --models",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --test src/physics.test.ts src/scene/*.test.ts",

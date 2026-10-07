@@ -153,6 +153,7 @@ function showListBody() {
 let housePage=null,houseGeneration=0;
 async function renderPlan() {
   const generation=++houseGeneration;
+  planApp.removeAttribute('aria-busy');
   housePage?.dispose();housePage=null;
   disposeZoom();
   const [routePath,query='']=location.hash.replace(/^#/, '').split('?');
@@ -168,10 +169,25 @@ async function renderPlan() {
   }
   const routeEntry=route.startsWith('machine/')?entriesById.get(route.slice(8)):null;
   if(route==='place/home'||route.startsWith('room/')||routeEntry){
-    const {mountHouse}=await (['cd','dvd','cd-rom','cd-r','dvd-r'].includes(routeEntry?.id)?import('./optical-disc-route.js'):import('./house.js'));
-    if(generation!==houseGeneration)return;
-    housePage=mountHouse(planApp,route,neighborhoodCatalog,{part:requestedPart});
-    if(housePage){document.querySelector('#map-link').setAttribute('aria-current','page');document.querySelector('#list-link').setAttribute('aria-current','false');return;}
+    planApp.setAttribute('aria-busy','true');
+    if(!planApp.childElementCount)planApp.innerHTML='<p role="status">Loading this page…</p>';
+    try{
+      const module=await (['cd','dvd','cd-rom','cd-r','dvd-r'].includes(routeEntry?.id)?import('./optical-disc-route.js'):import('./house-route.js'));
+      if(generation!==houseGeneration)return;
+      const runtime=await module.prepareHouseRoute?.(route,neighborhoodCatalog);
+      if(generation!==houseGeneration)return;
+      housePage=module.mountHouse(planApp,route,neighborhoodCatalog,{part:requestedPart},runtime);
+      if(housePage){document.querySelector('#map-link').setAttribute('aria-current','page');document.querySelector('#list-link').setAttribute('aria-current','false');return;}
+    }catch(error){
+      if(generation!==houseGeneration)return;
+      console.error('The discovery could not load.',error);
+      planApp.innerHTML='<h1 class="list-title" tabindex="-1">This page could not load.</h1><p class="list-intro">Reload to try again, or choose another discovery.</p><p><button type="button" class="primary" data-reload-discovery>Reload this page</button> <a href="#list">Browse other discoveries</a></p>';
+      planApp.querySelector('[data-reload-discovery]').addEventListener('click',()=>location.reload());
+      planApp.querySelector('h1').focus({preventScroll:true});
+      return;
+    }finally{
+      if(generation===houseGeneration)planApp.removeAttribute('aria-busy');
+    }
   }
   routePlace=routeEntry?.place||(route.startsWith('place/')?route.slice(6):'');
   const place=placesById.get(routePlace);

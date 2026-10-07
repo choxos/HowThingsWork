@@ -29,7 +29,7 @@ function roomBackdrop(room){
  const tile=roomTiles[room];
  return tile?`<div class="house-room-backdrop" style="--tile-x:${tile[0]}%;--tile-y:${tile[1]}%"></div>`:`<img src="${imageUrl('entrance-hall')}" alt="Entrance hall with a front door, coat, window shade, and a table of small tools">`;
 }
-export function mountHousePresentation(host,route,catalog,{part:requestedPart}={}, {allLessons,houseComponents,createHouseModel}) {
+export function mountHousePresentation(host,route,catalog,{part:requestedPart}={}, {allLessons,houseComponents,createHouseModel,renderRoomPreviews=renderRoomMachines}) {
  const preview=host.querySelector('.house-room-preview'),homeImage=host.querySelector('.zoom-interior>.room-background');
  const incomingBackdrop=preview?.dataset.route===`#${route}`?preview.firstElementChild:route==='place/home'&&homeImage?.getAttribute('src')===imageUrl('house-interior')?homeImage:null;
  const preserveScroll=host.querySelector('[data-handoff-route]')?.dataset.handoffRoute===`#${route}`;
@@ -45,7 +45,7 @@ export function mountHousePresentation(host,route,catalog,{part:requestedPart}={
  if(component?.redirectTo){location.replace(requestedPart?partHref(component.redirectTo,requestedPart):'#machine/'+component.redirectTo);return {dispose(){}};}
  const canonicalName=component?.machine||(allLessons[machineName]?machineName:machineGroup?.items[0]);
  const lesson=component?.lesson||allLessons[canonicalName];
- let viewer,disposeTabs;
+ let viewer,disposeTabs,disposePreviews;
  const place=machineGroup?.place||'home',placeName=place==='home'?'House':catalog.places.find(item=>item.id===place)?.name;
  const exitRoute=place==='home'?'#room/'+slug(machineGroup?.room||'Doors and daily life'):'#place/'+place;
  const crumbs=(roomName,name)=>`<nav class="house-breadcrumbs" aria-label="Location"><a href="#neighborhood">Neighborhood</a><span>›</span><a href="#place/${place}">${esc(placeName)}</a>${roomName&&place==='home'?`<span>›</span><a href="#room/${slug(roomName)}">${esc(roomName)}</a>`:''}${name?`<span>›</span><span aria-current="page">${esc(name)}</span>`:''}</nav>`;
@@ -59,7 +59,7 @@ export function mountHousePresentation(host,route,catalog,{part:requestedPart}={
  const hallPins=new Set(['cylinder-lock','zipper','electric-bell','window-shade','nail-clippers']),trays=previews=>Array.from({length:Math.ceil(previews.length/3)},(_,page)=>`<div class="house-room-tray" data-spatial-page="${page}" ${page?'hidden':''}>${previews.slice(page*3,page*3+3).map((entry,i)=>`<a class="${['dishwasher','faucet','water-meter','toilet-tank'].includes(entry.id)?'house-installed':''}" style="--slot-left:${4+i*31}%" data-zoom-target="${esc(entry.name)}" data-machine="${entry.id}" href="#machine/${entry.id}">${thumbnail}<span>${esc(entry.name)} →</span></a>`).join('')}</div>`).join('');
  const roomScene=tile?`<section class="zoom-scene house-zoom-scene house-room-frame" aria-label="Illustrated ${esc(room)}"><div class="house-zoom-layer house-room-scene">${roomBackdrop(room)}${trays(previews)}</div></section>`:'';
  host.innerHTML=`<div class="plan-layout"><section class="plan-intro"><span class="badge">Inside the house</span><h1 tabindex="-1">${esc(room)}</h1><p class="intro">${esc(roomNotes[room])}</p><p class="intro">Point at an object and zoom closer to look inside.</p><a class="primary" href="#list">All machines & ideas</a><p class="plan-note">Choose an object in the illustration, or browse every object below.</p></section><div class="plan-art">${room==='Doors and daily life'?`<div class="zoom-scene house-zoom-scene house-room-frame"><div class="house-zoom-layer house-hall">${roomBackdrop(room)}<a data-zoom-target="Cylinder lock" style="--x:55%;--y:47%" href="#machine/cylinder-lock">Cylinder lock</a><a data-zoom-target="Coat zipper" style="--x:17%;--y:39%" href="#machine/zipper">Coat zipper</a><a data-zoom-target="Electric bell" style="--x:48%;--y:12%" href="#machine/electric-bell">Electric bell</a><a data-zoom-target="Window shade" style="--x:80%;--y:15%" href="#machine/window-shade">Window shade</a><a data-zoom-target="Nail clippers" style="--x:79%;--y:59%" href="#machine/nail-clippers">Nail clippers</a>${trays(previews.filter(entry=>!hallPins.has(entry.id)))}</div></div>`:roomScene}</div></div>${crumbs(room)}<details class="house-directory"><summary>Browse every object</summary><section class="house-object-grid" aria-label="Discoveries">${roomFamilies.map(({entry,components})=>`<article class="house-object" data-machine="${entry.id}"><a href="#machine/${entry.id}">${thumbnail}<h2>${esc(entry.name)}</h2></a><p>${esc(allLessons[entry.name]?.simple||houseComponents[entry.name]?.intro||'Open this object to follow its mechanism.')}</p>${components.length?`<div class="house-component-links" aria-label="Smaller machines and parts in ${esc(entry.name)}">${components.map(part=>`<a href="#machine/${part.id}">${esc(part.name)}</a>`).join('')}</div>`:''}</article>`).join('')}</section></details>`;
- renderRoomMachines(host,previews.map(entry=>previewOf(entry,houseComponents)),createHouseModel);
+ disposePreviews=renderRoomPreviews(host,previews.map(entry=>previewOf(entry,houseComponents)),createHouseModel);
  }else if(lesson){
  const group=machineGroup,machineId=route.slice(8);
  // A component can belong to a different discovery group from its parent.
@@ -79,7 +79,7 @@ export function mountHousePresentation(host,route,catalog,{part:requestedPart}={
  if(incomingBackdrop){incomingBackdrop.classList.remove('room-background');host.querySelector('.house-map .house-zoom-layer,.house-room-frame .house-zoom-layer').firstElementChild.replaceWith(incomingBackdrop);}
  const title=host.querySelector('h1');document.title=`${machineName||room||'The house'} · How Things Work`;title?.focus({preventScroll:true});if(!preserveScroll)window.scrollTo({top:0,behavior:'instant'});
  const disposeSpatial=bindHouseZoom(host,room?'place/home':'neighborhood',route==='place/home'?name=>({html:roomBackdrop(name),src:roomTiles[name]?imageUrl('house-rooms'):imageUrl('entrance-hall')}):null);
- return {dispose(){disposeSpatial();disposeTabs?.();viewer?.dispose();}};
+ return {dispose(){disposeSpatial();disposeTabs?.();disposePreviews?.();viewer?.dispose();}};
 }
 
 function mountExperimentTabs(host){
