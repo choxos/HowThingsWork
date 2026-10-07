@@ -1,0 +1,78 @@
+const experiment = (title, instruction, observe, part, settings = {}, time = 0) => {
+  const values = { content: 0, medium: 0, power: 0, readLight: 1, pulseType: 0, ...settings };
+  return { title, instruction, observe, values, reset: true, part, isolate: true, cutaway: true, view: 'front', initialState: { settings: { ...values }, time } };
+};
+
+export const dvdrLesson = {
+  simple: 'How does a writable DVD preserve a file for later playback?',
+  overview: 'A DVD-R keeps information in permanent changes to a thin dye layer. Choose a small movie file and press Play. The computer codes its directory and bytes, the writer creates marks, and reading light retrieves the stored file for playback. An occupied region keeps its previous movie. Reset, replay and changed controls prepare another experiment with the selected starting region.',
+  steps: [
+    { title: 'Choose a file', body: 'The computer places the movie in a small data volume. A directory records its name, location and byte length so the file can be found later.' },
+    { title: 'Record permanent marks', body: 'The drive adds checks and channel coding, then sends recording pulses along a preformed guide groove. Focused exposure changes dye; low reading light alone cannot.' },
+    { title: 'Retrieve the same region', body: 'The pickup returns with low-power light. Optical changes reveal mark boundaries. The decoder reconstructs and checks the sectors without erasing the dye.' },
+    { title: 'Open what came back', body: 'The computer reads the recovered directory, collects the file bytes and decodes their movie. An old recording returns its original file. An unreadable region supplies no movie.' },
+  ],
+  parts: [
+    { name: 'Complete writer and computer', role: 'Follow the connected path from a selected file to recorded material and back.' },
+    { name: 'Writable DVD and clamp', role: 'Hold a disc with permanent dye marks near the middle of its bonded layers.' },
+    { name: 'Recording laser and collimator', role: 'Supply strong recording pulses or low-power reading light.' },
+    { name: 'Sliding optical pickup', role: 'Follow the guide groove and return to the recorded region.' },
+    { name: 'Watch permanent dye marks form', role: 'See actual coded marks persist and supply later transitions.' },
+    { name: 'Encoding, checks and connections', role: 'Convert file sectors to a recorded pattern and check the retrieved data.' },
+    { name: 'Computer and file request', role: 'Use the directory to recover the stored file and decode its pictures.' },
+    { name: 'Retrieved-file monitor', role: 'Play only the movie obtained from recorded marks.' },
+  ],
+  tryIt: [
+    experiment('Write and retrieve a movie', 'Press Play with the complete writer in view.', 'BALL.M2V becomes recorded marks. After readback and file checks, the computer plays the recovered bouncing-ball movie.', 'player'),
+    experiment('Record a rocket instead', 'Press Play with the rocket file selected and a blank region.', 'The selected file changes the coded mark pattern. Retrieved ROCKET.M2V supplies the rocket movie.', 'readback', { content: 1 }),
+    experiment('Record the rising sun', 'Press Play with the sun file selected and a blank region.', 'The new region stores SUN.M2V. Its retrieved file supplies a different movie, rather than substituting a source animation.', 'readback', { content: 2 }),
+    experiment('Watch the dye change', 'Press Play or Step from the beginning of the magnified patch.', 'Completed marks remain behind the recording spot. The gold underline locates the actual 16-cell word carrying one scrambled file byte.', 'track', {}, 1),
+    experiment('Read without changing marks', 'Press Play after the writing pass has finished.', 'The same marks survive return motion and reading. Transition dots appear as the reading spot visits them.', 'track', {}, 5),
+    experiment('Can reading light record?', 'Press Play with only reading exposure during writing.', 'Blank dye remains unchanged. The later read finds no valid directory or movie file.', 'track', { power: 1 }),
+    experiment('Turn off the writing laser', 'Press Play with writing light off.', 'No writing beam reaches the layer. Later reading light cannot retrieve a movie from the blank region.', 'optics', { power: 2 }),
+    experiment('Store it, then read in darkness', 'Press Play with reading light off.', 'Recording still creates permanent marks. The dark scan cannot retrieve the file, so no movie appears. The marks remain.', 'readback', { readLight: 0 }),
+    experiment('Try to replace the ball movie', 'Request the rocket file from a region already storing BALL.M2V, then press Play.', 'Replacement is blocked. Readback returns BALL.M2V and plays the original ball movie.', 'readback', { content: 1, medium: 1 }),
+    experiment('Keep the old rocket file', 'Request the sun file from a region already storing ROCKET.M2V, then press Play.', 'The old rocket movie returns. The requested sun file was never recorded over that occupied region.', 'readback', { content: 2, medium: 2 }),
+    experiment('Keep the old sun file', 'Request the ball file from a region already storing SUN.M2V, then press Play.', 'The old sun movie returns. Retrieved contents follow the stored material, not the new request.', 'readback', { content: 0, medium: 3 }),
+    experiment('Trace an actual file byte', 'Press Play with the coding view open.', 'Byte 4,132 follows sector scrambling and real EFMplus coding. Its received word arrives during reading; the checked file byte appears after validation.', 'codec', {}, 1),
+    experiment('Compare pulse type 1', 'Press Play or Step through the recording patch with Type 1 selected.', 'A 3T mark has a 1.55T top pulse. Longer marks use a top pulse followed by separated pulses. The diagram uses the actual file pattern.', 'pulses', { pulseType: 0 }, 1),
+    experiment('Compare pulse type 2', 'Press Play or Step through the same patch with Type 2 selected.', 'The 3T top pulse is 1.50T instead of 1.55T. Correctly matched recording still preserves the same selected file.', 'pulses', { pulseType: 1 }, 1),
+    experiment('Compare pulse type 3', 'Press Play or Step through the same patch with Type 3 selected.', 'The 3T top pulse is 1.25T; repeated pulses are 0.60T. Cooling gaps and pulse widths change while the intended recorded file stays the same.', 'pulses', { pulseType: 2 }, 1),
+    experiment('Look inside the bonded disc', 'Press Play with the layer section open.', 'Light passes through the lower clear substrate to dye beside the reflector near the disc middle. Changed material remains after the beams turn off.', 'layers', {}, 1),
+    experiment('Guides before user data', 'Press Play and follow the marker along the enlarged groove.', 'The guide and land pre-pits already exist on the blank disc. Wobble provides timing; land pre-pits supply addresses for recording.', 'pregroove'),
+    experiment('One path, two exposures', 'Press Play with the optical route open.', 'Recording pulses change dye. Later, low-power light follows the pickup path and returns a signal without rewriting the material.', 'optics'),
+    experiment('Find the file again', 'Press Play with the file lookup view open.', 'Checked volume metadata and the directory lead to the movie extent and exact byte length. Only the complete retrieved file is opened.', 'files'),
+    experiment('Step through recovered pictures', 'Press Step from the first recovered movie picture.', 'Each step advances one of the 50 decoded pictures at 25 frames per second. The drive has finished reading; the stored file supplies the pictures.', 'readback', {}, 11),
+  ],
+  deeper: [
+    { title: 'Write once in each region', body: 'Recording changes organic dye permanently. An occupied region cannot be erased and reused for a replacement file. Unused disc space may still accept new recording when the recording format and session state allow it. DVD-RW uses a different, rewritable phase-change material.' },
+    { title: 'Guidance and addresses already exist', body: 'The manufacturer molds a spiral groove before recording. Its wobble supplies a timing reference; land pre-pits between groove turns carry address information. Those physical guides are separate from the user file that the laser writes into the dye.' },
+    { title: 'From file bytes to constrained marks', body: 'The example volume has 192 logical sectors, each with 2,048 user bytes. Headers, error checks, scrambling and PI/PO coding provide structure and redundancy. EFMplus maps recording bytes into 16-cell channel words. A channel one requests a transition. Data runs span 3 to 11 cells; synchronization can use a 14-cell run.' },
+    { title: 'Several pulses can form one mark', body: 'A recording strategy shapes exposure within each intended mark. In the displayed 1× references, the top pulse ends at 3T. Longer marks add short pulses separated by cooling gaps. Changing the reference type changes these widths. Real drives determine suitable power using medium-specific calibration; the waveform alone is not a temperature or mark-growth calculation.' },
+    { title: 'A file needs more than its raw content', body: 'The ISO 9660 volume descriptor points to a directory. The directory supplies the name, start sector and exact byte length of the movie. The reader must recover that metadata and the file sectors before opening the MPEG-2 stream. This teaching example is a data disc containing a movie file, not an authored DVD-Video title.' },
+    { title: 'Reading and playback are separate', body: 'The low-power optical pass retrieves and validates sectors. Only then does the computer decode the movie from the collected bytes. Its 720 by 576 samples are displayed at 4:3 and 25 pictures per second. The drive can stop while the recovered two-second movie plays.' },
+  ],
+  misconception: 'A DVD-R does not carve one pit for each input one, and reading light cannot erase it. Recording changes dye into coded marks. The computer must retrieve the actual directory and file before it can play the stored movie.',
+  limits: [
+    'The model records a finite 192-sector data-zone excerpt containing a complete small ISO 9660 Level 1 volume and one MPEG-2 elementary-stream file. It is not an authored DVD-Video title or a complete physical disc image.',
+    'Lead-in, lead-out, recording-management data, linking, power-calibration areas, session management and finalization are outside the example. Guide grooves and land pre-pits are shown schematically; their address decoding and servo loops are not simulated.',
+    'Matched recording exposure commits completed ideal marks. Dye chemistry, heat diffusion, mark growth, calibrated power and analog optical response are not numerically solved. Three 1× reference pulse diagrams describe timing, not measured performance of a particular drive.',
+    'Detected transitions are ideal. Real EFMplus, interleaving, PI/PO, descrambling, sector checks, directory reading and the supported MPEG-2 decoder operate on material-derived data. Failed or dark readback does not substitute the requested file.',
+    'The small movies use independently coded flat-block pictures and no audio. The decoder supports this stated subset, not every MPEG-2 stream. The model does not certify compatibility with a commercial DVD recorder or player.',
+    'Disc dimensions and reference speeds are stated; drive geometry is illustrative. The thin-spiral approximation determines pickup travel. Layers, groove wobble and beam widths are enlarged for teaching.',
+    'Each displayed write or read pass takes one second before the selected patch, three seconds through its 40 cells and one second through the rest. Return motion takes one illustrative second. Physical channel time is reported separately; the recovered movie plays for two seconds.',
+    'Reset, replay and changed controls prepare another selected starting region. They do not make DVD-R marks erasable.',
+  ].join(' '),
+  sources: [
+    { title: 'ECMA-359 (2004): recordable DVD-R structure, channel coding, guide information and reference write strategies', url: 'https://ecma-international.org/wp-content/uploads/ECMA-359_1st_edition_december_2004.pdf' },
+    { title: 'NIST and CLIR (2003): recordable CD and DVD layers and permanent dye changes', url: 'https://www.clir.org/wp-content/uploads/sites/6/pub121.pdf' },
+    { title: 'ECMA-119, second edition (1987): classic ISO 9660 volume and file structure', url: 'https://ecma-international.org/wp-content/uploads/ECMA-119_2nd_edition_december_1987.pdf' },
+    { title: 'ITU-T H.262 (2000): MPEG-2 video syntax and decoding', url: 'https://www.itu.int/rec/T-REC-H.262-200002-S/en' },
+  ],
+  quiz: {
+    question: 'A DVD-R region already stores BALL.M2V. You request ROCKET.M2V in that same region. What should happen?',
+    options: ['Replacement is blocked; reading returns the original ball movie.', 'Reading light erases the ball movie and records the rocket.', 'The computer plays the requested rocket even though it was never stored.'],
+    answer: 0,
+    explanation: 'The changed dye cannot be erased for reuse. Reading returns the file held by the actual marks. Unused disc space could still accept other recording when the format allows it.',
+  },
+};

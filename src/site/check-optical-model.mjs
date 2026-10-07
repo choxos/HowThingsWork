@@ -1,5 +1,5 @@
 // Checks the preserved generic Blu-ray model and its original optical drafts.
-// Published CD, DVD, CD-ROM and CD-R have separate codec, physics and browser checks;
+// Published CD, DVD, CD-ROM, CD-R and DVD-R have separate codec, physics and browser checks;
 // the route assertions below require their dedicated models.
 // Checks the original CD, DVD, CD-ROM and optical-disc readout
 // lessons against their sources typed in again and their physics worked out by
@@ -27,6 +27,8 @@ import {createCdromModel} from './cdrom-model.js';
 import {cdRomLesson} from './cdrom-lesson.js';
 import {createCdrModel} from './cdr-model.js';
 import {cdrLesson} from './cdr-lesson.js';
+import {createDvdrModel} from './dvdr-model.js';
+import {dvdrLesson} from './dvdr-lesson.js';
 
 const t = tally();
 const counts = {edges: 0, swings: 0, runs: 0, pits: 0, points: 0, waves: 0, poses: 0, numbers: 0};
@@ -644,6 +646,7 @@ t.ok(houseComponents.CD.createModel === createCdModel && houseComponents.CD.less
 t.ok(houseComponents.DVD.createModel === createDvdModel && houseComponents.DVD.lesson === dvdLesson && houseComponents.DVD.part === 'player', 'DVD uses its own player, sector codec and retrieved MPEG-2 video');
 t.ok(houseComponents['CD-ROM'].createModel === createCdromModel && houseComponents['CD-ROM'].lesson === cdRomLesson && houseComponents['CD-ROM'].part === 'player', 'CD-ROM uses its sector checks, recovered directory and actual stored file');
 t.ok(houseComponents['CD-R'].createModel === createCdrModel && houseComponents['CD-R'].lesson === cdrLesson && houseComponents['CD-R'].part === 'player', 'CD-R uses its permanent dye marks and stored-medium-only byte recovery');
+t.ok(houseComponents['DVD-R'].createModel === createDvdrModel && houseComponents['DVD-R'].lesson === dvdrLesson && houseComponents['DVD-R'].part === 'player', 'DVD-R uses its permanent dye marks, checked file retrieval and recovered movie');
 for (const [name, lesson, part, values] of [['Optical-disc readout', L.opticalReadoutLesson, 'pickup', undefined]]) {
   const component = houseComponents[name];
   t.ok(component.createModel === BR.createBluRayModel, `${name} retains its separate draft model`);

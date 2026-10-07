@@ -101,6 +101,7 @@ const cd=houseComponents.CD.createModel();t.ok(cd.parts.some(p=>p.id==='codec')&
 const dvd=houseComponents.DVD.createModel();t.ok(dvd.parts.some(p=>p.id==='codec')&&dvd.parts.some(p=>p.id==='video'),'DVD keeps its dedicated sector decoding and recovered-video views');dvd.dispose();
 const cdrom=houseComponents['CD-ROM'].createModel();t.ok(cdrom.parts.some(p=>p.id==='directory')&&cdrom.parts.some(p=>p.id==='files'),'CD-ROM keeps its dedicated directory and retrieved-file views');cdrom.dispose();
 const cdr=houseComponents['CD-R'].createModel();t.ok(cdr.parts.some(p=>p.id==='pulses')&&cdr.parts.some(p=>p.id==='readback'),'CD-R keeps its dedicated recording and recovered-byte views');cdr.dispose();
+const dvdr=houseComponents['DVD-R'].createModel();t.ok(['pulses','files','readback'].every(id=>dvdr.parts.some(p=>p.id===id)),'DVD-R keeps its recording, checked-file and recovered-movie views');dvdr.dispose();
 for(const name of ['Optical-disc readout']){const draft=houseComponents[name].createModel();t.ok(draft.parts.some(p=>p.id==='pit'),'separate optical drafts preserve their own model');draft.dispose();}
 checkFinite(model.root,t);
 const released=checkDisposal(model,t);

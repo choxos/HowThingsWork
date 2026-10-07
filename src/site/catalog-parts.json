@@ -2320,6 +2320,108 @@
       "parentId": "system"
     }
   ],
+  "dvd-r": [
+    {
+      "id": "chassis",
+      "name": "Chassis and case",
+      "parentId": "player"
+    },
+    {
+      "id": "spindle",
+      "name": "Spindle motor and hub",
+      "parentId": "player"
+    },
+    {
+      "id": "disc",
+      "name": "Writable DVD and clamp",
+      "parentId": "player"
+    },
+    {
+      "id": "traverse",
+      "name": "Rails and carriage drive",
+      "parentId": "player"
+    },
+    {
+      "id": "pickup",
+      "name": "Sliding optical pickup",
+      "parentId": "player"
+    },
+    {
+      "id": "laser",
+      "name": "Recording laser and collimator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "objective",
+      "name": "Objective lens and actuator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "detector",
+      "name": "Photodetector and read signal",
+      "parentId": "pickup"
+    },
+    {
+      "id": "electronics",
+      "name": "Encoding, checks and connections",
+      "parentId": "player"
+    },
+    {
+      "id": "outputs",
+      "name": "Computer and recovered movie",
+      "parentId": "player"
+    },
+    {
+      "id": "monitor",
+      "name": "Retrieved-file monitor",
+      "parentId": "outputs"
+    },
+    {
+      "id": "computer",
+      "name": "Computer and file request",
+      "parentId": "outputs"
+    },
+    {
+      "id": "track",
+      "name": "Watch permanent dye marks form",
+      "parentId": "system"
+    },
+    {
+      "id": "codec",
+      "name": "Follow a file byte through coding",
+      "parentId": "system"
+    },
+    {
+      "id": "pulses",
+      "name": "Compare recording pulse strategies",
+      "parentId": "system"
+    },
+    {
+      "id": "layers",
+      "name": "Recording layer inside the disc",
+      "parentId": "system"
+    },
+    {
+      "id": "pregroove",
+      "name": "Guide groove and land pre-pits",
+      "parentId": "system"
+    },
+    {
+      "id": "optics",
+      "name": "Record with heat, retrieve with light",
+      "parentId": "system"
+    },
+    {
+      "id": "files",
+      "name": "Find the recorded movie file",
+      "parentId": "system"
+    },
+    {
+      "id": "readback",
+      "name": "Watch the retrieved movie",
+      "parentId": "system"
+    }
+  ],
   "electronic-paper": [
     {
       "id": "case",
