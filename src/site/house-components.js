@@ -29,6 +29,8 @@ import {capillaryActionLesson} from './pens-lessons.js';
 import {opticalReadoutLesson} from './optical-lessons.js';
 import {cdRomLesson} from './cdrom-lesson.js';
 import {createCdromModel} from './cdrom-model.js';
+import {cdrLesson} from './cdr-lesson.js';
+import {createCdrModel} from './cdr-model.js';
 import {dvdLesson} from './dvd-lesson.js';
 import {createDvdModel} from './dvd-model.js';
 import {reviewedCdLesson as cdLesson} from './cd-lesson.js';
@@ -150,6 +152,7 @@ export const houseComponents={
  'CD':{machine:'Blu-ray player',createModel:createCdModel,part:'player',isolate:true,view:'front',lesson:cdLesson,intro:cdLesson.simple},
  'DVD':{machine:'Blu-ray player',createModel:createDvdModel,part:'player',isolate:true,view:'front',lesson:dvdLesson,intro:dvdLesson.simple},
  'CD-ROM':{machine:'Blu-ray player',createModel:createCdromModel,part:'player',isolate:true,view:'front',lesson:cdRomLesson,intro:cdRomLesson.simple},
+ 'CD-R':{machine:'Blu-ray player',createModel:createCdrModel,part:'player',isolate:true,view:'front',lesson:cdrLesson,intro:cdrLesson.simple},
  'Optical-disc readout':{machine:'Blu-ray player',createModel:createBluRayModel,part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
  'Electronic ink':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
  'Electrowetting display':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},

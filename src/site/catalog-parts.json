@@ -2223,6 +2223,103 @@
       "parentId": "system"
     }
   ],
+  "cd-r": [
+    {
+      "id": "chassis",
+      "name": "Chassis and case",
+      "parentId": "player"
+    },
+    {
+      "id": "spindle",
+      "name": "Spindle motor and hub",
+      "parentId": "player"
+    },
+    {
+      "id": "disc",
+      "name": "Recordable disc and clamp",
+      "parentId": "player"
+    },
+    {
+      "id": "traverse",
+      "name": "Rails and carriage drive",
+      "parentId": "player"
+    },
+    {
+      "id": "pickup",
+      "name": "Sliding optical pickup",
+      "parentId": "player"
+    },
+    {
+      "id": "laser",
+      "name": "Recording laser and collimator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "objective",
+      "name": "Objective lens and actuator",
+      "parentId": "pickup"
+    },
+    {
+      "id": "detector",
+      "name": "Photodetector and read signal",
+      "parentId": "pickup"
+    },
+    {
+      "id": "electronics",
+      "name": "Encoder, decoder and connections",
+      "parentId": "player"
+    },
+    {
+      "id": "outputs",
+      "name": "Computer and byte display",
+      "parentId": "player"
+    },
+    {
+      "id": "monitor",
+      "name": "Requested byte and readback monitor",
+      "parentId": "outputs"
+    },
+    {
+      "id": "computer",
+      "name": "Computer and recording request",
+      "parentId": "outputs"
+    },
+    {
+      "id": "track",
+      "name": "Watch the dye change",
+      "parentId": "system"
+    },
+    {
+      "id": "codec",
+      "name": "Follow your byte through coding",
+      "parentId": "system"
+    },
+    {
+      "id": "pulses",
+      "name": "Recording exposure and mark length",
+      "parentId": "system"
+    },
+    {
+      "id": "layers",
+      "name": "Dye, reflector and clear substrate",
+      "parentId": "system"
+    },
+    {
+      "id": "pregroove",
+      "name": "Follow the preformed groove",
+      "parentId": "system"
+    },
+    {
+      "id": "optics",
+      "name": "Write with heat, read with returned light",
+      "parentId": "system"
+    },
+    {
+      "id": "readback",
+      "name": "Compare requested and recovered bits",
+      "parentId": "system"
+    }
+  ],
   "electronic-paper": [
     {
       "id": "case",

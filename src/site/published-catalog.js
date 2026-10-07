@@ -2,6 +2,7 @@ import {neighborhoodCatalog as drafts} from './catalog-data.js';
 
 // Add routes only after the item's source, controls, browser, and review gates pass.
 export const publishedEntryIds = [
+  "cd-r",
   "cd-rom",
   "dvd",
   "cd",
@@ -191,6 +192,7 @@ export const publishedEntryIds = [
 // VITE_PREVIEW_UNPUBLISHED=1 routes them; production builds and the Node checks
 // never see that flag, so publishedEntryIds above stays the only public gate.
 export const previewEntryIds = [
+  "cd-r",
   "anchor-escapement",
   "mechanical-watch",
   "lever-escapement",
@@ -287,6 +289,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'cd-r': ['storing-bits', 'using-bits', 'light-and-images', 'exploiting-heat', 'rotating-wheels', 'electricity'],
   'cd-rom': ['using-bits', 'light-and-images', 'rotating-wheels', 'electricity'],
   'dvd': ['using-bits', 'light-and-images', 'rotating-wheels', 'electricity'],
   'cd': ['using-bits', 'light-and-images', 'sound-and-music', 'rotating-wheels', 'electricity'],
