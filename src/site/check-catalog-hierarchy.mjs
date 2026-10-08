@@ -276,7 +276,14 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 for (const id of ['body', 'release', 'plunger', 'cartridge', 'water', 'headspace', 'pickup', 'hose', 'nozzle', 'collection']) assert(hasCatalogPart('fire-extinguisher', id), `${id} remains bookmarkable in the whole extinguisher`);
 assert.equal(catalog.groups.find(group => group.id === extinguisher.entry.group).room, 'Safety corner');
 assert.equal(catalog.groups.find(group => group.id === extinguisher.entry.group).place, 'home');
-assert(!entries.some(entry => entry.id === 'gas-boiler'), 'Gas boiler remains an unpublished draft');
+const gasBoiler = families.find(family => family.entry.id === 'gas-boiler');
+assert(gasBoiler && !componentParentIds['gas-boiler'], 'Gas boiler is a whole on-demand water heater');
+assert.equal(gasBoiler.components.length, 0, 'Water, fuel and combustion paths remain inspectable parts');
+assert.deepEqual(tags('gas-boiler'), ['exploiting-heat', 'sensors-and-detectors', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'gas-boiler')).map(family => family.entry.id), ['gas-boiler']);
+for (const id of ['casing', 'inlet', 'coil', 'gas', 'burner', 'fan', 'flue', 'controller', 'pipe', 'tap']) assert(hasCatalogPart('gas-boiler', id), `${id} remains bookmarkable in the whole heater`);
+assert.equal(catalog.groups.find(group => group.id === gasBoiler.entry.group).room, 'Heating and cooling');
+assert.equal(catalog.groups.find(group => group.id === gasBoiler.entry.group).place, 'home');
 
 const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
 assert(lcdScreen, 'LCD screen is one whole item');

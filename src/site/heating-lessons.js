@@ -1,4 +1,4 @@
-import {gasBoilerLesson} from './boiler-lessons.js';
+import {tanklessHeaterLesson} from './tankless-heater-lesson.js';
 import {airConditionerLesson} from './aircon-lessons.js';
 import {electricHeatingLesson, electricKettleLesson, hairDryerLesson} from './element-lessons.js';
 import {bimetalThermostatLesson, rodThermostatLesson, waxThermostatLesson} from './thermostat-lessons.js';
@@ -15,7 +15,7 @@ const electrical={
  misconception:'At fixed voltage, increasing the element’s resistance decreases its power. At fixed current, the relationship would be different.',limits:'The element has constant resistance and its glow encodes power. Wire temperature, warm-up time, heat distribution, and real mains wiring are not modeled.',sources:[{title:'OpenStax: electric power',url:'https://openstax.org/books/college-physics-2e/pages/20-4-electric-power-and-energy'}],quiz:quiz('At fixed resistance, doubling voltage makes electrical power…',['Four times as large.','Twice as large.','Half as large.'],0,'P = V²/R, so doubling voltage multiplies power by four.')};
 
 export const heatingLessons={
- 'Gas boiler':gasBoilerLesson,
+ 'Gas boiler':tanklessHeaterLesson,
  'Electric heating':electricHeatingLesson,
  'Electric kettle':electricKettleLesson,
  'Hair dryer':hairDryerLesson,

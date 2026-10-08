@@ -1691,6 +1691,58 @@
       "parentId": "system"
     }
   ],
+  "gas-boiler": [
+    {
+      "id": "casing",
+      "name": "Casing and removable cover",
+      "parentId": "heater"
+    },
+    {
+      "id": "inlet",
+      "name": "Flow sensor and water valve",
+      "parentId": "heater"
+    },
+    {
+      "id": "coil",
+      "name": "Water tube and heat exchanger",
+      "parentId": "heater"
+    },
+    {
+      "id": "gas",
+      "name": "Fuel valve and gas supply",
+      "parentId": "heater"
+    },
+    {
+      "id": "burner",
+      "name": "Burner, spark and flame sensor",
+      "parentId": "heater"
+    },
+    {
+      "id": "fan",
+      "name": "Combustion-air fan",
+      "parentId": "heater"
+    },
+    {
+      "id": "flue",
+      "name": "Combustion chamber and flue",
+      "parentId": "heater"
+    },
+    {
+      "id": "controller",
+      "name": "Temperature control",
+      "parentId": "heater"
+    },
+    {
+      "id": "pipe",
+      "name": "Outlet pipe to the tap",
+      "parentId": "delivery"
+    },
+    {
+      "id": "tap",
+      "name": "Tap and delivered water",
+      "parentId": "delivery"
+    }
+  ],
   "toaster": [
     {
       "id": "system",

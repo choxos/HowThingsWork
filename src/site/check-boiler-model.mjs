@@ -682,9 +682,9 @@ covered(partText('chart'), {[`from ${f0(M.CHART.range[0])} to ${f0(M.CHART.range
   t.ok(lesson.tryIt.every(item => model.parts.some(part => part.id === item.part) && item.view === 'front' && item.reset === true && item.isolate === false), 'every trial on a part the model has');
   t.ok(lesson.parts.every(item => model.parts.some(part => part.name === item.name)), 'every part named is a part the model has');
   t.ok(lesson.steps.length === 5 && lesson.deeper.length === 6 && lesson.tryIt.length === 7 && lesson.parts.length === 10, 'five steps, six deeper sections, seven trials and ten parts');
-  t.ok(heatingLessons['Gas boiler'] === lesson, 'the heating lessons carry this lesson');
+  t.ok(heatingLessons['Gas boiler'] !== lesson, 'the heating registry uses the replacement lesson; this check retains the original draft');
   const routed = createHeatingModel('Gas boiler');
-  t.ok(routed.parts.some(part => part.id === 'flue-gas') && routed.controls.map(control => control.key).join() === 'flow,set,inlet,pipe', 'the heating models route the gas boiler here');
+  t.ok(routed.parts.some(part => part.id === 'flue') && routed.controls.map(control => control.key).join() === 'flow,set,inlet,pipe', 'the heating registry routes to the replacement model');
   routed.dispose();
 }
 

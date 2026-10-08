@@ -1,4 +1,4 @@
-import {createGasBoilerModel} from './boiler-model.js';
+import {createTanklessHeaterModel} from './tankless-heater-model.js';
 import {createAirConditionerModel} from './aircon-model.js';
 import {createElectricHeatingModel} from './electric-heating-model.js';
 import {createElectricKettleModel} from './electric-kettle-model.js';
@@ -7,7 +7,7 @@ import {createBimetalThermostatModel} from './bimetal-thermostat-model.js';
 import {createRodThermostatModel} from './rod-thermostat-model.js';
 import {createWaxThermostatModel} from './wax-thermostat-model.js';
 export function createHeatingModel(name){
- if(name==='Gas boiler')return createGasBoilerModel();
+ if(name==='Gas boiler')return createTanklessHeaterModel();
  if(name==='Air conditioner')return createAirConditionerModel();
  if(name==='Electric heating')return createElectricHeatingModel();
  if(name==='Electric kettle')return createElectricKettleModel();
