@@ -195,6 +195,13 @@ extinguisher.update({charge:1,pickup:1});extinguisher.advance(1e4);assert.equal(
 extinguisher.update({pickup:2});extinguisher.advance(1e4);assert.equal(extinguisher.getState().now.phase,'dry-pickup');assert.equal(extinguisher.getState().now.delivered,0);
 extinguisher.update({pickup:0,charge:0});extinguisher.advance(1e4);assert.equal(extinguisher.getState().now.phase,'no-charge');assert.equal(extinguisher.getState().now.water,.009);
 extinguisher.dispose();
+const magneticAlarm=create('Magnetic burglar alarm');magneticAlarm.advance(100);
+const alarmDone=magneticAlarm.getState();assert(alarmDone.complete&&alarmDone.closed&&alarmDone.alarm);near(alarmDone.senseCurrent,.001);near(alarmDone.sounderCurrent,.1);
+for(const action of magneticAlarm.actions.filter(action=>action.part)){action.run();assert.deepEqual(magneticAlarm.getState(),alarmDone,'Inspection preserves the alarm history');}
+magneticAlarm.actions.at(-1).run();assert(!magneticAlarm.getState().alarm);
+magneticAlarm.update({cable:0});assert(magneticAlarm.getState().alarm);near(magneticAlarm.getState().senseCurrent,0);
+magneticAlarm.update({power:0});assert(!magneticAlarm.getState().alarm);near(magneticAlarm.getState().sounderCurrent,0);
+magneticAlarm.dispose();
 const boiler=create('Gas boiler');boiler.update({flow:12});boiler.advance(6);
 const fullHeat=boiler.getState();near(fullHeat.now.heat,24000);near(fullHeat.now.tapTemperature,45);
 assert(fullHeat.now.flow<12,'The temperature-priority controller restricts water at full heat output');

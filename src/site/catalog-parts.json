@@ -4553,6 +4553,68 @@
       "parentId": "system"
     }
   ],
+  "magnetic-burglar-alarm": [
+    {
+      "id": "sash",
+      "name": "Sliding sash",
+      "parentId": "window"
+    },
+    {
+      "id": "magnet",
+      "name": "Permanent magnet",
+      "parentId": "sash"
+    },
+    {
+      "id": "bar",
+      "name": "Metal contact bar",
+      "parentId": "sensor"
+    },
+    {
+      "id": "spring",
+      "name": "Preloaded return spring",
+      "parentId": "sensor"
+    },
+    {
+      "id": "contacts",
+      "name": "Two fixed electrical contacts",
+      "parentId": "sensor"
+    },
+    {
+      "id": "cable",
+      "name": "Two-wire sensing loop",
+      "parentId": "system"
+    },
+    {
+      "id": "supply",
+      "name": "12 V teaching supply",
+      "parentId": "controller"
+    },
+    {
+      "id": "resistor",
+      "name": "12 kΩ sensing resistor",
+      "parentId": "controller"
+    },
+    {
+      "id": "latch",
+      "name": "Alarm memory and sensing input",
+      "parentId": "controller"
+    },
+    {
+      "id": "driver",
+      "name": "Sounder output contact",
+      "parentId": "controller"
+    },
+    {
+      "id": "sounder",
+      "name": "Powered sounder",
+      "parentId": "system"
+    },
+    {
+      "id": "diaphragm",
+      "name": "Vibrating diaphragm",
+      "parentId": "sounder"
+    }
+  ],
   "electric-bell": [
     {
       "id": "board",

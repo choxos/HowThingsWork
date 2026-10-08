@@ -445,11 +445,11 @@ for (const lesson of [L.reedAlarmLesson]) {
   t.ok(lesson.parts.every(item => model.parts.some(part => part.name === item.name)), 'every part named is a part the model has');
   t.ok(lesson.steps.length === 5 && lesson.deeper.length === 6 && lesson.tryIt.length === 7 && lesson.parts.length === 6, 'five steps, six deeper sections, seven trials and six parts');
 }
-t.ok(safetyLessons['Magnetic burglar alarm'] === L.reedAlarmLesson, 'the safety corner routes to this lesson');
+t.ok(safetyLessons['Magnetic burglar alarm'] !== L.reedAlarmLesson, 'the original reed draft is retained separately from the published lesson');
 t.ok(Object.values(houseComponents).every(component => component.machine !== 'Magnetic burglar alarm'), 'and no component page hangs off it');
 {
   const routed = createSafetyModel('Magnetic burglar alarm');
-  t.ok(routed !== null && routed.controls.map(control => control.key).join() === 'angle,switch,gap,magnet,width,armed', 'the safety corner builds this model and no other');
+  t.ok(routed !== null && routed.controls.map(control => control.key).join() === 'opening,gap,magnet,spring,cable,armed,power,sound', 'the safety corner uses the connected magnetic alarm replacement');
   routed?.dispose();
   t.ok(previewEntryIds.includes('magnetic-burglar-alarm'), 'and the preview shows it');
 }

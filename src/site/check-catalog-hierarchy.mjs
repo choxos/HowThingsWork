@@ -276,6 +276,14 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 for (const id of ['body', 'release', 'plunger', 'cartridge', 'water', 'headspace', 'pickup', 'hose', 'nozzle', 'collection']) assert(hasCatalogPart('fire-extinguisher', id), `${id} remains bookmarkable in the whole extinguisher`);
 assert.equal(catalog.groups.find(group => group.id === extinguisher.entry.group).room, 'Safety corner');
 assert.equal(catalog.groups.find(group => group.id === extinguisher.entry.group).place, 'home');
+const magneticAlarm = families.find(family => family.entry.id === 'magnetic-burglar-alarm');
+assert(magneticAlarm && !componentParentIds['magnetic-burglar-alarm'], 'Magnetic burglar alarm is a whole connected installation');
+assert.equal(magneticAlarm.components.length, 0, 'The switch, controller and sounder remain inspectable parts');
+assert.deepEqual(tags('magnetic-burglar-alarm'), ['magnetism', 'springs', 'sensors-and-detectors', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'magnetic-burglar-alarm')).map(family => family.entry.id), ['magnetic-burglar-alarm']);
+for (const id of ['sash', 'magnet', 'bar', 'spring', 'contacts', 'cable', 'supply', 'resistor', 'latch', 'driver', 'sounder', 'diaphragm']) assert(hasCatalogPart('magnetic-burglar-alarm', id), `${id} remains bookmarkable in the whole alarm`);
+assert.equal(catalog.groups.find(group => group.id === magneticAlarm.entry.group).room, 'Safety corner');
+assert.equal(catalog.groups.find(group => group.id === magneticAlarm.entry.group).place, 'home');
 const gasBoiler = families.find(family => family.entry.id === 'gas-boiler');
 assert(gasBoiler && !componentParentIds['gas-boiler'], 'Gas boiler is a whole on-demand water heater');
 assert.equal(gasBoiler.components.length, 0, 'Water, fuel and combustion paths remain inspectable parts');

@@ -1,4 +1,4 @@
-import {createReedAlarmModel} from './reed-alarm-model.js';
+import {createMagneticAlarmModel} from './magnetic-alarm-model.js';
 import * as THREE from 'three';
 import {houseModel,reading as r} from './house-model-kit.js';
 import {createConsumerModel} from './consumer-model.js';
@@ -27,7 +27,7 @@ export function createSafetyModel(name){
  if(name==='Smoke detector')return createReviewedSmokeDetectorModel();
  if(name==='Active burglar alarm')return createBurglarAlarmModel();
  if(name==='Passive infrared movement detector')return createPassiveInfraredModel();
- if(name==='Magnetic burglar alarm')return createReedAlarmModel();
+ if(name==='Magnetic burglar alarm')return createMagneticAlarmModel();
  if(!['Two-way light switch'].includes(name))return null;
  const m=houseModel(name),{root,part,box,cylinder,disk,sphere,ring,rod,tube,control,finish,covers}=m;
  return null;
