@@ -840,12 +840,12 @@ t.ok(!model.playback.complete() && !model.resultPart.available() && model.result
   t.ok(restAngle > pressedAngle && restHandle - pressedHandle > 15, 'squeezing swings the lever’s handle down more than 15 mm');
   t.ok(model.initialPart === 'system' && model.initialView === 'front' && model.frameVisibleOnly === true && model.framePadding === 0.62 && model.selectionOutline === false && model.transparentBackground === true && Object.keys(model.topology).length > 40, 'the bench opens on the whole system and frames what is drawn');
   const routed = createSafetyModel('Fire extinguisher');
-  t.ok(routed && routed.root.userData.machine === 'Fire extinguisher' && routed.controls.length === 4, 'the safety corner builds this model');
+  t.ok(routed && routed.root.userData.machine === 'Fire extinguisher' && routed.controls.length === 3, 'the safety corner builds the replacement model');
   routed.dispose();
   t.ok(previewEntryIds.includes('fire-extinguisher'), 'the preview catalog carries the item');
   t.ok(JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).scripts['test:models'].includes('node src/site/check-extinguisher-model.mjs'), 'and the model checks run this one');
 }
-t.ok(safetyLessons['Fire extinguisher'] === L.fireExtinguisherLesson, 'the safety corner’s lesson is this one');
+t.ok(safetyLessons['Fire extinguisher'] !== L.fireExtinguisherLesson, 'the safety corner uses the replacement lesson; this check retains the draft');
 t.ok(!Object.values(houseComponents).some(component => component.machine === 'Fire extinguisher'), 'no component routes to it: the group holds the machine alone');
 const released = checkDisposal((() => { const fresh = M.createFireExtinguisherModel(); fresh.advance(4); return fresh; })(), t);
 model.dispose();

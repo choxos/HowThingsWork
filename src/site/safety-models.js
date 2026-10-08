@@ -8,7 +8,7 @@ import {createMeterModel} from './meter-model.js';
 import {createBreakerModel} from './breaker-model.js';
 import {createFuseModel} from './fuse-model.js';
 import {createLightingModel} from './lighting-model.js';
-import {createFireExtinguisherModel} from './extinguisher-model.js';
+import {createCartridgeExtinguisherModel} from './cartridge-extinguisher-model.js';
 import {createLightningConductorModel} from './lightning-model.js';
 import {createReviewedSmokeDetectorModel} from './smoke-detector-model.js';
 import {createBurglarAlarmModel} from './burglar-alarm-model.js';
@@ -22,7 +22,7 @@ export function createSafetyModel(name){
  if(name==='Circuit breaker')return createBreakerModel();
  if(name==='Fuse')return createFuseModel();
  if(name==='Two-way light switch')return createLightingModel();
- if(name==='Fire extinguisher')return createFireExtinguisherModel();
+ if(name==='Fire extinguisher')return createCartridgeExtinguisherModel();
  if(name==='Lightning conductor')return createLightningConductorModel();
  if(name==='Smoke detector')return createReviewedSmokeDetectorModel();
  if(name==='Active burglar alarm')return createBurglarAlarmModel();

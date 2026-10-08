@@ -1,5 +1,5 @@
 import {reedAlarmLesson} from './reed-alarm-lessons.js';
-import {fireExtinguisherLesson} from './extinguisher-lessons.js';
+import {cartridgeExtinguisherLesson} from './cartridge-extinguisher-lesson.js';
 import {lightningLesson} from './lightning-lesson.js';
 import {reviewedSmokeDetectorLesson} from './smoke-detector-lesson.js';
 import {reviewedBurglarAlarmLesson} from './burglar-alarm-lesson.js';
@@ -117,5 +117,5 @@ export const safetyLessons={
   'Active burglar alarm':reviewedBurglarAlarmLesson,
   'Passive infrared movement detector':reviewedPassiveInfraredLesson,
  'Lightning conductor':lightningLesson,
- 'Fire extinguisher':fireExtinguisherLesson,
+ 'Fire extinguisher':cartridgeExtinguisherLesson,
 };

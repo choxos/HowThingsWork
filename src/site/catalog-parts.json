@@ -1427,6 +1427,58 @@
       "parentId": "system"
     }
   ],
+  "fire-extinguisher": [
+    {
+      "id": "body",
+      "name": "Pressure vessel",
+      "parentId": "extinguisher"
+    },
+    {
+      "id": "release",
+      "name": "Handle and gas release",
+      "parentId": "extinguisher"
+    },
+    {
+      "id": "plunger",
+      "name": "Piercing plunger and return spring",
+      "parentId": "release"
+    },
+    {
+      "id": "cartridge",
+      "name": "Gas cartridge and seal",
+      "parentId": "release"
+    },
+    {
+      "id": "water",
+      "name": "Water in the vessel",
+      "parentId": "extinguisher"
+    },
+    {
+      "id": "headspace",
+      "name": "Gas above the water",
+      "parentId": "extinguisher"
+    },
+    {
+      "id": "pickup",
+      "name": "Dip tube and intake",
+      "parentId": "extinguisher"
+    },
+    {
+      "id": "hose",
+      "name": "Head passage and hose",
+      "parentId": "extinguisher"
+    },
+    {
+      "id": "nozzle",
+      "name": "Narrow outlet",
+      "parentId": "hose"
+    },
+    {
+      "id": "collection",
+      "name": "Collected water",
+      "parentId": "system"
+    }
+  ],
   "ballpoint-pen": [
     {
       "id": "paper",

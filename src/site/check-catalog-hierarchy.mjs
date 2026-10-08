@@ -268,7 +268,15 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 for (const id of ['case', 'grid', 'board', 'battery', 'chip', 'matrix', 'keys', 'connector', 'display', 'lcdstack', 'matrixview', 'adder', 'decoder', 'optics']) assert(hasCatalogPart('calculator', id), `${id} remains bookmarkable in the whole calculator`);
 assert.equal(catalog.groups.find(group => group.id === calculator.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === calculator.entry.group).place, 'home');
-assert(!entries.some(entry => entry.id === 'fire-extinguisher'), 'Fire extinguisher remains an unpublished draft');
+const extinguisher = families.find(family => family.entry.id === 'fire-extinguisher');
+assert(extinguisher && !componentParentIds['fire-extinguisher'], 'Fire extinguisher is a whole water-delivery device');
+assert.equal(extinguisher.components.length, 0, 'The cartridge and water path remain inspectable parts');
+assert.deepEqual(tags('fire-extinguisher'), ['pressure-power', 'levers', 'springs']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'fire-extinguisher')).map(family => family.entry.id), ['fire-extinguisher']);
+for (const id of ['body', 'release', 'plunger', 'cartridge', 'water', 'headspace', 'pickup', 'hose', 'nozzle', 'collection']) assert(hasCatalogPart('fire-extinguisher', id), `${id} remains bookmarkable in the whole extinguisher`);
+assert.equal(catalog.groups.find(group => group.id === extinguisher.entry.group).room, 'Safety corner');
+assert.equal(catalog.groups.find(group => group.id === extinguisher.entry.group).place, 'home');
+assert(!entries.some(entry => entry.id === 'gas-boiler'), 'Gas boiler remains an unpublished draft');
 
 const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
 assert(lcdScreen, 'LCD screen is one whole item');
