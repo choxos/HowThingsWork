@@ -239,12 +239,17 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 for (const id of ['pickup', 'source', 'splitter', 'waveplate', 'mirror', 'objective', 'track', 'detector', 'shutter', 'electronics', 'signal']) assert(hasCatalogPart('optical-disc-readout', id), `${id} remains bookmarkable in the optical readout study`);
 
 const electronicPaper = families.find(family => family.entry.id === 'electronic-paper');
-assert(electronicPaper && electronicPaper.components.length === 0, 'Electronic paper stays one whole lesson; ordinary parts and unfinished components stay out of the directory');
+assert(electronicPaper, 'Electronic paper stays one whole lesson');
+assert.deepEqual(electronicPaper.components.map(entry => entry.id), ['electronic-ink']);
+assert.deepEqual(catalogMachineComponents(electronicPaper.components), [], 'Electronic ink remains a material study inside its parent lesson');
 assert.deepEqual(tags('electronic-paper'), ['electricity', 'using-bits', 'light-and-images']);
 assert(hasCatalogPart('electronic-paper', 'ink') && hasCatalogPart('electronic-paper', 'addressing'), 'Display and addressing inspections remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === electronicPaper.entry.group).place, 'home');
-for (const id of ['electronic-ink', 'electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
+assert.deepEqual(tags('electronic-ink'), ['electricity', 'light-and-images', 'storing-bits', 'using-bits']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'electronic-ink')).map(family => family.entry.id), ['electronic-paper'], 'An ink-only search retains its complete parent');
+for (const id of ['frame', 'power', 'controller', 'drivers', 'backplane', 'ink', 'common', 'capsule']) assert(hasCatalogPart('electronic-ink', id), `${id} remains bookmarkable in the electronic ink study`);
+for (const id of ['electrowetting-display', 'e-reader']) assert(!entries.some(entry => entry.id === id), `${id} remains an unpublished draft`);
 
 const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
 assert(lcdScreen, 'LCD screen is one whole item');

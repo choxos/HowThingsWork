@@ -2541,6 +2541,48 @@
       "parentId": "system"
     }
   ],
+  "electronic-ink": [
+    {
+      "id": "frame",
+      "name": "Mounting board and display frame",
+      "parentId": "assembly"
+    },
+    {
+      "id": "power",
+      "name": "Power supply and switch",
+      "parentId": "assembly"
+    },
+    {
+      "id": "controller",
+      "name": "Image controller",
+      "parentId": "assembly"
+    },
+    {
+      "id": "drivers",
+      "name": "Row and column drivers",
+      "parentId": "assembly"
+    },
+    {
+      "id": "backplane",
+      "name": "TFT backplane and electrodes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "ink",
+      "name": "Reflective pigment layer",
+      "parentId": "assembly"
+    },
+    {
+      "id": "common",
+      "name": "Transparent common electrode",
+      "parentId": "assembly"
+    },
+    {
+      "id": "capsule",
+      "name": "Selected capsule, enlarged",
+      "parentId": "system"
+    }
+  ],
   "smartphone": [
     {
       "id": "case",

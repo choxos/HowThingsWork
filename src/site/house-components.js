@@ -28,7 +28,9 @@ import {headTrackingLesson} from './head-tracking-lesson.js';
 import {createHeadTrackingModel} from './head-tracking-model.js';
 import {capillaryActionLesson} from './pens-lessons.js';
 import {opticalReadoutLesson} from './optical-readout-lesson.js';
-import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
+import {electronicInkLesson} from './electronic-ink-lesson.js';
+import {createElectronicInkModel} from './electronic-ink-model.js';
+import {electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
 import {createElectronicPaperModel} from './epaper-model.js';
 import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
 import {createVibrationMotorModel} from './vibration-motor-model.js';
@@ -144,7 +146,7 @@ export const houseComponents={
  'Refrigerant compressor':{machine:'Refrigerator',createModel:createRefrigerantCompressorModel,part:'system',isolate:false,view:'front',lesson:refrigerantCompressorLesson,intro:refrigerantCompressorLesson.simple},
  ...opticalDiscEntries,
  'Optical-disc readout':{machine:'Blu-ray player',createModel:createOpticalReadoutModel,part:'assembly',isolate:true,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
- 'Electronic ink':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
+ 'Electronic ink':{machine:'Electronic paper',createModel:createElectronicInkModel,part:'assembly',isolate:true,view:'front',lesson:electronicInkLesson,intro:electronicInkLesson.simple},
  'Electrowetting display':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
  'E-reader':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},
  'Accelerometer':{machine:'Smartphone',createModel:createAccelerometerModel,part:'module',isolate:false,view:'front',lesson:capacitiveAccelerometerLesson,intro:capacitiveAccelerometerLesson.simple},

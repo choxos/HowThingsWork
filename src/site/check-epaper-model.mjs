@@ -654,7 +654,8 @@ for (const lesson of [L.electronicPaperLesson, L.electronicInkLesson, L.electrow
   t.ok(lesson.tryIt.every(trial => model.parts.some(item => item.id === trial.part) && trial.view === 'front' && trial.reset === true), 'every trial on a part the model has');
 }
 t.ok(studyLessons['Electronic paper'] !== L.electronicPaperLesson, 'the reviewed main lesson is independent of preserved component drafts');
-for (const [name, lesson, part, values] of [['Electronic ink', L.electronicInkLesson, 'cell', {ink: 1}], ['Electrowetting display', L.electrowettingLesson, 'wetting', undefined], ['E-reader', L.eReaderLesson, 'reader', {ink: 1}]]) {
+t.ok(houseComponents['Electronic ink'].lesson !== L.electronicInkLesson && houseComponents['Electronic ink'].part === 'assembly', 'the reviewed ink lesson is independent of the preserved capsule draft');
+for (const [name, lesson, part, values] of [['Electrowetting display', L.electrowettingLesson, 'wetting', undefined], ['E-reader', L.eReaderLesson, 'reader', {ink: 1}]]) {
   const component = houseComponents[name];
   t.ok(component.machine === 'Electronic paper' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front', `${name} routes to the electronic paper’s ${part} with its own lesson`);
   assert.deepEqual(component.values, values);
