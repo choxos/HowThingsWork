@@ -260,7 +260,15 @@ assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id =
 for (const id of ['case', 'electronics', 'battery', 'memory', 'processor', 'framebuffer', 'driver', 'backplane', 'page', 'touch', 'frontlight', 'capsule', 'lightpath']) assert(hasCatalogPart('e-reader', id), `${id} remains bookmarkable in the whole reader`);
 assert.equal(catalog.groups.find(group => group.id === eReader.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === eReader.entry.group).place, 'home');
-assert(!entries.some(entry => entry.id === 'calculator'), 'Calculator remains an unpublished draft');
+const calculator = families.find(family => family.entry.id === 'calculator');
+assert(calculator && !componentParentIds.calculator, 'Calculator is a whole calculating device');
+assert.equal(calculator.components.length, 0, 'Calculator hardware and enlarged diagrams remain inspectable parts');
+assert.deepEqual(tags('calculator'), ['using-bits', 'storing-bits', 'light-and-images', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'calculator')).map(family => family.entry.id), ['calculator']);
+for (const id of ['case', 'grid', 'board', 'battery', 'chip', 'matrix', 'keys', 'connector', 'display', 'lcdstack', 'matrixview', 'adder', 'decoder', 'optics']) assert(hasCatalogPart('calculator', id), `${id} remains bookmarkable in the whole calculator`);
+assert.equal(catalog.groups.find(group => group.id === calculator.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === calculator.entry.group).place, 'home');
+assert(!entries.some(entry => entry.id === 'fire-extinguisher'), 'Fire extinguisher remains an unpublished draft');
 
 const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
 assert(lcdScreen, 'LCD screen is one whole item');

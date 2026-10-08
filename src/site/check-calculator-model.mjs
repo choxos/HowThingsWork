@@ -17,6 +17,7 @@ import * as M from './calculator-model.js';
 import * as L from './calculator-lessons.js';
 import {studyLessons} from './study-lessons.js';
 import {createStudyModel} from './study-models.js';
+import {calculatorAdditionLesson} from './calculator-addition-lesson.js';
 
 const t = tally();
 const counts = {pairs: 0, ticks: 0, micro: 0, poses: 0, cells: 0, gates: 0, points: 0, numbers: 0};
@@ -755,7 +756,7 @@ for (const values of [...poseSettings, ...lesson.tryIt.map(trial => trial.values
   }
 }
 for (const text of allText) t.ok(!/[—–]| - |--/.test(text) && !/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|aluminium)\b/i.test(text), `no dashes and American spelling: ${String(text).slice(0, 60)}`);
-t.ok(studyLessons.Calculator === L.calculatorLesson, 'the Calculator’s lesson is this one');
+t.ok(studyLessons.Calculator === calculatorAdditionLesson, 'the Calculator route uses the connected addition lesson');
 {
   const routed = createStudyModel('Calculator');
   t.ok(routed && routed.topology && routed.parts.some(item => item.id === 'adder') && routed.playback, 'the study family builds this model for the Calculator');

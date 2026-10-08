@@ -7245,6 +7245,78 @@
       "parentId": "system"
     }
   ],
+  "calculator": [
+    {
+      "id": "case",
+      "name": "Case and open bezel",
+      "parentId": "calculator"
+    },
+    {
+      "id": "grid",
+      "name": "Key supports",
+      "parentId": "calculator"
+    },
+    {
+      "id": "board",
+      "name": "Circuit board",
+      "parentId": "calculator"
+    },
+    {
+      "id": "battery",
+      "name": "Battery and power switch",
+      "parentId": "calculator"
+    },
+    {
+      "id": "chip",
+      "name": "Input registers, adder and decoder",
+      "parentId": "calculator"
+    },
+    {
+      "id": "matrix",
+      "name": "Key contact matrix",
+      "parentId": "calculator"
+    },
+    {
+      "id": "keys",
+      "name": "Moving keys and conductive contacts",
+      "parentId": "calculator"
+    },
+    {
+      "id": "connector",
+      "name": "Display connection",
+      "parentId": "calculator"
+    },
+    {
+      "id": "display",
+      "name": "Reflective three-digit result",
+      "parentId": "calculator"
+    },
+    {
+      "id": "lcdstack",
+      "name": "LCD layers",
+      "parentId": "display"
+    },
+    {
+      "id": "matrixview",
+      "name": "Follow the scanned key",
+      "parentId": "system"
+    },
+    {
+      "id": "adder",
+      "name": "Follow decimal carry",
+      "parentId": "system"
+    },
+    {
+      "id": "decoder",
+      "name": "Decode digits and alternate drive",
+      "parentId": "system"
+    },
+    {
+      "id": "optics",
+      "name": "Follow reflected light",
+      "parentId": "system"
+    }
+  ],
   "hairspring": [
     {
       "id": "movement",

@@ -6,7 +6,7 @@ import {createBluRayPlayerModel} from './blu-ray-player-model.js';
 import {createElectronicPaperDisplayModel} from './electronic-paper-model.js';
 import {createSmartphoneLearningModel} from './smartphone-model.js';
 import {createSpeechRecognitionModel} from './speech-recognition-model.js';
-import {createCalculatorModel} from './calculator-model.js';
+import {createCalculatorAdditionModel} from './calculator-addition-model.js';
 import {createTftScreenModel} from './tft-screen-model.js';
 import {createOledDisplayModel} from './oled-display-model.js';
 import {createInfraredRemoteModel} from './remote-control-model.js';
@@ -19,7 +19,7 @@ export function createStudyModel(name){
  if(name==='Electronic paper')return createElectronicPaperDisplayModel();
  if(name==='Smartphone')return createSmartphoneLearningModel();
  if(name==='Speech recognition')return createSpeechRecognitionModel();
- if(name==='Calculator')return createCalculatorModel();
+ if(name==='Calculator')return createCalculatorAdditionModel();
  if(name==='LCD screen')return createTftScreenModel();
  if(name==='OLED display')return createOledDisplayModel();
  if(name==='Remote control')return createInfraredRemoteModel();
