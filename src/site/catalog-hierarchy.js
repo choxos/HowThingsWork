@@ -8,6 +8,7 @@ export const componentParentIds = {
   'cd-rom': 'blu-ray-player',
   'cd-r': 'blu-ray-player',
   'dvd-r': 'blu-ray-player',
+  'optical-disc-readout': 'blu-ray-player',
   'phonemes': 'speech-recognition',
   'ionization-smoke-detector': 'smoke-detector',
   'optical-smoke-detector': 'smoke-detector',

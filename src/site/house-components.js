@@ -4,7 +4,7 @@ import {createOpticalSmokeModel} from './optical-smoke-model.js';
 import {createIonizationSmokeModel} from './ionization-smoke-model.js';
 import {reviewedIonizationSmokeLesson} from './ionization-smoke-lesson.js';
 import {createCapillaryModel} from './capillary-model.js';
-import {createBluRayModel} from './blu-ray-model.js';
+import {createOpticalReadoutModel} from './optical-readout-model.js';
 import {createSiphonModel} from './siphon-model.js';
 import {createPolarizedLightModel} from './polarized-light-model.js';
 import {createLCDModel} from './lcd-model.js';
@@ -27,7 +27,7 @@ import {createVideoGamesConsoleModel} from './video-games-console-model.js';
 import {headTrackingLesson} from './head-tracking-lesson.js';
 import {createHeadTrackingModel} from './head-tracking-model.js';
 import {capillaryActionLesson} from './pens-lessons.js';
-import {opticalReadoutLesson} from './optical-lessons.js';
+import {opticalReadoutLesson} from './optical-readout-lesson.js';
 import {electronicInkLesson, electrowettingLesson, eReaderLesson} from './epaper-lessons.js';
 import {createElectronicPaperModel} from './epaper-model.js';
 import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
@@ -143,7 +143,7 @@ export const houseComponents={
  'Capillary action':{machine:'Capillary action',createModel:createCapillaryModel,part:'capillary',isolate:false,view:'front',lesson:capillaryActionLesson,intro:capillaryActionLesson.simple},
  'Refrigerant compressor':{machine:'Refrigerator',createModel:createRefrigerantCompressorModel,part:'system',isolate:false,view:'front',lesson:refrigerantCompressorLesson,intro:refrigerantCompressorLesson.simple},
  ...opticalDiscEntries,
- 'Optical-disc readout':{machine:'Blu-ray player',createModel:createBluRayModel,part:'pickup',isolate:false,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
+ 'Optical-disc readout':{machine:'Blu-ray player',createModel:createOpticalReadoutModel,part:'assembly',isolate:true,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
  'Electronic ink':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'cell',isolate:false,view:'front',values:{ink:1},lesson:electronicInkLesson,intro:electronicInkLesson.simple},
  'Electrowetting display':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'wetting',isolate:false,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
  'E-reader':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},

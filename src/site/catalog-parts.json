@@ -2422,6 +2422,63 @@
       "parentId": "system"
     }
   ],
+  "optical-disc-readout": [
+    {
+      "id": "pickup",
+      "name": "Pickup beneath the track",
+      "parentId": "assembly"
+    },
+    {
+      "id": "source",
+      "name": "Laser and collimating lens",
+      "parentId": "pickup"
+    },
+    {
+      "id": "splitter",
+      "name": "Polarizing beam splitter",
+      "parentId": "pickup"
+    },
+    {
+      "id": "waveplate",
+      "name": "Quarter-wave plate",
+      "parentId": "pickup"
+    },
+    {
+      "id": "mirror",
+      "name": "Fold mirror",
+      "parentId": "pickup"
+    },
+    {
+      "id": "objective",
+      "name": "Objective and lens holder",
+      "parentId": "pickup"
+    },
+    {
+      "id": "track",
+      "name": "Moving track and reflective relief",
+      "parentId": "pickup"
+    },
+    {
+      "id": "detector",
+      "name": "Four-area photodiode",
+      "parentId": "pickup"
+    },
+    {
+      "id": "shutter",
+      "name": "Return-path shutter",
+      "parentId": "pickup"
+    },
+    {
+      "id": "electronics",
+      "name": "Receiver circuit board",
+      "parentId": "assembly"
+    },
+    {
+      "id": "signal",
+      "name": "From returned light to recovered bits",
+      "parentId": "system"
+    }
+  ],
   "electronic-paper": [
     {
       "id": "case",

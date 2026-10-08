@@ -212,8 +212,9 @@ assert.equal(componentParentIds.dvd, 'blu-ray-player');
 assert.equal(componentParentIds['cd-rom'], 'blu-ray-player');
 assert.equal(componentParentIds['cd-r'], 'blu-ray-player');
 assert.equal(componentParentIds['dvd-r'], 'blu-ray-player');
-assert.deepEqual(bluRay.components.map(entry => entry.id), ['cd', 'dvd', 'cd-rom', 'cd-r', 'dvd-r'], 'Reviewed CD, DVD, CD-ROM, CD-R and DVD-R studies join their disc-player family');
-assert.deepEqual(catalogMachineComponents(bluRay.components), [], 'The optical media are studies, not smaller machines');
+assert.equal(componentParentIds['optical-disc-readout'], 'blu-ray-player');
+assert.deepEqual(bluRay.components.map(entry => entry.id), ['cd', 'dvd', 'cd-rom', 'cd-r', 'dvd-r', 'optical-disc-readout'], 'Reviewed optical-media and readout studies join their disc-player family');
+assert.deepEqual(catalogMachineComponents(bluRay.components), [], 'The optical-media and readout close-ups are studies, not smaller machines');
 assert.deepEqual(tags('cd'), ['using-bits', 'light-and-images', 'sound-and-music', 'rotating-wheels', 'electricity']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'cd')).map(family => family.entry.id), ['blu-ray-player'], 'A CD-only search retains its complete parent');
 for (const id of ['pickup', 'optics', 'track', 'codec', 'errors', 'waveform', 'layers', 'phase', 'spin']) assert(hasCatalogPart('cd', id), `${id} remains bookmarkable in the CD study`);
@@ -233,7 +234,9 @@ assert.deepEqual(tags('blu-ray-player'), ['light-and-images', 'using-bits', 'rot
 assert(hasCatalogPart('blu-ray-player', 'pickup') && hasCatalogPart('blu-ray-player', 'track'), 'Player and timing inspections remain bookmarkable');
 assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).room, 'Study');
 assert.equal(catalog.groups.find(group => group.id === bluRay.entry.group).place, 'home');
-assert(!entries.some(entry => entry.id === 'optical-disc-readout'), 'Optical-disc readout remains an unpublished draft');
+assert.deepEqual(tags('optical-disc-readout'), ['using-bits', 'light-and-images', 'sensors-and-detectors', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'optical-disc-readout')).map(family => family.entry.id), ['blu-ray-player'], 'A readout-only search retains its complete parent');
+for (const id of ['pickup', 'source', 'splitter', 'waveplate', 'mirror', 'objective', 'track', 'detector', 'shutter', 'electronics', 'signal']) assert(hasCatalogPart('optical-disc-readout', id), `${id} remains bookmarkable in the optical readout study`);
 
 const electronicPaper = families.find(family => family.entry.id === 'electronic-paper');
 assert(electronicPaper && electronicPaper.components.length === 0, 'Electronic paper stays one whole lesson; ordinary parts and unfinished components stay out of the directory');
