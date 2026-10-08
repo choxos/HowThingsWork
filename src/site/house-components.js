@@ -32,8 +32,8 @@ import {electronicInkLesson} from './electronic-ink-lesson.js';
 import {createElectronicInkModel} from './electronic-ink-model.js';
 import {electrowettingLesson} from './electrowetting-lesson.js';
 import {createElectrowettingModel} from './electrowetting-model.js';
-import {eReaderLesson} from './epaper-lessons.js';
-import {createElectronicPaperModel} from './epaper-model.js';
+import {eReaderLesson} from './e-reader-lesson.js';
+import {createEReaderModel} from './e-reader-model.js';
 import {eccentricVibrationMotorLesson} from './vibration-motor-lesson.js';
 import {createVibrationMotorModel} from './vibration-motor-model.js';
 import {capacitiveAccelerometerLesson} from './accelerometer-lesson.js';
@@ -150,7 +150,7 @@ export const houseComponents={
  'Optical-disc readout':{machine:'Blu-ray player',createModel:createOpticalReadoutModel,part:'assembly',isolate:true,view:'front',lesson:opticalReadoutLesson,intro:opticalReadoutLesson.simple},
  'Electronic ink':{machine:'Electronic paper',createModel:createElectronicInkModel,part:'assembly',isolate:true,view:'front',lesson:electronicInkLesson,intro:electronicInkLesson.simple},
  'Electrowetting display':{machine:'Electronic paper',createModel:createElectrowettingModel,part:'assembly',isolate:true,view:'front',lesson:electrowettingLesson,intro:electrowettingLesson.simple},
- 'E-reader':{machine:'Electronic paper',createModel:createElectronicPaperModel,part:'reader',isolate:false,view:'front',values:{ink:1},lesson:eReaderLesson,intro:eReaderLesson.simple},
+ 'E-reader':{machine:'E-reader',createModel:createEReaderModel,part:'reader',isolate:true,view:'front',lesson:eReaderLesson,intro:eReaderLesson.simple},
  'Accelerometer':{machine:'Smartphone',createModel:createAccelerometerModel,part:'module',isolate:false,view:'front',lesson:capacitiveAccelerometerLesson,intro:capacitiveAccelerometerLesson.simple},
  'Vibration motor':{machine:'Smartphone',createModel:createVibrationMotorModel,part:'system',isolate:false,view:'front',lesson:eccentricVibrationMotorLesson,intro:eccentricVibrationMotorLesson.simple},
  'RGB subpixels':{machine:'LCD screen',createModel:createRgbSubpixelsModel,part:'system',isolate:false,view:'front',lesson:rgbAperturesLesson,intro:rgbAperturesLesson.simple},

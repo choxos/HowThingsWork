@@ -656,12 +656,7 @@ for (const lesson of [L.electronicPaperLesson, L.electronicInkLesson, L.electrow
 t.ok(studyLessons['Electronic paper'] !== L.electronicPaperLesson, 'the reviewed main lesson is independent of preserved component drafts');
 t.ok(houseComponents['Electronic ink'].lesson !== L.electronicInkLesson && houseComponents['Electronic ink'].part === 'assembly', 'the reviewed ink lesson is independent of the preserved capsule draft');
 t.ok(houseComponents['Electrowetting display'].lesson !== L.electrowettingLesson && houseComponents['Electrowetting display'].part === 'assembly', 'the reviewed electrowetting lesson is independent of the preserved wetting draft');
-for (const [name, lesson, part, values] of [['E-reader', L.eReaderLesson, 'reader', {ink: 1}]]) {
-  const component = houseComponents[name];
-  t.ok(component.machine === 'Electronic paper' && component.part === part && component.lesson === lesson && component.intro === lesson.simple && component.view === 'front', `${name} routes to the electronic paper’s ${part} with its own lesson`);
-  assert.deepEqual(component.values, values);
-  if (values) t.ok(lesson.tryIt.every(trial => trial.values.ink === values.ink), `${name}: every trial with capsule ink`);
-}
+t.ok(houseComponents['E-reader'].lesson !== L.eReaderLesson && houseComponents['E-reader'].machine === 'E-reader' && houseComponents['E-reader'].part === 'reader', 'the reviewed whole reader is independent of the preserved static reader draft');
 
 // ---------------------------------------------------------------------------
 // 4. What every model owes the viewer.

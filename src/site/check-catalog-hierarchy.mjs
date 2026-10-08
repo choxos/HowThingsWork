@@ -252,7 +252,15 @@ for (const id of ['frame', 'power', 'controller', 'drivers', 'backplane', 'ink',
 assert.deepEqual(tags('electrowetting-display'), ['electricity', 'light-and-images', 'using-bits']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'electrowetting-display')).map(family => family.entry.id), ['electronic-paper'], 'An electrowetting-only search retains its complete parent');
 for (const id of ['frame', 'power', 'drivers', 'reflectors', 'electrodes', 'coating', 'oil', 'water', 'contacts', 'filters', 'light', 'result']) assert(hasCatalogPart('electrowetting-display', id), `${id} remains bookmarkable in the electrowetting study`);
-assert(!entries.some(entry => entry.id === 'e-reader'), 'E-reader remains an unpublished draft');
+const eReader = families.find(family => family.entry.id === 'e-reader');
+assert(eReader && !componentParentIds['e-reader'], 'E-reader is a whole book-reading device');
+assert.equal(eReader.components.length, 0, 'Reader hardware and enlarged diagrams remain inspectable parts');
+assert.deepEqual(tags('e-reader'), ['using-bits', 'storing-bits', 'light-and-images', 'electricity']);
+assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'e-reader')).map(family => family.entry.id), ['e-reader']);
+for (const id of ['case', 'electronics', 'battery', 'memory', 'processor', 'framebuffer', 'driver', 'backplane', 'page', 'touch', 'frontlight', 'capsule', 'lightpath']) assert(hasCatalogPart('e-reader', id), `${id} remains bookmarkable in the whole reader`);
+assert.equal(catalog.groups.find(group => group.id === eReader.entry.group).room, 'Study');
+assert.equal(catalog.groups.find(group => group.id === eReader.entry.group).place, 'home');
+assert(!entries.some(entry => entry.id === 'calculator'), 'Calculator remains an unpublished draft');
 
 const lcdScreen = families.find(family => family.entry.id === 'lcd-screen');
 assert(lcdScreen, 'LCD screen is one whole item');

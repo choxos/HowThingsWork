@@ -2645,6 +2645,73 @@
       "parentId": "assembly"
     }
   ],
+  "e-reader": [
+    {
+      "id": "case",
+      "name": "Case and display supports",
+      "parentId": "reader"
+    },
+    {
+      "id": "electronics",
+      "name": "Circuit board and power circuit",
+      "parentId": "reader"
+    },
+    {
+      "id": "battery",
+      "name": "Battery and supply leads",
+      "parentId": "reader"
+    },
+    {
+      "id": "memory",
+      "name": "Stored miniature books",
+      "parentId": "reader"
+    },
+    {
+      "id": "processor",
+      "name": "Text and page processor",
+      "parentId": "reader"
+    },
+    {
+      "id": "framebuffer",
+      "name": "Page framebuffer",
+      "parentId": "reader"
+    },
+    {
+      "id": "driver",
+      "name": "Display driver and flexible connection",
+      "parentId": "reader"
+    },
+    {
+      "id": "backplane",
+      "name": "TFT pixel backplane",
+      "parentId": "reader"
+    },
+    {
+      "id": "page",
+      "name": "Reflective book page",
+      "parentId": "reader"
+    },
+    {
+      "id": "touch",
+      "name": "Touch surface and reading input",
+      "parentId": "reader"
+    },
+    {
+      "id": "frontlight",
+      "name": "E-reader front-light panel",
+      "parentId": "reader"
+    },
+    {
+      "id": "capsule",
+      "name": "Selected pigment cell",
+      "parentId": "system"
+    },
+    {
+      "id": "lightpath",
+      "name": "Front-light path through the guide",
+      "parentId": "system"
+    }
+  ],
   "smartphone": [
     {
       "id": "case",
