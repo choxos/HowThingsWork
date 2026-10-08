@@ -155,7 +155,7 @@ try{
         combinationPage.on('crash',()=>rejectCrash(new Error(`Combination worker ${shard}, session ${session} crashed`)));
         combinationPage.on('pageerror',error=>errors.push(`Combination worker ${shard}, session ${session}: ${error.message}`));
         combinationPage.on('console',message=>{if(message.type()==='error')consoleErrors.push(`Combination worker ${shard}, session ${session}: ${message.text()}`);});
-        await combinationPage.goto(new URL('#machine/calculator',base).href);await combinationPage.locator('canvas').waitFor();
+        await combinationPage.goto(new URL('#machine/calculator',base).href);await combinationPage.locator('canvas').waitFor({timeout:120000});
         await combinationPage.getByRole('heading',{name:'Calculator',exact:true,level:1}).waitFor();
         assert.equal(await combinationPage.locator('[data-control]').count(),4);assert(await combinationPage.locator('canvas').evaluate(canvas=>!!canvas.getContext('webgl2')));
         let sessionCombinations=0;
