@@ -2583,6 +2583,68 @@
       "parentId": "system"
     }
   ],
+  "electrowetting-display": [
+    {
+      "id": "frame",
+      "name": "Board and cell walls",
+      "parentId": "assembly"
+    },
+    {
+      "id": "power",
+      "name": "Power supply and switch",
+      "parentId": "assembly"
+    },
+    {
+      "id": "drivers",
+      "name": "Controller and three channel drivers",
+      "parentId": "assembly"
+    },
+    {
+      "id": "reflectors",
+      "name": "White reflecting bases",
+      "parentId": "assembly"
+    },
+    {
+      "id": "electrodes",
+      "name": "Transparent pixel electrodes",
+      "parentId": "assembly"
+    },
+    {
+      "id": "coating",
+      "name": "Water-repellent insulating coating",
+      "parentId": "assembly"
+    },
+    {
+      "id": "oil",
+      "name": "Black oil films and side beads",
+      "parentId": "assembly"
+    },
+    {
+      "id": "water",
+      "name": "Conducting water",
+      "parentId": "assembly"
+    },
+    {
+      "id": "contacts",
+      "name": "Common contacts in water",
+      "parentId": "assembly"
+    },
+    {
+      "id": "filters",
+      "name": "Electrowetting color filters",
+      "parentId": "assembly"
+    },
+    {
+      "id": "light",
+      "name": "Incident and reflected light paths",
+      "parentId": "assembly"
+    },
+    {
+      "id": "result",
+      "name": "Combined-color sample",
+      "parentId": "assembly"
+    }
+  ],
   "smartphone": [
     {
       "id": "case",
