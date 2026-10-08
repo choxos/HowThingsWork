@@ -2,10 +2,53 @@ import assert from 'node:assert/strict';
 import {previewEntryIds} from './published-catalog.js';
 import * as THREE from 'three';
 import {frameModel} from './machine-viewer.js';
+import {createPartExplosion} from './part-explosion.js';
 import {createCarIgnitionModel as model,createIgnitionTrial as trial,ignitionMechanism,carIgnitionConstants as C} from './car-ignition-model.js';
 import {carIgnitionLesson as lesson} from './car-ignition-lesson.js';
 let checks=0;const ok=(v,msg)=>{assert.ok(v,msg);checks++;};const near=(a,b,tol=1e-9)=>ok(Math.abs(a-b)<tol,`${a} != ${b}`);const defaults={voltage:12,rpm:600,key:1,points:0};const vec=p=>new THREE.Vector3(...p);
 const full=(v,dt=C.dt)=>{const t=trial(v,{dt});return t.advanceTo(60/v.rpm,{final:true});};
+
+function checkSeparatedInventory(){
+ const m=model(),T=m.topology,symbols=new Set();
+ for(const guide of [...T.currentArrows,T.fieldArrow,T.dots,...T.letterLabels,...T.plugs.flatMap(p=>[p.spark,p.record])])guide.traverse(object=>{if(object.geometry)symbols.add(object.geometry);});
+ for(const elapsed of [0,1.4]){m.reset();m.update({key:2});m.advance(elapsed);const exploded=createPartExplosion(m,new THREE.PerspectiveCamera(),1),copied=new Set();exploded.root.traverse(object=>{if(object.geometry)copied.add(object.geometry);});
+  const symbolicCount=[...symbols].filter(geometry=>copied.has(geometry)).length;exploded.dispose();ok(symbolicCount===0,`separated inventory includes ${symbolicCount} symbolic geometries`);
+  for(const mesh of [T.primaryMesh,T.secondaryMesh,T.camMesh,T.fixedPoint,T.movingContact,T.solenoidMesh,T.mainBlade])ok(copied.has(mesh.geometry),'separated inventory preserves physical mechanisms');
+ }
+ m.dispose();return {poses:2,checks};
+}
+
+function checkFollowerContact(){
+ const m=model(),T=m.topology,outline=T.camMesh.geometry.parameters.shapes.getPoints();
+ const positions=T.followerTip.geometry.attributes.position;
+ const cross=(a,b,p)=>(b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x);
+ function hull(points){const unique=[...new Map(points.map(p=>[`${p.x.toFixed(9)},${p.y.toFixed(9)}`,p])).values()].sort((a,b)=>a.x-b.x||a.y-b.y),half=list=>{const h=[];for(const p of list){while(h.length>1&&cross(h.at(-2),h.at(-1),p)<=1e-14)h.pop();h.push(p);}return h;},lo=half(unique),hi=half([...unique].reverse());return [...lo.slice(0,-1),...hi.slice(0,-1)];}
+ // The cam chord error is bounded by maximum curve second derivative times angle-step squared / 8.
+ const facetingTolerance=Math.hypot(2.34+.305,2*.39)*(Math.PI/360)**2/8+1e-8;
+ let minimumNose=Infinity,maximumNose=0,maximumPenetration=0;
+ for(let degree=0;degree<360;degree+=.25){
+  const s=ignitionMechanism(m.defaults,degree/(600*6));T.cam.rotation.z=degree*Math.PI/180;T.follower.position.x=-s.camLift;m.root.updateMatrixWorld(true);
+  const footprint=hull(Array.from({length:positions.count},(_,i)=>new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(T.followerTip.matrixWorld))),nose=footprint.reduce((a,b)=>a.x>b.x?a:b),cam=outline.map(p=>new THREE.Vector3(p.x,p.y,.035).applyMatrix4(T.cam.matrixWorld));
+  const edges=footprint.map((a,i)=>{const b=footprint[(i+1)%footprint.length],length=Math.hypot(b.x-a.x,b.y-a.y);return {a,b,length};});
+  let noseDistance=Infinity;
+  for(let i=1;i<cam.length;i++){
+   const a=cam[i-1],b=cam[i],dx=b.x-a.x,dy=b.y-a.y,length2=dx*dx+dy*dy;if(length2<1e-24)continue;
+   const t=Math.max(0,Math.min(1,((nose.x-a.x)*dx+(nose.y-a.y)*dy)/length2));noseDistance=Math.min(noseDistance,Math.hypot(nose.x-a.x-t*dx,nose.y-a.y-t*dy));
+   // Clip each actual cam edge against the convex follower silhouette.
+   let low=0,high=1;
+   for(const edge of edges){const start=cross(edge.a,edge.b,a)/edge.length,end=cross(edge.a,edge.b,b)/edge.length,delta=end-start;if(Math.abs(delta)<1e-15){if(start<0){low=1;high=0;break;}}else if(delta>0)low=Math.max(low,-start/delta);else high=Math.min(high,-start/delta);}
+   if(low<=high){const mid=(low+high)/2,p={x:a.x+mid*dx,y:a.y+mid*dy},depth=Math.min(...edges.map(edge=>cross(edge.a,edge.b,p)/edge.length));maximumPenetration=Math.max(maximumPenetration,depth);}
+  }
+  minimumNose=Math.min(minimumNose,noseDistance);maximumNose=Math.max(maximumNose,noseDistance);
+ }
+ m.dispose();ok(maximumPenetration<1e-7,`follower penetrates actual cam by ${maximumPenetration}`);ok(maximumNose<facetingTolerance,`follower nose misses cam by ${maximumNose}`);
+ return {poses:1440,minimumNose,maximumNose,maximumPenetration,facetingTolerance};
+}
+function checkSnapshotIsolation(){
+ const variants=[{},{contactBreakerLesson:true},{distributorLesson:true},{inductionCoilLesson:true},{ignitionWindingsLesson:true}];
+ for(const variant of variants){const m=model(variant);m.advance(8);const before=m.getState(),expected=structuredClone(before);ok(before.events.length>0&&before.openings.length>0&&before.sampledPeak&&before.sampledPeakA,'exercise populated records');for(const [key,value] of Object.entries(before)){if(Array.isArray(value)){for(const item of value)if(item&&typeof item==='object')for(const field of Object.keys(item))item[field]='external mutation';value.push('external mutation');}else if(value&&typeof value==='object')for(const field of Object.keys(value))value[field]='external mutation';}const after=m.getState();m.dispose();assert.deepEqual(after,expected,`isolated snapshot ${JSON.stringify(variant)}`);checks++;}
+ return {variants:variants.length};
+}
 
 function checkPassiveEquationsAndNormalConvergence(){
  ok(C.Lp*C.Ls-C.M*C.M>0,'coupled magnetic energy matrix positive definite');let maxTiming=0,maxEnergy=0,maxResidual=0;
@@ -35,6 +78,12 @@ function checkPresetsAndLifecycle(){
  const m=model();assert.deepEqual(m.defaults,defaults);checks++;ok(lesson.tryIt.length===9,'nine actual presets');const counts=[8,5,4,0,0,8,0,0,0],energies=[.3198597655383053,.06790128839568182,.13974968817527514,0,0,.3198597655383053,0,0,0];
  for(const [i,p] of lesson.tryIt.entries())for(const history of [0,1,2]){m.reset();if(history){m.update({voltage:9,rpm:120,key:2,points:0});m.advance(history===1?2.1:8);}m.reset();m.update(p.values);near(m.getState().events.length,0);near(m.getState().ignitionWork,0);ok(Object.keys(p.values).sort().join(',')==='key,points,rpm,voltage','each preset resets all inputs');m.advance(8);const s=m.getState();near(s.events.length,counts[i]);near(s.sparkEnergy,energies[i],1e-8);ok(s.complete&&m.resultPart.available(),'completed observation has useful result');near(s.elapsed,60/p.values.rpm);if(i===6)ok(!s.shaftEnabled,'blockedStart still completes observation');}
  m.reset();m.playback.step();near(m.getState().progress,.01);const paused=JSON.stringify(m.getState());m.update();m.advance(0);ok(JSON.stringify(m.getState())===paused,'pause stable');m.update({points:2});near(m.getState().events.length,0);near(m.getState().elapsed,0);m.actions[0].run();near(m.getState().values.points,2);m.advance(8);const finished=JSON.stringify(m.getState());m.advance(10);ok(JSON.stringify(m.getState())===finished,'completion frozen');m.reset();const n=model();m.advance(8);for(let i=0;i<800;i++)n.advance(.01);near(m.getState().sparkEnergy,n.getState().sparkEnergy,1e-12);assert.deepEqual(m.getState().events,n.getState().events);checks++;m.dispose();n.dispose();
+}
+
+function checkInspectionActions(){
+ const m=model(),parts=['coil','breaker','routing','starter-circuit'],fractions=[45/360,63/360,63/360,45/360];ok(m.actions.length===5,'restart and four focused inspection actions');
+ for(const preset of lesson.tryIt)for(let i=0;i<4;i++){m.reset();m.update(preset.values);m.advance(8);const action=m.actions[i+1];ok(action.part===parts[i]&&m.parts.some(p=>p.id===action.part),'inspection has an actual assembly');ok(action.replay===false,'inspection is not stored as replay setup');action.run();const s=m.getState();assert.deepEqual(s.values,preset.values);checks++;near(s.progress,fractions[i]);ok(s.started&&!s.complete,'inspection starts a fresh partial trial');near(s.elapsed,60/s.values.rpm*fractions[i]);const expected=trial(s.values).advanceTo(s.elapsed,{final:true});assert.deepEqual(s.events,expected.events);checks++;near(s.sparkEnergy,expected.sparkEnergy);}
+ m.dispose();
 }
 
 function checkCircuitGeometry(){
@@ -103,6 +152,8 @@ function checkVisibilityAndDisposal(){
  }
  const life=model(),resources=new Map();function watch(){life.root.traverse(o=>{if(o.geometry&&!resources.has(o.geometry)){resources.set(o.geometry,0);o.geometry.addEventListener('dispose',()=>resources.set(o.geometry,resources.get(o.geometry)+1));}});}watch();for(const key of [2,1,2,0]){life.update({key});watch();life.advance(.2);watch();}life.dispose();for(const count of resources.values())ok(count===1,'all static/replaced geometry disposed once');return visibleTurns;
 }
-if(!process.argv.includes('--geometry')){checkPassiveEquationsAndNormalConvergence();checkDisabledModesStarterAndCharging();checkPresetsAndLifecycle();}checkCircuitGeometry();checkNoContactBypasses();const visibleTurns=checkVisibilityAndDisposal();assert.ok(previewEntryIds.includes('car-ignition-system'),'car-ignition-system is routed into the preview');
+console.log('Contact and snapshots:',checkFollowerContact(),checkSnapshotIsolation());checkSeparatedInventory();
+{const m=model();assert.deepEqual(m.catalogParts.map(p=>p.id).sort(),['battery','ignition-key','starter-circuit','coil','breaker','routing','timing-link'].sort());checks++;m.dispose();}
+if(!process.argv.includes('--geometry')){checkPassiveEquationsAndNormalConvergence();checkDisabledModesStarterAndCharging();checkPresetsAndLifecycle();checkInspectionActions();}checkCircuitGeometry();checkNoContactBypasses();const visibleTurns=checkVisibilityAndDisposal();assert.ok(previewEntryIds.includes('car-ignition-system'),'car-ignition-system is routed into the preview');
 {let hinted=0;for(const hv of [{},{contactBreakerLesson:true},{distributorLesson:true},{inductionCoilLesson:true},{ignitionWindingsLesson:true}]){const hm=model(hv),hr=hm.update();for(const hl of ['Primary current','Stored magnetic energy','High-voltage node','Delivered spark energy']){const hx=hr.find(r=>r&&r.label===hl);if(!hx)continue;assert.ok(typeof hx.hint==='string'&&hx.hint.length>20,`${hl} carries a hint`);hinted++;}hm.dispose&&hm.dispose();}assert.equal(hinted,17,`named readings carry hints across every variant: ${hinted}`);}
 console.log(process.argv.includes('--geometry')?`Car ignition geometry: ${checks} checks passed;actual conductor/coil/capacitor/contact/kinematic geometry,${visibleTurns} visible turn poses,routed discharge annotations and disposal.`:`Car ignition: ${checks} checks passed;50normalcases×3timesteps,450controlstates,passive energy/threshold/contact events,9presets×3histories,RLlimit and current continuity,actual coil/capacitor/points/solenoid/rotor/kinematic connections;${visibleTurns} visible turn poses, labeled routed discharges, lifecycle and disposal.`);

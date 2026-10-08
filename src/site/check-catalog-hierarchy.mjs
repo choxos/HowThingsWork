@@ -402,3 +402,14 @@ assert.deepEqual(tags('phonemes'), ['sound-and-music', 'making-bits']);
 assert.deepEqual(groupCatalogEntries(entries, entries.filter(entry => entry.id === 'phonemes')).map(family => family.entry.id), ['speech-recognition'], 'A phoneme search retains its parent lesson');
 for (const id of ['source', 'filters', 'output', 'spectrum', 'spectrogram', 'vowels', 'comparison']) assert(hasCatalogPart('phonemes', id), `${id} remains bookmarkable in the phoneme study`);
 assert.equal(catalog.groups.find(group => group.id === speechRecognition.entry.group).room, 'Study');
+
+const ignition = families.find(family => family.entry.id === 'car-ignition-system');
+assert(ignition && !componentParentIds['car-ignition-system'], 'Car ignition is a complete battery, starter and ignition system');
+assert.deepEqual(new Set(ignition.components.map(entry => entry.id)), new Set(['electronic-ignition', 'spark-gap', 'spark-plug-electrodes-and-ceramic-insulator']));
+assert.deepEqual(catalogMachineComponents(ignition.components).map(entry => entry.id), ['electronic-ignition'], 'The electronic switching circuit is a smaller system; gap and electrodes remain part studies');
+for (const child of ignition.components) assert.deepEqual(groupCatalogEntries(entries, [child]).map(family => family.entry.id), ['car-ignition-system'], `${child.id} search retains the complete ignition system`);
+assert.deepEqual(tags('car-ignition-system'), ['electricity', 'magnetism']);
+assert.equal(catalog.groups.find(group => group.id === ignition.entry.group).place, 'workshop');
+assert.equal(catalog.groups.find(group => group.id === ignition.entry.group).room, 'Garage');
+for (const id of ['battery', 'ignition-key', 'starter-circuit', 'coil', 'breaker', 'routing', 'timing-link']) assert(hasCatalogPart('car-ignition-system', id), `${id} remains bookmarkable in the ignition system`);
+for (const id of ['solenoid', 'spark-plug', 'distributor', 'induction-coil', 'contact-breaker-ignition', 'ignition-coil-primary-and-secondary-windings']) assert(!entries.some(entry => entry.id === id), `${id} requires its own completed review before publication`);

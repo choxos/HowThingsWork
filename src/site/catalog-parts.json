@@ -6047,6 +6047,43 @@
       "parentId": "circuit"
     }
   ],
+  "car-ignition-system": [
+    {
+      "id": "coil",
+      "name": "Coil windings and shared core",
+      "parentId": "system"
+    },
+    {
+      "id": "routing",
+      "name": "Distributor and four connected plug paths",
+      "parentId": "system"
+    },
+    {
+      "id": "breaker",
+      "name": "Points, cam and parallel capacitor",
+      "parentId": "system"
+    },
+    {
+      "id": "battery",
+      "name": "Battery and body reference",
+      "parentId": "system"
+    },
+    {
+      "id": "ignition-key",
+      "name": "Off/Run/Start ignition contact",
+      "parentId": "system"
+    },
+    {
+      "id": "starter-circuit",
+      "name": "Solenoid and separate starter circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "timing-link",
+      "name": "Prescribed 1:1 cam/distributor linkage",
+      "parentId": "system"
+    }
+  ],
   "sensors-and-detectors": [
     {
       "id": "board",
