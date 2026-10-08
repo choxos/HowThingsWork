@@ -136,53 +136,77 @@ try{
   await page.getByText('Learn more',{exact:true}).click();for(const source of lesson.sources)assert.equal(await page.locator(`.daily-lesson a[href="${source.url}"]`).innerText(),source.title);
   await writeFile(output+'/interaction-progress.json',JSON.stringify({passed:true,presets:presets.length,controls:controls.length,parts:parts.length,frames:frames.length,histories,errors,consoleErrors}));
   console.log('All visual interaction checks passed; starting exhaustive browser combinations.');
-  await action('Inspect: complete calculator');
+  await compare();
+  await page.locator('.daily-return').click();assert(!page.url().endsWith('#machine/calculator'));assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);
+  await browser.close();
+  const combinationSessions=[];
   let combinationFailure,progressWrite=Promise.resolve();
-  await Promise.all([0,1,2,3].map(async shard=>{
-    let combinationBrowser;
+  await Promise.all([0,1].map(async shard=>{
+    let combinationBrowser,combinationPage,lastFirst,session=0;
     try{
-      combinationBrowser=await chromium.launch({channel:'chrome',headless:true});
-      const combinationPage=await combinationBrowser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
-      combinationPage.setDefaultTimeout(25000);
-      combinationPage.on('pageerror',error=>errors.push(`Combination session ${shard}: ${error.message}`));
-      combinationPage.on('console',message=>{if(message.type()==='error')consoleErrors.push(`Combination session ${shard}: ${message.text()}`);});
-      await combinationPage.goto(new URL('#machine/calculator',base).href);await combinationPage.locator('canvas').waitFor();
-      await combinationPage.getByRole('heading',{name:'Calculator',exact:true,level:1}).waitFor();
-      assert.equal(await combinationPage.locator('[data-control]').count(),4);assert(await combinationPage.locator('canvas').evaluate(canvas=>!!canvas.getContext('webgl2')));
-      for(let first=shard*25;first<(shard+1)*25&&!combinationFailure;first++){
-        const batch=await combinationPage.evaluate(first=>{
-          const out=[],read=()=>Object.fromEntries([...document.querySelectorAll('.daily-readings > div')].map(row=>[row.querySelector('dt').textContent,row.querySelector('dd').textContent]));
-          const change=(key,value)=>{const input=document.querySelector(`[data-control="${key}"]`);input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));};
-          for(let second=0;second<100;second++){
-            document.querySelector('[data-reset-controls]').click();for(const [key,value] of Object.entries({first,second,power:1,ambient:0}))change(key,value);
-            for(let step=0;step<60;step++)document.querySelector('[data-step]').click();
-            for(const power of [1,0]){
-              change('power',power);
-              for(const ambient of [0,1]){
-                change('ambient',ambient);const settings={first,second,power,ambient};
-                const selected=Object.fromEntries(Object.keys(settings).map(key=>[key,Number(document.querySelector(`[data-control="${key}"]`).value)]));
-                if(JSON.stringify(selected)!==JSON.stringify(settings))throw Error('Settings not retained: '+JSON.stringify({selected,settings}));
-                const readings=read(),sum=first+second,expectedRegister=power?String(sum):'Blank',visible=!ambient?'Screen dark':!power?'Blank display':sum+' · result';
-                const accepted=power?[...String(first),'+',...String(second),'='].join(' '):'None';
-                if(readings['Display register']!==expectedRegister||readings['Your result']!==visible||readings['Accepted keys']!==accepted||readings['Calculator operation']!==(power?'Result displayed':'Power off'))throw Error('Combination failed: '+JSON.stringify({settings,readings}));
-                out.push({settings,display:expectedRegister,visible,accepted});
+      for(let start=shard*50;start<(shard+1)*50&&!combinationFailure;start+=4,session++){
+        const end=Math.min(start+4,(shard+1)*50);
+        let rejectCrash;
+        const crashed=new Promise((_,reject)=>{rejectCrash=reject;});
+        crashed.catch(()=>{});
+        combinationBrowser=await chromium.launch({channel:'chrome',headless:true});
+        combinationPage=await combinationBrowser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+        combinationPage.setDefaultTimeout(25000);
+        combinationPage.on('crash',()=>rejectCrash(new Error(`Combination worker ${shard}, session ${session} crashed`)));
+        combinationPage.on('pageerror',error=>errors.push(`Combination worker ${shard}, session ${session}: ${error.message}`));
+        combinationPage.on('console',message=>{if(message.type()==='error')consoleErrors.push(`Combination worker ${shard}, session ${session}: ${message.text()}`);});
+        await combinationPage.goto(new URL('#machine/calculator',base).href);await combinationPage.locator('canvas').waitFor();
+        await combinationPage.getByRole('heading',{name:'Calculator',exact:true,level:1}).waitFor();
+        assert.equal(await combinationPage.locator('[data-control]').count(),4);assert(await combinationPage.locator('canvas').evaluate(canvas=>!!canvas.getContext('webgl2')));
+        let sessionCombinations=0;
+        for(let first=start;first<end&&!combinationFailure;first++){
+          lastFirst=first;
+          let timer,batch;
+          try{
+            batch=await Promise.race([combinationPage.evaluate(async first=>{
+              const out=[],read=()=>Object.fromEntries([...document.querySelectorAll('.daily-readings > div')].map(row=>[row.querySelector('dt').textContent,row.querySelector('dd').textContent]));
+              const change=(key,value)=>{const input=document.querySelector(`[data-control="${key}"]`);input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));};
+              for(let second=0;second<100;second++){
+                document.querySelector('[data-reset-controls]').click();for(const [key,value] of Object.entries({first,second,power:1,ambient:0}))change(key,value);
+                for(let step=0;step<60;step++)document.querySelector('[data-step]').click();
+                for(const power of [1,0]){
+                  change('power',power);
+                  for(const ambient of [0,1]){
+                    change('ambient',ambient);const settings={first,second,power,ambient};
+                    const selected=Object.fromEntries(Object.keys(settings).map(key=>[key,Number(document.querySelector(`[data-control="${key}"]`).value)]));
+                    if(JSON.stringify(selected)!==JSON.stringify(settings))throw Error('Settings not retained: '+JSON.stringify({selected,settings}));
+                    const readings=read(),sum=first+second,expectedRegister=power?String(sum):'Blank',visible=!ambient?'Screen dark':!power?'Blank display':sum+' · result';
+                    const accepted=power?[...String(first),'+',...String(second),'='].join(' '):'None';
+                    if(readings['Display register']!==expectedRegister||readings['Your result']!==visible||readings['Accepted keys']!==accepted||readings['Calculator operation']!==(power?'Result displayed':'Power off'))throw Error('Combination failed: '+JSON.stringify({settings,readings}));
+                    out.push({settings,display:expectedRegister,visible,accepted});
+                  }
+                }
+                await new Promise(requestAnimationFrame);
               }
-            }
-          }
-          return out;
-        },first);combinations.push(...batch);
-        const progress={passed:combinations.length,total:40000,session:shard,lastFirst:first};
-        progressWrite=progressWrite.then(()=>writeFile(output+'/combination-progress.json',JSON.stringify(progress)));await progressWrite;
-        console.log('Browser combinations passed: '+progress.passed+'/40000');
+              return out;
+            },first),crashed,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`Combination worker ${shard}, session ${session}, first ${first}: batch exceeded 120 seconds`)),120000);})]);
+          }finally{clearTimeout(timer);}
+          combinations.push(...batch);
+          sessionCombinations+=batch.length;
+          const progress={passed:combinations.length,total:40000,worker:shard,session,lastFirst:first};
+          progressWrite=progressWrite.then(()=>writeFile(output+'/combination-progress.json',JSON.stringify(progress)));await progressWrite;
+          console.log('Browser combinations passed: '+progress.passed+'/40000');
+        }
+        await combinationBrowser.close();combinationBrowser=undefined;combinationPage=undefined;
+        if(!combinationFailure){assert.equal(sessionCombinations,(end-start)*400);combinationSessions.push({worker:shard,session,firstStart:start,firstEnd:end-1,combinations:sessionCombinations});}
       }
-    }catch(error){combinationFailure??=error;}
+    }catch(error){
+      combinationFailure??=error;
+      const body=await combinationPage?.locator('body').innerText({timeout:2000}).catch(()=> '');
+      await writeFile(`${output}/combination-failure-${shard}.json`,JSON.stringify({worker:shard,session,lastFirst,message:error.message,body,errors,consoleErrors},null,2));
+      await combinationPage?.screenshot({path:`${output}/combination-failure-${shard}.png`,timeout:2000}).catch(()=>{});
+    }
     finally{await combinationBrowser?.close();}
   }));
   if(combinationFailure)throw combinationFailure;
   combinations.sort((a,b)=>a.settings.first-b.settings.first||a.settings.second-b.settings.second||a.settings.power-b.settings.power||a.settings.ambient-b.settings.ambient);
   assert.equal(new Set(combinations.map(row=>Object.values(row.settings).join(','))).size,40000,'Every distinct setting combination is checked once');
-  await compare();
-  await page.locator('.daily-return').click();assert(!page.url().endsWith('#machine/calculator'));assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);
-  await writeFile(output+'/browser.json',JSON.stringify({passed:true,presets,controls,combinations,parts,frames,histories,combinationBrowserSessions:4,errors,consoleErrors,pause:true,replay:true,objectDrag:true,backgroundRotation:true,keyboard:true,wheel:true,labels:true,dismissal:true,pinch:true,mobileWidths:[390,320]},null,2));console.log(JSON.stringify({passed:true,presets:presets.length,controls:controls.length,combinations:combinations.length,parts:parts.length,frames:frames.length}));
-}catch(error){await writeFile(output+'/failure.json',JSON.stringify({message:error.message,errors,consoleErrors,url:page.url(),presets,controls,combinations,parts,frames,body:await page.locator('body').innerText().catch(()=> '')},null,2));await page.screenshot({path:output+'/failure.png'}).catch(()=>{});throw error;}
+  assert.equal(combinationSessions.length,26);assert(combinationSessions.every(session=>session.combinations<=1600));assert.deepEqual(errors,[]);assert.deepEqual(consoleErrors,[]);
+  await writeFile(output+'/browser.json',JSON.stringify({passed:true,presets,controls,combinations,parts,frames,histories,combinationWorkers:2,combinationBrowserSessions:combinationSessions,maximumPairsPerSession:400,errors,consoleErrors,pause:true,replay:true,objectDrag:true,backgroundRotation:true,keyboard:true,wheel:true,labels:true,dismissal:true,pinch:true,mobileWidths:[390,320]},null,2));console.log(JSON.stringify({passed:true,presets:presets.length,controls:controls.length,combinations:combinations.length,parts:parts.length,frames:frames.length}));
+}catch(error){await writeFile(output+'/failure.json',JSON.stringify({message:error.message,errors,consoleErrors,url:page.url(),presets,controls,combinations,parts,frames,body:page.isClosed()?'':await page.locator('body').innerText().catch(()=> '')},null,2));if(!page.isClosed())await page.screenshot({path:output+'/failure.png'}).catch(()=>{});throw error;}
 finally{expected.dispose();await browser.close();}
