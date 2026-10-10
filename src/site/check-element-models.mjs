@@ -1,29 +1,14 @@
-// Checks shared resistance physics and the dryer draft.
-// Heater and kettle checks live in their dedicated physics/model files.
-// Compares against sources typed in again and their lessons
-// against the sources typed in again and the physics worked out by other
-// routes: the wire's resistance rebuilt from its resistivity, length and
-// section, its warm up integrated again with Runge-Kutta at a twentieth of the
-// step, the radiation balance solved by bisection instead of by marching, the
-// water's rise closed by its own energy balance, the air's rise closed by its
-// mass flow, the Draper point recovered from Wien's law, and every drawn coil,
-// arrow, contact and curve read back at swept settings and times.
+// Shared resistance data, heater reference integration and wire appearance.
+// Dedicated files check each appliance mechanism, lesson and energy balance.
 import assert from 'node:assert/strict';
-import * as THREE from 'three';
 import {fixed} from './format.js';
-import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
+import {tally, checkRefusals} from './model-check-kit.mjs';
 import * as P from './element-physics.js';
 import * as S from './element-scene.js';
-import * as DM from './hair-dryer-model.js';
-import * as L from './element-lessons.js';
-import {heatingLessons} from './heating-lessons.js';
-import {createHeatingModel} from './heating-models.js';
-import {previewEntryIds} from './published-catalog.js';
 
 const t = tally();
 const counts = {steps: 0, plans: 0, poses: 0, points: 0, numbers: 0, solves: 0};
 const f0 = value => fixed(value, 0), f1 = value => fixed(value, 1), f2 = value => fixed(value, 2);
-const drawn = 2e-6;
 
 /** One fourth order Runge-Kutta step. */
 function rk4(state, time, dt, derivative) {
@@ -79,9 +64,7 @@ assert.equal(P.SIGMA, SRC.sigma);
 assert.deepEqual(JSON.parse(JSON.stringify(P.DECLARED)), {
   still: 15, reflected: 0.75, bare: 0.35,
   toWater: 400, toAir: 3, vesselLoss: 0.7, steamAt: 100, dryCutout: 220,
-  dryerCoefficient: 4300, dryerFlow: 0.035, spinUp: 1,
-  dryerOpen: 200, dryerClose: 160,
-  step: 0.05, dryerStep: 0.002, samples: 161, heaterRun: 120, heaterFaster: 8, kettleRun: 300, dryerRun: 30,
+  step: 0.05, samples: 161, heaterRun: 120, heaterFaster: 8, kettleRun: 300,
 });
 assert.deepEqual({...P.HEATER_DEFAULTS}, {volts: 230, length: 6, reflector: 1, room: 20});
 assert.deepEqual({...P.KETTLE_DEFAULTS}, {volts: 230, mass: 1, start: 15, filled: 1});
@@ -192,48 +175,6 @@ t.ok(P.DRAPER.celsius < P.NIKROTHAL.continuous && P.NIKROTHAL.continuous < P.NIK
   checkRefusals(P.sampleHeater, P.HEATER_DOMAINS, t);
 }
 
-// The dryer: the air's rise closed by its mass flow, and the cutout's cycle.
-{
-  for (const values of [{}, {airflow: 20}, {airflow: 45}, {volts: 120}, {room: 30}]) {
-    const plan = P.dryerPlan(values);
-    counts.plans++;
-    const v = plan.values;
-    t.near(plan.massFlow, SRC.air.density * v.airflow / 1000, 1e-15, 'the air moved each second is its volume times its density');
-    t.near(plan.idealRise, plan.rating / (plan.massFlow * SRC.air.heat), 1e-9, 'and the rise it could give is the power over that times the heat capacity');
-    t.ok(plan.opened === null, 'with air moving, the cutout never opens');
-    // Where the wire settles: what the stream and the still air together carry off matches what it takes.
-    const wire = plan.wire, total = P.dryerConductance(wire, v.airflow) + P.DECLARED.still * wire.surface;
-    const settled = bisect(celsius => total * (celsius - v.room) - P.powerAt(wire, v.volts, celsius), v.room, 600);
-    t.ok(Math.abs(settled - plan.steady) < 1.5, `${JSON.stringify(values)}: the balance puts the wire at ${f0(settled)} °C against the model's ${f0(plan.steady)} °C`);
-    // The air leaving carries what the stream took, and no more.
-    const carried = P.dryerConductance(wire, v.airflow) * (plan.steady - v.room);
-    t.ok(Math.abs((plan.outlet - v.room) - carried / (plan.massFlow * SRC.air.heat)) < 1, 'the air leaves carrying exactly what the stream took off the wire');
-    t.ok(plan.outlet <= plan.steady + 1e-9, 'and never leaves hotter than the wire that warmed it');
-    t.ok(plan.steady < SRC.draper.celsius, 'a dryer element never reaches the temperature at which metal glows brightly');
-  }
-  // Less air is a hotter stream and a hotter wire, in that order.
-  let lastOutlet = 0, lastWire = 0;
-  for (const airflow of [45, 40, 35, 30, 25, 20]) {
-    const plan = P.dryerPlan({airflow});
-    counts.plans++;
-    t.ok(plan.outlet > lastOutlet && plan.steady > lastWire, 'less air through the same element is hotter air and a hotter wire');
-    lastOutlet = plan.outlet; lastWire = plan.steady;
-  }
-  // Blocked: it cycles rather than burning out.
-  {
-    const plan = P.dryerPlan({blocked: 1});
-    counts.plans++;
-    t.ok(plan.cycles && plan.opened !== null && plan.closed !== null && plan.closed > plan.opened, 'blocked, the switch opens and then closes again');
-    t.ok(plan.track.every(point => point.celsius <= P.DECLARED.dryerOpen + 5), 'and the element never runs far past the temperature it opens at');
-    const atOpen = plan.track.find(point => point.t >= plan.opened);
-    t.ok(atOpen.celsius >= P.DECLARED.dryerOpen - 5 && !atOpen.on, 'it opens where it says it opens');
-    t.ok(plan.track.some(point => point.on) && plan.track.some(point => !point.on), 'and it spends time both ways');
-  }
-  t.ok(P.dryerPlan({volts: 0}).steady === P.DRYER_DEFAULTS.room, 'with nothing across it the wire stays at room temperature');
-  t.ok(P.dryerPlan({}).track[0].celsius === P.DRYER_DEFAULTS.room, 'and every run starts from the room');
-  checkRefusals(P.sampleDryer, P.DRYER_DOMAINS, t);
-}
-
 // The glow, and the plan caches.
 {
   t.ok(S.glowShare(525) === 0 && S.glowShare(524) === 0 && S.glowShare(400) === 0, 'nothing glows below the Draper point of 525 °C');
@@ -245,218 +186,12 @@ t.ok(P.DRAPER.celsius < P.NIKROTHAL.continuous && P.NIKROTHAL.continuous < P.NIK
   t.ok(S.glowOpacity(SRC.draper.celsius) === 0 && S.glowOpacity(SRC.nikrothal.continuous) > 0, 'the halo follows it');
   const dark = S.wireColor(300), bright = S.wireColor(1200);
   t.ok(bright.r > dark.r && bright.g > dark.g, 'and a hotter wire is drawn brighter');
-  for (const [plan, values] of [[P.heaterPlan, {volts: 210}], [P.dryerPlan, {volts: 210}]]) {
+  for (const [plan, values] of [[P.heaterPlan, {volts: 210}]]) {
     const first = plan(values);
     t.ok(plan(values) === first, 'a run already worked out is handed back rather than worked out again');
-    for (let i = 0; i < 70; i++) { plan({volts: 0 + (i % 25) * 10, ...(plan === P.heaterPlan ? {length: 4 + (i % 9) * 0.5} : {airflow: 20 + (i % 26)})}); counts.plans++; }
+    for (let i = 0; i < 70; i++) { plan({volts: 0 + (i % 25) * 10, length: 4 + (i % 9) * 0.5}); counts.plans++; }
     t.ok(plan(values) !== first, 'and past sixty four settings the cache is dropped rather than kept for ever');
   }
 }
 
-// ---------------------------------------------------------------------------
-// 2. The drawings, read back from their geometry.
-// ---------------------------------------------------------------------------
-
-const pointsOf = line => {
-  const array = line.geometry.attributes.position.array, count = line.geometry.drawRange.count, room = array.length / 3;
-  const n = Number.isFinite(count) ? Math.min(count, room) : room;
-  return Array.from({length: n}, (_, i) => [array[i * 3], array[i * 3 + 1], array[i * 3 + 2]]);
-};
-const extent = points => ({
-  x: [Math.min(...points.map(p => p[0])), Math.max(...points.map(p => p[0]))],
-  y: [Math.min(...points.map(p => p[1])), Math.max(...points.map(p => p[1]))],
-});
-const worldRectOf = object => { const box = new THREE.Box3().setFromObject(object); return {x: [box.min.x, box.max.x], y: [box.min.y, box.max.y]}; };
-const inside = (a, b) => a.x[0] > b.x[0] - 1e-9 && a.x[1] < b.x[1] + 1e-9 && a.y[0] > b.y[0] - 1e-9 && a.y[1] < b.y[1] + 1e-9;
-const apart = (a, b) => a.x[1] < b.x[0] || b.x[1] < a.x[0] || a.y[1] < b.y[0] || b.y[1] < a.y[0];
-const sameColor = (color, other) => Math.abs(color.r - other.r) < 1e-6 && Math.abs(color.g - other.g) < 1e-6 && Math.abs(color.b - other.b) < 1e-6;
-
-// The dryer.
-const dryer = DM.createHairDryerModel(), DT = dryer.topology;
-const poseDryer = (values, time) => { dryer.reset(); if (values) dryer.update(values); if (time) dryer.advance(time); dryer.root.updateMatrixWorld(true); counts.poses++; return dryer.getState(); };
-{
-  poseDryer(null, 0);
-  const barrel = extent(pointsOf(DT.barrelLine));
-  t.near(barrel.x[1] - barrel.x[0], SRC.drawn.dryerBarrel[0] * SRC.drawn.mmPerUnit, drawn, 'the dryer is drawn its 200 mm long');
-  t.near(barrel.y[1] - barrel.y[0], (DM.DRYER.barrel[3] - DM.DRYER.barrel[2]) * DM.MM, drawn, 'and its 78 mm across');
-  t.ok(inside(worldRectOf(DT.coil), worldRectOf(DT.barrelLine)), 'the element sits inside the barrel');
-  t.ok(apart(worldRectOf(DT.fanRing), worldRectOf(DT.coil)), 'and the fan stands clear of it, behind');
-  t.ok(worldRectOf(DT.fanRing).x[1] <= worldRectOf(DT.coil).x[0] + 1e-9, 'so that the air reaches the element after the fan');
-  // The air marks carry their own temperature, and the arrows follow the flow.
-  for (const values of [{}, {airflow: 20}, {airflow: 45}]) {
-    const state = poseDryer(values, 20);
-    t.ok(DT.marks.every(mark => mark.visible), 'with the inlet clear the air is drawn moving');
-    t.ok(DT.inletArrow.userData.length > 0 && DT.outletArrow.userData.length > 0, 'and both arrows are drawn');
-    t.ok(sameColor(DT.coil.material.color, S.wireColor(state.now.celsius)), `the element is drawn at the ${f0(state.now.celsius)} °C it settled at`);
-  }
-  {
-    // Swept across the whole control space the hottest this wire ever gets is 202.5 °C,
-    // far under the Draper point, so it is always drawn the cold gray. The claim worth
-    // making is that it never glows, not that its color moves.
-    const cool = poseDryer({volts: 120}, 20);
-    const coolC = cool.now.celsius, coolHex = DT.coil.material.color.getHex();
-    const hot = poseDryer({airflow: 20}, 20);
-    t.ok(hot.now.celsius > coolC, 'less air and more volts is a hotter wire');
-    t.ok(hot.now.celsius < SRC.draper.celsius, `and the hottest of them, at ${f0(hot.now.celsius)} °C, is nowhere near the ${f0(SRC.draper.celsius)} °C at which metal glows`);
-    t.ok(DT.coil.material.color.getHex() === SRC.drawn.coldWire && coolHex === SRC.drawn.coldWire, 'so the element is drawn the cold gray at either setting');
-  }
-  const slow = poseDryer({airflow: 20}, 20).now.outlet, fast = poseDryer({airflow: 45}, 20).now.outlet;
-  t.ok(slow > fast, 'less air really does come out hotter');
-  const blocked = poseDryer({blocked: 1}, 20);
-  t.ok(!DT.marks[0].visible && DT.inletArrow.userData.length === 0, 'blocked, no air is drawn at all');
-  t.ok(blocked.opened !== null, 'and the cutout has opened');
-  poseDryer({blocked: 1}, 1.4);
-  t.ok(DT.strip.material.color.getHex() === DM.COLORS.open, 'the strip is drawn open while it is open');
-  poseDryer(null, 20);
-  t.ok(DT.strip.material.color.getHex() === DM.COLORS.gold, 'and closed while it is closed');
-  // The chart.
-  for (const values of [{}, {airflow: 20}, {blocked: 1}]) {
-    const state = poseDryer(values, 0);
-    const guide = pointsOf(DT.guideOutlet);
-    t.ok(guide.length === P.DECLARED.samples, 'the whole run is drawn faintly');
-    state.chart.forEach((sample, i) => t.near(guide[i][1], DM.chartY(sample.outlet), drawn, 'each sample at the air it reads'));
-    counts.points += guide.length;
-    t.near(pointsOf(DT.openLine)[0][1], DM.chartY(P.DECLARED.dryerOpen), drawn, 'the cutout’s threshold is drawn where it falls');
-    t.ok(DT.openMark.visible === (state.opened !== null), 'and the mark only where it opened');
-  }
-  poseDryer(null, 0);
-  t.ok(pointsOf(DT.curveOutlet).length === 0 && pointsOf(DT.cursor).length === 0, 'nothing is drawn dark before the run starts');
-}
-
-// Nothing anywhere is left infinite, at any setting or time.
-const dryerSettings = [{}, {volts: 0}, {volts: 120}, {airflow: 20}, {airflow: 45}, {blocked: 1}, {room: 30}];
-for (const [pose, settings] of [[poseDryer, dryerSettings]]) {
-  for (const values of settings) for (const time of [0, 1, 10, 1e4]) { pose(values, time); }
-}
-checkFinite(dryer.root, t);
-
-// ---------------------------------------------------------------------------
-// 3. The lessons.
-// ---------------------------------------------------------------------------
-
-const NUMBER = /(?<![A-Za-z\d.,])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?/g;
-function covered(text, expected, where) {
-  checkQuotedText(text, expected, t);
-  const spans = [];
-  for (const snippet of Object.keys(expected)) for (let i = text.indexOf(snippet); i >= 0; i = text.indexOf(snippet, i + 1)) spans.push([i, i + snippet.length]);
-  for (const match of text.matchAll(NUMBER)) {
-    t.ok(spans.some(([a, b]) => a <= match.index && match.index + match[0].length <= b), `${where}: the number ${match[0]} in “${text.slice(Math.max(0, match.index - 40), match.index + 20)}” is checked`);
-    counts.numbers++;
-  }
-}
-const texts = item => [['simple', item.simple], ['overview', item.overview], ...item.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...item.parts.map((part, i) => [`part ${i + 1}`, part.role]), ['misconception', item.misconception], ['quiz', [item.quiz.question, ...item.quiz.options].join(' ')]];
-
-const dryerDefault = P.dryerPlan({}), dryerSlow = P.dryerPlan({airflow: 20}), dryerFast = P.dryerPlan({airflow: 45});
-const dryerBlocked = P.dryerPlan({blocked: 1}), dryerLow = P.dryerPlan({volts: 120}), dryerWarm = P.dryerPlan({room: 30});
-checkTrialNumbers(L.hairDryerLesson, {
-  'Switch it on': s => ({'2,000': s.rating, 139: s.steady, 66: s.outlet}),
-  'Turn the fan down': s => ({'2,000': s.rating, '24.1': 1000 * s.massFlow, 100: s.outlet, 177: s.steady}),
-  'Turn the fan up': s => ({'54.2': 1000 * s.massFlow, 56: s.outlet, 125: s.steady}),
-  'Block the inlet': s => { t.ok(s.cycles, 'blocked, it cycles'); return {'1.1': s.opened, '7.9': s.closed}; },
-  'Plug it in in America': s => ({544: s.rating, 33: s.outlet, 53: s.steady}),
-  'Follow the air through': s => ({'42.1': 1000 * s.massFlow, '2,000': s.rating, 47: s.idealRise}),
-  'Use it in a warm room': s => ({10: s.values.room - dryerDefault.values.room, 76: s.outlet}),
-}, values => P.dryerPlan(values), t);
-
-for (const lesson of [L.hairDryerLesson]) {
-  for (const [where, text] of texts(lesson)) covered(text, {}, `${lesson.simple.slice(0, 20)} ${where}`);
-}
-
-const sharedLimits = {
-  [`carry ${f0(P.DECLARED.still)} W from each square meter`]: 'carry 15 W from each square meter',
-};
-covered(L.elementLimits, sharedLimits, 'element limits');
-// The deeper sections, whose numbers no mapping covered until now.
-{
-  const d = P.heaterPlan({}), dry = P.dryerPlan({});
-  covered(L.hairDryerLesson.deeper[1].body, {
-    [`dry air ${f2(SRC.air.density)} kg/m\u00b3`]: 'dry air 1.20 kg/m\u00b3',
-    [`give it ${f0(SRC.air.heat)} J for each kilogram and degree`]: 'give it 1,012 J for each kilogram and degree',
-    [`so ${f0(dry.values.airflow)} L/s is ${f1(1000 * dry.massFlow)} g/s, and ${f0(dry.rating)} W spread over that is ${f0(dry.idealRise)} \u00b0C of rise`]: 'so 35 L/s is 42.1 g/s, and 2,000 W spread over that is 47 \u00b0C of rise',
-    [`at ${f0(20)} L/s the same element sends out air at ${f0(P.dryerPlan({airflow: 20}).outlet)} \u00b0C`]: 'at 20 L/s the same element sends out air at 100 \u00b0C',
-  }, 'dryer deeper 2');
-}
-covered(L.hairDryerLesson.limits, {
-  ...sharedLimits,
-  'reach its speed in one second': 'reach its speed in one second',
-  [`open at ${f0(P.DECLARED.dryerOpen)} °C and close again at ${f0(P.DECLARED.dryerClose)} °C`]: 'open at 200 °C and close again at 160 °C',
-}, 'dryer lesson limits');
-covered(L.hairDryerLimits, {
-  ...sharedLimits,
-  [`reach its speed in one second`]: 'reach its speed in one second',
-  [`open at ${f0(P.DECLARED.dryerOpen)} °C and close again at ${f0(P.DECLARED.dryerClose)} °C`]: 'open at 200 °C and close again at 160 °C',
-}, 'dryer limits');
-
-// ---------------------------------------------------------------------------
-// 4. What every model owes the viewer.
-// ---------------------------------------------------------------------------
-
-const machines = [
-  ['Hair dryer', dryer, DT, L.hairDryerLesson, P.DRYER_DOMAINS, P.DRYER_DEFAULTS, 'hair-dryer',
-    () => [DT.coil.material.color.getHex(), DT.glow.material.opacity, DT.strip.position.y, DT.strip.material.color.getHex(), DT.inletArrow.userData.length, DT.outletArrow.userData.length, DT.marks.map(m => m.material.color.getHex()), pointsOf(DT.guideOutlet).slice(0, 20), pointsOf(DT.curveOutlet).slice(-2)],
-    model => model.advance(P.DECLARED.dryerRun)],
-];
-
-for (const [name, model, topology, lesson, domains, defaults, id, snapshot, settle] of machines) {
-  for (const control of model.controls) {
-    const [lo, hi, step] = domains[control.key];
-    t.ok(control.min === lo && control.max === hi && control.step === step && control.initial === defaults[control.key], `${name} ${control.key}: the control spans its domain from its default`);
-    t.ok(control.help && !/[—–]| - |--/.test(control.help), `${name} ${control.key}: helped, without dashes`);
-  }
-  t.ok(model.controls.map(control => control.key).join() === Object.keys(domains).join(), `${name}: the controls are the domains`);
-  checkControlsMove(model, snapshot, settle, t);
-  model.reset();
-  checkFinite(model.root, t);
-  t.ok(!model.playback.complete() && !model.resultPart.available(), `${name}: nothing to inspect before the run`);
-  t.ok(!model.playback.blocked(), 'and the run is ready to press');
-  model.update({volts: 0});
-  t.ok(model.playback.blocked(), `${name}: with nothing across the element there is nothing to run`);
-  model.reset();
-  const before = JSON.stringify(model.getState().readings);
-  model.playback.step();
-  t.ok(JSON.stringify(model.getState().readings) !== before, `${name}: a step changes the readings`);
-  model.animate(0);
-  model.animate(1);
-  model.advance(1e5);
-  t.ok(model.playback.complete() && model.resultPart.available() && model.resultPart.id === 'chart', `${name}: the run done, with the chart to inspect`);
-  model.reset();
-  for (const action of model.actions) {
-    const readings = action.run();
-    t.ok(Array.isArray(readings) && readings.length > 0 && model.parts.some(item => item.id === action.part), `${name}: ${action.label} returns readings`);
-  }
-  t.ok(model.parts.every(item => item.description && !/[—–]| - |--/.test(item.description)) && model.parts.every(item => item.id === 'system' || item.parentId === 'system'), `${name}: every part described, with no dashes, under the system`);
-  t.ok(model.getState().readings[0].label === 'Your result', `${name}: the result comes first`);
-  t.ok(model.getState().readings.slice(1).every(item => item.hint), 'and everything after it carries a hint');
-  // The lesson's contract with the model.
-  t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${name}: a quiz with its answer first`);
-  const all = [lesson.simple, lesson.overview, lesson.misconception, lesson.limits, lesson.quiz.question, lesson.quiz.explanation, ...lesson.quiz.options, ...lesson.steps.flatMap(step => [step.title, step.body]), ...lesson.parts.flatMap(item => [item.name, item.role]), ...lesson.deeper.flatMap(item => [item.title, item.body]), ...lesson.tryIt.flatMap(item => [item.title, item.instruction, item.observe]), ...lesson.sources.map(source => source.title)];
-  for (const text of all) t.ok(!/[—–]| - |--/.test(text), `${name}: no dashes as punctuation: ${text.slice(0, 50)}`);
-  for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|aluminium|vapour|sulphur)\b/i.test(text), `${name}: American spelling: ${text.slice(0, 50)}`);
-  t.ok(lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources.map(source => source.url)).size === lesson.sources.length, `${name}: every source a link, none twice`);
-  t.ok(lesson.sources.length >= 2, 'and there is more than one of them');
-  t.ok(lesson.tryIt.every(item => model.parts.some(part => part.id === item.part) && item.view === 'front' && item.reset === true && item.isolate === false), `${name}: every trial on a part the model has`);
-  t.ok(lesson.tryIt.every(item => item.part !== 'system'), 'each trial points at the part it is about, not at the whole machine');
-  t.ok(new Set(lesson.tryIt.map(item => item.part)).size >= 4, 'and the trials are spread across the machine');
-  t.ok(lesson.parts.every(item => model.parts.some(part => part.name === item.name)), `${name}: every part named is a part the model has`);
-  t.ok(lesson.steps.length === 5 && lesson.deeper.length >= 5 && lesson.tryIt.length === 7 && lesson.parts.length >= 6, `${name}: five steps, at least five deeper sections, seven trials and at least six parts`);
-  t.ok(heatingLessons[name] === lesson, `${name}: the heating lessons carry this lesson`);
-  const routed = createHeatingModel(name);
-  t.ok(routed && routed.controls.map(control => control.key).join() === Object.keys(domains).join(), `${name}: the heating models route it here`);
-  routed.dispose();
-  t.ok(previewEntryIds.includes(id), `${name}: routed into the preview as ${id}`);
-  for (const values of dryerSettings) {
-    for (const time of [0, 2, 1e4]) {
-      model.reset(); model.update(values); model.advance(time);
-      const readings = model.getState().readings;
-      t.ok(readings.every(item => !/NaN|undefined|Infinity|null/.test(item.value + (item.hint || ''))), `${name}: readings are all numbers`);
-      for (const item of readings) t.ok(!/[—–]| - |--/.test(item.value + ' ' + (item.hint || '')), `${name}: reading text without dashes: ${item.label}`);
-    }
-  }
-}
-
-const released = [
-  checkDisposal((() => { const fresh = DM.createHairDryerModel(); fresh.advance(3); return fresh; })(), t),
-].reduce((sum, value) => sum + value, 0);
-dryer.dispose();
-
-console.log(`PASS resistance elements: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 1 draft lesson, ${released} resources released exactly once.`);
+console.log(`PASS shared resistance physics: ${t.count} checks, ${counts.steps} reference steps, ${counts.plans} plans and ${counts.solves} power balances. Dedicated checks cover heater, kettle and dryer lessons/models.`);

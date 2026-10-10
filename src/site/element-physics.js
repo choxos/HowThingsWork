@@ -1,56 +1,9 @@
 import {validateControls, validTime, clamp} from './physics-kit.js';
 
-// ---------------------------------------------------------------------------
-// The resistance element: one piece of nickel chromium wire, and the three
-// machines that ask different things of it. An electric heater lets it glow and
-// radiate; an electric kettle drowns it in water and switches off when the
-// water boils; a hair dryer blows air past it and cuts the power if the air
-// stops. All three are the same wire obeying the same two laws: the power it
-// turns into heat, and where that heat goes.
-//
-// Exact within the model: the wire's resistance from its resistivity, length
-// and section, raised by the temperature factor its datasheet tabulates; the
-// power V squared over that resistance; the wire's own heat capacity from its
-// density, volume and the specific heat its datasheet tabulates; radiation by
-// Stefan and Boltzmann at the datasheet's emissivity for fully oxidized wire;
-// the air's temperature rise, the power over its mass flow times its heat
-// capacity; the water's rise, the energy over its mass times its heat capacity,
-// and the water boiled away, the energy over the heat of vaporization; and
-// every one of those integrated step by step through the run.
-//
-// Sourced: Kanthal's Nikrothal 80 datasheet for the wire, its resistivity of
-// 1.09 ohm mm squared per meter at 20 °C, its density of 8.30 g/cm3, its
-// temperature factor of resistivity from 100 to 1200 °C, its specific heat from
-// 20 to 1100 °C, its melting point of 1400 °C, the 1200 °C it may run at
-// continuously in air, and its emissivity of 0.88 fully oxidized; the Nichrome
-// page for the chromium oxide skin that keeps it from burning up; the Joule
-// heating page for P = V squared over R; mains electricity at 230 V and 50 Hz
-// or 120 V and 60 Hz; the Kettle page for an element of 2 to 3 kW drawing up to
-// 13 A; the Hair dryer page for a dryer of up to 2,000 W and its bare coiled
-// nichrome wire on mica; the Thermal cutoff page for a thermal switch that
-// opens hot and closes again as it cools, against a thermal fuse that never
-// does; water's heat capacity and heat of vaporization; dry air's density and
-// heat capacity; the Draper point of 525 °C, above which almost every solid
-// glows; and the Stefan-Boltzmann constant from NIST.
-//
-// Not from a source, each said in the lessons' limits: every dimension of every
-// element, and the reflector, vessel and duct around it; a room that never
-// warms; still air carrying 15 W from each square meter of wire for each degree
-// it stands above the room, and the reflector sending a declared share of the
-// radiation forward instead of behind; a kettle whose element passes 400 W per
-// degree to water and only 3 W per degree to air, whose vessel loses 0.7 W per
-// degree to the room, with finite wire, sheath and steam-sensor heat capacities
-// and a delayed steam path; a dryer whose wire passes heat to its air stream in
-// proportion to the square root of the airflow, and whose thermal switch opens
-// at 200 °C and closes again at 160 °C; and a fan that reaches its speed in one
-// second, with the element interlocked so that it is not let on until it has;
-// and a heater run of 120 s, played 8 times faster than the real thing.
-// The heater uses fourth-order Runge-Kutta with 50 ms steps and also integrates
-// a declared absorbing tile and cumulative energy transfers. The dryer uses
-// 2 ms steps rather than the 50 ms steps used by the other two,
-// because its wire gains tens of degrees in 50 ms and its switch could not
-// otherwise be said to open at any particular temperature.
-// ---------------------------------------------------------------------------
+// Shared wire material data feed separate heater, kettle and dryer models.
+// Material tables, electrical power and energy balances follow the cited sources.
+// Dimensions, heat-transfer couplings and thermal responses are teaching assumptions
+// documented with each lesson. Each model integrates its own finite heat capacities.
 
 /** The Stefan-Boltzmann constant, W/(m²·K⁴), rounded from CODATA 2022 through NIST. */
 export const SIGMA = 5.670374419e-8;
@@ -89,9 +42,7 @@ export const AIR = Object.freeze({density: 1.2041, densityAt: 20, heat: 1012});
 export const DECLARED = Object.freeze({
   still: 15, reflected: 0.75, bare: 0.35,
   toWater: 400, toAir: 3, vesselLoss: 0.7, steamAt: 100, dryCutout: 220,
-  dryerCoefficient: 4300, dryerFlow: 0.035, spinUp: 1,
-  dryerOpen: 200, dryerClose: 160,
-  step: 0.05, dryerStep: 0.002, samples: 161, heaterRun: 120, heaterFaster: 8, kettleRun: 300, dryerRun: 30,
+  step: 0.05, samples: 161, heaterRun: 120, heaterFaster: 8, kettleRun: 300,
 });
 
 /** Where a table that starts at `from` and steps by `step` stands at `celsius`, held flat past either end. */
@@ -383,8 +334,8 @@ export function kettleAt(plan, time) {
 export const sampleKettle = (input = {}, time = 0) => kettleAt(kettlePlan(input), time);
 
 // ---------------------------------------------------------------------------
-// Hair dryer: the same wire again, with a fan behind it and a switch that opens
-// when the air stops.
+// Hair dryer: independently controlled fan and heater, a heated bimetal sensor,
+// and a small wet test lock in the outlet stream.
 // ---------------------------------------------------------------------------
 
 export const DRYER_DEFAULTS = Object.freeze({volts: 230, airflow: 35, room: 20, blocked: 0});
@@ -393,8 +344,54 @@ export const BLOCKED = Object.freeze([Object.freeze({value: 0, label: 'Inlet cle
 /** The dryer's element: a declared 0.4 mm wire 3.05 m long, which makes it about a 2 kW element on 230 V. */
 export const DRYER_WIRE = Object.freeze({length: 3.05, diameter: 0.0004});
 
+/** Constant-property, one-atmosphere air approximation; NASA's calorically perfect air values. */
+export const DRYER_AIR = Object.freeze({pressure: 101325, gasConstant: 287, heat: 1004.5});
+/** Illustrative couplings and test-lock properties, not an appliance calibration. */
+export const DRYER_THERMAL = Object.freeze({
+  step: 0.005, run: 30, spinUp: 1, coefficient: 4300, referenceFlow: 35,
+  sensorCapacity: 0.8, sensorWire: 0.5, sensorStill: 0.05, sensorAir: 1.5, open: 120, close: 90,
+  hairCapacity: 4, hairWater: 0.00035, waterHeat: 4186, latent: 2430e3,
+  hairConductance: 1.8, vaporExchange: 0.00085, humidity: 0.5, vaporGasConstant: 461.5,
+});
+/** OpenStax Table 13.5, Pa; linear interpolation is a teaching approximation. */
+export const VAPOR_PRESSURE = Object.freeze([
+  [0, 610], [5, 868], [10, 1190], [15, 1690], [20, 2330], [25, 3170], [30, 4240],
+  [37, 6310], [40, 7340], [50, 12300], [60, 19900], [70, 31200], [80, 47300],
+  [90, 70100], [95, 85900], [100, 101000], [120, 199000],
+].map(Object.freeze));
+
+export function saturationPressure(celsius) {
+  if (celsius <= VAPOR_PRESSURE[0][0]) return VAPOR_PRESSURE[0][1];
+  for (let i = 1; i < VAPOR_PRESSURE.length; i++) {
+    const [a, pa] = VAPOR_PRESSURE[i - 1], [b, pb] = VAPOR_PRESSURE[i];
+    if (celsius <= b) return pa + (pb - pa) * (celsius - a) / (b - a);
+  }
+  return VAPOR_PRESSURE.at(-1)[1];
+}
+
 /** How readily the wire gives its heat to the air stream, W/K: in proportion to the square root of the airflow. */
-export const dryerConductance = (wire, airflow) => DECLARED.dryerCoefficient * wire.surface * Math.sqrt(Math.max(0, airflow) / (DECLARED.dryerFlow * 1000));
+export const dryerConductance = (wire, airflow) => DRYER_THERMAL.coefficient * wire.surface * Math.sqrt(Math.max(0, airflow) / DRYER_THERMAL.referenceFlow);
+
+function dryerRates(plan, time, state, closed, wet) {
+  const D = DRYER_THERMAL, A = DRYER_AIR, {values: v, wire} = plan;
+  const [celsius, sensor, hair] = state;
+  const fan = clamp(time / D.spinUp), flow = v.blocked ? 0 : v.airflow * fan;
+  const massFlow = A.pressure / (A.gasConstant * (v.room + ZERO)) * flow / 1000;
+  const capacityFlow = massFlow * A.heat, conductance = dryerConductance(wire, flow);
+  // Integrating dT_air/dx along an isothermal wire keeps the outlet below the wire, even as flow tends to zero.
+  const effectiveness = capacityFlow > 0 ? -Math.expm1(-conductance / capacityFlow) : 0;
+  const outlet = v.room + effectiveness * (celsius - v.room);
+  const toAir = capacityFlow * (outlet - v.room);
+  const toSensor = D.sensorWire * (celsius - sensor);
+  const sensorLoss = (D.sensorStill + D.sensorAir * Math.sqrt(flow / D.referenceFlow)) * (sensor - v.room);
+  const ambient = radiatedAt(wire, celsius, v.room) + convectedAt(wire, celsius, v.room);
+  const exposure = Math.sqrt(flow / D.referenceFlow);
+  const toHair = D.hairConductance * exposure * (outlet - hair);
+  const vaporDifference = Math.max(0, saturationPressure(hair) - D.humidity * saturationPressure(v.room));
+  const evaporation = wet ? D.vaporExchange * exposure * vaporDifference / (D.vaporGasConstant * (hair + ZERO)) : 0;
+  const power = closed ? powerAt(wire, v.volts, celsius) : 0;
+  return {fan, flow, massFlow, conductance, effectiveness, outlet, toAir, toSensor, sensorLoss, ambient, toHair, evaporation, power};
+}
 
 const dryerPlans = new Map();
 
@@ -403,50 +400,66 @@ export function dryerPlan(input = {}) {
   const key = JSON.stringify(values);
   if (dryerPlans.has(key)) return dryerPlans.get(key);
   const wire = wireOf(DRYER_WIRE.length, DRYER_WIRE.diameter);
-  const rating = powerAt(wire, values.volts, values.room);
-  const blocked = values.blocked === 1;
-  const track = [{t: 0, celsius: values.room, outlet: values.room, power: rating, on: true, flow: 0}];
-  let celsius = values.room, on = true, opened = null, closed = null;
-  for (let step = 1; step * DECLARED.dryerStep <= DECLARED.dryerRun + 1e-9; step++) {
-    const previous = track[step - 1];
-    const t = step * DECLARED.dryerStep;
-    // The fan leads the heater: the element is not let on until the fan is up to
-    // speed, which is why a dryer that cannot draw air trips its switch instead.
-    const flow = blocked ? 0 : values.airflow * clamp(t / DECLARED.spinUp);
-    const running = t >= DECLARED.spinUp;
-    const conductance = dryerConductance(wire, flow);
-    const still = DECLARED.still * wire.surface;
-    const total = conductance + still;
-    const power = on && running ? powerAt(wire, values.volts, previous.celsius) : 0;
-    const carried = total * (previous.celsius - values.room);
-    celsius = previous.celsius + (power - carried) * DECLARED.dryerStep / capacityAt(wire, previous.celsius);
-    if (running && on && celsius >= DECLARED.dryerOpen) { on = false; if (opened === null) opened = t; }
-    else if (running && !on && celsius <= DECLARED.dryerClose) { on = true; if (closed === null) closed = t; }
-    const massFlow = AIR.density * flow / 1000;
-    const delivered = conductance * (celsius - values.room);
-    track.push({
-      t, celsius, on, flow,
-      power: on && running ? powerAt(wire, values.volts, celsius) : 0,
-      outlet: massFlow > 0 ? values.room + delivered / (massFlow * AIR.heat) : celsius,
-    });
-  }
-  const settled = track.at(-1);
-  const plan = {
-    values, wire, rating, blocked, track, settled, duration: DECLARED.dryerRun,
-    resistance: resistanceAt(wire, values.room),
-    current: currentAt(wire, values.volts, values.room),
-    massFlow: AIR.density * values.airflow / 1000,
-    idealRise: values.airflow > 0 ? rating / (AIR.density * values.airflow / 1000 * AIR.heat) : null,
-    conductance: dryerConductance(wire, values.airflow),
-    opened, closed, cycles: opened !== null,
-    steady: settled.celsius, outlet: settled.outlet, power: settled.power,
-    withinRating: rating <= RATED.dryer * 1.1,
+  const D = DRYER_THERMAL;
+  const plan = {values, wire, duration: D.run, rating: powerAt(wire, values.volts, values.room), blocked: values.blocked === 1, events: [], driedAt: null};
+  let state = [values.room, values.room, values.room, D.hairWater, 0, 0, 0, 0, 0, 0, 0, 0], closed = true, wet = true;
+  const derivative = (time, state) => {
+    const q = dryerRates(plan, time, state, closed, wet);
+    return [
+      (q.power - q.toAir - q.ambient - q.toSensor) / capacityAt(wire, state[0]),
+      (q.toSensor - q.sensorLoss) / D.sensorCapacity,
+      (q.toHair - D.latent * q.evaporation) / (D.hairCapacity + Math.max(0, state[3]) * D.waterHeat),
+      -q.evaporation, q.power, q.toAir, q.ambient + q.sensorLoss, q.toSensor, q.sensorLoss,
+      q.toHair, D.latent * q.evaporation, D.waterHeat * (state[2] - values.room) * q.evaporation,
+    ];
   };
+  const integrate = (time, state, dt) => {
+    const k1 = derivative(time, state), k2 = derivative(time + dt / 2, state.map((v, i) => v + dt * k1[i] / 2));
+    const k3 = derivative(time + dt / 2, state.map((v, i) => v + dt * k2[i] / 2));
+    const k4 = derivative(time + dt, state.map((v, i) => v + dt * k3[i]));
+    return state.map((v, i) => v + dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6);
+  };
+  const track = [{t: 0, state: [...state], closed}];
+  for (let step = 1; step <= Math.round(D.run / D.step); step++) {
+    const end = step * D.step;
+    let time = (step - 1) * D.step;
+    while (time < end - 1e-12) {
+      const dt = end - time, next = integrate(time, state, dt);
+      const crossing = [
+        {kind: 'switch', reached: s => closed ? s[1] >= D.open : s[1] <= D.close},
+        {kind: 'dry', reached: s => wet && s[3] <= 0},
+      ].filter(event => event.reached(next));
+      if (!crossing.length) { state = next; time = end; break; }
+      for (const event of crossing) {
+        let lo = 0, hi = dt;
+        for (let i = 0; i < 24; i++) {
+          const mid = (lo + hi) / 2;
+          if (event.reached(integrate(time, state, mid))) hi = mid; else lo = mid;
+        }
+        event.dt = hi;
+      }
+      const event = crossing.sort((a, b) => a.dt - b.dt)[0];
+      state = integrate(time, state, event.dt); time += event.dt;
+      if (event.kind === 'switch') {
+        closed = !closed;
+        plan.events.push({t: time, closed, sensor: state[1], celsius: state[0]});
+      } else { state[3] = 0; wet = false; plan.driedAt = time; }
+      track.push({t: time, state: [...state], closed});
+    }
+    if (track.at(-1).t < end - 1e-12) track.push({t: end, state: [...state], closed});
+  }
+  plan.track = track;
+  plan.settled = dryerAt(plan, D.run);
+  plan.opened = plan.events.find(event => !event.closed)?.t ?? null;
+  plan.closed = plan.events.find(event => event.closed)?.t ?? null;
+  plan.cycles = plan.closed !== null;
+  plan.steady = plan.settled.celsius; plan.outlet = plan.settled.outlet; plan.power = plan.settled.power;
+  plan.massFlow = plan.settled.massFlow; plan.resistance = resistanceAt(wire, values.room);
   plan.chart = Array.from({length: DECLARED.samples}, (_, i) => {
     const t = plan.duration * i / (DECLARED.samples - 1), now = dryerAt(plan, t);
-    return {t, celsius: now.celsius, outlet: now.outlet};
+    return {t, celsius: now.celsius, outlet: now.outlet, hair: now.hair, water: now.water};
   });
-  if (dryerPlans.size >= 64) dryerPlans.clear();
+  if (dryerPlans.size >= 8) dryerPlans.clear();
   dryerPlans.set(key, plan);
   return plan;
 }
@@ -454,15 +467,25 @@ export function dryerPlan(input = {}) {
 /** The dryer at a time in the run. */
 export function dryerAt(plan, time) {
   const t = Math.min(validTime(time), plan.duration);
-  const place = clamp(t / DECLARED.dryerStep, 0, plan.track.length - 1);
-  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
-  const between = key => plan.track[low][key] + part * (plan.track[high][key] - plan.track[low][key]);
-  const celsius = between('celsius'), on = plan.track[low].on && plan.track[high].on;
+  let low = 0, high = plan.track.length - 1;
+  while (high - low > 1) { const mid = (low + high) >> 1; if (plan.track[mid].t <= t) low = mid; else high = mid; }
+  if (plan.track[high].t <= t) low = high;
+  const a = plan.track[low], b = plan.track[Math.min(low + 1, plan.track.length - 1)];
+  const share = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+  const state = a.state.map((value, i) => value + share * (b.state[i] - value));
+  const D = DRYER_THERMAL, [celsius, sensor, hair, water] = state;
+  const closed = a.closed, on = t > 0 && closed && plan.values.volts > 0;
+  const q = dryerRates(plan, t, state, on, water > 0);
   return {
-    time, t, celsius, outlet: between('outlet'), flow: between('flow'), on,
-    power: on ? powerAt(plan.wire, plan.values.volts, celsius) : 0,
+    time, t, celsius, sensor, hair, water, closed, on, motorOn: t > 0, ...q,
     current: on ? currentAt(plan.wire, plan.values.volts, celsius) : 0,
-    rise: between('outlet') - plan.values.room,
+    evaporated: D.hairWater - water, dry: water === 0,
+    storedEnergy: plan.wire.mass * (specificEnergyAt(celsius) - specificEnergyAt(plan.values.room)),
+    sensorEnergy: D.sensorCapacity * (sensor - plan.values.room),
+    hairEnergy: (D.hairCapacity + water * D.waterHeat) * (hair - plan.values.room),
+    inputEnergy: state[4], airEnergy: state[5], ambientEnergy: state[6], sensorReceivedEnergy: state[7], sensorLostEnergy: state[8],
+    hairReceivedEnergy: state[9], evaporationEnergy: state[10], vaporSensibleEnergy: state[11],
+    rise: q.outlet - plan.values.room,
     done: t >= plan.duration,
   };
 }

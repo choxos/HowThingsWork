@@ -481,3 +481,11 @@ assert.deepEqual(tags(electricKettle.entry.id), ['electricity', 'exploiting-heat
 assert.equal(catalog.groups.find(group => group.id === electricKettle.entry.group).place, 'home');
 assert.equal(catalog.groups.find(group => group.id === electricKettle.entry.group).room, 'Heating and cooling');
 for (const id of ['body', 'water', 'element', 'insulation', 'switch', 'protector', 'steam', 'circuit', 'chart']) assert(hasCatalogPart(electricKettle.entry.id, id), `${id} remains bookmarkable in the kettle lesson`);
+
+const hairDryer = families.find(family => family.entry.id === 'hair-dryer');
+assert(hairDryer && !componentParentIds[hairDryer.entry.id], 'Hair dryer is an independent air-heating and drying appliance');
+assert.deepEqual(hairDryer.components, []);
+assert.deepEqual(tags(hairDryer.entry.id), ['electricity', 'exploiting-heat', 'sensors-and-detectors']);
+assert.equal(catalog.groups.find(group => group.id === hairDryer.entry.group).place, 'home');
+assert.equal(catalog.groups.find(group => group.id === hairDryer.entry.group).room, 'Heating and cooling');
+for (const id of ['body', 'motor', 'fan', 'insulation', 'element', 'cutout', 'circuit', 'air', 'hair', 'chart']) assert(hasCatalogPart(hairDryer.entry.id, id), `${id} remains bookmarkable in the hair dryer lesson`);

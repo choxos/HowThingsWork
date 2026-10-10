@@ -1832,6 +1832,58 @@
       "parentId": "system"
     }
   ],
+  "hair-dryer": [
+    {
+      "id": "body",
+      "name": "Barrel, grip and grilles",
+      "parentId": "system"
+    },
+    {
+      "id": "motor",
+      "name": "Motor and shaft",
+      "parentId": "system"
+    },
+    {
+      "id": "fan",
+      "name": "Axial fan",
+      "parentId": "system"
+    },
+    {
+      "id": "insulation",
+      "name": "Mica supports",
+      "parentId": "system"
+    },
+    {
+      "id": "element",
+      "name": "Resistance coil",
+      "parentId": "system"
+    },
+    {
+      "id": "cutout",
+      "name": "Bimetal cutout",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit",
+      "name": "Switch and current paths",
+      "parentId": "system"
+    },
+    {
+      "id": "air",
+      "name": "Air and heat flow",
+      "parentId": "system"
+    },
+    {
+      "id": "hair",
+      "name": "Wet test lock",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Elapsed temperatures",
+      "parentId": "system"
+    }
+  ],
   "toaster": [
     {
       "id": "system",
