@@ -9520,6 +9520,38 @@
       "parentId": "system"
     }
   ],
+  "computer-aided-design": [
+    {
+      "id": "solid",
+      "name": "Editable cup",
+      "parentId": "system"
+    },
+    {
+      "id": "facet",
+      "name": "A facet against its curve",
+      "parentId": "system"
+    },
+    {
+      "id": "file",
+      "name": "Inside a binary STL file",
+      "parentId": "system"
+    },
+    {
+      "id": "slice",
+      "name": "Cut the mesh into layers",
+      "parentId": "system"
+    },
+    {
+      "id": "path",
+      "name": "One complete layer path",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Facet error versus facet count",
+      "parentId": "system"
+    }
+  ],
   "generator-slip-rings": [
     {
       "id": "output",

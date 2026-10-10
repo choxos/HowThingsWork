@@ -449,3 +449,11 @@ assert.deepEqual(tags(positioning.id), ['gears-and-belts', 'screws', 'using-bits
 assert.equal(catalog.groups.find(group => group.id === positioning.group).place, 'workshop');
 assert.equal(catalog.groups.find(group => group.id === positioning.group).room, 'Tools and making');
 for (const id of ['frame', 'x-drive', 'x-belt', 'x-carriage', 'x-coupling', 'x-coupling-pin', 'y-drive', 'y-belt', 'bed', 'z-drive', 'z-screw', 'z-nut', 'controller']) assert(hasCatalogPart(positioning.id, id), `${id} remains bookmarkable in the positioning system`);
+
+const cad = families.find(family => family.entry.id === 'computer-aided-design');
+assert(cad && !componentParentIds[cad.entry.id], 'CAD is an editable design idea, not a physical component inside the printer');
+assert.deepEqual(cad.components, []);
+assert.deepEqual(tags(cad.entry.id), ['using-bits', 'storing-bits']);
+assert.equal(catalog.groups.find(group => group.id === cad.entry.group).place, 'workshop');
+assert.equal(catalog.groups.find(group => group.id === cad.entry.group).room, 'Tools and making');
+for (const id of ['solid', 'facet', 'file', 'slice', 'path', 'chart']) assert(hasCatalogPart(cad.entry.id, id), `${id} remains bookmarkable in the CAD lesson`);

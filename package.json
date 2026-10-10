@@ -194,7 +194,9 @@
     "check:magnetic-alarm-model": "node src/site/check-magnetic-alarm-physics.mjs && node src/site/check-magnetic-alarm-model.mjs",
     "check:magnetic-alarm": "node src/site/check-magnetic-alarm.mjs",
     "check:three-axis-model": "node src/site/check-three-axis-physics.mjs && node src/site/check-three-axis-model.mjs",
-    "check:three-axis": "node src/site/check-three-axis.mjs"
+    "check:three-axis": "node src/site/check-three-axis.mjs",
+    "check:cad-design-model": "node src/site/check-cad-design-physics.mjs && node src/site/check-cad-design-model.mjs",
+    "check:cad-design": "node src/site/check-cad-design.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

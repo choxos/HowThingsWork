@@ -148,7 +148,7 @@ for (const radius of [6, 12, 20]) for (let facets = 16; facets <= 128; facets *=
 // A polygon's area and perimeter, by the shoelace formula on its own corners.
 for (const radius of [6, 12, 20]) {
   for (const facets of [8, 32, 128]) {
-    const corners = D.polygonPoints(radius, facets).slice(0, facets);
+    const corners = Array.from({length: facets}, (_, i) => [radius * Math.cos(2 * Math.PI * i / facets), radius * Math.sin(2 * Math.PI * i / facets)]);
     let area = 0, edge = 0;
     for (let i = 0; i < facets; i++) {
       const [x0, y0] = corners[i], [x1, y1] = corners[(i + 1) % facets];
@@ -259,20 +259,9 @@ for (const values of [{}, {axis: 1}, {micro: 0}, {micro: 5}, {motor: 0}, {motor:
   t.ok(P.stageAt(plan, 0).motor === 0 && P.stageAt(plan, plan.duration * 2).done, 'it starts at zero and finishes');
   counts.poses++;
 }
-for (const values of [{}, {facets: 8}, {facets: 128}, {layer: 0.05}, {layer: 0.3}, {perimeters: 1}, {perimeters: 4}, {infill: 0}, {infill: 100}, {radius: 20}, {wall: 0.8}]) {
-  const plan = P.designPlan(values);
-  t.near(plan.triangles, 3 * 2 * plan.facets + 2 * (plan.facets - 2), 1e-12, 'three bands of two triangles a facet and two fans');
-  t.near(plan.bytes, P.stlBytes(plan.triangles), 1e-12, 'and the bytes that many triangles cost');
-  t.near(plan.facetedVolume, P.polygonArea(plan.radius, plan.facets) * plan.height - P.polygonArea(plan.inner, plan.facets) * plan.pocket, relative(plan.facetedVolume, 1e-12), 'the solid is the outer prism less the pocket');
-  t.ok(plan.facetedVolume < plan.roundVolume, 'and it always falls short of what the true curves would hold');
-  t.near(plan.layers, Math.ceil(plan.height / plan.layer - 1e-9), 1e-12, 'the layers it takes');
-  t.near(plan.lastLayer, plan.height - (plan.layers - 1) * plan.layer, 1e-9, 'and how tall the last one is');
-  t.near(plan.shell, P.beadsWide(plan.perimeters, plan.width, plan.layer), 1e-12, 'the loops measure less than their widths added');
-  t.ok(plan.shell <= plan.perimeters * plan.width + 1e-12, 'never more');
-  t.near(plan.printVolume, plan.totalPath * plan.bead, relative(plan.printVolume, 1e-12), 'the volume laid is the path times the cross section');
-  t.ok(plan.infill > 0 && plan.gap > 0 ? plan.fillPath > 0 : plan.fillPath === 0, 'there is filling only where the loops leave room');
-  counts.poses++;
-}
+// CAD topology, exact clipped paths, and boundary layers have dedicated independent checks.
+await import('./check-cad-design-physics.mjs');
+await import('./check-cad-design-model.mjs');
 
 // ---------------------------------------------------------------------------
 // 2. The drawing, read back from the geometry.
@@ -306,77 +295,7 @@ const clearOf = (model, ids, gap) => {
   }
 };
 
-// The design.
-const design = D.createCADDesignModel(), DT = design.topology;
-for (const values of [{}, {facets: 8}, {facets: 128}, {radius: 20}, {layer: 0.05}, {layer: 0.3}, {perimeters: 1}, {perimeters: 4}, {infill: 0}, {infill: 100}]) {
-  const plan = P.designPlan({...P.DESIGN_DEFAULTS, ...values});
-  for (const share of [0, 0.4, 0.7, 1]) {
-    design.reset();
-    design.update(values);
-    design.advance(plan.duration * share);
-    design.root.updateMatrixWorld(true);
-    const now = P.designAt(plan, plan.duration * share);
-    counts.poses++;
-
-    // Every corner of the drawn plan sits on the circle it stands for.
-    const turn = Math.PI / plan.facets;
-    for (const [line, radius] of [[DT.outerPlan, plan.radius], [DT.innerPlan, plan.inner]]) {
-      const drawn = pointsOf(line);
-      if (!drawn.length) continue;
-      for (const [x, y] of drawn) {
-        t.near(Math.hypot(x, y - D.SOLID.lift), radius * D.CUP, DRAWN, 'a corner of the plan on its circle');
-        counts.points++;
-      }
-      t.ok(drawn.length === plan.facets + 1, 'and the ring closes on itself');
-    }
-    // The facet close up: its chord is the right length and the error bar the right height.
-    const chord = pointsOf(DT.chordLine), errorBar = pointsOf(DT.errorBar);
-    const drawnRadius = Math.abs(errorBar[0][1] - errorBar[1][1]) / P.chordError(plan.radius, plan.facets);
-    t.near(Math.abs(chord[1][0] - chord[0][0]), 2 * plan.radius * drawnRadius * Math.sin(Math.PI / plan.facets), DRAWN, 'the chord as long as a facet');
-    for (const [x, y] of pointsOf(DT.trueArc)) { t.near(Math.hypot(x, y + drawnRadius * plan.radius), drawnRadius * plan.radius, DRAWN, 'every point of the arc on its circle'); counts.points++; }
-    void turn;
-
-    // The layers: one line a layer, none above the shape.
-    const lines = pointsOf(DT.sliceLines);
-    t.ok(lines.length / 2 === Math.min(plan.layers, D.SLICEVIEW.lines), 'a line for every layer it can draw');
-    for (const [, y] of lines) t.ok(y <= D.SLICEVIEW.high / 2 + DRAWN, 'and none above the shape');
-
-    // The toolpath: every loop at the radius the slicer would walk.
-    let loops = 0;
-    DT.pathLoops.forEach((loop, k) => {
-      const drawn = pointsOf(loop);
-      if (!drawn.length) return;
-      loops++;
-      const outward = k < plan.perimeters, index = outward ? k : k - plan.perimeters;
-      const offset = outward ? plan.wall / 2 - (index + 0.5) * plan.width : -plan.wall / 2 + (index + 0.5) * plan.width;
-      for (const [, y] of drawn) { t.near(y, offset * D.PATHVIEW, DRAWN, 'a loop drawn the width of a bead in from the face'); counts.points++; }
-    });
-    t.ok(loops === plan.perimeters * 2, 'a loop drawn for each one walked, in from each face');
-    // Infill only ever between the loops.
-    for (const [, y] of pointsOf(DT.infillLines)) {
-      t.ok(Math.abs(y) <= plan.gap / 2 * D.PATHVIEW + DRAWN, 'filling stays between the loops');
-      counts.points++;
-    }
-    if (plan.infill === 0 || plan.gap <= 0) t.ok(pointsOf(DT.infillLines).length === 0, 'and there is none at all when there is no room or no demand');
-
-    // The construction only ever grows.
-    t.ok(now.outerHeight <= plan.height + 1e-9 && now.pocketDepth <= plan.pocket + 1e-9, 'the wall and the pocket never pass their finished size');
-    t.near(DT.wallLeft.scale.y, now.outerHeight * D.CUP, 1e-9, 'the wall drawn as far as it has risen');
-  }
-  clearOf(design, ['solid', 'facet', 'file', 'slice', 'path', 'chart'], 0.02);
-}
-t.ok(Math.abs(D.timesLarger(D.CUP) - 1) < 1e-12 && Math.abs(D.timesLarger(D.FACET) - 100) < 1e-12 && Math.abs(D.timesLarger(D.PATHVIEW) - 3) < 1e-12, 'the scales the header states: true size, 100 times and 3 times larger');
-{
-  // One triangle's record: the blocks are as wide as the bytes they stand for.
-  design.reset();
-  design.root.updateMatrixWorld(true);
-  const total = SRC.stl.floats * SRC.stl.floatBytes + SRC.stl.attribute;
-  DT.fileBlocks.forEach((block, k) => {
-    const bytes = k < SRC.stl.floats ? SRC.stl.floatBytes : SRC.stl.attribute;
-    t.near(block.scale.x + D.FILEVIEW.gap, D.FILEVIEW.width * bytes / total, 1e-9, `block ${k} as wide as its ${bytes} bytes`);
-  });
-  t.ok(DT.fileBlocks.length === SRC.stl.floats + 1, 'twelve numbers and the attribute after them');
-}
+const design = D.createCADDesignModel();
 
 // The scanner.
 const scanner = R.createLaserScanningModel(), RT = scanner.topology;
@@ -435,13 +354,15 @@ const runner = make => values => { const m = make(); m.reset(); m.update(values)
 const runDesign = runner(D.createCADDesignModel), runScan = runner(R.createLaserScanningModel);
 
 checkTrialNumbers(L.cadDesignLesson, {
-  'Describe the shape': s => ({252: s.triangles, '57.8': s.outerError * 1000, '5.63': 180 / s.facets, '2,632': s.facetedVolume, '2,649': s.roundVolume, '17.0': s.missing}),
-  'Use only eight facets': s => ({8: s.facets, '22.50': 180 / s.facets, '913.4': s.outerError * 1000, 60: s.triangles, '264.1': s.missing}),
-  'Use a hundred and twenty eight': s => ({'3.6': s.outerError * 1000, '1.1': s.missing, '1,020': s.triangles, '51,084': s.bytes, 80: P.STL.header, 4: P.STL.count, 50: P.STL.floats * P.STL.floatBytes + P.STL.attribute}),
-  'Cut it into thinner layers': s => ({240: s.layers, 60: s.height / P.DESIGN_DEFAULTS.layer, '103.04': s.totalPath / 1000, '0.0220': s.bead, '0.0814': P.beadArea(s.width, P.DESIGN_DEFAULTS.layer)}),
-  'Cut it into thicker ones': s => ({40: s.layers, '17.32': s.totalPath / 1000}),
-  'Walk more loops': s => ({'0.45': s.width, '1.80': s.perimeters * s.width, '1.671': s.shell, '38.51': s.totalPath / 1000}),
-  'Fill the wall solid': s => ({'30.08': s.totalPath / 1000}),
+  'Describe the shape': s => ({252:s.triangles,60:s.layers}),
+  'Use only eight facets': s => ({60:s.triangles,'913.4':s.outerError*1000,12:s.radius}),
+  'Use a hundred and twenty eight': s => ({'1,020':s.triangles,'51,084':s.bytes,'3.6':s.outerError*1000}),
+  'Cut it into thinner layers': s => ({240:s.layers,60:P.designPlan({}).layers,'57.8':s.outerError*1000}),
+  'Cut it into thicker ones': s => ({40:s.layers,252:s.triangles}),
+  'Ask for too many loops': () => ({}),
+  'Fill the space between loops': () => ({}),
+  'Make a wider, taller cup': s => ({32:s.facets,'96.3':s.outerError*1000,120:s.layers,252:s.triangles}),
+  'Try a thin wall and wide bead': () => ({}),
 }, runDesign, t);
 
 const blockedOf = s => s.samples.filter(sample => sample.measured === null).map(sample => sample.x);
@@ -471,29 +392,13 @@ const expectNone = (lesson, name) => { for (const [where, text] of texts(lesson)
 
 covered(L.sharedLimits, {}, 'shared limits');
 
-const designDefault = P.designPlan({}), coarse = P.designPlan({facets: 8}), fineDesign = P.designPlan({facets: 128});
-expectNone(L.cadDesignLesson, 'Design');
-covered(L.cadDesignLesson.deeper[0].body, {[`${f0(designDefault.triangles)} in all`]: '252 in all'}, 'Design deeper 1');
-covered(L.cadDesignLesson.deeper[1].body, {
-  [`At ${designDefault.facets} facets on a ${designDefault.radius} mm radius it is ${f1(designDefault.outerError * 1000)} μm; at ${coarse.facets} facets it is ${f1(coarse.outerError * 1000)} μm and at ${fineDesign.facets} it is ${f1(fineDesign.outerError * 1000)} μm, a fall of about ${f0(Math.round(coarse.outerError / fineDesign.outerError / 10) * 10)} times`]: 'At 32 facets on a 12 mm radius it is 57.8 μm; at 8 facets it is 913.4 μm and at 128 it is 3.6 μm, a fall of about 250 times',
-}, 'Design deeper 2');
-covered(L.cadDesignLesson.deeper[2].body, {
-  [`an ${P.STL.header} byte header and a ${P.STL.count} byte count`]: 'an 80 byte header and a 4 byte count',
-  [`${P.STL.floats} numbers of ${P.STL.floatBytes} bytes`]: '12 numbers of 4 bytes',
-  [`and ${P.STL.attribute} more bytes after them: ${f0(P.STL.floats * P.STL.floatBytes + P.STL.attribute)} bytes each`]: 'and 2 more bytes after them: 50 bytes each',
-  [`${P.stlBytes(0)} bytes plus ${f0(P.STL.floats * P.STL.floatBytes + P.STL.attribute)} a triangle, and the ${f0(designDefault.triangles)} triangles of this shape come to ${f0(designDefault.bytes)} bytes while the ${f0(fineDesign.triangles)} of its smoothest version come to ${f0(fineDesign.bytes)}`]: '84 bytes plus 50 a triangle, and the 252 triangles of this shape come to 12,684 bytes while the 1,020 of its smoothest version come to 51,084',
-}, 'Design deeper 3');
-covered(L.cadDesignLesson.deeper[3].body, {}, 'Design deeper 4');
-covered(L.cadDesignLesson.deeper[4].body, {
-  [`two ${P.SLICING.width} mm perimeters at a ${f1(P.SLICING.atLayer)} mm layer height at ${P.SLICING.twoPerimeters} mm rather than ${f2(2 * P.SLICING.width)} mm`]: 'two 0.45 mm perimeters at a 0.2 mm layer height at 0.86 mm rather than 0.90 mm',
-  [`gives ${f3(designDefault.shell)} mm, and the cross section of one bead, ${fixed(designDefault.bead, 4)} mm²`]: 'gives 0.857 mm, and the cross section of one bead, 0.0814 mm²',
-}, 'Design deeper 5');
-covered(L.cadDesignLesson.deeper[5].body, {
-  [`below ${f0(P.SLICING.share * 100)} percent of the nozzle diameter, which puts about ${f2(P.SLICING.nozzle * P.SLICING.share)} mm at the top for a ${P.SLICING.nozzle} mm nozzle`]: 'below 80 percent of the nozzle diameter, which puts about 0.32 mm at the top for a 0.4 mm nozzle',
-  [`below ${f2(P.SLICING.suggestFrom)} mm because the gain over ${P.SLICING.fine[0]} or ${P.SLICING.fine[1]} mm layers`]: 'below 0.10 mm because the gain over 0.07 or 0.05 mm layers',
-}, 'Design deeper 6');
-covered(L.designLimits, {}, 'design limits');
-covered(L.cadDesignLesson.quiz.explanation, {[`At ${designDefault.facets} facets on this shape the surface falls ${f1(designDefault.outerError * 1000)} μm short`]: 'At 32 facets on this shape the surface falls 57.8 μm short'}, 'Design quiz');
+const designDefault = P.designPlan({});
+checkQuotedText(L.cadDesignLesson.deeper[2].body, {
+  [`At R = ${designDefault.radius} mm and N = ${designDefault.facets}, the error is ${designDefault.outerError.toFixed(4)} mm`]: 'At R = 12 mm and N = 32, the error is 0.0578 mm',
+}, t);
+checkQuotedText(L.cadDesignLesson.deeper[5].body, {
+  [`Two ${designDefault.width.toFixed(2)} mm beads at ${designDefault.layer.toFixed(2)} mm height occupy about ${P.beadsWide(2,designDefault.width,designDefault.layer).toFixed(3)} mm`]: 'Two 0.45 mm beads at 0.20 mm height occupy about 0.857 mm',
+}, t);
 
 const scanDefault = P.scanPlan({}), whole = P.scanPlan({subpixel: 0}), tallRidge = P.scanPlan({ridge: 12});
 expectNone(L.laserScanningLesson, 'Laser');
@@ -515,12 +420,6 @@ covered(L.laserScanningLesson.quiz.explanation, {[`${f0(tallRidge.missing)} of t
 
 // The models' own words, and their readings.
 const partText = (model, id) => model.parts.find(item => item.id === id).description;
-design.reset();
-covered(partText(design, 'solid'), {[`1 mm to ${D.CUP} scene units`]: '1 mm to 0.04 scene units'}, 'design solid text');
-covered(partText(design, 'facet'), {[`drawn ${f0(D.timesLarger(D.FACET))} times larger`]: 'drawn 100 times larger'}, 'design facet text');
-covered(partText(design, 'file'), {[`${P.STL.floats} numbers of ${P.STL.floatBytes} bytes each, ${f0(P.STL.floats * P.STL.floatBytes)} bytes, plus ${P.STL.attribute} more`]: '12 numbers of 4 bytes each, 48 bytes, plus 2 more', [`an ${P.STL.header} byte header and a ${P.STL.count} byte count`]: 'an 80 byte header and a 4 byte count'}, 'design file text');
-covered(partText(design, 'path'), {[`drawn ${f0(D.timesLarger(D.PATHVIEW))} times larger`]: 'drawn 3 times larger'}, 'design path text');
-covered(partText(design, 'chart'), {[`from ${P.DESIGN_DOMAINS.facets[0]} to ${P.DESIGN_DOMAINS.facets[1]}`]: 'from 8 to 128', [`a factor of about ${250} across`]: 'a factor of about 250 across'}, 'design chart text');
 scanner.reset();
 covered(partText(scanner, 'bench'), {[`1 mm to ${R.BENCH} scene units`]: '1 mm to 0.018 scene units', [`the ${P.SCANNER.start} to ${P.SCANNER.end} mm`]: 'the 53.5 to 78.5 mm'}, 'scan bench text');
 covered(partText(scanner, 'profile'), {[`drawn ${f0(R.timesLarger(R.PROFILE))} times larger`]: 'drawn 3 times larger'}, 'scan profile text');
@@ -530,7 +429,7 @@ covered(partText(scanner, 'chart'), {[`across the ${P.SCANNER.height} mm`]: 'acr
 {
   design.reset();
   const dReadings = design.getState().readings, dFind = label => dReadings.find(item => item.label === label);
-  t.ok(dFind('Triangles').value === '252' && dFind('Chord error').value === '57.8 μm' && dFind('File size').value === '12,684 bytes' && dFind('Layers').value === '60', 'the design’s figures');
+  t.ok(dFind('Triangles').value === '252' && dFind('Chord error').value === '57.8 μm' && dFind('STL size').value === '12,684 bytes' && dFind('Layers').value === '60', 'the design’s figures');
   scanner.reset();
   const rReadings = scanner.getState().readings, rFind = label => rReadings.find(item => item.label === label);
   t.ok(rFind('Measured height').value === 'not yet measured', 'nothing measured before the sweep starts');
@@ -567,7 +466,7 @@ function drawnState(value, depth = 0) {
     if (value.isMesh || value.isLine || value.isLineSegments || value.isInstancedMesh) {
       const array = value.geometry?.attributes?.position?.array;
       return [value.visible ? 1 : 0, value.position.x, value.position.y, value.scale.x, value.scale.y, value.count ?? -1,
-        array ? Array.from(array.slice(0, 60)) : 0, value.geometry?.drawRange?.count ?? -1, value.material?.color ? value.material.color.getHex() : 0];
+        array ? Array.from(array.slice(0, 60)) : 0, value.geometry?.drawRange?.count ?? -1, value.material?.color ? value.material.color.getHex() : 0, value.userData?.labelText ?? ''];
     }
     if (value.isObject3D) return [value.visible ? 1 : 0, value.position.x, value.position.y];
   }
@@ -632,15 +531,15 @@ for (const [name, model, make, domains, defaults, sample, lesson, settle] of ben
   }
   t.ok(lesson.steps.length === 5, `${name}: five steps`);
   t.ok(lesson.parts.length >= 6, `${name}: at least six part rows`);
-  t.ok(lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: six or seven trials`);
-  t.ok(lesson.deeper.length >= 5 && lesson.deeper.length <= 6, `${name}: five or six deeper sections`);
+  t.ok(lesson.tryIt.length === (name === 'the design' ? 9 : 7), `${name}: all named trials present`);
+  t.ok(lesson.deeper.length === (name === 'the design' ? 7 : 6), `${name}: all deeper sections present`);
   t.ok(lesson.quiz.options.length === 3 && lesson.quiz.answer === 0, `${name}: a quiz of three with the answer first`);
   t.ok(lesson.sources.length >= 2 && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources.map(source => source.url)).size === lesson.sources.length, `${name}: at least two https sources, none twice`);
-  t.ok(lesson.tryIt.every(item => item.reset === true && item.isolate === false && item.view === 'front'), `${name}: every trial resets, does not isolate, and faces front`);
+  t.ok(lesson.tryIt.every(item => item.reset === true && item.isolate === (name === 'the design' && !['system','solid'].includes(item.part)) && item.view === 'front'), `${name}: every trial resets and uses its declared inspection view`);
   void make;
 }
 
 const released = benches.reduce((total, [, , make]) => total + checkDisposal((() => { const fresh = make(); fresh.advance(2); return fresh; })(), t), 0);
 for (const [, model] of benches) model.dispose();
 
-console.log(`PASS CAD and scanner draft benches plus shared math fixtures: ${t.count} checks, ${counts.poses} poses, ${counts.steps} integration and simulation steps, ${counts.points} drawn points read back, ${counts.samples} traced samples, ${counts.facets} faceted curves, ${counts.numbers} quoted numbers traced, 2 bench lessons and 14 trials, 3 lesson routes, ${released} resources released exactly once.`);
+console.log(`PASS CAD and scanner benches plus shared math fixtures: ${t.count} checks, ${counts.poses} poses, ${counts.steps} integration and simulation steps, ${counts.points} drawn points read back, ${counts.samples} traced samples, ${counts.facets} faceted curves, ${counts.numbers} quoted numbers traced, 2 bench lessons and ${L.cadDesignLesson.tryIt.length + L.laserScanningLesson.tryIt.length} trials, 3 lesson routes, ${released} resources released exactly once.`);

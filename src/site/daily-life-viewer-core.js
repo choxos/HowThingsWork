@@ -363,12 +363,13 @@ export function mountDailyLifeViewer(host,name,providedModel,{onExit,exitLabel='
     syncControls();
   });
   function reset(initialState){
+    const leaveResult=selected===model.resultPart?.id&&!model.resultPart?.preserveOnReset;
     restoreAssembly();stop();restoreVisibility();releaseReadingsHeight();phase=0;setupActions=[];inspectionBeforeResult=undefined;
     initialStateForReplay=structuredClone(initialState);model.reset?.(initialState);model.animate?.(0);
     // A preset may restore both time and settings. Applying unrelated defaults
     // here can restart that restored simulation before the preset is displayed.
     apply({...Object.fromEntries(model.controls.map(control=>[control.key,control.initial])),...initialState?.settings});
-    if(selected===model.resultPart?.id&&!model.resultPart?.preserveOnReset){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}
+    if(leaveResult){isolated=false;options.querySelector('[data-isolate]').checked=false;selectPart(null);}
   }
   host.querySelector('[data-reset-controls]').addEventListener('click',()=>reset(pendingReplay?.initialState));
   function replay(){

@@ -71,6 +71,42 @@ try{
       cases++;
     }
   }
+  const resultResets=[];
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:1000});
+    resultResets.push(...await page.evaluate(async width=>{
+      const [{mountDailyLifeViewer},{houseModel}]=await Promise.all([import('/src/site/daily-life-viewer.js'),import('/src/site/house-model-kit.js')]);
+      const observations=[];
+      for(const autoFrame of [false,true])for(const preserveOnReset of [false,true])for(const mode of ['reset','replay','direct-replay']){
+        const kit=houseModel('Result reset fixture');
+        for(const [id,x] of [['left',-.7],['right',.7]])kit.box([.5,1,.5],[x,0,0],'leaf',kit.part(id,id,'Result inspection fixture'));
+        kit.control('setting','Setting',0,10,1,0);
+        const model=kit.finish(()=>({readings:[]}));let complete=true,resets=0;
+        model.initialPart='left';model.autoFramePart=autoFrame?'left':undefined;
+        model.resultPart={id:'right',label:'Inspect result',available:()=>complete,preserveOnReset};
+        model.animate=()=>{};model.reset=()=>{complete=false;resets++;};
+        model.playback={complete:()=>complete,blocked:()=>false,advance(){},step(){},stepLabel:'Advance',label:'Play'};
+        const host=document.querySelector('#fixture'),viewer=mountDailyLifeViewer(host,'Result reset fixture',model);
+        viewer.apply({setting:7});
+        if(mode==='direct-replay'){viewer.selectPart('right');viewer.setIsolated(true);}
+        else host.querySelector('[data-result]').click();
+        const before={selected:host.querySelector('.daily-part-detail h3')?.textContent,isolated:host.querySelector('[data-isolate]').checked};
+        host.querySelector(mode==='reset'?'[data-reset-controls]':'[data-play]').click();
+        observations.push({width,autoFrame,preserveOnReset,mode,before,resets,complete,selected:host.querySelector('.daily-part-detail h3')?.textContent??null,isolated:host.querySelector('[data-isolate]').checked,setting:model.getState().values.setting});
+        viewer.dispose();
+      }
+      return observations;
+    },width));
+  }
+  for(const row of resultResets){
+    const label=JSON.stringify({width:row.width,autoFrame:row.autoFrame,preserveOnReset:row.preserveOnReset,mode:row.mode});
+    assert.deepEqual(row.before,{selected:'right',isolated:true},label+': starts in result inspection');
+    assert.equal(row.resets,1,label+': resets once');assert.equal(row.complete,false,label+': leaves completed state');
+    const resetting=row.mode==='reset',direct=row.mode==='direct-replay';
+    assert.equal(row.setting,resetting?0:7,label+': reset defaults or replay settings');
+    assert.equal(row.isolated,resetting?row.preserveOnReset:direct,label+': result isolation follows reset and replay policy');
+    assert.equal(row.selected,resetting?(row.preserveOnReset?(row.autoFrame?'left':'right'):null):(direct?'right':'left'),label+': restores intended selection');
+  }
   await page.goto(new URL('#machine/commutator',base).href);
   await page.locator('.daily-canvas-wrap canvas').waitFor();
   await page.evaluate(async()=>{
@@ -85,5 +121,5 @@ try{
   await page.locator('[data-view="reset"]').click();
   assert.ok(near(await page.evaluate(()=>window.resetCamera.quaternion.toArray()),componentAngle),'Component route passes its opening-view override to Reset view');
   assert.deepEqual(errors,[]);
-  console.log(`PASS ${cases} opening views and live component route: button and Home restore orientation, center and zoom after part inspection, pan, rotation and separation; experiment settings preserved.`);
+  console.log(`PASS ${cases} opening views, ${resultResets.length} result reset/replay cases and live component route: button and Home restore orientation, center and zoom after part inspection, pan, rotation and separation; experiment settings preserved.`);
 }finally{await browser.close();}

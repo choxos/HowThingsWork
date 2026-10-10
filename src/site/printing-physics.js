@@ -1,4 +1,5 @@
 import {validateControls, validTime, clamp} from './physics-kit.js';
+import {cupSurface, designSlices} from './cad-design-geometry.js';
 
 // ---------------------------------------------------------------------------
 // Making a three dimensional object: a design held as numbers, a machine that
@@ -297,7 +298,7 @@ export const DESIGN_DOMAINS = Object.freeze({
 });
 
 /** Declared: the cup's base thickness follows its wall, the infill is drawn as straight lines, and the construction takes this long. */
-export const DESIGN = Object.freeze({build: 9, infillAngle: Math.PI / 4, facetTimes: 2, slow: 1});
+export const DESIGN = Object.freeze({build: 15, infillAngle: Math.PI / 4, facetTimes: 2, slow: 1});
 
 const designPlans = new Map();
 
@@ -312,39 +313,27 @@ export function designPlan(input) {
   if (designPlans.has(key)) return designPlans.get(key);
   const {radius, facets, height, wall, layer, width, perimeters, infill} = values;
   const inner = Math.max(0, radius - wall), base = wall, pocket = Math.max(0, height - base);
-  // The surface as triangles: the outer wall, the pocket wall and the rim are
-  // each a band of 2 triangles a facet; the pocket floor and the underside are
-  // each a fan of facets minus 2.
-  const triangles = 3 * 2 * facets + 2 * (facets - 2);
+  const surface = cupSurface(radius, inner, facets, height, pocket);
+  const triangles = surface.faces.length;
   const bytes = stlBytes(triangles);
   const outerError = chordError(radius, facets), innerError = chordError(inner, facets);
   const roundVolume = Math.PI * radius * radius * height - Math.PI * inner * inner * pocket;
   const facetedVolume = polygonArea(radius, facets) * height - polygonArea(inner, facets) * pocket;
-  const layers = Math.max(1, Math.round(Math.ceil(height / layer - 1e-9)));
-  const lastLayer = height - (layers - 1) * layer;
-  const bead = beadArea(width, layer), shell = beadsWide(perimeters, width, layer);
-  const fits = Math.max(1, Math.floor((wall + layer * (1 - Math.PI / 4)) / (width + layer * (1 - Math.PI / 4)) + 1e-9));
-  // One layer above the floor: `perimeters` loops around the outside and the
-  // same inside, then straight infill lines across whatever the shells leave.
-  const loopsOut = Array.from({length: perimeters}, (_, k) => polygonPerimeter(Math.max(0, radius - (k + 0.5) * width), facets));
-  const loopsIn = Array.from({length: perimeters}, (_, k) => polygonPerimeter(Math.max(0, inner + (k + 0.5) * width), facets));
-  const wallPath = loopsOut.reduce((a, b) => a + b, 0) + (inner > 0 ? loopsIn.reduce((a, b) => a + b, 0) : 0);
-  const shellOuter = Math.max(0, radius - shell), shellInner = inner > 0 ? inner + shell : 0;
-  const gap = Math.max(0, shellOuter - shellInner);
-  const fillArea = inner > 0 ? Math.max(0, polygonArea(shellOuter, facets) - polygonArea(shellInner, facets)) : polygonArea(shellOuter, facets);
-  const fillPath = infill > 0 ? fillArea * (infill / 100) / width : 0;
-  const floorPath = polygonPerimeter(radius, facets) * perimeters + polygonArea(shellOuter, facets) / width;
-  const layerPath = wallPath + fillPath;
-  const floorLayers = Math.max(0, Math.min(layers, Math.round(base / layer)));
-  const totalPath = floorLayers * floorPath + (layers - floorLayers) * layerPath;
-  const printVolume = totalPath * bead;
+  const slices = designSlices(values), layers = slices.length, lastLayer = slices.at(-1).height;
+  const wallSlice = slices.find(slice => !slice.floor), floorSlice = slices[0];
+  const {bead, shell, fits, wallPath, fillPath, gap} = wallSlice;
+  const layerPath = wallSlice.length, floorPath = floorSlice.length;
+  const floorLayers = slices.filter(slice => slice.floor).length;
+  const totalPath = slices.reduce((sum, slice) => sum + slice.length, 0);
+  const printVolume = slices.reduce((sum, slice) => sum + slice.length * slice.bead, 0);
   const plan = {
     values, radius, facets, height, wall, inner, base, pocket, layer, width, perimeters, infill,
     triangles, bytes, outerError, innerError, roundVolume, facetedVolume, missing: roundVolume - facetedVolume,
-    layers, lastLayer, bead, shell, fits, wallPath, fillPath, fillArea, gap, layerPath, floorPath, floorLayers, totalPath, printVolume,
-    vertices: 2 * facets + 2 * facets, edges: triangles * 3 / 2,
-    duration: DESIGN.build, sketchEnds: DESIGN.build / 3, extrudeEnds: 2 * DESIGN.build / 3,
-    nozzleLimit: SLICING.nozzle * SLICING.share, thin: shell > wall + 1e-9,
+    surface, slices, wallSlice, floorSlice,
+    layers, lastLayer, bead, shell, fits, wallPath, fillPath, gap, layerPath, floorPath, floorLayers, totalPath, printVolume,
+    vertices: surface.vertices.length, edges: triangles * 3 / 2,
+    duration: DESIGN.build, sketchEnds: 3, extrudeEnds: 6,
+    nozzleLimit: SLICING.nozzle * SLICING.share, thin: slices.some(slice => slice.reduced),
     // What the stage makes of one layer: the same planner, at a stated feed.
     layerMove: trapezoid(layerPath, SLICING.width * 100, MARLIN.accel),
   };
@@ -356,12 +345,13 @@ export function designPlan(input) {
 /** The design `time` seconds into its construction: the sketch drawn, the wall risen, and the pocket sunk. */
 export function designAt(plan, time) {
   validTime(time);
-  const t = Math.min(time, plan.duration), third = plan.duration / 3;
-  const sketch = clamp(t / third), risen = clamp((t - third) / third), sunk = clamp((t - 2 * third) / third);
+  const t = Math.min(time, plan.duration), stageTime = 3;
+  const sketch = clamp(t / stageTime), risen = clamp((t - stageTime) / stageTime), sunk = clamp((t - 2 * stageTime) / stageTime);
   const drawn = Math.round(plan.facets * sketch);
   return {
     time, t, sketch, risen, sunk, drawn,
-    stage: t < third ? 'sketch' : t < 2 * third ? 'extrude' : 'pocket',
+    stage: t < 3 ? 'sketch' : t < 6 ? 'extrude' : t < 9 ? 'pocket' : t < 12 ? 'mesh' : 'slice',
+    meshed: t >= 9, slicing: clamp((t - 12) / 3),
     outerHeight: plan.height * risen, pocketDepth: plan.pocket * sunk,
     solid: polygonArea(plan.radius, plan.facets) * plan.height * risen - polygonArea(plan.inner, plan.facets) * plan.pocket * sunk,
     done: time >= plan.duration,
