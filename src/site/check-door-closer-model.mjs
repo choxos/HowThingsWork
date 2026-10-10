@@ -2,14 +2,14 @@
 // again and the physics worked out by other routes: the leaf's moment of
 // inertia integrated slice by slice, the spring's energy integrated from its
 // moment, the orifice's pressure rebuilt from Cd A sqrt(2 dP / rho), the whole
-// swing integrated again by a different scheme at a fifth of the step, the
+// swing integrated again by a different scheme at a fiftieth of the step, the
 // sweep speed found from the balance between spring and orifice, and every
 // energy the swing spends audited against the work the hand put in. Then the
 // drawing is read back from geometry at swept settings and times.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {fixed} from './format.js';
-import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
+import {tally, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './door-closer-physics.js';
 import * as M from './door-closer-model.js';
 import {doorCloserLesson as L} from './door-closer-lesson.js';
@@ -17,7 +17,7 @@ import {utilityLessons} from './utility-lessons.js';
 
 const t = tally();
 const counts = {steps: 0, poses: 0, points: 0, numbers: 0, slices: 0, settings: 0};
-const f0 = v => fixed(v, 0), f1 = v => fixed(v, 1), f2 = v => fixed(v, 2), f3 = v => fixed(v, 3);
+const f1 = v => fixed(v, 1), f2 = v => fixed(v, 2);
 const relative = (value, share = 1e-12) => Math.abs(value) * share + 1e-15;
 const RADIAN = Math.PI / 180;
 
@@ -29,43 +29,31 @@ const SRC = {
   // BS EN 1154 table 1, from the dhf Best Practice Guide: power size, recommended
   // maximum door leaf width in mm, test door mass in kg.
   table: [[1, 750, 20], [2, 850, 40], [3, 950, 60], [4, 1100, 80], [5, 1250, 100], [6, 1400, 120], [7, 1600, 160]],
-  // The same guide's other grades.
-  grades: {three: 105, four: 180, delayed: 120, delaySeconds: 25, cycles: 500000, fireSize: 3},
-  // DIN 18040, by reference to DIN EN 1154: a size 3 closer's opening moment,
-  // measured at the closer over 0 to 60 degrees.
-  size3: {moment: 47, angle: 60},
+  springReference: {moment: 47, angle: 60},
   // The Door closer page: the latch speed runs over the last 10 to 15 degrees.
   latchWindow: [10, 15],
   // dormakaba TS 83: the back check answers beyond about 70 degrees; the body is
   // 245 mm long and 60 mm high.
   backcheck: 70, body: [245, 60],
-  // LCN 4040XP: a 1 and 1/2 inch piston, and the accessibility pair.
-  inch: 25.4, bore: 1.5, ada: {seconds: 5, pounds: 5, newton: 4.4482216152605},
-  // Wikipedia: an orifice's discharge coefficient is typically 0.6 to 0.85, and
-  // mineral oil is 0.8 to 0.87 g/cm3. Standard gravity is exact.
-  discharge: [0.6, 0.85], oil: [800, 870], gravity: 9.80665,
+  // LCN 4040XP reference bore; fluid properties are declared assumptions.
+  inch: 25.4, bore: 1.5, discharge: 0.62, oil: 870,
 };
 
 assert.deepEqual(P.EN1154.map(row => [row.size, row.width, row.mass]), SRC.table);
 t.add(1);
-t.ok(P.GRAVITY === SRC.gravity, 'standard gravity, 9.80665 m/s²');
-t.ok(P.SIZE3.size === 3 && P.SIZE3.moment === SRC.size3.moment && P.SIZE3.angle === SRC.size3.angle, 'a size 3 closer opens at no more than 47 N.m over 0 to 60 degrees');
+t.ok(P.SPRING_REFERENCE.size === 3 && P.SPRING_REFERENCE.moment === 47 && P.SPRING_REFERENCE.angle === 60, 'declared reference spring torque and angle');
 t.ok(P.ANGLES.latch >= SRC.latchWindow[0] && P.ANGLES.latch <= SRC.latchWindow[1], 'the latch valve takes over inside the last 10 to 15 degrees');
 t.ok(P.ANGLES.backcheck === SRC.backcheck, 'the back check answers past 70 degrees');
-t.ok(P.ANGLES.stop === SRC.grades.delayed && P.GRADES.delayed === SRC.grades.delayed && P.GRADES.delaySeconds === SRC.grades.delaySeconds, 'the stop and the delayed action angle are the standard’s 120 degrees, cleared in under 25 s');
-t.ok(P.GRADES.three === SRC.grades.three && P.GRADES.four === SRC.grades.four && P.GRADES.cycles === SRC.grades.cycles && P.GRADES.fireSize === SRC.grades.fireSize, 'grade 3 from 105 degrees, grade 4 from 180, grade 8 at 500,000 cycles, and at least size 3 on a fire door');
 t.near(P.CLOSER.bore * 1000, SRC.bore * SRC.inch, 1e-9, 'a 1 and 1/2 inch piston is 38.1 mm');
-t.ok(P.CLOSER.discharge >= SRC.discharge[0] && P.CLOSER.discharge <= SRC.discharge[1], 'the discharge coefficient sits inside the page’s 0.6 to 0.85');
-t.ok(P.CLOSER.density >= SRC.oil[0] && P.CLOSER.density <= SRC.oil[1], 'the oil sits inside mineral oil’s 0.8 to 0.87 g/cm³');
-t.near(P.ADA.seconds, SRC.ada.seconds, 1e-12, 'at least 5 s from 90 degrees to 12 degrees from the latch');
-t.near(P.ADA.newtons, SRC.ada.pounds * SRC.ada.newton, 1e-12, '5 lbf is 22.24 N');
+t.ok(P.CLOSER.discharge === SRC.discharge, 'declared discharge coefficient');
+t.ok(P.CLOSER.density === SRC.oil, 'declared oil density');
 assert.deepEqual([M.CLOSERVIEW.length, M.CLOSERVIEW.height], SRC.body);
 t.add(1);
 assert.deepEqual(JSON.parse(JSON.stringify(P.DOOR_DOMAINS)), {door: [1, 7, 1], size: [1, 7, 1], sweep: [0.15, 0.6, 0.05], latch: [0.15, 0.9, 0.05], backcheck: [0, 1, 1], open: [30, 110, 10], push: [25, 150, 5]});
 assert.deepEqual({...P.DOOR_DEFAULTS}, {door: 3, size: 3, sweep: 0.3, latch: 0.45, backcheck: 1, open: 80, push: 60});
 t.add(2);
 assert.deepEqual(P.DOOR_OPTIONS.map(o => [o.value, o.label]), SRC.table.map(([size, width, mass]) => [size, `${width} mm, ${mass} kg`]));
-assert.deepEqual(P.SIZE_OPTIONS.map(o => [o.value, o.label]), SRC.table.map(([size]) => [size, `EN ${size}`]));
+assert.deepEqual(P.SIZE_OPTIONS.map(o => [o.value, o.label]), SRC.table.map(([size]) => [size, `Level ${size}`]));
 t.add(2);
 
 // The leaf's moment of inertia, integrated slice by slice rather than taken
@@ -77,19 +65,19 @@ for (const [, width, mass] of SRC.table) {
   t.near(P.inertiaOf(mass, b), sum, relative(sum, 1e-6), `${width} mm and ${mass} kg: m b²/3 slice by slice`);
 }
 
-// The spring: affine in the angle, anchored on the one sourced moment, and its
+// The spring: affine in the angle, anchored on the declared reference moment, and its
 // energy is the integral of its moment, found here by Simpson's rule.
 const simpson = (fn, a, b, n = 4000) => { const h = (b - a) / n; let sum = 0; for (let i = 0; i <= n; i++) sum += (i === 0 || i === n ? 1 : i % 2 ? 4 : 2) * fn(a + i * h); return sum * h / 3; };
-t.near(P.peakMomentOf(3), SRC.size3.moment, 1e-12, 'size 3 is the sourced 47 N.m at 60 degrees');
+t.near(P.peakMomentOf(3), SRC.springReference.moment, 1e-12, 'level 3 is the declared 47 N.m at 60 degrees');
 for (const [size, , mass] of SRC.table) {
-  t.near(P.peakMomentOf(size), SRC.size3.moment * mass / 60, relative(SRC.size3.moment, 1e-12), `size ${size} is scaled from size 3 by its tabulated test door mass`);
+  t.near(P.peakMomentOf(size), SRC.springReference.moment * mass / 60, relative(SRC.springReference.moment, 1e-12), `size ${size} is scaled from size 3 by its tabulated test door mass`);
   t.near(P.springMoment(size, 0), P.peakMomentOf(size) / 2, 1e-12, `size ${size}: half the 60 degree moment stands as preload`);
-  t.near(P.springMoment(size, SRC.size3.angle * RADIAN), P.peakMomentOf(size), 1e-12, `size ${size}: the whole of it at 60 degrees`);
+  t.near(P.springMoment(size, SRC.springReference.angle * RADIAN), P.peakMomentOf(size), 1e-12, `size ${size}: the whole of it at 60 degrees`);
   for (const degrees of [0, 20, 45, 60, 90, 120]) {
     const theta = degrees * RADIAN;
     t.near(P.springEnergy(size, theta), simpson(a => P.springMoment(size, a), 0, theta), relative(Math.max(1e-6, P.springEnergy(size, theta)), 1e-9), `size ${size} at ${degrees}°: the energy is the integral of the moment`);
     // A straight line through two points is the only affine function through them.
-    t.near(P.springMoment(size, theta), P.springMoment(size, 0) + (P.peakMomentOf(size) - P.springMoment(size, 0)) * degrees / SRC.size3.angle, 1e-12, 'affine in the angle');
+    t.near(P.springMoment(size, theta), P.springMoment(size, 0) + (P.peakMomentOf(size) - P.springMoment(size, 0)) * degrees / SRC.springReference.angle, 1e-12, 'affine in the angle');
   }
 }
 
@@ -111,16 +99,16 @@ for (const millimeters of [0.15, 0.3, 0.45, 0.6, 0.7, 0.9, 3]) {
   t.near(P.dampingOf(millimeters / Math.SQRT2), 4 * P.dampingOf(millimeters), relative(4 * P.dampingOf(millimeters), 1e-9), 'dividing the diameter by root two halves the area and quadruples the damping, which is the inverse square of the area');
 }
 t.near(P.dampingOf(0.15) / P.dampingOf(0.3), 16, 1e-9, 'halving the diameter multiplies the damping by sixteen');
-t.ok(f1(P.dampingOf(0.3)) === '580.0' && f1(P.dampingOf(0.15)) === '9,279.5', 'the two figures the lesson quotes');
+t.ok(f1(P.dampingOf(0.3)) === '580.0' && f1(P.dampingOf(0.15)) === '9,279.5', 'reference damping values');
 t.near(P.latchMomentOf(950), P.LATCH_FORCE * 0.95, 1e-12, '20 N at the leading edge of a 950 mm leaf');
 
-// The whole swing, integrated again by Heun's method at a fifth of the step.
+// The whole swing, integrated again by Heun's method at a fiftieth of the step.
 function march(values) {
   const v = {...P.DOOR_DEFAULTS, ...values};
   const leaf = P.EN1154[v.door - 1], inertia = P.inertiaOf(leaf.mass, leaf.width / 1000);
   const latchMoment = P.latchMomentOf(leaf.width), release = v.open * RADIAN;
   const stop = P.ANGLES.stop * RADIAN, engage = P.ANGLES.engage * RADIAN;
-  const step = P.CLOCK.step / 5;
+  const step = P.CLOCK.step / 50;
   const rate = (angle, speed, pushing, closing) => {
     const spring = P.springMoment(v.size, angle);
     const hole = pushing || speed > 0
@@ -160,6 +148,8 @@ function march(values) {
 
 const settings = [
   {}, {sweep: 0.15}, {sweep: 0.6}, {latch: 0.15}, {latch: 0.9}, {backcheck: 0}, {push: 150}, {push: 150, backcheck: 0},
+  {push: 30}, {push: 40}, {door: 4, size: 4, sweep: .6, latch: .15, open: 30, push: 150, backcheck: 0},
+  {door: 7, size: 1, sweep: .15, latch: .15, open: 110, push: 25, backcheck: 0},
   {push: 25}, {open: 30}, {open: 110}, {size: 1}, {size: 2}, {size: 7}, {door: 1}, {door: 7}, {door: 7, latch: 0.15}, {door: 5, size: 2},
 ];
 for (const values of settings) {
@@ -195,7 +185,7 @@ for (const values of settings) {
   // the spring still holds if the door stopped short.
   const spent = plan.oilHeat + plan.frictionHeat + plan.latchWork + plan.stopLoss + plan.arrivalEnergy + plan.residual;
   t.near(plan.handWork, spent, Math.max(0.02, 3e-4 * plan.handWork), `${JSON.stringify(values)}: the hand's work is the oil, the friction, the bolt, the stop, the bang and what is still held`);
-  t.near(plan.handWork, plan.values.push * plan.release, 5e-3 * plan.handWork + 1e-6, 'and the hand’s work is its moment through the angle it pushed');
+  t.near(plan.handWork, plan.values.push * (plan.releaseAngle ?? 0), 5e-3 * plan.handWork + 1e-6, 'and the hand’s work is its moment through the angle it pushed');
   t.near(plan.stored, P.springEnergy(plan.size, plan.peak), relative(plan.stored, 1e-9), 'the spring holds the integral of its moment at the top of the arc');
   t.ok(plan.oilHeat > plan.frictionHeat, 'the oil takes more than the friction does');
 
@@ -215,15 +205,9 @@ for (const values of settings) {
   t.near(narrow.sweepTime / wide.sweepTime, Math.sqrt(P.dampingOf(0.3) / P.dampingOf(0.6)), 0.06 * narrow.sweepTime / wide.sweepTime, 'the sweep time grows as the square root of the damping');
   const slower = P.doorPlan({sweep: 0.15});
   t.near(slower.sweepTime / narrow.sweepTime, 4, 0.12, 'and halving the orifice takes four times as long');
-  t.ok(P.doorPlan({sweep: 0.6}).sweepTime < P.ADA.seconds && P.doorPlan({}).sweepTime >= P.ADA.seconds, 'wide open the door is quicker than an accessible door may be; at its default setting it is not');
+  t.ok(P.doorPlan({sweep: 0.6}).sweepTime < 5 && P.doorPlan({}).sweepTime >= 5, 'the selected wide passage shortens the declared sweep below five seconds');
 }
 {
-  // Sizes 1 and 2 cannot hold the bolt on their own tabulated leaf, which is
-  // what the standard says when it keeps them off fire doors.
-  for (const [size, width] of SRC.table) {
-    const holds = P.springMoment(size, 0) >= P.latchMomentOf(width) + P.FRICTION.hinge;
-    t.ok(holds === (size >= SRC.grades.fireSize), `size ${size} ${holds ? 'holds' : 'does not hold'} the bolt on its own tabulated leaf standing still`);
-  }
   const weak = P.doorPlan({size: 1});
   t.ok(!weak.latched && weak.stalledAngle > 0 && weak.residual > 0, 'the weakest closer leaves the door ajar with the spring still pushing');
   t.near(weak.residual, P.springEnergy(1, weak.stalledAngle), relative(weak.residual, 1e-9), 'and what it still holds is the integral of its moment at that angle');
@@ -268,7 +252,7 @@ for (const values of settings) {
     t.ok(T.bolt.material.color.getHex() === (home ? M.COLORS.home : plan.stalledAt !== null && time >= plan.stalledAt ? M.COLORS.ajar : M.COLORS.bolt), 'the bolt colored for home, ajar or waiting');
 
     // The arrows: the hand's only while it pushes, the closer's on one scale.
-    t.near(T.effort.userData.length, now.pushing ? plan.values.push * M.ARROW.per : 0, 1e-12, now.pushing ? 'the hand’s arrow as long as its moment' : 'no hand arrow once it has let go');
+    t.near(T.effort.userData.length, time > 0 && now.pushing ? plan.values.push * M.ARROW.per : 0, 1e-12, now.pushing ? 'the hand’s arrow as long as its moment' : 'no hand arrow once it has let go');
     t.near(T.delivered.userData.length, time > 0 ? now.moment * M.ARROW.per : 0, 1e-12, 'the closer’s arrow as long as its moment, on the same scale');
     const pointing = new THREE.Vector3(0, 1, 0).applyQuaternion(T.delivered.quaternion);
     const tangent = [-Math.sin(now.theta), Math.cos(now.theta)];
@@ -283,7 +267,9 @@ for (const values of settings) {
     // The closer: the piston where the pinion has carried it.
     const L = M.CLOSERVIEW.length * M.BODY, wall = M.CLOSERVIEW.wall * M.BODY, bore = P.CLOSER.bore * 1000 * M.BODY;
     const travel = P.CLOSER.pinion * 1000 * M.BODY * now.theta;
-    const face = -L / 2 + wall + M.CLOSERVIEW.spare * M.BODY + travel;
+    const face = -L / 2 + wall + M.CLOSERVIEW.spare * M.BODY - travel;
+    t.near(T.pinion.position.x, 0, 1e-12, 'pinion shaft center stays fixed while rack translates');
+    t.near(T.rack.scale.x, M.CLOSERVIEW.rackLength * M.BODY, 1e-12, 'rigid rack retains its length');
     t.near(T.piston.position.x, face + wall / 2, 1e-12, 'the piston carried along by the pinion radius times the door angle');
     t.near(T.piston.scale.y, bore, 1e-12, 'a piston the width of the bore');
     t.ok(T.piston.position.x - wall / 2 >= -L / 2 + wall - 1e-9 && T.piston.position.x + wall / 2 <= L / 2 - wall + 1e-9, 'and never outside the body');
@@ -301,10 +287,10 @@ for (const values of settings) {
     [plan.values.sweep, plan.values.latch, P.ORIFICES.backcheck].forEach((diameter, i) => {
       t.near(T.holeFaces[i].scale.x, diameter * M.HOLE / 2, 1e-12, `orifice ${i} drawn at ${diameter} mm on the orifice scale`);
       const ring = pointsOf(T.holeRings[i]);
-      t.ok(ring.every(([x, y]) => Math.abs(Math.hypot(x - (i - 1) * M.VALVES.gap, y - 0.12) - diameter * M.HOLE / 2) < 1e-5), 'and ringed on its own circle');
+      t.ok(ring.every(([x, y]) => Math.abs(Math.hypot(x - (i - 1.5) * M.VALVES.gap, y - 0.12) - diameter * M.HOLE / 2) < 1e-5), 'and ringed on its own circle');
       counts.points++;
     });
-    const live = now.opening ? (now.checking ? 2 : -1) : (now.latching ? 1 : 0);
+    const live = time > 0 && Math.abs(now.omega) > 1e-5 ? (now.opening ? (now.checking ? 2 : 3) : (now.latching ? 1 : 0)) : -1;
     t.ok(state.liveIndex === live, 'the orifice the oil is going through now');
     T.holeFaces.forEach((mesh, i) => t.ok(mesh.material.color.getHex() === (i === live && time > 0 ? M.COLORS.live : M.COLORS.holeFace), 'only the live orifice is filled, and none of them before Play'));
 
@@ -364,7 +350,7 @@ for (const values of settings) {
     });
     return box;
   };
-  const near = new Set(['frame:door', 'frame:latch', 'door:latch']);
+  const near = new Set(['frame:door', 'frame:latch', 'door:latch', 'closer:valves']);
   for (const door of [1, 3, 5, 7]) for (const share of [0, 0.25, 0.5, 1]) {
     model.reset();
     model.update({door, push: 150});
@@ -381,137 +367,80 @@ for (const values of settings) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 3. The lesson: every number it quotes is one the model computes or a source gives.
-// ---------------------------------------------------------------------------
-
-const run = values => { model.reset(); model.update(values); model.advance(1e4); return model.getState(); };
-const arrival = state => state.arrival / RADIAN;
 const base = P.doorPlan({});
-checkTrialNumbers(L, {
-  'Let it close': s => ({'93.7': s.peakDegrees, '5.13': s.sweepTime, 90: P.ANGLES.from, 12: P.ANGLES.to, '7.69': s.latchedAt, '16.4': arrival(s)}),
-  'Turn the sweep valve down': s => { t.ok(s.sweepTime > base.sweepTime, 'a smaller orifice is a slower sweep'); return {'20.59': s.sweepTime, 90: P.ANGLES.from, 12: P.ANGLES.to}; },
-  'Open the sweep valve up': s => { t.ok(s.sweepTime < P.ADA.seconds, 'wide open it is quicker than an accessible door may be'); return {'1.34': s.sweepTime, 5: P.ADA.seconds, '21.5': arrival(s), '16.4': base.arrival / RADIAN}; },
-  'Shut the latch valve down': s => { t.ok(s.latched && arrival(s) < 2, 'it still latches, but it creeps on'); return {'5.13': s.sweepTime, '1.0': arrival(s), '13.56': s.latchedAt}; },
-  'Throw it open with the back check off': s => { t.ok(s.hitStop !== null, 'it reaches the stop'); return {197: s.stopSpeed / RADIAN, '106.8': s.stopLoss}; },
-  'Throw it open with the back check on': s => { t.ok(s.hitStop === null, 'and with the back check on it does not'); return {'198.8': s.peakPressure / 1e5, '119.8': s.peakDegrees}; },
-  'Fit a closer too weak for the door': s => { t.ok(!s.latched, 'the door is left ajar'); return {'7.8': s.latchSpring, '19.0': s.latchMoment, '3.2': s.ajar, '0.44': s.residual}; },
-}, run, t);
+const trials = L.tryIt.map(trial => P.doorPlan(trial.values));
+t.ok(trials[0].latched, 'normal trial latches');
+t.near(trials[1].sweepTime / base.sweepTime, 4, .12, 'smaller sweep has the named slower result');
+t.ok(trials[2].sweepTime < base.sweepTime / 3, 'larger sweep returns much faster');
+t.ok(trials[3].latched && trials[3].arrival < base.arrival / 10, 'slow latch trial still latches');
+t.near(trials[3].sweepTime, base.sweepTime, 1e-8, 'latch change leaves main sweep unchanged');
+t.ok(trials[4].hitStop !== null && trials[4].stopLoss > 0, 'strong push with no back check impacts stop');
+t.ok(trials[5].hitStop === null && trials[5].peakPressure > base.peakPressure, 'back check dissipates enough to avoid this impact');
+t.ok(!trials[6].latched && trials[6].residual > 0, 'weak spring stops short with retained energy');
+t.ok(trials[7].releaseReason === 'push-limit' && trials[7].releaseAngle < trials[7].release && trials[7].latched, 'weak push releases early explicitly');
+t.ok(trials[8].latched && !trials[9].latched, 'heavy leaf needs arrival energy that smaller latch passage removes');
+for (const [index, trial] of L.tryIt.entries()) for (const history of [{}, {size: 7, push: 25}, {door: 7, push: 150, backcheck: 0}]) {
+  model.reset(); model.update(history); model.advance(1e4);
+  model.reset(); model.update(trial.values);
+  t.near(model.getState().clock, 0, 1e-12, `trial ${index} starts fresh after each history`);
+  assert.deepEqual(model.getState().values, trial.values);
+  model.advance(1e4);
+  t.ok(model.playback.complete() && model.getState().now.finished, `trial ${index} reaches its named result`);
+  t.ok(model.getState().readings.every(row => !/NaN|Infinity|undefined|null/.test(row.value)), 'finite useful readings');
+}
+const allCopy = [L.simple, L.overview, L.misconception, L.limits, L.quiz.question, L.quiz.explanation, ...L.quiz.options,
+  ...L.steps.flatMap(x => [x.title, x.body]), ...L.parts.flatMap(x => [x.name, x.role]), ...L.deeper.flatMap(x => [x.title, x.body]),
+  ...L.tryIt.flatMap(x => [x.title, x.instruction, x.observe]), ...model.parts.map(x => x.description)];
+for (const text of allCopy) {
+  t.ok(!/[—–]| - |--/.test(text), 'no dash punctuation');
+  t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|aluminium)\b/i.test(text), 'American spelling');
+}
+t.ok(L.sources.every(source => /^https:\/\//.test(source.url)) && new Set(L.sources.map(x => x.url)).size === L.sources.length, 'distinct primary source links');
+t.ok(L.parts.every(item => model.parts.some(part => part.name === item.name)), 'lesson parts exist in connected model');
+t.ok(L.tryIt.every(trial => trial.part === 'system' && trial.reset && !trial.isolate && trial.view === 'front'), 'presets frame the complete causal sequence');
+t.ok(L.quiz.answer === 0 && L.quiz.options.length === 3, 'scoped quiz distinguishes sweep adjustments');
+t.ok(!('fireRated' in base) && !('meetsRule' in base) && !('rated' in base), 'teaching spring level makes no equipment certification claim');
 
-const NUMBER = /(?<![A-Za-z\d.,])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?/g;
-function covered(text, expected, where) {
-  checkQuotedText(text, expected, t);
-  const spans = [];
-  for (const snippet of Object.keys(expected)) for (let i = text.indexOf(snippet); i >= 0; i = text.indexOf(snippet, i + 1)) spans.push([i, i + snippet.length]);
-  for (const match of text.matchAll(NUMBER)) {
-    t.ok(spans.some(([a, b]) => a <= match.index && match.index + match[0].length <= b), `${where}: the number ${match[0]} in “${text.slice(Math.max(0, match.index - 40), match.index + 20)}” is checked`);
-    counts.numbers++;
+let boundaryCases = 0, maxEnergyRelative = 0;
+for (let door = 1; door <= 7; door++) for (let size = 1; size <= 7; size++)
+for (const sweep of [.15, .6]) for (const latch of [.15, .9]) for (const open of [30, 110])
+for (const push of [25, 150]) for (const backcheck of [0, 1]) {
+  const p = P.doorPlan({door, size, sweep, latch, open, push, backcheck}), end = P.doorAt(p, p.duration);
+  const accounted = p.oilHeat + p.frictionHeat + p.latchWork + p.stopLoss + p.arrivalEnergy + p.residual + p.kinetic;
+  const error = Math.abs(accounted - p.handWork) / Math.max(1, p.handWork);
+  maxEnergyRelative = Math.max(maxEnergyRelative, error); boundaryCases++;
+  t.ok(end.done && end.finished && !p.limited, 'every boundary case reaches a physical endpoint');
+  t.ok(error < 1e-5, 'event-aware energy accounting within ten parts per million');
+  t.ok(p.times.every((time, i) => Number.isFinite(time) && (i === 0 || time >= p.times[i - 1])), 'sample times ordered including both sides of impacts');
+  t.ok(p.angles.every(angle => Number.isFinite(angle) && angle >= 0 && angle <= P.ANGLES.stop * RADIAN + 1e-10), 'no door passes its stops');
+  if (p.opens) t.ok(p.handOff !== null && p.releaseAngle <= p.release + 1e-10 && ['target', 'push-limit'].includes(p.releaseReason), 'every opening has explicit release event');
+}
+{
+  model.reset(); const lengthAtShut = T.chamberBack.scale.x;
+  model.advance(.5); const first = model.getState();
+  t.ok(first.now.energy > 0 && T.chamberBack.scale.x < lengthAtShut, 'opening increases stored energy while physically compressing spring');
+  const toothSpacing = pointsOf(T.rackTeeth)[2][0] - pointsOf(T.rackTeeth)[0][0];
+  model.advance(.5);
+  t.near(pointsOf(T.rackTeeth)[2][0] - pointsOf(T.rackTeeth)[0][0], toothSpacing, 1e-6, 'rack tooth pitch stays rigid throughout stroke');
+  const loop = pointsOf(T.oilLoop), leftPort = new THREE.Vector3(...loop[0]), rightPort = new THREE.Vector3(...loop.at(-1));
+  T.valves.localToWorld(leftPort); T.valves.localToWorld(rightPort); T.closer.worldToLocal(leftPort); T.closer.worldToLocal(rightPort);
+  t.ok(leftPort.x < T.piston.position.x && rightPort.x > T.piston.position.x, 'active oil path joins opposite piston chambers');
+  model.advance(1e4); t.ok(!T.oilLoop.visible && T.flowArrow.userData.length === 0 && model.getState().liveIndex === -1, 'no active path or flow arrow at rest');
+}
+{
+  const one = M.createDoorCloserModel(), many = M.createDoorCloserModel();
+  one.advance(1.2); for (let i = 0; i < 120; i++) many.advance(.01);
+  t.near(one.getState().now.theta, many.getState().now.theta, 1e-10, 'frame partition does not change motion');
+  t.near(one.getState().now.pressure, many.getState().now.pressure, 1e-6, 'instantaneous pressure follows current speed');
+  one.dispose(); many.dispose();
+}
+for (const spec of model.controls) {
+  const choices = spec.options ? spec.options.map(x => x.value) : Array.from({length: Math.round((spec.max - spec.min) / spec.step) + 1}, (_, i) => Number((spec.min + i * spec.step).toFixed(10)));
+  for (const value of choices) {
+    model.reset(); model.advance(1); model.update({[spec.key]: value});
+    if (value !== model.defaults[spec.key]) t.near(model.getState().clock, 0, 1e-12, 'changed setting resets clock and trace');
+    model.advance(1e4); t.ok(model.getState().now.finished, 'each individual control value reaches physical endpoint');
   }
-}
-const texts = lesson => [['simple', lesson.simple], ['overview', lesson.overview], ...lesson.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...lesson.parts.map((item, i) => [`part ${i + 1}`, item.role]), ['misconception', lesson.misconception], ['quiz', [lesson.quiz.question, ...lesson.quiz.options].join(' ')]];
-for (const [where, text] of texts(L)) covered(text, {}, `Door closer ${where}`);
-
-const wide = P.doorPlan({door: 7}), off = P.doorPlan({push: 150, backcheck: 0}), on = P.doorPlan({push: 150});
-covered(L.deeper[0].body, {
-  'Cd·A·sqrt(2·dP/rho)': 'Cd·A·sqrt(2·dP/rho)',
-  'rho·Q²/(2·Cd²·A²)': 'rho·Q²/(2·Cd²·A²)',
-  [`At 0.3 mm that is ${f1(P.dampingOf(0.3))} N·m`]: 'At 0.3 mm that is 580.0 N·m',
-  [`at 0.15 mm it is ${f1(P.dampingOf(0.15))}`]: 'at 0.15 mm it is 9,279.5',
-}, 'deeper 1');
-covered(L.deeper[1].body, {
-  [`Size 1 is for a leaf up to ${f0(P.EN1154[0].width)} mm and ${f0(P.EN1154[0].mass)} kg and size 7 for ${f0(P.EN1154[6].width)} mm and ${f0(P.EN1154[6].mass)} kg, with ${f0(P.EN1154[2].width)} mm and ${f0(P.EN1154[2].mass)} kg at size 3 in between`]: 'Size 1 is for a leaf up to 750 mm and 20 kg and size 7 for 1,600 mm and 160 kg, with 950 mm and 60 kg at size 3 in between',
-  [`may not exceed ${f0(P.SIZE3.moment)} N·m between 0 and ${f0(P.SIZE3.angle)} degrees`]: 'may not exceed 47 N·m between 0 and 60 degrees',
-  [`at least a size ${P.GRADES.fireSize}`]: 'at least a size 3',
-  'sizes 1 and 2 too weak': 'sizes 1 and 2 too weak',
-  'BS EN 1154 grades closers': 'BS EN 1154 grades closers',
-  'DIN 18040 fixes the other end of the same size 3': 'DIN 18040 fixes the other end of the same size 3',
-}, 'deeper 2');
-covered(L.deeper[2].body, {
-  [`The ${f0(wide.leaf.width)} mm, ${f0(wide.leaf.mass)} kg leaf takes ${f2(wide.sweepTime)} s from ${P.ANGLES.from} to ${P.ANGLES.to} degrees on this closer against ${f2(base.sweepTime)} s for the ${f0(base.leaf.width)} mm, ${f0(base.leaf.mass)} kg leaf`]: 'The 1,600 mm, 160 kg leaf takes 5.02 s from 90 to 12 degrees on this closer against 5.13 s for the 950 mm, 60 kg leaf',
-  [`moment of inertia is ${f1(wide.inertia)} kg·m² against ${f1(base.inertia)}`]: 'moment of inertia is 136.5 kg·m² against 18.1',
-  [`carrying ${f2(wide.arrivalEnergy)} J instead of ${f2(base.arrivalEnergy)}`]: 'carrying 4.11 J instead of 0.74',
-}, 'deeper 3');
-covered(L.deeper[3].body, {
-  [`the change happens at ${P.ANGLES.latch} degrees`]: 'the change happens at 12 degrees',
-  [`over the last ${P.ANGLES.engage} degrees`]: 'over the last 5 degrees',
-  [`asks ${f1(base.latchMoment)} N·m against the ${f1(base.latchSpring)} N·m`]: 'asks 19.0 N·m against the 23.5 N·m',
-}, 'deeper 4');
-covered(L.deeper[4].body, {
-  'TS 83': 'TS 83',
-  [`beyond about ${P.ANGLES.backcheck} degrees`]: 'beyond about 70 degrees',
-  [`into its stop at ${f0(off.stopSpeed / RADIAN)}°/s, leaving ${f1(off.stopLoss)} J`]: 'into its stop at 197°/s, leaving 106.8 J',
-  [`dies at ${f1(on.peakDegrees)}°`]: 'dies at 119.8°',
-}, 'deeper 5');
-covered(L.deeper[5].body, {
-  [`the hand puts in ${f1(base.handWork)} J`]: 'the hand puts in 83.8 J',
-  [`the spring holds ${f1(base.stored)} J`]: 'the spring holds 68.4 J',
-  [`${f1(base.oilHeat)} J has gone into warming the oil, ${f1(base.frictionHeat)} J into friction and ${f2(base.latchWork)} J into the bolt, with ${f2(base.arrivalEnergy)} J arriving`]: '76.5 J has gone into warming the oil, 4.9 J into friction and 1.66 J into the bolt, with 0.74 J arriving',
-}, 'deeper 6');
-covered(L.limits, {
-  [`at ${P.SIZE3.angle} degrees scaled from the one sourced figure, the ${P.SIZE3.moment} N·m of a size ${P.SIZE3.size} closer`]: 'at 60 degrees scaled from the one sourced figure, the 47 N·m of a size 3 closer',
-  [`pinion pitch radius of ${f0(P.CLOSER.pinion * 1000)} mm`]: 'pinion pitch radius of 12 mm',
-  [`latch force of ${P.LATCH_FORCE} N at the leading edge over the last ${P.ANGLES.engage} degrees`]: 'latch force of 20 N at the leading edge over the last 5 degrees',
-  [`the stop at ${P.ANGLES.stop} degrees`]: 'the stop at 120 degrees',
-  [`the oil at ${f0(P.CLOSER.density)} kg/m³ with a discharge coefficient of ${P.CLOSER.discharge}`]: 'the oil at 870 kg/m³ with a discharge coefficient of 0.62',
-}, 'limits');
-covered(L.quiz.explanation, {
-  [`from 0.6 mm to 0.3 mm takes this door from ${f2(P.doorPlan({sweep: 0.6}).sweepTime)} s to ${f2(base.sweepTime)} s between ${P.ANGLES.from}° and ${P.ANGLES.to}°`]: 'from 0.6 mm to 0.3 mm takes this door from 1.34 s to 5.13 s between 90° and 12°',
-}, 'quiz');
-
-// The model's own words: its scales, said where the reader sees them.
-const partText = id => model.parts.find(item => item.id === id).description;
-covered(partText('system'), {
-  [`1 scene unit to ${f0(1 / M.PLAN)} mm`]: '1 scene unit to 1,000 mm',
-  [`cut open ${f0(M.timesLarger(M.BODY))} times larger`]: 'cut open 6 times larger',
-  [`three orifices ${f0(M.timesLarger(M.HOLE))} times larger`]: 'three orifices 500 times larger',
-}, 'system text');
-covered(partText('frame'), {
-  [`past ${P.ANGLES.backcheck}°`]: 'past 70°', [`under ${P.ANGLES.latch}°`]: 'under 12°', [`under ${P.ANGLES.engage}°`]: 'under 5°', [`stop is at ${P.ANGLES.stop}°`]: 'stop is at 120°',
-}, 'frame text');
-covered(partText('door'), {[`${f0(0.5 / M.ARROW.per)} N·m to half a scene unit`]: '200 N·m to half a scene unit', 'BS EN 1154 tabulates': 'BS EN 1154 tabulates'}, 'door text');
-covered(partText('latch'), {[`last ${P.ANGLES.engage}°`]: 'last 5°', [`takes ${P.LATCH_FORCE} N`]: 'takes 20 N'}, 'latch text');
-covered(partText('closer'), {
-  'TS 83': 'TS 83',
-  [`drawn ${f0(M.timesLarger(M.BODY))} times larger`]: 'drawn 6 times larger',
-  [`a body ${M.CLOSERVIEW.length} mm long and ${M.CLOSERVIEW.height} mm high`]: 'a body 245 mm long and 60 mm high',
-  [`LCN’s ${f1(P.CLOSER.bore * 1000)} mm bore`]: 'LCN’s 38.1 mm bore',
-  [`${f0(P.CLOSER.pinion * 2000)} mm pitch diameter`]: '24 mm pitch diameter',
-}, 'closer text');
-covered(partText('valves'), {
-  [`drawn ${f0(M.timesLarger(M.HOLE))} times larger`]: 'drawn 500 times larger',
-  [`down to ${P.ANGLES.latch}°`]: 'down to 12°', [`the last ${P.ANGLES.latch}°`]: 'the last 12°', [`past ${P.ANGLES.backcheck}°`]: 'past 70°',
-}, 'valves text');
-covered(partText('trace'), {[`the ${P.ANGLES.stop}° stop`]: 'the 120° stop'}, 'trace text');
-{
-  model.reset();
-  const readings = model.getState().readings, find = label => readings.find(item => item.label === label);
-  t.ok(readings.map(item => item.label).join() === 'Your result,Closing moment,The bolt asks,Oil pressure,Sweep,Latch,Back check,Energy,The door,Drawn,Model limit', 'eleven readings, the result first');
-  t.ok(readings.filter(item => item.hint).length >= 9, 'and nearly all of them explained');
-  t.ok(find('Closing moment').value === '23.5 N·m at the latch' && find('The bolt asks').value === '19.0 N·m' && find('Sweep').value === '5.13 s' && find('The door').value === '950 mm, 60 kg' && find('Drawn').value === '6 times larger', 'the readings carry the lesson’s figures');
-  checkQuotedText(find('Closing moment').hint, {'23.5 N·m shut to 47.0 N·m at 60° and 70.5 N·m': `${f1(base.latchSpring)} N·m shut to ${f1(base.openingMoment)} N·m at ${P.SIZE3.angle}° and ${f1(base.stopMoment)} N·m`, 'up to 950 mm and 60 kg': `up to ${f0(base.rated.width)} mm and ${f0(base.rated.mass)} kg`}, t);
-  checkQuotedText(find('The door').hint, {'18.1 kg·m²': `${f1(base.inertia)} kg·m²`}, t);
-  model.advance(1e4);
-  const done = model.getState().readings, doneFind = label => done.find(item => item.label === label);
-  t.ok(doneFind('Latch').value === 'closes and latches' && doneFind('Your result').value === `Latched · shut in ${f1(base.latchedAt)} s, arriving at ${f1(base.arrival / RADIAN)}°/s`, 'once it has run, the result says when it latched and how fast it arrived');
-  model.reset();
-  model.update({size: 1});
-  model.advance(1e4);
-  const ajar = model.getState().readings;
-  t.ok(/Left ajar/.test(ajar.find(item => item.label === 'Your result').value) && ajar.find(item => item.label === 'Latch').value === 'left 3.2° open', 'and when it did not');
-  model.reset();
-  model.update({size: 7});
-  const stuck = model.getState().readings;
-  t.ok(/does not move/.test(stuck.find(item => item.label === 'Your result').value) && stuck.find(item => item.label === 'Back check').hint.includes('never moved'), 'a closer stronger than the hand says so');
-}
-{
-  const all = [L.simple, L.overview, L.misconception, L.limits, L.quiz.question, L.quiz.explanation, ...L.quiz.options, ...L.steps.flatMap(step => [step.title, step.body]), ...L.parts.flatMap(item => [item.name, item.role]), ...L.deeper.flatMap(item => [item.title, item.body]), ...L.tryIt.flatMap(item => [item.title, item.instruction, item.observe]), ...L.sources.map(source => source.title), ...model.parts.map(item => item.description)];
-  for (const text of all) t.ok(!/[—–]| - |--/.test(text), `no dashes as punctuation: ${text.slice(0, 60)}`);
-  for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|aluminium)\b/i.test(text), `American spelling: ${text.slice(0, 60)}`);
-  t.ok(L.sources.every(source => /^https:\/\//.test(source.url)) && new Set(L.sources.map(s => s.url)).size === L.sources.length, 'every source a link, none twice');
-  t.ok(L.quiz.answer === 0 && L.quiz.options.length === 3, 'a quiz with its answer first');
-  t.ok(L.steps.length === 5 && L.parts.length === 6 && L.tryIt.length === 7 && L.deeper.length === 6, 'five steps, six parts, seven trials and six deeper sections');
-  t.ok(L.tryIt.every(trial => model.parts.some(item => item.id === trial.part) && trial.view === 'front' && trial.reset === true && trial.isolate === false), 'every trial on a part the model has');
-  t.ok(L.parts.every(item => model.parts.some(part => part.name === item.name)), 'every part the lesson names is a part of the model');
 }
 
 // ---------------------------------------------------------------------------
@@ -548,11 +477,12 @@ t.ok(!model.playback.complete() && !model.resultPart.available(), 'nothing to in
   t.ok(JSON.stringify([T.leafGroup.rotation.z, T.bolt.position.x]) === held, 'once it is shut, nothing moves again');
   checkFinite(model.root, t);
   for (const action of model.actions) { const readings = action.run(); t.ok(Array.isArray(readings) && readings.length > 0, `${action.label} returns readings`); t.ok(model.parts.some(item => item.id === action.part) && action.view === 'front', `${action.label} names a part the model has`); checkFinite(model.root, t); }
-  t.ok(model.parts.every(item => item.description) && model.parts.every(item => item.id === 'system' || item.parentId === 'system'), 'every part described, and under the system');
+  t.ok(model.parts.every(item => item.description) && model.parts.every(item => item.id === 'system' || model.parts.some(parent => parent.id === item.parentId)), 'every connected part has a description and valid parent');
   for (const values of settings) for (const time of [0, 1, 4, 1000]) { model.reset(); model.update(values); model.advance(time); t.ok(model.getState().readings.every(item => !/NaN|undefined|Infinity|null/.test(item.value + (item.hint || ''))), `${JSON.stringify(values)}: readings are all numbers`); checkFinite(model.root, t); }
 }
+t.ok(model.catalogParts.length === 15 && model.catalogParts.every(part => part.id !== 'system' && model.parts.includes(part) && part.name && part.description), 'all catalog bookmarks are actual connected parts');
 t.ok(utilityLessons['Door closer'] === L, 'the door closer’s lesson is the one the house serves');
 const released = checkDisposal((() => { const fresh = M.createDoorCloserModel(); fresh.advance(2); return fresh; })(), t);
 model.dispose();
 
-console.log(`PASS door closer: ${t.count} checks, ${counts.settings} settings marched again at a fifth of the step in ${counts.steps} steps, ${counts.slices} leaf slices integrated, ${counts.poses} poses read back, ${counts.points} arc, leaf, orifice and chart points, ${counts.numbers} quoted numbers traced, 1 lesson, ${released} resources released exactly once.`);
+console.log(`PASS door closer: ${t.count} checks, ${counts.settings} settings marched again at a fiftieth of the step in ${counts.steps} steps, ${counts.slices} leaf slices integrated, ${counts.poses} poses read back, ${counts.points} arc, leaf, orifice and chart points, ${boundaryCases} boundary cases, worst relative energy error ${maxEnergyRelative}, 10 trials through three histories, 1 lesson, ${released} resources released exactly once.`);

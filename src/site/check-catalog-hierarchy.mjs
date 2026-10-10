@@ -430,3 +430,11 @@ assert.deepEqual(catalogMachineComponents(sparkPlug.components), [], 'Electrodes
 assert.deepEqual(groupCatalogEntries(entries, sparkPlug.components).map(family => family.entry.id), ['spark-plug'], 'Electrode searches retain the complete plug');
 assert.deepEqual(tags('spark-plug'), ['electricity']);
 for (const id of ['plug', 'center', 'ceramic', 'shell', 'head', 'ground-electrode', 'boundary', 'selector', 'feed', 'return', 'reference', 'energy-record']) assert(hasCatalogPart('spark-plug', id), `${id} remains bookmarkable in the plug lesson`);
+
+const doorCloser = families.find(family => family.entry.id === 'door-closer');
+assert(doorCloser && !componentParentIds['door-closer'], 'Door closer is a complete spring, rack and hydraulic return system');
+assert.deepEqual(doorCloser.components, [], 'Closer parts remain inspectable inside the complete lesson');
+assert.deepEqual(tags('door-closer'), ['springs', 'gears-and-belts', 'pressure-power']);
+assert.equal(catalog.groups.find(group => group.id === doorCloser.entry.group).place, 'home');
+assert.equal(catalog.groups.find(group => group.id === doorCloser.entry.group).room, 'Doors and daily life');
+for (const id of ['frame', 'door', 'latch', 'closer', 'body', 'piston', 'rack', 'pinion', 'spring', 'valves', 'sweep-valve', 'latch-valve', 'backcheck-valve', 'bypass', 'trace']) assert(hasCatalogPart('door-closer', id), `${id} remains bookmarkable in the door closer lesson`);

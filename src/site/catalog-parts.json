@@ -7929,6 +7929,83 @@
       "parentId": "system"
     }
   ],
+  "door-closer": [
+    {
+      "id": "frame",
+      "name": "Frame, hinge and swing",
+      "parentId": "system"
+    },
+    {
+      "id": "door",
+      "name": "Door leaf, in plan",
+      "parentId": "system"
+    },
+    {
+      "id": "latch",
+      "name": "Latch bolt and strike",
+      "parentId": "system"
+    },
+    {
+      "id": "closer",
+      "name": "Closer, cut open",
+      "parentId": "system"
+    },
+    {
+      "id": "body",
+      "name": "Body and oil chambers",
+      "parentId": "closer"
+    },
+    {
+      "id": "piston",
+      "name": "Hydraulic piston",
+      "parentId": "closer"
+    },
+    {
+      "id": "rack",
+      "name": "Rigid rack",
+      "parentId": "closer"
+    },
+    {
+      "id": "pinion",
+      "name": "Fixed shaft and pinion",
+      "parentId": "closer"
+    },
+    {
+      "id": "spring",
+      "name": "Preloaded compression spring",
+      "parentId": "closer"
+    },
+    {
+      "id": "valves",
+      "name": "Oil paths and valves",
+      "parentId": "system"
+    },
+    {
+      "id": "sweep-valve",
+      "name": "Sweep passage",
+      "parentId": "valves"
+    },
+    {
+      "id": "latch-valve",
+      "name": "Latch passage",
+      "parentId": "valves"
+    },
+    {
+      "id": "backcheck-valve",
+      "name": "Back check passage",
+      "parentId": "valves"
+    },
+    {
+      "id": "bypass",
+      "name": "Bypass passage",
+      "parentId": "valves"
+    },
+    {
+      "id": "trace",
+      "name": "The angle, through the swing",
+      "parentId": "system"
+    }
+  ],
   "washing-machine": [
     {
       "id": "machine",
