@@ -79,7 +79,7 @@ export const componentParentIds = {
   'vertical-seismograph-pendulum': 'seismograph',
   'vertical-seismograph-suspension-spring': 'seismograph',
   'seismograph-recording-pen-and-moving-paper': 'seismograph',
-  'spark-plug-electrodes-and-ceramic-insulator': 'car-ignition-system',
+  'spark-plug-electrodes-and-ceramic-insulator': 'spark-plug',
   'spark-gap': 'car-ignition-system',
   'electronic-ignition': 'car-ignition-system',
   'solenoid': 'car-ignition-system',

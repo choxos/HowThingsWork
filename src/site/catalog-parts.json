@@ -6126,6 +6126,68 @@
       "parentId": "system"
     }
   ],
+  "spark-plug": [
+    {
+      "id": "plug",
+      "name": "Plug A and connected supply/return",
+      "parentId": "system"
+    },
+    {
+      "id": "center",
+      "name": "Continuous center terminal and electrode",
+      "parentId": "plug"
+    },
+    {
+      "id": "ceramic",
+      "name": "Annular ceramic insulator and nose",
+      "parentId": "plug"
+    },
+    {
+      "id": "shell",
+      "name": "Metal shell and threaded mounting",
+      "parentId": "plug"
+    },
+    {
+      "id": "head",
+      "name": "Cylinder-head metal and chamber side",
+      "parentId": "plug"
+    },
+    {
+      "id": "ground-electrode",
+      "name": "Bent grounded side electrode",
+      "parentId": "plug"
+    },
+    {
+      "id": "boundary",
+      "name": "Distributor A connection boundary",
+      "parentId": "plug"
+    },
+    {
+      "id": "selector",
+      "name": "Actual selected/disconnected A path",
+      "parentId": "boundary"
+    },
+    {
+      "id": "feed",
+      "name": "Incoming A lead",
+      "parentId": "plug"
+    },
+    {
+      "id": "return",
+      "name": "Head-to-body return",
+      "parentId": "plug"
+    },
+    {
+      "id": "reference",
+      "name": "Common upstream body reference",
+      "parentId": "plug"
+    },
+    {
+      "id": "energy-record",
+      "name": "Retained energy delivered to A",
+      "parentId": "system"
+    }
+  ],
   "induction-coil": [
     {
       "id": "coil",

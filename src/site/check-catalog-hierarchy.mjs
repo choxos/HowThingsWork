@@ -405,8 +405,8 @@ assert.equal(catalog.groups.find(group => group.id === speechRecognition.entry.g
 
 const ignition = families.find(family => family.entry.id === 'car-ignition-system');
 assert(ignition && !componentParentIds['car-ignition-system'], 'Car ignition is a complete battery, starter and ignition system');
-assert.deepEqual(new Set(ignition.components.map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'electronic-ignition', 'spark-gap', 'spark-plug-electrodes-and-ceramic-insulator']));
-assert.deepEqual(new Set(catalogMachineComponents(ignition.components).map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'electronic-ignition']), 'The solenoid, induction coil and electronic switching circuit are smaller systems; gap and electrodes remain part studies');
+assert.deepEqual(new Set(ignition.components.map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'electronic-ignition', 'spark-gap']));
+assert.deepEqual(new Set(catalogMachineComponents(ignition.components).map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'electronic-ignition']), 'The solenoid, induction coil and electronic switching circuit are smaller systems; the gap remains a part study');
 for (const child of ignition.components) assert.deepEqual(groupCatalogEntries(entries, [child]).map(family => family.entry.id), ['car-ignition-system'], `${child.id} search retains the complete ignition system`);
 assert.deepEqual(tags('car-ignition-system'), ['electricity', 'magnetism']);
 assert.equal(catalog.groups.find(group => group.id === ignition.entry.group).place, 'workshop');
@@ -416,4 +416,12 @@ assert.deepEqual(tags('solenoid'), ['electricity', 'magnetism', 'springs']);
 for (const id of ['battery', 'key', 'coil', 'plunger', 'bridge', 'return-spring', 'shunt', 'load']) assert(hasCatalogPart('solenoid', id), `${id} remains bookmarkable in the solenoid lesson`);
 assert.deepEqual(tags('induction-coil'), ['electricity', 'magnetism']);
 for (const id of ['coil', 'coil-core', 'primary', 'secondary', 'breaker', 'points-capacitor', 'primary-wires', 'secondary-wires', 'stray-capacitor']) assert(hasCatalogPart('induction-coil', id), `${id} remains bookmarkable in the induction-coil lesson`);
-for (const id of ['spark-plug', 'distributor', 'contact-breaker-ignition', 'ignition-coil-primary-and-secondary-windings']) assert(!entries.some(entry => entry.id === id), `${id} requires its own completed review before publication`);
+for (const id of ['distributor', 'contact-breaker-ignition', 'ignition-coil-primary-and-secondary-windings']) assert(!entries.some(entry => entry.id === id), `${id} requires its own completed review before publication`);
+
+const sparkPlug = families.find(family => family.entry.id === 'spark-plug');
+assert(sparkPlug && !componentParentIds['spark-plug'], 'The complete plug has its own construction lesson');
+assert.deepEqual(sparkPlug.components.map(entry => entry.id), ['spark-plug-electrodes-and-ceramic-insulator']);
+assert.deepEqual(catalogMachineComponents(sparkPlug.components), [], 'Electrodes and ceramic insulator remain a component study');
+assert.deepEqual(groupCatalogEntries(entries, sparkPlug.components).map(family => family.entry.id), ['spark-plug'], 'Electrode searches retain the complete plug');
+assert.deepEqual(tags('spark-plug'), ['electricity']);
+for (const id of ['plug', 'center', 'ceramic', 'shell', 'head', 'ground-electrode', 'boundary', 'selector', 'feed', 'return', 'reference', 'energy-record']) assert(hasCatalogPart('spark-plug', id), `${id} remains bookmarkable in the plug lesson`);
