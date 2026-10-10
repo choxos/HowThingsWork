@@ -6188,6 +6188,103 @@
       "parentId": "system"
     }
   ],
+  "distributor": [
+    {
+      "id": "routing",
+      "name": "Distributor and four connected plug paths",
+      "parentId": "system"
+    },
+    {
+      "id": "body",
+      "name": "Common battery/body return",
+      "parentId": "system"
+    },
+    {
+      "id": "secondary-wires",
+      "name": "Body-referenced secondary and high-voltage lead",
+      "parentId": "routing"
+    },
+    {
+      "id": "distributor",
+      "name": "Four-terminal distributor",
+      "parentId": "routing"
+    },
+    {
+      "id": "rotor",
+      "name": "Conducting rotating arm",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-0",
+      "name": "Distributor terminal A",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-1",
+      "name": "Distributor terminal B",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-2",
+      "name": "Distributor terminal C",
+      "parentId": "distributor"
+    },
+    {
+      "id": "terminal-3",
+      "name": "Distributor terminal D",
+      "parentId": "distributor"
+    },
+    {
+      "id": "plug-A-leads",
+      "name": "Separate lead and body return for plug A",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-A",
+      "name": "Plug A · schematic discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-B-leads",
+      "name": "Separate lead and body return for plug B",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-B",
+      "name": "Plug B · schematic discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-C-leads",
+      "name": "Separate lead and body return for plug C",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-C",
+      "name": "Plug C · schematic discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-D-leads",
+      "name": "Separate lead and body return for plug D",
+      "parentId": "routing"
+    },
+    {
+      "id": "plug-D",
+      "name": "Plug D · schematic discharge gap",
+      "parentId": "routing"
+    },
+    {
+      "id": "cam",
+      "name": "Four-lobe distributor cam",
+      "parentId": "breaker"
+    },
+    {
+      "id": "timing-link",
+      "name": "Prescribed 1:1 cam/distributor linkage",
+      "parentId": "system"
+    }
+  ],
   "induction-coil": [
     {
       "id": "coil",
