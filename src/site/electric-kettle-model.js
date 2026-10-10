@@ -2,251 +2,255 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
-import {panel, wireColor, glowOpacity} from './element-scene.js';
+import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
+import {wireColor} from './element-scene.js';
 import {
   kettlePlan, kettleAt, resistanceAt, KETTLE_DEFAULTS, KETTLE_DOMAINS, KETTLE_WIRE, FILLED,
-  DECLARED, DRAPER, NIKROTHAL, WATER, RATED, MAINS,
+  KETTLE_WATER as WATER, KETTLE_THERMAL as THERMAL, DECLARED,
 } from './element-physics.js';
 
-// ---------------------------------------------------------------------------
-// Electric kettle: the kettle cut open at true size, its element under the
-// water, the switch the steam throws, and the water coming up to the boil.
-//
-// Scale: the kettle is drawn at true size, 1 mm to 0.002 scene units, its body
-// 170 mm across and 230 mm tall, everything inside it illustrative in size and
-// place except the water, whose depth follows the mass you choose. The element
-// is drawn as the coil it is, its 0.55 mm wire thickened to be visible. The
-// chart is not to scale.
-//
-// Time: the run plays 10 times faster than the real thing, said in the part
-// text and in a reading.
-// ---------------------------------------------------------------------------
-
-export const MM = 0.002;
-/** How many times faster than the real thing the run plays. */
+export const MM = 0.006;
 export const FASTER = 10;
-
-/** The kettle, mm about the middle of its body. */
 export const KETTLE = Object.freeze({
-  origin: Object.freeze([-0.62, 0.42, 0]),
-  body: Object.freeze([-85, 85, -115, 115]),
-  base: Object.freeze([-85, 85, -115, -80]),
-  spout: Object.freeze([[85, 40], [125, 95], [110, 110]]),
-  handle: Object.freeze([[85, 80], [140, 70], [150, -10], [95, -55]]),
-  lid: Object.freeze([-60, 60, 108, 122]),
-  element: Object.freeze([-62, 62, -68]), coils: 9, coilR: 11,
-  switchAt: Object.freeze([52, 64]), strip: Object.freeze([34, 4]),
-  steam: 7, full: 1.7,
+  origin: Object.freeze([-0.32, 0.20, 0]), innerRadius: 70, outerRadius: 74, height: 150, floor: -75,
+  coilRadius: 44, tubeRadius: 4, coilY: -69, arcStart: Math.PI / 8, arc: 7 * Math.PI / 4, helixRadius: 2.2,
 });
+export const CHART = Object.freeze({x: -0.91, y: -1.12, w: 1.75, h: 0.47, temperature: Object.freeze([0, 400])});
+export const COLORS = Object.freeze({shell: 0xe9e4d8, edge: 0x374736, metal: 0xa8b9b3, water: 0x5b9bbb, hot: 0xd88452, wire: 0xd46737, insulation: 0xe4c88a, steam: 0x94b9c8, live: 0xb96048, neutral: 0x587fa1});
+export const chartX = (plan, time) => CHART.x + clamp(time / plan.duration) * CHART.w;
+export const chartY = celsius => CHART.y + clamp(celsius / CHART.temperature[1]) * CHART.h;
+export const waterDepth = mass => (mass * 1e9 / WATER.density + Math.PI * KETTLE.tubeRadius ** 2 * KETTLE.coilRadius * KETTLE.arc) / (Math.PI * KETTLE.innerRadius ** 2);
+export const waterColor = temperature => new THREE.Color(COLORS.water).lerp(new THREE.Color(COLORS.hot), clamp((temperature - 5) / 95));
 
-/** The run: where the chart sits, its size, and what it spans. */
-export const CHART = Object.freeze({
-  x: -0.06, y: -0.72, w: 1.9, h: 0.78,
-  temperature: Object.freeze([0, 140]), tickEvery: 60, tick: 0.022, mark: 0.03, cursor: 0.022,
-});
+export class KettleSheathPath extends THREE.Curve {
+  constructor(from = 0, to = 1) { super(); this.from = from; this.to = to; }
+  getPoint(t, target = new THREE.Vector3()) {
+    const angle = KETTLE.arcStart + (this.from + (this.to - this.from) * t) * KETTLE.arc;
+    return target.set(KETTLE.coilRadius * Math.cos(angle) * MM, KETTLE.coilY * MM, KETTLE.coilRadius * Math.sin(angle) * MM);
+  }
+}
 
-export const COLORS = Object.freeze({
-  casing: 0xe9e4d8, shell: 0x2f3336, metal: 0xb4c5b0, faint: 0x9aa39a, chart: 0x374736,
-  cold: 0x3f7fbf, hot: 0xc14f39, steam: 0xd8dcd6, gold: 0xe3b45e, boil: 0x7d5ba6, wire: 0xe07a3c,
-});
-
-export const chartX = (plan, t) => CHART.x + clamp(t / plan.duration) * CHART.w;
-export const chartY = celsius => CHART.y + clamp((celsius - CHART.temperature[0]) / (CHART.temperature[1] - CHART.temperature[0])) * CHART.h;
-
-const cold = new THREE.Color(COLORS.cold), hot = new THREE.Color(COLORS.hot);
-/** The color of water at `celsius`, between its starting range and boiling. */
-export const waterColor = celsius => cold.clone().lerp(hot, clamp(celsius / WATER.boiling));
+/** The wire winds inside the tubular sheath; solve its turns from its specified centerline length. */
+export class KettleWirePath extends THREE.Curve {
+  constructor() {
+    super();
+    let lo = 1, hi = 500;
+    for (let step = 0; step < 40; step++) {
+      const n = (lo + hi) / 2;
+      let length = 0;
+      for (let i = 0; i < 4096; i++) {
+        const radius = KETTLE.coilRadius + KETTLE.helixRadius * Math.cos(2 * Math.PI * n * (i + 0.5) / 4096);
+        length += Math.hypot(KETTLE.arc * radius, 2 * Math.PI * n * KETTLE.helixRadius) / 4096;
+      }
+      if (length < KETTLE_WIRE.length * 1000) lo = n; else hi = n;
+    }
+    this.turns = (lo + hi) / 2;
+  }
+  getPoint(t, target = new THREE.Vector3()) {
+    const angle = KETTLE.arcStart + t * KETTLE.arc, phase = 2 * Math.PI * this.turns * t;
+    const radius = KETTLE.coilRadius + KETTLE.helixRadius * Math.cos(phase);
+    return target.set(radius * Math.cos(angle) * MM, (KETTLE.coilY + KETTLE.helixRadius * Math.sin(phase)) * MM, radius * Math.sin(angle) * MM);
+  }
+}
 
 export function createElectricKettleModel() {
-  const kit = houseModel('Electric kettle'), {part, control, finish} = kit;
-  const {flat, rect, millimeters, outline} = panel(MM);
+  const kit = houseModel('Electric kettle'), {part, box, cylinder, sphere, rod, tube, control, finish} = kit;
   let clock = 0, lastClock = 0, disposed = false;
-
-  const [bodyX0, bodyX1, bodyY0, bodyY1] = KETTLE.body;
-  const system = part('system', 'Electric kettle, cut open', `A kettle cut open at true size, ${fixed(bodyX1 - bodyX0, 0)} mm across and ${fixed(bodyY1 - bodyY0, 0)} mm tall: the element under the water, the water above it, and the switch the steam throws when it boils. Beneath, the run. Press Play to switch it on: the run plays ${FASTER} times faster than the real thing.`);
-
-  const body = part('body', 'Body, spout and handle', `The vessel that holds the water over the element, with the spout it pours from and the handle that keeps your hand off it. The lid closes the top so that the steam has one way out, past the switch.`, KETTLE.origin, system);
-  const board = flat(COLORS.casing, body);
-  millimeters(board, bodyX0, bodyX1, bodyY0, bodyY1, -0.01);
-  const bodyLine = lineObject(5, COLORS.shell, body);
-  outline(bodyLine, bodyX0, bodyX1, bodyY0, bodyY1, -0.008);
-  const base = flat(COLORS.metal, body);
-  millimeters(base, ...KETTLE.base, -0.007);
-  const lid = flat(COLORS.metal, body);
-  millimeters(lid, ...KETTLE.lid, -0.006);
-  const spout = lineObject(KETTLE.spout.length, COLORS.shell, body);
-  fillLine(spout, KETTLE.spout.map(([x, y]) => [x * MM, y * MM, -0.008]));
-  const handle = lineObject(KETTLE.handle.length, COLORS.shell, body);
-  fillLine(handle, KETTLE.handle.map(([x, y]) => [x * MM, y * MM, -0.008]));
-
-  const water = part('water', 'The water', `What is being heated. Its depth follows the mass you pour in, and its color follows its temperature. Water takes ${fixed(WATER.heat, 0)} J for each kilogram and each degree, which is more than almost anything else, and that is the whole reason a kettle needs kilowatts rather than watts.`, KETTLE.origin, system);
-  const pool = flat(COLORS.cold, water);
-  const surface = segmentLines(1, COLORS.shell, water);
-
-  const element = part('element', 'Heating element', `The coil of ${NIKROTHAL.name} wire in the bottom, sheathed and sitting under the water. Water carries heat away from it so fast that the element runs only a few degrees above the water it is in, which is why a kettle element never glows and why it burns out in seconds if it is ever switched on dry.`, KETTLE.origin, system);
-  const coil = lineObject(4 * KETTLE.coils + 1, COLORS.wire, element);
-  const glow = flat(COLORS.wire, element, {transparent: true, opacity: 0});
-
-  const steamSwitch = part('switch', 'Steam switch', `The switch the steam itself throws. Steam climbing from boiling water reaches a small bimetal disc in the handle; the disc snaps, the contacts open, and the element goes off. It answers to the state of the water rather than to a clock, which is why a kettle can be left alone.`, KETTLE.origin, system);
-  const strip = flat(COLORS.gold, steamSwitch);
-  const contacts = segmentLines(2, COLORS.shell, steamSwitch);
-
-  const steamPart = part('steam', 'Steam', 'The steam that leaves the water once it reaches boiling, and the path it takes to the switch. Nothing rises until the water is actually at the boil, which is the signal the switch is waiting for.', KETTLE.origin, system);
-  const puffs = Array.from({length: KETTLE.steam}, () => flat(COLORS.steam, steamPart, {transparent: true, opacity: 0.7}));
-
-  const chartPart = part('chart', 'The run', `The water's temperature on the dark curve and the element's on the pale one, from ${fixed(CHART.temperature[0], 0)} to ${fixed(CHART.temperature[1], 0)} °C, with a tick every ${fixed(CHART.tickEvery, 0)} s. The violet line is boiling, where the switch opens.`, [0, 0, 0], system);
-  const chartFrame = lineObject(5, COLORS.chart, chartPart);
-  outline(chartFrame, CHART.x, CHART.x + CHART.w, CHART.y, CHART.y + CHART.h, 0, 1);
-  const boilLine = segmentLines(1, COLORS.boil, chartPart);
-  const ticks = segmentLines(Math.ceil(DECLARED.kettleRun / CHART.tickEvery), COLORS.chart, chartPart);
-  const guideWater = lineObject(DECLARED.samples, COLORS.faint, chartPart), guideWire = lineObject(DECLARED.samples, COLORS.faint, chartPart);
-  const curveWater = lineObject(DECLARED.samples + 1, COLORS.hot, chartPart), curveWire = lineObject(DECLARED.samples + 1, COLORS.wire, chartPart);
-  const switchMark = segmentLines(1, COLORS.boil, chartPart), cursor = segmentLines(2, COLORS.chart, chartPart);
-  // The chart's words: its scale at the left, the run's length under its right end, and its name and key to its right, clear of the leader that meets its top.
-  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
-  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
-    size: TEXT,
-    x: {min: 0, max: 1, title: `Seconds, a tick every ${fixed(CHART.tickEvery, 0)}`, ticks: [[0, '0']]},
-    y: {min: CHART.temperature[0], max: CHART.temperature[1], ticks: [0, 50, 100].map(celsius => [celsius, `${fixed(celsius, 0)} °C`])},
-  });
-  const endWord = textLabel(chartPart, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
-  textLabel(chartPart, 'The run', {height: TEXT, align: 'left', weight: '600', color: css(COLORS.chart), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.03, 0.001]});
-  [['Water', COLORS.hot], ['Element', COLORS.wire], ['Boiling', COLORS.boil]].forEach(([text, color], i) => textLabel(chartPart, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.11 - 0.065 * i, 0.001]}));
-  const leader = segmentLines(1, COLORS.faint, system);
-
-  const d = KETTLE_DEFAULTS, D = KETTLE_DOMAINS;
-  control('volts', 'Supply voltage', ...D.volts, d.volts, 'V', `What the socket puts across the element. The Mains electricity page gives ${fixed(MAINS.volts, 0)} V in much of the world and ${fixed(MAINS.americanVolts, 0)} V in North America, which is why a kettle boils so much faster in one place than the other.`);
-  control('mass', 'Water poured in', ...D.mass, d.mass, 'kg', 'How much water is in the kettle. Every kilogram has to be carried the whole way to boiling, so the time goes up in proportion.');
-  control('start', 'Starting temperature', ...D.start, d.start, '°C', 'How warm the water is when it goes in. Starting warmer is a shorter way to go.');
-  control('filled', 'What is in it', ...D.filled, d.filled, '', 'Whether there is water over the element at all. Switched on dry, there is nothing to carry the heat away and the element climbs until its cutout saves it.', FILLED);
-
-  const result = finish(v => {
-    const plan = kettlePlan(v), now = kettleAt(plan, clock), values = plan.values;
-
-    // The water: its depth from the mass, its color from its temperature.
-    const depth = plan.wet ? (bodyY0 + 12) + (KETTLE.element[2] - bodyY0 + 150) * (values.mass / KETTLE.full) : bodyY0 + 12;
-    millimeters(pool, bodyX0 + 6, bodyX1 - 6, bodyY0 + 6, depth, -0.006);
-    pool.visible = plan.wet;
-    pool.material.color.copy(waterColor(now.water));
-    fillLine(surface, [[(bodyX0 + 6) * MM, depth * MM, -0.005], [(bodyX1 - 6) * MM, depth * MM, -0.005]]);
-    // After fillLine, which shows any line it fills: a dry kettle has no surface.
-    surface.visible = plan.wet;
-
-    // The element, drawn as the coil it is.
-    const [ex0, ex1, ey] = KETTLE.element, color = wireColor(now.celsius);
-    fillLine(coil, Array.from({length: 4 * KETTLE.coils + 1}, (_, i) => {
-      const share = i / (4 * KETTLE.coils), angle = share * KETTLE.coils * 2 * Math.PI;
-      return [(ex0 + (ex1 - ex0) * share) * MM, (ey + KETTLE.coilR * Math.sin(angle)) * MM, -0.004];
-    }));
-    coil.material.color.copy(color);
-    millimeters(glow, ex0 - 10, ex1 + 10, ey - KETTLE.coilR - 8, ey + KETTLE.coilR + 8, -0.005);
-    glow.material.color.copy(color);
-    glow.material.opacity = glowOpacity(now.celsius);
-
-    // The switch: the strip tilts and the contacts part once the steam reaches it.
-    const [switchX, switchY] = KETTLE.switchAt, [stripLong, stripThick] = KETTLE.strip;
-    const thrown = now.switched || now.tripped;
-    millimeters(strip, switchX - stripLong / 2, switchX + stripLong / 2, switchY + (thrown ? 7 : 0), switchY + (thrown ? 7 : 0) + stripThick, -0.004);
-    fillLine(contacts, [
-      [(switchX - 8) * MM, (switchY - 10) * MM, -0.003], [(switchX - 8) * MM, (switchY - 2) * MM, -0.003],
-      [(switchX + 8) * MM, (switchY - 10) * MM, -0.003], [(switchX + 8) * MM, (switchY - 2 - (thrown ? 8 : 0)) * MM, -0.003],
-    ]);
-
-    // The steam, only once the water is actually boiling.
-    puffs.forEach((puff, i) => {
-      const phase = (clock / 3 + i / KETTLE.steam) % 1;
-      puff.visible = now.boiling;
-      const y = depth + 10 + phase * 90, size = 5 + phase * 9;
-      millimeters(puff, switchX - 40 - size, switchX - 40 + size, y - size, y + size, -0.003);
-      puff.material.opacity = 0.7 * (1 - phase);
-    });
-
-    // The chart.
-    fillLine(boilLine, [[CHART.x, chartY(WATER.boiling), 0], [CHART.x + CHART.w, chartY(WATER.boiling), 0]]);
-    const tickCount = Math.max(0, Math.ceil(plan.duration / CHART.tickEvery) - 1);
-    endWord.userData.setText(`${fixed(plan.duration, 0)}`);
-    fillLine(ticks, Array.from({length: tickCount}, (_, i) => {
-      const x = chartX(plan, (i + 1) * CHART.tickEvery);
-      return [[x, CHART.y, 0], [x, CHART.y - CHART.tick, 0]];
-    }).flat());
-    fillLine(guideWater, plan.chart.map(sample => [chartX(plan, sample.t), chartY(sample.water), 0]));
-    fillLine(guideWire, plan.chart.map(sample => [chartX(plan, sample.t), chartY(sample.celsius), 0]));
-    const shown = clock > 0 ? plan.chart.filter(sample => sample.t < now.t) : [];
-    fillLine(curveWater, clock > 0 ? [...shown.map(sample => [chartX(plan, sample.t), chartY(sample.water), 0]), [chartX(plan, now.t), chartY(now.water), 0]] : []);
-    fillLine(curveWire, clock > 0 ? [...shown.map(sample => [chartX(plan, sample.t), chartY(sample.celsius), 0]), [chartX(plan, now.t), chartY(now.celsius), 0]] : []);
-    const ends = plan.switched ?? plan.tripped;
-    switchMark.visible = ends !== null;
-    if (ends !== null) fillLine(switchMark, [[chartX(plan, ends), CHART.y, 0], [chartX(plan, ends), CHART.y + CHART.mark, 0]]);
-    const cx = Math.min(Math.max(chartX(plan, now.t), CHART.x + CHART.cursor), CHART.x + CHART.w - CHART.cursor);
-    const mark = y => [[cx - CHART.cursor, y, 0], [cx + CHART.cursor, y, 0]];
-    fillLine(cursor, clock > 0 ? [...mark(chartY(now.water)), ...mark(chartY(now.celsius))] : []);
-    fillLine(leader, [[KETTLE.origin[0], KETTLE.origin[1] + (bodyY0 - 30) * MM, 0], [CHART.x + CHART.w / 2, CHART.y + CHART.h, 0]]);
-
-    const delivered = plan.wet ? values.mass * WATER.heat * (now.water - values.start) : 0;
-    const status = values.volts === 0 ? 'Ready · nothing is across the element, so nothing happens; turn the supply up and press Play'
-      : !plan.wet ? (clock <= 0 ? `Ready · there is no water over the element, so nothing will carry its heat away; press Play to watch what saves it`
-        : now.tripped ? `Cut out · with nothing to heat, the element reached ${fixed(DECLARED.dryCutout, 0)} °C in ${fixed(plan.tripped, 1)} s and its protector opened`
-        : `Running dry · ${fixed(now.t, 1)} s in, the element is already at ${fixed(now.celsius, 0)} °C and still climbing`)
-      : clock <= 0 ? (plan.boils ? `Ready · ${fixed(values.mass, 1)} kg from ${fixed(values.start, 0)} °C will boil in ${fixed(plan.switched, 0)} s at ${fixed(plan.rating, 0)} W; press Play`
-        : `Ready · at ${fixed(plan.rating, 0)} W this will not reach boiling within the ${fixed(DECLARED.kettleRun, 0)} s the run lasts; press Play to watch how far it gets`)
-      : now.switched ? `Switched off · the water reached ${fixed(WATER.boiling, 0)} °C after ${fixed(plan.switched, 0)} s and the steam threw the switch`
-      : `Heating · ${fixed(now.t, 0)} s in, the water reads ${fixed(now.water, 1)} °C`;
-    return {
-      state: {...plan, now, clock},
-      readings: [
-        r('Your result', status),
-        r('Element power', `${fixed(now.power, 0)} W`, `Joule's law: the voltage squared over the resistance, ${fixed(values.volts, 0)} V across ${fixed(plan.resistance, 2)} Ω. At ${fixed(MAINS.volts, 0)} V this element is ${fixed(plan.rating, 0)} W, inside the ${fixed(RATED.kettle[0] / 1000, 0)} to ${fixed(RATED.kettle[1] / 1000, 0)} kW the Kettle page gives, and it draws ${fixed(plan.current, 1)} A of the ${fixed(RATED.kettleCurrent, 0)} A that page says a kettle can pull.`),
-        r('Water temperature', plan.wet ? `${fixed(now.water, 1)} °C` : 'no water in it', plan.wet
-          ? `Energy in, over the mass times the heat capacity: ${fixed(delivered / 1000, 0)} kJ has gone into ${fixed(values.mass, 1)} kg of water so far, and at ${fixed(WATER.heat, 0)} J for each kilogram and degree that is ${fixed(now.water - values.start, 1)} °C of rise from the ${fixed(values.start, 0)} °C it started at.`
-          : `There is nothing over the element to take its heat, so there is no water temperature to give. Everything the element makes stays in the element.`),
-        r('Element temperature', `${fixed(now.celsius, 0)} °C`, plan.wet
-          ? `Water carries heat off the sheath so readily that the element settles only a few degrees above the water around it, ${fixed(now.celsius - now.water, 1)} °C above it now. It never comes near the ${fixed(DRAPER.celsius, 0)} °C at which metal starts to glow, which is why you never see a kettle element light up.`
-          : `With only air around it the element can shed almost nothing, so it climbs until its protector opens at ${fixed(DECLARED.dryCutout, 0)} °C. That takes ${plan.tripped === null ? 'only seconds' : `${fixed(plan.tripped, 1)} s`}, which is why dry switching is a protector's job and not a person's.`),
-        r('Time to boil', plan.boils ? `${fixed(plan.switched, 0)} s` : plan.wet ? 'not within this run' : 'never, with no water', plan.wet
-          ? `Bringing ${fixed(values.mass, 1)} kg from ${fixed(values.start, 0)} °C to ${fixed(WATER.boiling, 0)} °C takes ${fixed(plan.needed / 1000, 0)} kJ. At ${fixed(plan.rating, 0)} W, less the ${fixed(DECLARED.vesselLoss, 1)} W for each degree the model lets the body lose, that is ${plan.boils ? `${fixed(plan.switched, 0)} s` : 'longer than this run'}.`
-          : 'There is nothing to bring to the boil.'),
-        r('Steam switch', now.switched ? 'opened at boiling' : plan.wet ? 'closed' : 'not what stops it', plan.wet
-          ? `The switch answers the water, not a clock: steam only rises once the water is actually at ${fixed(WATER.boiling, 0)} °C, so the same switch works whatever you poured in and however warm it started. Nothing boils away, because the element goes off the moment the steam arrives.`
-          : `Switched on dry there is no steam to throw the steam switch, so a second protector on the element itself is what opens the circuit.`),
-        r('Boiled away', `${fixed(1000 * now.boiled, 1)} g`, `Once the water is at boiling, anything more goes into turning it to steam, at ${fixed(WATER.vaporization / 1000, 0)} kJ for every kilogram, which is over five times what it took to warm that kilogram from cold. In this kettle the switch opens the moment boiling starts, so almost none of it is ever spent.`),
-        r('Sped up', `${FASTER} times faster`, `The run plays ${FASTER} times faster than the real thing: this one takes ${fixed(plan.duration, 0)} s and plays in ${fixed(plan.duration / FASTER, 0)} s. The kettle is drawn at true size, ${fixed(bodyX1 - bodyX0, 0)} mm across and ${fixed(bodyY1 - bodyY0, 0)} mm tall, and the chart is not to scale.`),
-      ],
-    };
-  });
-
-  const render = result.update;
-  const duration = () => result.getState().duration;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(duration(), clock + dt * FASTER); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
-  const inspect = time => { clock = Math.min(duration(), time); return render(); };
-  result.actions = [
-    {label: 'Inspect: the element', part: 'element', view: 'front', replay: false, run() { return inspect(duration()); }},
-    {label: 'Inspect: the water', part: 'water', view: 'front', replay: false, run() { return inspect(duration() / 2); }},
-    {label: 'Inspect: the steam switch', part: 'switch', view: 'front', replay: false, run() { return inspect(duration()); }},
-    {label: 'Inspect: the run', part: 'chart', view: 'front', replay: false, run() { return render(); }},
-  ];
-  result.playback = {
-    label: 'Switch it on',
-    description: `The kettle is switched on and runs until the steam throws the switch. The run plays ${FASTER} times faster than the real thing.`,
-    stepLabel: 'Advance 10 s',
-    advance: result.advance,
-    step: () => result.advance(1),
-    complete: () => clock >= duration(),
-    blocked: () => result.getState().values.volts === 0,
+  const system = part('system', 'Electric kettle, cut open', 'Follow current through the insulated wire, heat into the water, and boiling vapor to the steam switch. The separate dry protector watches the sheath. Press Play to close the circuit. Dimensions and sensor timings are illustrative.');
+  const body = part('body', 'Body, spout and handle', 'A cylindrical vessel holds water above the tubular element. The front is cut away. A spout remains open to the atmosphere; a separate duct guides some vapor toward the switch. The handle keeps a hand away from the hot vessel.', KETTLE.origin, system);
+  const material = (color, opacity = 1) => new THREE.MeshStandardMaterial({color, roughness: 0.55, side: THREE.DoubleSide, transparent: opacity < 1, opacity, depthWrite: opacity === 1});
+  const addMesh = (geometry, mat, parent) => { const mesh = new THREE.Mesh(geometry, mat); parent.add(mesh); return mesh; };
+  const wallGeometry = radius => {
+    const geometry = new THREE.CylinderGeometry(radius * MM, radius * MM, 150 * MM, 64, 30, true, Math.PI / 3, 4 * Math.PI / 3);
+    const positions = geometry.attributes.position, original = geometry.index.array, indices = [];
+    for (let i = 0; i < original.length; i += 3) {
+      const ids = [original[i], original[i + 1], original[i + 2]];
+      const center = ids.reduce((sum, id) => sum.add(new THREE.Vector3().fromBufferAttribute(positions, id)), new THREE.Vector3()).multiplyScalar(1 / 3 / MM);
+      const spoutOpening = center.x < -60 && Math.abs(center.z) < 13 && center.y > 17 && center.y < 47;
+      const ductOpening = center.x > 60 && Math.abs(center.z) < 5 && center.y > 61 && center.y < 71;
+      if (!spoutOpening && !ductOpening) indices.push(...ids);
+    }
+    geometry.setIndex(indices); return geometry;
   };
-  result.resultPart = {id: 'chart', label: 'Inspect the run', view: 'front', focusOnComplete: false, available: () => clock >= duration()};
+  const shell = addMesh(wallGeometry(74), material(COLORS.shell), body);
+  const innerWall = addMesh(wallGeometry(70), material(0xd1d6cb), body);
+  const base = cylinder(74 * MM, 6 * MM, [0, -78 * MM, 0], COLORS.edge, body);
+  const lid = addMesh(new THREE.CylinderGeometry(74 * MM, 74 * MM, 4 * MM, 64, 1, false, Math.PI / 3, 4 * Math.PI / 3), material(COLORS.metal), body); lid.position.y = 77 * MM;
+  const cutEdges = [-1, 1].map(sign => box([4 * MM, 150 * MM, 4 * MM], [sign * 72 * Math.sin(Math.PI / 3) * MM, 0, 36 * MM], COLORS.metal, body));
+  const handle = tube([[70, 55, -8], [115, 55, -8], [127, 5, -8], [103, -50, -8], [70, -50, -8]].map(p => p.map(n => n * MM)), 8 * MM, COLORS.edge, body);
+  const spoutCurve = new THREE.CatmullRomCurve3([[-65, 30, 0], [-85, 43, 0], [-105, 75, 0]].map(p => new THREE.Vector3(...p.map(n => n * MM))));
+  const spout = addMesh(new THREE.TubeGeometry(spoutCurve, 24, 13 * MM, 24, false), material(COLORS.metal), body);
+  for (const x of [-48, 48]) box([26 * MM, 6 * MM, 70 * MM], [x * MM, -84 * MM, 0], COLORS.edge, body);
 
-  kit.root.rotation.set(0.04, -0.06, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.6;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, body, board, bodyLine, base, lid, spout, handle, water, pool, surface, element, coil, glow, steamSwitch, strip, contacts, steamPart, puffs, chartPart, chartFrame, boilLine, ticks, guideWater, guideWire, curveWater, curveWire, switchMark, cursor, leader};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  const water = part('water', 'The water', 'The water level comes from remaining liquid mass, a 140 mm internal diameter, and displacement by the main tube. Spout liquid and small fittings are omitted from that volume calculation. Color tracks temperature; the well-mixed water receives heat through the metal sheath.', KETTLE.origin, system);
+  const pool = addMesh(new THREE.CylinderGeometry(70 * MM, 70 * MM, 1, 64, 1, true), material(COLORS.water, 0.23), water);
+  const surface = addMesh(new THREE.CircleGeometry(70 * MM, 64), material(COLORS.water, 0.25), water); surface.rotation.x = -Math.PI / 2;
+  const waterWord = textLabel(water, '', {height: 0.055, width: 0.62, position: [-0.03, 0.22, 0.46]});
+  const circulation = [-1, 1].map(sign => {
+    const arrow = solidArrow(kit, COLORS.water, water, 0.008); arrow.position.set(sign * 28 * MM, 0, 12 * MM); arrow.userData.setDirection(new THREE.Vector3(0, sign, 0)); return arrow;
+  });
+
+  const element = part('element', 'Heating element', 'A coiled resistance wire sits inside electrically insulating material and a metal sheath. Heat crosses the insulation into the sheath and then into water. The core is hotter than the sheath. The exposed window and separate close-up reveal this hidden construction.', KETTLE.origin, system);
+  const sheathPath = new KettleSheathPath(), wirePath = new KettleWirePath();
+  const sheath = [[0, 0.12], [0.31, 1]].map(([a, b]) => addMesh(new THREE.TubeGeometry(new KettleSheathPath(a, b), 90, 4 * MM, 12, false), material(COLORS.metal), element));
+  const insulationWindow = addMesh(new THREE.TubeGeometry(new KettleSheathPath(0.12, 0.31), 32, 3.3 * MM, 12, false), material(COLORS.insulation, 0.25), element);
+  const coil = addMesh(new THREE.TubeGeometry(wirePath, Math.ceil(wirePath.turns * 20), KETTLE_WIRE.diameter * 1000 * MM / 2, 5, false), material(COLORS.wire), element);
+  const endpoints = [wirePath.getPoint(0), wirePath.getPoint(1)];
+  const feedthroughs = endpoints.map(point => {
+    const mesh = rod(point.toArray(), [point.x, -84 * MM, point.z], 4 * MM, COLORS.insulation, element);
+    rod(point.toArray(), [point.x, -84 * MM, point.z], 0.0025, COLORS.wire, element); return mesh;
+  });
+
+  const insulation = part('insulation', 'Insulation close-up', 'A short section, magnified five times: the coiled conducting wire is inside an electrical insulator, which is inside a metal sheath. The water touches the sheath, not the live wire. These layers conduct heat while keeping the intended current path separate from the water.', [0.80, 0.28, 0], system);
+  const closeupSheath = addMesh(new THREE.CylinderGeometry(0.12, 0.12, 0.35, 32, 1, true, Math.PI / 2, Math.PI), material(COLORS.metal), insulation); closeupSheath.rotation.z = Math.PI / 2;
+  const closeupInsulator = addMesh(new THREE.CylinderGeometry(0.099, 0.099, 0.35, 32, 1, true, Math.PI / 2, Math.PI), material(COLORS.insulation), insulation); closeupInsulator.rotation.z = Math.PI / 2;
+  const insetTurns = 0.32 / (KETTLE.coilRadius * KETTLE.arc / wirePath.turns * MM * 5), insetSamples = Math.ceil(insetTurns * 24);
+  const insetPoints = Array.from({length: insetSamples + 1}, (_, i) => { const phase = i / insetSamples * insetTurns * 2 * Math.PI; return new THREE.Vector3(-0.16 + 0.32 * i / insetSamples, 0.066 * Math.sin(phase), 0.066 * Math.cos(phase)); });
+  const closeupWire = addMesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(insetPoints), insetSamples, 0.00825, 8, false), material(COLORS.wire), insulation);
+  textLabel(insulation, 'Inside the tube · 5×, straightened', {height: 0.042, width: 0.68, position: [0, 0.24, 0.08]});
+  const coreWord = textLabel(insulation, '', {height: 0.046, width: 0.54, position: [0, -0.22, 0.08], color: '#ae512f'});
+  const sheathWord = textLabel(insulation, '', {height: 0.046, width: 0.54, position: [0, -0.30, 0.08]});
+  textLabel(insulation, 'Pale layer: electrical insulator', {height: 0.038, width: 0.64, position: [0, 0.15, 0.08]});
+
+  const steamSwitch = part('switch', 'Steam switch', 'Boiling vapor travels through the duct and warms a bimetal disc. Bonded metals expand differently, causing the disc to snap and release the switch. The contacts open and stay open for this run. The illustrated sensor trips at 85 °C; this is a teaching choice, not a product specification.', KETTLE.origin, system);
+  const switchPivot = new THREE.Group(); switchPivot.position.set(90 * MM, 18 * MM, 14 * MM); steamSwitch.add(switchPivot);
+  const switchBlade = rod([0, 0, 0], [18 * MM, 0, 0], 0.007, COLORS.insulation, switchPivot);
+  const switchContacts = [90, 108].map(x => sphere(0.008, [x * MM, 18 * MM, 14 * MM], COLORS.live, steamSwitch));
+  const disc = new THREE.Group(); disc.position.set(95 * MM, 34 * MM, 14 * MM); steamSwitch.add(disc);
+  const discLayers = [COLORS.insulation, COLORS.neutral].map((color, i) => { const mesh = addMesh(new THREE.SphereGeometry(9 * MM, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2), material(color), disc); mesh.scale.y = 0.15; mesh.position.y = -i * 0.002; return mesh; });
+  const releaseLink = rod([95 * MM, 34 * MM, 14 * MM], [95 * MM, 22 * MM, 14 * MM], 0.004, COLORS.edge, steamSwitch);
+  const switchWord = textLabel(steamSwitch, '', {height: 0.045, width: 0.51, position: [110 * MM, 97 * MM, 30 * MM]});
+
+  const protector = part('protector', 'Dry protector', 'A separate temperature-sensitive protector is thermally connected to the sheath. With no water to take heat away, it opens the series circuit at a declared sheath temperature of 220 °C. It latches open in this model; real protection arrangements vary. Use this on-screen experiment only.', KETTLE.origin, system);
+  const dryPivot = new THREE.Group(); dryPivot.position.set(30 * MM, -96 * MM, 12 * MM); protector.add(dryPivot);
+  const dryBlade = rod([0, 0, 0], [18 * MM, 0, 0], 0.007, COLORS.insulation, dryPivot);
+  const dryContacts = [30, 48].map(x => sphere(0.008, [x * MM, -96 * MM, 12 * MM], COLORS.live, protector));
+  const sensorPad = box([14 * MM, 5 * MM, 16 * MM], [40 * MM, -87 * MM, 0], COLORS.insulation, protector);
+  const thermalLink = rod(sheathPath.getPoint(1).toArray(), [40 * MM, -87 * MM, 0], 0.009, COLORS.metal, protector);
+  const protectorWord = textLabel(protector, '', {height: 0.043, width: 0.57, position: [41 * MM, -114 * MM, 20 * MM]});
+
+  const steam = part('steam', 'Steam path', 'Dots trace boiling vapor through the headspace and duct to the disc. They are a visible cue for invisible vapor, not droplets or a measured flow field. Only vigorous boiling is shown: evaporation below boiling is omitted. The open spout also allows vapor to escape.', KETTLE.origin, system);
+  const ductPoints = [[28, 66, 0], [73, 66, 0], [89, 52, 5], [95, 37, 14]].map(p => new THREE.Vector3(...p.map(n => n * MM)));
+  const duct = addMesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ductPoints), 36, 4 * MM, 10, false), material(COLORS.metal, 0.28), steam);
+  const vaporPath = new THREE.CatmullRomCurve3([new THREE.Vector3(10 * MM, 0, 0), ...ductPoints]);
+  const vaporDots = Array.from({length: 9}, () => sphere(0.012, [0, 0, 0], COLORS.steam, steam));
+  const bubbles = Array.from({length: 5}, () => sphere(0.009, [0, 0, 0], 0xe8eeee, steam));
+
+  const circuit = part('circuit', 'Supply and current path', 'The supply, steam-switch contacts, dry-protector contacts, resistance wire and return lead form one series circuit. Play closes the steam switch. Pause freezes simulated time; Reset or a changed setting starts a new trial. Wires are a simplified circuit layout, not installation guidance.', KETTLE.origin, system);
+  const supply = cylinder(11 * MM, 5 * MM, [-97 * MM, -98 * MM, 12 * MM], COLORS.neutral, circuit); supply.rotation.x = Math.PI / 2;
+  textLabel(circuit, '~', {height: 0.057, position: [-97 * MM, -98 * MM, 16 * MM], color: '#ffffff'});
+  const paths = [
+    {color: COLORS.live, points: [[-97, -87, 12], [-97, -82, 12], [80, -82, 12], [80, 18, 14], [90, 18, 14]]},
+    {color: COLORS.live, points: [[108, 18, 14], [115, 18, 14], [115, -101, 12], [24, -101, 12], [24, -96, 12], [30, -96, 12]]},
+    {color: COLORS.live, points: [[48, -96, 12], [55, -96, 12], [55, -84, 12], [endpoints[0].x / MM, -84, endpoints[0].z / MM]]},
+    {color: COLORS.neutral, points: [[endpoints[1].x / MM, -84, endpoints[1].z / MM], [5, -89, -20], [-110, -89, -20], [-110, -109, 12], [-97, -109, 12]]},
+  ];
+  const leads = paths.flatMap(({color, points}) => points.slice(1).map((point, i) => rod(points[i].map(n => n * MM), point.map(n => n * MM), 0.004, color, circuit)));
+  const currentWord = textLabel(circuit, '', {height: 0.043, width: 0.51, position: [-82 * MM, -120 * MM, 18 * MM]});
+
+  const chartPart = part('chart', 'The run', 'Only elapsed temperatures are plotted. Blue: water. Gold: sheath. Orange: internal wire. The 100 °C line marks boiling at one atmosphere; the separate dry protector responds to sheath temperature.', [0, 0, 0], system);
+  const chartFrame = lineObject(5, COLORS.edge, chartPart);
+  fillLine(chartFrame, [[CHART.x, CHART.y, 0], [CHART.x + CHART.w, CHART.y, 0], [CHART.x + CHART.w, CHART.y + CHART.h, 0], [CHART.x, CHART.y + CHART.h, 0], [CHART.x, CHART.y, 0]]);
+  const curves = ['water', 'sheath', 'celsius'].map((key, i) => ({key, line: lineObject(DECLARED.samples + 2, [COLORS.water, COLORS.insulation, COLORS.wire][i], chartPart)}));
+  const boilLine = segmentLines(1, 0x9e9a90, chartPart); fillLine(boilLine, [[CHART.x, chartY(100), 0], [CHART.x + CHART.w, chartY(100), 0]]);
+  chartText(chartPart, (share, temperature) => [CHART.x + share * CHART.w, chartY(temperature), 0], {size: 0.038, x: {min: 0, max: 1, title: 'Simulated seconds', ticks: [[0, '0']]}, y: {min: 0, max: 400, ticks: [0, 100, 220, 400].map(t => [t, `${t} °C`])}});
+  const endWord = textLabel(chartPart, '', {height: 0.038, width: 0.19, position: [CHART.x + CHART.w, CHART.y - 0.04, 0]});
+  textLabel(chartPart, 'Water · sheath · internal wire', {height: 0.045, position: [CHART.x + CHART.w / 2, CHART.y + CHART.h + 0.07, 0]});
+
+  const apparatus = new THREE.Group(); system.add(apparatus);
+  for (const object of [body, water, element, insulation, steamSwitch, protector, steam, circuit]) apparatus.add(object);
+  apparatus.rotation.set(0.08, -0.24, 0);
+  const d = KETTLE_DEFAULTS, D = KETTLE_DOMAINS;
+  control('volts', 'Supply voltage', ...D.volts, d.volts, 'V', 'Effective AC voltage across this same element when the circuit closes. Power is V²/R. Changing a setting starts a fresh trial.');
+  control('mass', 'Water poured in', ...D.mass, d.mass, 'kg', 'More water raises the level and needs more energy to reach boiling. Ignored in the empty-model experiment.');
+  control('start', 'Starting temperature', ...D.start, d.start, '°C', 'Initial water and immersed-element temperature. The room and steam sensor begin at 20 °C. Ignored when the model is empty.');
+  control('filled', 'What is in it', ...D.filled, d.filled, '', 'Compare a filled model with a dry-protection demonstration on screen. Do not run a real kettle empty.', FILLED);
+
+  const result = finish(values => {
+    const plan = kettlePlan(values), now = kettleAt(plan, clock), depth = plan.wet ? waterDepth(now.liquidMass) : 0;
+    const top = (KETTLE.floor + depth) * MM;
+    pool.visible = surface.visible = plan.wet; pool.scale.y = depth * MM; pool.position.y = (KETTLE.floor + depth / 2) * MM; surface.position.y = top;
+    pool.material.color.copy(waterColor(now.water)); surface.material.color.copy(waterColor(now.water));
+    waterWord.userData.setText(plan.wet ? `${fixed(now.water, 1)} °C · ${fixed(now.liquidMass, 3)} kg` : 'Empty model');
+    waterWord.position.y = plan.wet ? top + 0.07 : -0.12;
+    coil.material.color.copy(wireColor(now.celsius)); closeupWire.material.color.copy(wireColor(now.celsius));
+    coreWord.userData.setText(`Wire ${fixed(now.celsius, 0)} °C`); sheathWord.userData.setText(`Sheath ${fixed(now.sheath, 0)} °C`);
+    const steamClosed = clock > 0 && !now.switched;
+    switchPivot.rotation.z = steamClosed ? 0 : Math.PI / 5; dryPivot.rotation.z = now.tripped ? Math.PI / 5 : 0;
+    discLayers.forEach(layer => { layer.scale.y = now.switched ? -0.15 : 0.15; });
+    const discTip = new THREE.Vector3(95 * MM, (34 + (now.switched ? -1.35 : 1.35)) * MM, 14 * MM);
+    const bladeTip = new THREE.Vector3((90 + 5 * Math.cos(switchPivot.rotation.z)) * MM, (18 + 5 * Math.sin(switchPivot.rotation.z)) * MM, 14 * MM);
+    releaseLink.position.copy(discTip).add(bladeTip).multiplyScalar(0.5);
+    releaseLink.scale.y = discTip.distanceTo(bladeTip) / releaseLink.geometry.parameters.height;
+    releaseLink.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), bladeTip.sub(discTip).normalize());
+    switchWord.userData.setText(`Disc ${fixed(now.sensor, 0)} °C · ${steamClosed ? 'closed' : 'open'}`);
+    protectorWord.userData.setText(now.tripped ? 'Dry protector open' : 'Dry protector closed');
+    currentWord.userData.setText(`${fixed(now.current, 2)} A · ${now.on ? 'closed circuit' : 'open circuit'}`);
+    vaporPath.points[0].y = top + 0.006;
+    vaporDots.forEach((dot, i) => {
+      const offset = i * THERMAL.steamDelay / vaporDots.length;
+      const born = plan.firstBoil === null ? Infinity : plan.firstBoil + offset + Math.floor((clock - plan.firstBoil - offset) / THERMAL.steamDelay) * THERMAL.steamDelay;
+      const age = clock - born;
+      dot.visible = plan.wet && plan.firstBoil !== null && born >= plan.firstBoil && age >= 0 && age < THERMAL.steamDelay && kettleAt(plan, Math.max(0, born + 0.0001)).vaporRate > 1e-9;
+      if (dot.visible) dot.position.copy(vaporPath.getPoint(age / THERMAL.steamDelay));
+    });
+    bubbles.forEach((bubble, i) => {
+      bubble.visible = now.boiling;
+      const fraction = (clock * 0.7 + i / bubbles.length) % 1;
+      bubble.position.set((-22 + i * 10) * MM, (KETTLE.coilY + 5) * MM + fraction * Math.max(0, top - (KETTLE.coilY + 5) * MM), (i % 2 ? 12 : -12) * MM);
+    });
+    circulation.forEach((arrow, i) => {
+      const low = (KETTLE.coilY + 6) * MM, high = top - 4 * MM;
+      arrow.position.y = i ? low : high; arrow.userData.setLength(Math.max(0, high - low));
+      arrow.visible = plan.wet && high > low && now.sheath > now.water + 0.01;
+    });
+    for (const {key, line} of curves) {
+      const shown = plan.chart.filter(sample => sample.t < now.t);
+      fillLine(line, clock > 0 && (key !== 'water' || plan.wet) ? [...shown.map(sample => [chartX(plan, sample.t), chartY(sample[key]), 0.003]), [chartX(plan, now.t), chartY(now[key]), 0.003]] : []);
+    }
+    endWord.userData.setText(fixed(plan.duration, 0));
+    const status = values.volts === 0 ? 'No supply · choose a voltage above zero to run'
+      : clock === 0 ? `Ready · circuit open; ${plan.wet ? `${fixed(values.mass, 1)} kg of water at ${fixed(values.start, 0)} °C` : 'empty model at 20 °C'}. Press Play`
+      : now.tripped ? `Dry protector opened at ${fixed(plan.tripped, 2)} s · current stopped; stored heat is cooling`
+      : now.switched ? `Steam switch opened at ${fixed(plan.switched, 1)} s · water first boiled at ${fixed(plan.firstBoil, 1)} s`
+      : now.done ? `Run ended at ${fixed(now.t, 0)} s · ${plan.wet ? `water reached ${fixed(now.water, 1)} °C` : `sheath reached ${fixed(now.sheath, 1)} °C`}; no shutoff occurred`
+      : now.boiling ? `Boiling · vapor is traveling to the disc, now ${fixed(now.sensor, 1)} °C`
+      : plan.wet ? `Heating · ${fixed(now.t, 1)} s elapsed; water ${fixed(now.water, 1)} °C` : `Dry model heating · sheath ${fixed(now.sheath, 1)} °C`;
+    return {state: {...plan, now, clock, waterDepth: depth}, readings: [
+      r('Your result', status),
+      r('Water temperature', plan.wet ? `${fixed(now.water, 1)} °C` : 'No water', 'The water is treated as well mixed. Boiling is fixed at 100 °C at one atmosphere. The starting-temperature control does not change the room.'),
+      r('Circuit and power', `${now.on ? 'Closed' : 'Open'} · ${fixed(now.power, 0)} W`, `${fixed(now.current, 2)} A through ${fixed(resistanceAt(plan.wire, now.celsius), 2)} Ω. Either open contact pair breaks the series circuit.`),
+      r('Wire and sheath', `${fixed(now.celsius, 0)} °C / ${fixed(now.sheath, 0)} °C`, 'The inner wire is hotter than the water-facing sheath. Both store heat and cool continuously after power stops.'),
+      r('Steam sensor', `${fixed(now.sensor, 1)} °C · ${now.switched ? 'tripped' : 'waiting'}`, 'A declared 2 s vapor-transport delay and finite sensor heat capacity precede the 85 °C snap threshold. The disc responds to heating, not a preset run time.'),
+      r('Dry protector', now.tripped ? 'Open, latched' : 'Closed', 'The separate protector senses sheath temperature and opens at 220 °C in this model. No steam is needed. This is an on-screen demonstration, not a real-appliance test.'),
+      r('Boiling vapor produced', `${fixed(now.boiled * 1000, 2)} g`, 'Each kilogram of boiling vapor needs 2,256 kJ of latent heat. A bounded share heats the steam sensor. Preboiling evaporation is omitted; visible dots are a cue for invisible vapor.'),
+      r('Energy supplied', `${fixed(now.inputEnergy / 1000, 2)} kJ`, `${fixed(now.waterEnergy / 1000, 2)} kJ net to water and vapor; ${fixed((now.storedEnergy + now.sheathEnergy) / 1000, 2)} kJ stored in the element; ${fixed(now.roomEnergy / 1000, 2)} kJ net to the room.`),
+      r('Water level and playback', plan.wet ? `${fixed(depth, 1)} mm · ${FASTER}× time` : `Empty · ${FASTER}× time`, 'Level accounts for the cylindrical reservoir and main tube displacement. Geometry, convection arrows and thermal coefficients are illustrative. Pause freezes time; a setting change starts a new trial.'),
+    ]};
+  });
+  const render = result.update, duration = () => result.getState().duration;
+  result.update = next => {
+    const before = result.getState().values, readings = render(next);
+    if (Object.keys(before).some(key => result.getState().values[key] !== before[key])) { clock = 0; lastClock = 0; return render(); }
+    return readings;
+  };
+  result.advance = dt => {
+    if (Number.isFinite(dt) && dt > 0 && result.getState().values.volts > 0) { const next = clock + dt * FASTER; clock = next >= duration() - 1e-9 ? duration() : next; }
+    return render();
+  };
+  result.animate = time => { const dt = Number.isFinite(time) ? Math.max(0, time - lastClock) : 0; if (Number.isFinite(time)) lastClock = time; return result.advance(dt); };
+  result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
+  result.actions = [
+    {label: 'Inspect: the element', part: 'element', view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect: the water', part: 'water', view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect: the steam switch', part: 'switch', view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect: the dry protector', part: 'protector', view: 'front', replay: false, run: () => render()},
+  ];
+  result.parts.find(part => part.id === 'protector').inspectionView = 'front';
+  result.playback = {label: 'Switch it on', description: 'Close the circuit and follow heating, boiling and shutoff at 10 times real speed. Pause freezes time. The run stops after cooling briefly, or at 300 simulated seconds.', stepLabel: 'Advance 10 s', advance: result.advance, step: () => result.advance(1), complete: () => clock >= duration(), blocked: () => result.getState().values.volts === 0};
+  result.resultPart = {id: 'water', label: 'Inspect the heated water', view: 'iso', focusOnComplete: false, available: () => result.getState().wet && clock >= duration()};
+  result.initialPart = 'system'; result.initialView = 'front'; result.frameVisibleOnly = true; result.framePadding = 0.55; result.selectionOutline = false; result.transparentBackground = true;
+  result.topology = {system, apparatus, body, shell, innerWall, base, lid, cutEdges, handle, spout, water, pool, surface, circulation, element, sheath, sheathPath, coil, wirePath, insulationWindow, endpoints, feedthroughs, insulation, closeupSheath, closeupInsulator, closeupWire, insetTurns, steamSwitch, switchPivot, switchBlade, switchContacts, disc, discLayers, releaseLink, protector, dryPivot, dryBlade, dryContacts, sensorPad, thermalLink, steam, duct, vaporPath, vaporDots, bubbles, circuit, supply, paths, leads, chartPart, chartFrame, curves, boilLine};
+  const dispose = result.dispose; result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;
 }

@@ -39,8 +39,8 @@ import {validateControls, validTime, clamp} from './physics-kit.js';
 // it stands above the room, and the reflector sending a declared share of the
 // radiation forward instead of behind; a kettle whose element passes 400 W per
 // degree to water and only 3 W per degree to air, whose vessel loses 0.7 W per
-// degree to the room, and whose steam switch opens the moment the water
-// reaches boiling; a dryer whose wire passes heat to its air stream in
+// degree to the room, with finite wire, sheath and steam-sensor heat capacities
+// and a delayed steam path; a dryer whose wire passes heat to its air stream in
 // proportion to the square root of the airflow, and whose thermal switch opens
 // at 200 °C and closes again at 160 °C; and a fan that reaches its speed in one
 // second, with the element interlocked so that it is not let on until it has;
@@ -244,14 +244,23 @@ export function heaterAt(plan, time) {
 export const sampleHeater = (input = {}, time = 0) => heaterAt(heaterPlan(input), time);
 
 // ---------------------------------------------------------------------------
-// Electric kettle: the same wire, sheathed and drowned in water.
+// Electric kettle: an insulated resistance wire inside an immersed metal sheath.
 // ---------------------------------------------------------------------------
 
 export const KETTLE_DEFAULTS = Object.freeze({volts: 230, mass: 1, start: 15, filled: 1});
 export const KETTLE_DOMAINS = Object.freeze({volts: Object.freeze([0, 240, 10]), mass: Object.freeze([0.2, 1.7, 0.1]), start: Object.freeze([5, 40, 1]), filled: Object.freeze([0, 1, 1])});
-export const FILLED = Object.freeze([Object.freeze({value: 0, label: 'Switched on empty'}), Object.freeze({value: 1, label: 'Water in the kettle'})]);
-/** The kettle's element: a declared 0.55 mm wire 5.2 m long, which makes it a 2.4 kW element on 230 V. */
+export const FILLED = Object.freeze([Object.freeze({value: 0, label: 'Empty model'}), Object.freeze({value: 1, label: 'Water in the kettle'})]);
+/** Declared 0.55 mm wire, 5.2 m long: about 2.22 kW at 230 V and 20 °C. */
 export const KETTLE_WIRE = Object.freeze({length: 5.2, diameter: 0.00055});
+/** OpenStax University Physics 2, sections 1.4–1.5; constant-property water at one atmosphere. */
+export const KETTLE_WATER = Object.freeze({heat: 4186, vaporization: 2256e3, boiling: 100, density: 1000});
+/** Illustrative thermal network, not measured timings or protection ratings for a real appliance. */
+export const KETTLE_THERMAL = Object.freeze({
+  room: 20, sheathCapacity: 30, wireToSheath: 12,
+  toWater: 400, toAir: 3, vesselLoss: 0.7,
+  sensorCapacity: 1, sensorLoss: 0.05, steamConductance: 2, steamFraction: 0.025,
+  steamDelay: 2, steamTrip: 85, dryTrip: 220,
+});
 
 const kettlePlans = new Map();
 
@@ -260,62 +269,81 @@ export function kettlePlan(input = {}) {
   const key = JSON.stringify(values);
   if (kettlePlans.has(key)) return kettlePlans.get(key);
   const wire = wireOf(KETTLE_WIRE.length, KETTLE_WIRE.diameter);
-  const wet = values.filled === 1, room = values.start;
-  const rating = powerAt(wire, values.volts, values.start);
-  // Wet, the element passes its heat to the water far faster than it can store
-  // any, so it settles a few degrees above the water and the water is the only
-  // thing with inertia worth integrating. Dry, it has nothing to pass its heat
-  // to, so its own small heat capacity is what runs away.
-  const elementOver = waterC => {
-    let celsius = waterC + rating / DECLARED.toWater;
-    for (let i = 0; i < 3; i++) celsius = waterC + powerAt(wire, values.volts, celsius) / DECLARED.toWater;
-    return celsius;
+  const wet = values.filled === 1, K = KETTLE_THERMAL, W = KETTLE_WATER, room = K.room;
+  const initial = wet ? values.start : room, rating = powerAt(wire, values.volts, initial);
+  const needed = wet ? values.mass * W.heat * (W.boiling - initial) : 0;
+  // Liquid energy is relative to its boiling point; latent energy stays spent after the liquid cools.
+  let boiled = 0, on = values.volts > 0, switched = null, tripped = null, firstBoil = null, tripPoint = null;
+  let duration = DECLARED.kettleRun;
+  const waterAt = energy => {
+    const vapor = Math.max(boiled, energy / W.vaporization, 0);
+    return wet ? W.boiling + Math.min(0, energy - vapor * W.vaporization) / ((values.mass - vapor) * W.heat) : room;
   };
-  const track = [];
-  let waterC = values.start, celsius = wet ? elementOver(values.start) : values.start;
-  let boiled = 0, on = true, switched = null, tripped = null;
-  track.push({t: 0, celsius, water: waterC, power: powerAt(wire, values.volts, celsius), on: true, boiled: 0});
-  for (let step = 1; step * DECLARED.step <= DECLARED.kettleRun + 1e-9; step++) {
-    const previous = track[step - 1], t = step * DECLARED.step;
-    const power = on ? powerAt(wire, values.volts, previous.celsius) : 0;
-    if (wet) {
-      const lost = DECLARED.vesselLoss * (previous.water - room);
-      if (previous.water < WATER.boiling - 1e-9) {
-        waterC = Math.min(WATER.boiling, previous.water + (power - lost) * DECLARED.step / (values.mass * WATER.heat));
-      } else {
-        waterC = WATER.boiling;
-        boiled = previous.boiled + Math.max(0, power - lost) * DECLARED.step / WATER.vaporization;
+  const derivative = (state, steamSupply, energized) => {
+    const [celsius, sheath, energy, sensor] = state, water = waterAt(energy);
+    const power = energized ? powerAt(wire, values.volts, celsius) : 0;
+    const throughSheath = K.wireToSheath * (celsius - sheath);
+    const carried = (wet ? K.toWater : K.toAir) * (sheath - (wet ? water : room));
+    const lost = wet ? K.vesselLoss * (water - room) : carried;
+    const sensorHeat = Math.min(steamSupply, Math.max(0, K.steamConductance * (W.boiling - sensor)));
+    const sensorLoss = K.sensorLoss * (sensor - room);
+    return [(power - throughSheath) / capacityAt(wire, celsius), (throughSheath - carried) / K.sheathCapacity,
+      wet ? carried - lost : 0, (sensorHeat - sensorLoss) / K.sensorCapacity, power, wet ? carried : 0, lost, sensorHeat, sensorLoss];
+  };
+  const integrate = (state, dt, supply, energized) => {
+    const k1 = derivative(state, supply, energized), k2 = derivative(state.map((v, i) => v + dt * k1[i] / 2), supply, energized);
+    const k3 = derivative(state.map((v, i) => v + dt * k2[i] / 2), supply, energized), k4 = derivative(state.map((v, i) => v + dt * k3[i]), supply, energized);
+    return state.map((v, i) => v + dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6);
+  };
+  const point = (t, state) => ({
+    t, celsius: state[0], sheath: state[1], waterEnergy: state[2], water: waterAt(state[2]), sensor: state[3], boiled,
+    inputEnergy: state[4], toWaterEnergy: state[5], roomEnergy: state[6], sensorReceivedEnergy: state[7], sensorLostEnergy: state[8],
+  });
+  let state = [initial, initial, -needed, room, 0, 0, 0, 0, 0];
+  const track = [point(0, state)], dt = DECLARED.step;
+  const vaporAt = time => {
+    const place = clamp(time / dt, 0, track.length - 1), lo = Math.floor(place), hi = Math.min(lo + 1, track.length - 1);
+    return track[lo].boiled + (place - lo) * (track[hi].boiled - track[lo].boiled);
+  };
+  for (let step = 1; step * dt <= duration + 1e-9; step++) {
+    const t = step * dt, previous = state;
+    const supply = K.steamFraction * W.vaporization * (vaporAt(t - K.steamDelay) - vaporAt(t - dt - K.steamDelay)) / dt;
+    state = integrate(previous, dt, supply, on);
+    const sensorIndex = wet ? 3 : 1, threshold = wet ? K.steamTrip : K.dryTrip;
+    if (on && state[sensorIndex] >= threshold) {
+      let lo = 0, hi = dt;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (integrate(previous, mid, supply, true)[sensorIndex] < threshold) lo = mid; else hi = mid;
       }
-      if (waterC >= WATER.boiling - 1e-9 && switched === null) switched = t;
-      if (switched !== null) on = false;
-      celsius = on ? elementOver(waterC) : waterC;
-    } else {
-      const carried = DECLARED.toAir * (previous.celsius - room);
-      celsius = previous.celsius + (power - carried) * DECLARED.step / capacityAt(wire, previous.celsius);
-      if (on && celsius >= DECLARED.dryCutout) { on = false; tripped = t; }
+      const elapsed = (lo + hi) / 2, end = t - dt + elapsed;
+      const atTrip = integrate(previous, elapsed, supply, true);
+      if (wet) switched = end; else tripped = end;
+      boiled = wet ? Math.max(boiled, atTrip[2] / W.vaporization, 0) : 0;
+      tripPoint = point(end, atTrip);
+      on = false;
+      state = integrate(atTrip, dt - elapsed, supply, false);
+      duration = Math.min(DECLARED.kettleRun, Math.max(15, Math.ceil((end + 8) / 5) * 5));
     }
-    track.push({t, celsius, water: wet ? waterC : room, power: on ? powerAt(wire, values.volts, celsius) : 0, on, boiled});
-    if ((switched ?? tripped) !== null && t > (switched ?? tripped) + 5 - 1e-9) break;
+    if (wet && firstBoil === null && state[2] >= 0) firstBoil = t - dt + dt * -previous[2] / (state[2] - previous[2]);
+    boiled = wet ? Math.max(boiled, state[2] / W.vaporization, 0) : 0;
+    track.push(point(t, state));
   }
   const settled = track.at(-1);
-  const ends = switched ?? tripped;
-  const duration = ends === null ? DECLARED.kettleRun : Math.min(DECLARED.kettleRun, Math.max(10, Math.ceil((ends + 4) / 5) * 5));
   const plan = {
-    values, wire, wet, room, water: wet ? values.mass : 0, rating, track, settled, switched, tripped, duration,
-    resistance: resistanceAt(wire, values.start),
-    current: currentAt(wire, values.volts, values.start),
-    needed: wet ? values.mass * WATER.heat * (WATER.boiling - values.start) : 0,
-    boils: switched !== null,
+    values, wire, wet, room, initial, water: wet ? values.mass : 0, rating, track, settled, switched, tripped, firstBoil, tripPoint, duration,
+    resistance: resistanceAt(wire, initial), current: currentAt(wire, values.volts, initial), needed,
+    boils: firstBoil !== null,
     trips: tripped !== null,
     boiled: settled.boiled,
     withinRating: rating >= RATED.kettle[0] && rating <= RATED.kettle[1],
-    withinCurrent: currentAt(wire, values.volts, values.start) <= RATED.kettleCurrent,
+    withinCurrent: currentAt(wire, values.volts, initial) <= RATED.kettleCurrent,
   };
   plan.chart = Array.from({length: DECLARED.samples}, (_, i) => {
     const t = plan.duration * i / (DECLARED.samples - 1), now = kettleAt(plan, t);
-    return {t, water: now.water, celsius: now.celsius};
+    return {t, water: now.water, celsius: now.celsius, sheath: now.sheath, sensor: now.sensor};
   });
-  if (kettlePlans.size >= 64) kettlePlans.clear();
+  if (kettlePlans.size >= 8) kettlePlans.delete(kettlePlans.keys().next().value);
   kettlePlans.set(key, plan);
   return plan;
 }
@@ -324,17 +352,30 @@ export function kettlePlan(input = {}) {
 export function kettleAt(plan, time) {
   const t = Math.min(validTime(time), plan.duration);
   const place = clamp(t / DECLARED.step, 0, plan.track.length - 1);
-  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
-  const between = key => plan.track[low][key] + part * (plan.track[high][key] - plan.track[low][key]);
-  const celsius = between('celsius'), water = between('water');
-  const on = plan.track[low].on && plan.track[high].on;
+  let low = plan.track[Math.floor(place)], high = plan.track[Math.min(Math.floor(place) + 1, plan.track.length - 1)];
+  if (plan.tripPoint && low.t <= plan.tripPoint.t && high.t >= plan.tripPoint.t) {
+    if (t < plan.tripPoint.t) high = plan.tripPoint; else low = plan.tripPoint;
+  }
+  const fraction = high.t > low.t ? (t - low.t) / (high.t - low.t) : 0;
+  const between = key => low[key] + fraction * (high[key] - low[key]);
+  const celsius = between('celsius'), sheath = between('sheath'), sensor = between('sensor'), boiled = between('boiled');
+  const waterEnergy = between('waterEnergy'), W = KETTLE_WATER, K = KETTLE_THERMAL;
+  const water = plan.wet ? W.boiling + Math.min(0, waterEnergy - boiled * W.vaporization) / ((plan.values.mass - boiled) * W.heat) : plan.room;
+  const switched = plan.switched !== null && t >= plan.switched, tripped = plan.tripped !== null && t >= plan.tripped;
+  const on = t > 0 && plan.values.volts > 0 && !switched && !tripped;
+  const carried = (plan.wet ? K.toWater : K.toAir) * (sheath - (plan.wet ? water : plan.room));
+  const vesselLoss = plan.wet ? K.vesselLoss * (water - plan.room) : 0;
+  const boiling = plan.wet && water >= W.boiling - 1e-9 && carried > vesselLoss;
   return {
-    time, t, celsius, water, boiled: between('boiled'), on,
+    time, t, celsius, sheath, water, sensor, boiled, on, boiling, switched, tripped,
+    liquidMass: plan.wet ? plan.values.mass - boiled : 0, vaporRate: boiling ? (carried - vesselLoss) / W.vaporization : 0,
+    storedEnergy: plan.wire.mass * (specificEnergyAt(celsius) - specificEnergyAt(plan.initial)),
+    sheathEnergy: K.sheathCapacity * (sheath - plan.initial), waterEnergy: plan.wet ? waterEnergy + plan.needed : 0,
+    sensorEnergy: K.sensorCapacity * (sensor - plan.room),
+    inputEnergy: between('inputEnergy'), toWaterEnergy: between('toWaterEnergy'), roomEnergy: between('roomEnergy'),
+    sensorReceivedEnergy: between('sensorReceivedEnergy'), sensorLostEnergy: between('sensorLostEnergy'),
     power: on ? powerAt(plan.wire, plan.values.volts, celsius) : 0,
     current: on ? currentAt(plan.wire, plan.values.volts, celsius) : 0,
-    boiling: plan.wet && water >= WATER.boiling - 1e-9,
-    switched: plan.switched !== null && t >= plan.switched,
-    tripped: plan.tripped !== null && t >= plan.tripped,
     done: t >= plan.duration,
   };
 }

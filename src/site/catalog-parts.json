@@ -1785,6 +1785,53 @@
       "parentId": "system"
     }
   ],
+  "electric-kettle": [
+    {
+      "id": "body",
+      "name": "Body, spout and handle",
+      "parentId": "system"
+    },
+    {
+      "id": "water",
+      "name": "The water",
+      "parentId": "system"
+    },
+    {
+      "id": "element",
+      "name": "Heating element",
+      "parentId": "system"
+    },
+    {
+      "id": "insulation",
+      "name": "Insulation close-up",
+      "parentId": "system"
+    },
+    {
+      "id": "switch",
+      "name": "Steam switch",
+      "parentId": "system"
+    },
+    {
+      "id": "protector",
+      "name": "Dry protector",
+      "parentId": "system"
+    },
+    {
+      "id": "steam",
+      "name": "Steam path",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit",
+      "name": "Supply and current path",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "The run",
+      "parentId": "system"
+    }
+  ],
   "toaster": [
     {
       "id": "system",

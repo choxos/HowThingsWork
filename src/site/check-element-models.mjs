@@ -1,5 +1,5 @@
-// Checks shared resistance physics and the kettle and dryer drafts.
-// Electric-heating geometry and lesson checks live in check-electric-heating-model.mjs.
+// Checks shared resistance physics and the dryer draft.
+// Heater and kettle checks live in their dedicated physics/model files.
 // Compares against sources typed in again and their lessons
 // against the sources typed in again and the physics worked out by other
 // routes: the wire's resistance rebuilt from its resistivity, length and
@@ -14,7 +14,6 @@ import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './element-physics.js';
 import * as S from './element-scene.js';
-import * as KM from './electric-kettle-model.js';
 import * as DM from './hair-dryer-model.js';
 import * as L from './element-lessons.js';
 import {heatingLessons} from './heating-lessons.js';
@@ -193,59 +192,6 @@ t.ok(P.DRAPER.celsius < P.NIKROTHAL.continuous && P.NIKROTHAL.continuous < P.NIK
   checkRefusals(P.sampleHeater, P.HEATER_DOMAINS, t);
 }
 
-// The kettle: the water's rise closed by its own energy balance, and the dry element integrated again.
-{
-  for (const values of [{}, {mass: 0.2}, {mass: 1.7}, {start: 40}, {volts: 120}]) {
-    const plan = P.kettlePlan(values);
-    counts.plans++;
-    const v = plan.values;
-    t.near(plan.needed, v.mass * SRC.water.heat * (SRC.water.boiling - v.start), 1e-9, 'the energy to boiling is the mass times the heat capacity times the climb');
-    // Integrate the water again at a twentieth of the step, with the same law.
-    let water = v.start, delivered = 0, lost = 0;
-    const dt = P.DECLARED.step / 20;
-    for (let i = 0; water < SRC.water.boiling && i * dt < P.DECLARED.kettleRun; i++) {
-      let element = water + plan.rating / P.DECLARED.toWater;
-      for (let k = 0; k < 3; k++) element = water + P.powerAt(plan.wire, v.volts, element) / P.DECLARED.toWater;
-      const power = P.powerAt(plan.wire, v.volts, element), leak = P.DECLARED.vesselLoss * (water - v.start);
-      delivered += power * dt; lost += leak * dt;
-      water += (power - leak) * dt / (v.mass * SRC.water.heat);
-      counts.steps++;
-    }
-    if (plan.boils) {
-      const mine = P.kettleAt(plan, plan.switched).water;
-      t.ok(Math.abs(mine - SRC.water.boiling) < 0.5, 'the model says boiling exactly where its own track reaches boiling');
-      t.ok(Math.abs(water - SRC.water.boiling) < 1, 'and a finer integration agrees that it gets there');
-      // The energy balance over the climb: what went in, less what leaked, is what the water holds.
-      t.ok(Math.abs((delivered - lost) - v.mass * SRC.water.heat * (SRC.water.boiling - v.start)) / Math.max(1, plan.needed) < 0.02, 'the water’s energy balance closes over the climb');
-    } else {
-      t.ok(plan.switched === null && plan.settled.water < SRC.water.boiling, 'a kettle that cannot get there says so');
-    }
-    t.ok(plan.track.every(point => point.water <= SRC.water.boiling + 1e-9), 'water never reads above boiling');
-    for (let i = 1; i < plan.track.length; i++) t.ok(plan.track[i].water >= plan.track[i - 1].water - 1e-9, 'and never cools while it is on');
-    t.ok(plan.boiled === 0, 'and the switch opens before any of it is boiled away');
-    if (v.volts === SRC.mains.volts) t.ok(plan.withinRating && plan.withinCurrent, `on the mains this element is ${f0(plan.rating)} W and ${f1(plan.current)} A, inside what the Kettle page gives`);
-  }
-  // More water is more time, in proportion; a warmer start is less.
-  const light = P.kettlePlan({mass: 0.5}), heavy = P.kettlePlan({mass: 1.5});
-  counts.plans += 2;
-  t.ok(Math.abs(heavy.switched / light.switched - 3) < 0.15, 'three times the water is close to three times the wait');
-  t.ok(P.kettlePlan({start: 40}).switched < P.kettlePlan({start: 5}).switched, 'and a warmer start is a shorter one');
-  // Dry: the element's own heat capacity is what runs away, integrated again.
-  {
-    const plan = P.kettlePlan({filled: 0});
-    counts.plans++;
-    t.ok(plan.trips && plan.switched === null, 'switched on dry it is the element’s own protector that stops it, not the steam switch');
-    const wire = plan.wire, room = plan.values.start;
-    const derivative = (time, celsius) => (P.powerAt(wire, plan.values.volts, celsius) - P.DECLARED.toAir * (celsius - room)) / P.capacityAt(wire, celsius);
-    let celsius = room, seconds = 0;
-    const dt = P.DECLARED.step / 20;
-    while (celsius < P.DECLARED.dryCutout && seconds < 5) { celsius = rk4(celsius, seconds, dt, derivative); seconds += dt; }
-    t.ok(Math.abs(seconds - plan.tripped) < 0.1, `a finer integration reaches the cutout at ${f2(seconds)} s against the model's ${f2(plan.tripped)} s`);
-    t.ok(plan.tripped < 1, 'and it happens far too fast for anybody to act on');
-  }
-  checkRefusals(P.sampleKettle, P.KETTLE_DOMAINS, t);
-}
-
 // The dryer: the air's rise closed by its mass flow, and the cutout's cycle.
 {
   for (const values of [{}, {airflow: 20}, {airflow: 45}, {volts: 120}, {room: 30}]) {
@@ -299,10 +245,10 @@ t.ok(P.DRAPER.celsius < P.NIKROTHAL.continuous && P.NIKROTHAL.continuous < P.NIK
   t.ok(S.glowOpacity(SRC.draper.celsius) === 0 && S.glowOpacity(SRC.nikrothal.continuous) > 0, 'the halo follows it');
   const dark = S.wireColor(300), bright = S.wireColor(1200);
   t.ok(bright.r > dark.r && bright.g > dark.g, 'and a hotter wire is drawn brighter');
-  for (const [plan, values] of [[P.heaterPlan, {volts: 210}], [P.kettlePlan, {volts: 210}], [P.dryerPlan, {volts: 210}]]) {
+  for (const [plan, values] of [[P.heaterPlan, {volts: 210}], [P.dryerPlan, {volts: 210}]]) {
     const first = plan(values);
     t.ok(plan(values) === first, 'a run already worked out is handed back rather than worked out again');
-    for (let i = 0; i < 70; i++) { plan({volts: 0 + (i % 25) * 10, ...(plan === P.heaterPlan ? {length: 4 + (i % 9) * 0.5} : plan === P.kettlePlan ? {mass: 0.2 + (i % 15) * 0.1} : {airflow: 20 + (i % 26)})}); counts.plans++; }
+    for (let i = 0; i < 70; i++) { plan({volts: 0 + (i % 25) * 10, ...(plan === P.heaterPlan ? {length: 4 + (i % 9) * 0.5} : {airflow: 20 + (i % 26)})}); counts.plans++; }
     t.ok(plan(values) !== first, 'and past sixty four settings the cache is dropped rather than kept for ever');
   }
 }
@@ -324,54 +270,6 @@ const worldRectOf = object => { const box = new THREE.Box3().setFromObject(objec
 const inside = (a, b) => a.x[0] > b.x[0] - 1e-9 && a.x[1] < b.x[1] + 1e-9 && a.y[0] > b.y[0] - 1e-9 && a.y[1] < b.y[1] + 1e-9;
 const apart = (a, b) => a.x[1] < b.x[0] || b.x[1] < a.x[0] || a.y[1] < b.y[0] || b.y[1] < a.y[0];
 const sameColor = (color, other) => Math.abs(color.r - other.r) < 1e-6 && Math.abs(color.g - other.g) < 1e-6 && Math.abs(color.b - other.b) < 1e-6;
-
-// The kettle.
-const kettle = KM.createElectricKettleModel(), KT = kettle.topology;
-const poseKettle = (values, time) => { kettle.reset(); if (values) kettle.update(values); if (time) kettle.advance(time / KM.FASTER); kettle.root.updateMatrixWorld(true); counts.poses++; return kettle.getState(); };
-{
-  poseKettle(null, 0);
-  const bodyBox = extent(pointsOf(KT.bodyLine));
-  t.near(bodyBox.x[1] - bodyBox.x[0], SRC.drawn.kettleBody[0] * SRC.drawn.mmPerUnit, drawn, 'the kettle is drawn its 170 mm across');
-  t.near(bodyBox.y[1] - bodyBox.y[0], (KM.KETTLE.body[3] - KM.KETTLE.body[2]) * KM.MM, drawn, 'and its 230 mm tall');
-  t.ok(inside(worldRectOf(KT.coil), worldRectOf(KT.bodyLine)), 'the element sits inside the body');
-  // More water is drawn deeper, and the pool carries its own temperature.
-  let lastDepth = 0;
-  for (const mass of [0.2, 0.6, 1, 1.4, 1.7]) {
-    const state = poseKettle({mass}, 0);
-    const pool = worldRectOf(KT.pool);
-    t.ok(pool.y[1] > lastDepth, 'more water is drawn deeper');
-    lastDepth = pool.y[1];
-    t.ok(inside(pool, worldRectOf(KT.bodyLine)), 'and never over the top of the kettle');
-    t.ok(sameColor(KT.pool.material.color, KM.waterColor(state.now.water)), 'the water is drawn at its own temperature');
-  }
-  const warm = poseKettle(null, 160), coldStart = poseKettle(null, 0);
-  t.ok(!sameColor(KM.waterColor(warm.now.water), KM.waterColor(coldStart.now.water)), 'and hot water is drawn differently from cold');
-  // The switch, the steam, and the dry element.
-  poseKettle(null, 0);
-  const closed = KT.strip.position.y;
-  t.ok(!KT.puffs[0].visible, 'no steam before it boils');
-  const boiled = poseKettle(null, 1e4);
-  t.ok(boiled.now.switched && KT.strip.position.y > closed, 'the strip moves when the switch is thrown');
-  t.ok(KT.puffs[0].visible, 'and steam is drawn once it is boiling');
-  const dry = poseKettle({filled: 0}, 1e4);
-  t.ok(!KT.pool.visible && dry.now.tripped, 'switched on dry there is no water drawn, and the protector trips');
-  t.ok(sameColor(KT.coil.material.color, S.wireColor(dry.now.celsius)), 'and the element is drawn at the temperature it reached');
-  // The chart.
-  for (const values of [{}, {mass: 0.2}, {volts: 120}]) {
-    const state = poseKettle(values, 0);
-    const guide = pointsOf(KT.guideWater);
-    t.ok(guide.length === P.DECLARED.samples, 'the whole run is drawn faintly');
-    state.chart.forEach((sample, i) => {
-      t.near(guide[i][0], KM.chartX(state, sample.t), drawn, 'each sample at its time');
-      t.near(guide[i][1], KM.chartY(sample.water), drawn, 'and at the water it reads');
-    });
-    counts.points += guide.length;
-    t.near(pointsOf(KT.boilLine)[0][1], KM.chartY(SRC.water.boiling), drawn, 'boiling is drawn where it falls');
-    t.ok(KT.switchMark.visible === ((state.switched ?? state.tripped) !== null), 'the mark is there only when something stops it');
-  }
-  poseKettle(null, 0);
-  t.ok(pointsOf(KT.curveWater).length === 0 && pointsOf(KT.cursor).length === 0, 'nothing is drawn dark before the run starts');
-}
 
 // The dryer.
 const dryer = DM.createHairDryerModel(), DT = dryer.topology;
@@ -426,12 +324,11 @@ const poseDryer = (values, time) => { dryer.reset(); if (values) dryer.update(va
 }
 
 // Nothing anywhere is left infinite, at any setting or time.
-const kettleSettings = [{}, {volts: 0}, {volts: 120}, {mass: 0.2}, {mass: 1.7}, {start: 40}, {filled: 0}];
 const dryerSettings = [{}, {volts: 0}, {volts: 120}, {airflow: 20}, {airflow: 45}, {blocked: 1}, {room: 30}];
-for (const [pose, settings] of [[poseKettle, kettleSettings], [poseDryer, dryerSettings]]) {
+for (const [pose, settings] of [[poseDryer, dryerSettings]]) {
   for (const values of settings) for (const time of [0, 1, 10, 1e4]) { pose(values, time); }
 }
-for (const model of [kettle, dryer]) checkFinite(model.root, t);
+checkFinite(dryer.root, t);
 
 // ---------------------------------------------------------------------------
 // 3. The lessons.
@@ -449,18 +346,6 @@ function covered(text, expected, where) {
 }
 const texts = item => [['simple', item.simple], ['overview', item.overview], ...item.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...item.parts.map((part, i) => [`part ${i + 1}`, part.role]), ['misconception', item.misconception], ['quiz', [item.quiz.question, ...item.quiz.options].join(' ')]];
 
-const kettleDefault = P.kettlePlan({}), kettleSmall = P.kettlePlan({mass: 0.2}), kettleFull = P.kettlePlan({mass: 1.7});
-const kettleWarm = P.kettlePlan({start: 40}), kettleLow = P.kettlePlan({volts: 120}), kettleDry = P.kettlePlan({filled: 0});
-checkTrialNumbers(L.electricKettleLesson, {
-  'Boil a kettleful': s => { t.ok(s.boils, 'the default kettle boils'); return {'2,217': s.rating, 164: s.switched, 356: s.needed / 1000}; },
-  'Boil just a cupful': s => ({71: s.needed / 1000, 33: s.switched, 164: kettleDefault.switched}),
-  'Fill it to the top': s => ({605: s.needed / 1000, 278: s.switched}),
-  'Start with warm water': s => ({251: s.needed / 1000, 356: kettleDefault.needed / 1000, 115: s.switched}),
-  'Plug it in in America': s => { t.ok(!s.boils, 'at 120 V it does not get there'); return {604: s.rating, 300: P.DECLARED.kettleRun, '57.1': s.settled.water}; },
-  'Switch it on empty': s => { t.ok(s.trips, 'dry, the protector trips'); return {'0.6': s.tripped, 220: P.DECLARED.dryCutout}; },
-  'Watch the switch, not the clock': s => ({164: s.switched, 100: P.WATER.boiling}),
-}, values => P.kettlePlan(values), t);
-
 const dryerDefault = P.dryerPlan({}), dryerSlow = P.dryerPlan({airflow: 20}), dryerFast = P.dryerPlan({airflow: 45});
 const dryerBlocked = P.dryerPlan({blocked: 1}), dryerLow = P.dryerPlan({volts: 120}), dryerWarm = P.dryerPlan({room: 30});
 checkTrialNumbers(L.hairDryerLesson, {
@@ -473,7 +358,7 @@ checkTrialNumbers(L.hairDryerLesson, {
   'Use it in a warm room': s => ({10: s.values.room - dryerDefault.values.room, 76: s.outlet}),
 }, values => P.dryerPlan(values), t);
 
-for (const lesson of [L.electricKettleLesson, L.hairDryerLesson]) {
+for (const lesson of [L.hairDryerLesson]) {
   for (const [where, text] of texts(lesson)) covered(text, {}, `${lesson.simple.slice(0, 20)} ${where}`);
 }
 
@@ -481,14 +366,6 @@ const sharedLimits = {
   [`carry ${f0(P.DECLARED.still)} W from each square meter`]: 'carry 15 W from each square meter',
 };
 covered(L.elementLimits, sharedLimits, 'element limits');
-covered(L.electricKettleLimits, {
-  ...sharedLimits,
-  [`pass ${f0(P.DECLARED.toWater)} W to the water for each degree`]: 'pass 400 W to the water for each degree',
-  [`only ${f0(P.DECLARED.toAir)} W for each degree`]: 'only 3 W for each degree',
-  [`lose ${f1(P.DECLARED.vesselLoss)} W for each degree`]: 'lose 0.7 W for each degree',
-  [`protector to open at ${f0(P.DECLARED.dryCutout)} °C`]: 'protector to open at 220 °C',
-  [`Boiling is fixed at ${f0(P.WATER.boiling)} °C`]: 'Boiling is fixed at 100 °C',
-}, 'kettle limits');
 // The deeper sections, whose numbers no mapping covered until now.
 {
   const d = P.heaterPlan({}), dry = P.dryerPlan({});
@@ -499,15 +376,6 @@ covered(L.electricKettleLimits, {
     [`at ${f0(20)} L/s the same element sends out air at ${f0(P.dryerPlan({airflow: 20}).outlet)} \u00b0C`]: 'at 20 L/s the same element sends out air at 100 \u00b0C',
   }, 'dryer deeper 2');
 }
-covered(L.electricKettleLesson.limits, {
-  [`plays ${f0(KM.FASTER)} times faster`]: 'plays 10 times faster',
-  ...sharedLimits,
-  [`pass ${f0(P.DECLARED.toWater)} W to the water for each degree`]: 'pass 400 W to the water for each degree',
-  [`only ${f0(P.DECLARED.toAir)} W for each degree`]: 'only 3 W for each degree',
-  [`lose ${f1(P.DECLARED.vesselLoss)} W for each degree`]: 'lose 0.7 W for each degree',
-  [`protector to open at ${f0(P.DECLARED.dryCutout)} °C`]: 'protector to open at 220 °C',
-  [`Boiling is fixed at ${f0(P.WATER.boiling)} °C`]: 'Boiling is fixed at 100 °C',
-}, 'kettle lesson limits');
 covered(L.hairDryerLesson.limits, {
   ...sharedLimits,
   'reach its speed in one second': 'reach its speed in one second',
@@ -524,9 +392,6 @@ covered(L.hairDryerLimits, {
 // ---------------------------------------------------------------------------
 
 const machines = [
-  ['Electric kettle', kettle, KT, L.electricKettleLesson, P.KETTLE_DOMAINS, P.KETTLE_DEFAULTS, 'electric-kettle',
-    () => [KT.pool.material.color.getHex(), KT.pool.scale.y, KT.coil.material.color.getHex(), KT.strip.position.y, KT.puffs[0].visible, pointsOf(KT.guideWater).slice(0, 20), pointsOf(KT.curveWater).slice(-2)],
-    model => model.advance(P.DECLARED.kettleRun)],
   ['Hair dryer', dryer, DT, L.hairDryerLesson, P.DRYER_DOMAINS, P.DRYER_DEFAULTS, 'hair-dryer',
     () => [DT.coil.material.color.getHex(), DT.glow.material.opacity, DT.strip.position.y, DT.strip.material.color.getHex(), DT.inletArrow.userData.length, DT.outletArrow.userData.length, DT.marks.map(m => m.material.color.getHex()), pointsOf(DT.guideOutlet).slice(0, 20), pointsOf(DT.curveOutlet).slice(-2)],
     model => model.advance(P.DECLARED.dryerRun)],
@@ -543,7 +408,6 @@ for (const [name, model, topology, lesson, domains, defaults, id, snapshot, sett
   model.reset();
   checkFinite(model.root, t);
   t.ok(!model.playback.complete() && !model.resultPart.available(), `${name}: nothing to inspect before the run`);
-  if (name === 'Electric kettle') { model.reset(); model.advance(1); t.near(model.getState().clock, SRC.drawn.kettleFaster, 1e-9, 'a second of kettle playback is ten seconds of run'); model.reset(); }
   t.ok(!model.playback.blocked(), 'and the run is ready to press');
   model.update({volts: 0});
   t.ok(model.playback.blocked(), `${name}: with nothing across the element there is nothing to run`);
@@ -580,7 +444,7 @@ for (const [name, model, topology, lesson, domains, defaults, id, snapshot, sett
   t.ok(routed && routed.controls.map(control => control.key).join() === Object.keys(domains).join(), `${name}: the heating models route it here`);
   routed.dispose();
   t.ok(previewEntryIds.includes(id), `${name}: routed into the preview as ${id}`);
-  for (const values of (name === 'Electric kettle' ? kettleSettings : dryerSettings)) {
+  for (const values of dryerSettings) {
     for (const time of [0, 2, 1e4]) {
       model.reset(); model.update(values); model.advance(time);
       const readings = model.getState().readings;
@@ -591,12 +455,8 @@ for (const [name, model, topology, lesson, domains, defaults, id, snapshot, sett
 }
 
 const released = [
-  checkDisposal((() => { const fresh = KM.createElectricKettleModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = DM.createHairDryerModel(); fresh.advance(3); return fresh; })(), t),
 ].reduce((sum, value) => sum + value, 0);
-// A kettle switched on dry draws no water: fillLine shows any line it fills, so the order matters.
-kettle.update({...kettle.getState().values, filled: 0}); t.ok(!KT.surface.visible && !KT.pool.visible, 'a dry kettle draws no water surface');
-kettle.update({...kettle.getState().values, filled: 1}); t.ok(KT.surface.visible && KT.pool.visible, 'a filled kettle draws its water surface');
-for (const model of [kettle, dryer]) model.dispose();
+dryer.dispose();
 
-console.log(`PASS resistance elements: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 2 draft lessons, ${released} resources released exactly once.`);
+console.log(`PASS resistance elements: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 1 draft lesson, ${released} resources released exactly once.`);
