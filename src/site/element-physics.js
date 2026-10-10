@@ -44,14 +44,15 @@ import {validateControls, validTime, clamp} from './physics-kit.js';
 // proportion to the square root of the airflow, and whose thermal switch opens
 // at 200 °C and closes again at 160 °C; and a fan that reaches its speed in one
 // second, with the element interlocked so that it is not let on until it has;
-// and a heater run of 120 s, long enough that even the coolest element in its
-// range has settled by the end of it, played 8 times faster than the real thing.
-// The dryer is marched in steps of 2 ms rather than the 50 ms the other two use,
+// and a heater run of 120 s, played 8 times faster than the real thing.
+// The heater uses fourth-order Runge-Kutta with 50 ms steps and also integrates
+// a declared absorbing tile and cumulative energy transfers. The dryer uses
+// 2 ms steps rather than the 50 ms steps used by the other two,
 // because its wire gains tens of degrees in 50 ms and its switch could not
 // otherwise be said to open at any particular temperature.
 // ---------------------------------------------------------------------------
 
-/** The Stefan-Boltzmann constant, W/(m²·K⁴), CODATA 2022 through NIST: exact. */
+/** The Stefan-Boltzmann constant, W/(m²·K⁴), rounded from CODATA 2022 through NIST. */
 export const SIGMA = 5.670374419e-8;
 export const ZERO = 273.15;
 
@@ -60,7 +61,8 @@ export const NIKROTHAL = Object.freeze({
   name: 'Nikrothal 80', chromium: Object.freeze([19.0, 21.0]), resistivity: 1.09e-6, resistivityAt: 20,
   density: 8300, melting: 1400, continuous: 1200, emissivity: 0.88,
   ctFrom: 100, ctStep: 100, ct: Object.freeze([1.01, 1.02, 1.03, 1.04, 1.05, 1.04, 1.04, 1.04, 1.04, 1.05, 1.06, 1.07]),
-  heatFrom: 20, heatStep: 100, heat: Object.freeze([460, 460, 480, 500, 520, 540, 560, 600, 630, 650, 670, 700]),
+  thermalTemperatures: Object.freeze([20, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100]),
+  heat: Object.freeze([460, 460, 480, 500, 520, 540, 560, 600, 630, 650, 670, 700]),
   conductivity: Object.freeze([15, 15, 15, 15, 17, 19, 21, 22, 24, 26, 28, 30]),
   expansion: Object.freeze([14.1, 14.9, 16.0, 17.2]), expansionTo: Object.freeze([250, 500, 750, 1000]),
 });
@@ -103,10 +105,31 @@ export function tableAt(table, from, step, celsius) {
 export const ctAt = celsius => celsius <= NIKROTHAL.ctFrom
   ? 1 + (NIKROTHAL.ct[0] - 1) * clamp((celsius - NIKROTHAL.resistivityAt) / (NIKROTHAL.ctFrom - NIKROTHAL.resistivityAt))
   : tableAt(NIKROTHAL.ct, NIKROTHAL.ctFrom, NIKROTHAL.ctStep, celsius);
-/** The datasheet's specific heat at `celsius`, J/(kg·K). */
-export const specificAt = celsius => tableAt(NIKROTHAL.heat, NIKROTHAL.heatFrom, NIKROTHAL.heatStep, celsius);
+function thermalAt(table, celsius) {
+  const knots = NIKROTHAL.thermalTemperatures;
+  if (celsius <= knots[0]) return table[0];
+  for (let i = 1; i < knots.length; i++) {
+    if (celsius <= knots[i]) return table[i - 1] + (table[i] - table[i - 1]) * (celsius - knots[i - 1]) / (knots[i] - knots[i - 1]);
+  }
+  return table.at(-1);
+}
+/** The datasheet's specific heat at `celsius`, J/(kg·K), held flat outside its table. */
+export const specificAt = celsius => thermalAt(NIKROTHAL.heat, celsius);
 /** The datasheet's thermal conductivity at `celsius`, W/(m·K). */
-export const conductivityAt = celsius => tableAt(NIKROTHAL.conductivity, NIKROTHAL.heatFrom, NIKROTHAL.heatStep, celsius);
+export const conductivityAt = celsius => thermalAt(NIKROTHAL.conductivity, celsius);
+
+/** Internal energy per kilogram relative to 20 °C, integrating the same linear heat-capacity table. */
+export function specificEnergyAt(celsius) {
+  const knots = NIKROTHAL.thermalTemperatures, heat = NIKROTHAL.heat;
+  if (celsius <= knots[0]) return (celsius - knots[0]) * heat[0];
+  let energy = 0;
+  for (let i = 1; i < knots.length; i++) {
+    const end = Math.min(celsius, knots[i]);
+    energy += (end - knots[i - 1]) * (heat[i - 1] + specificAt(end)) / 2;
+    if (celsius <= knots[i]) return energy;
+  }
+  return energy + (celsius - knots.at(-1)) * heat.at(-1);
+}
 
 /** A piece of wire: its length and diameter in meters, and what follows from them. */
 export function wireOf(length, diameter) {
@@ -135,6 +158,8 @@ export const HEATER_DOMAINS = Object.freeze({volts: Object.freeze([0, 240, 10]),
 export const REFLECTORS = Object.freeze([Object.freeze({value: 0, label: 'No reflector'}), Object.freeze({value: 1, label: 'Polished reflector'})]);
 /** The bar heater's wire: a declared 0.4 mm wire, its length the reader's. */
 export const HEATER_DIAMETER = 0.0004;
+/** Illustrative absorbing tile, not a measured material or a ray-traced view factor. */
+export const HEATER_TILE = Object.freeze({capture: 0.1, capacity: 500, conductance: 1.5});
 
 const heaterPlans = new Map();
 
@@ -144,24 +169,36 @@ export function heaterPlan(input = {}) {
   if (heaterPlans.has(key)) return heaterPlans.get(key);
   const wire = wireOf(values.length, HEATER_DIAMETER);
   const cold = resistanceAt(wire, values.room), coldPower = powerAt(wire, values.volts, values.room);
-  // Warm the wire step by step until what it loses matches what it takes.
-  const track = [{t: 0, celsius: values.room, power: coldPower, radiated: 0, convected: 0}];
-  let celsius = values.room;
+  const share = values.reflector ? DECLARED.reflected : DECLARED.bare;
+  // Integrate temperatures and energy transfers together so the two energy balances can be checked.
+  const derivative = state => {
+    const [celsius, tile] = state, power = powerAt(wire, values.volts, celsius);
+    const radiated = radiatedAt(wire, celsius, values.room), convected = convectedAt(wire, celsius, values.room);
+    const absorbed = radiated * share * HEATER_TILE.capture, released = HEATER_TILE.conductance * (tile - values.room);
+    return [(power - radiated - convected) / capacityAt(wire, celsius), (absorbed - released) / HEATER_TILE.capacity, power, radiated, convected, absorbed, released];
+  };
+  const point = (t, state) => ({
+    t, celsius: state[0], tile: state[1], inputEnergy: state[2], radiatedEnergy: state[3], convectedEnergy: state[4], tileReceivedEnergy: state[5], tileReleasedEnergy: state[6],
+    power: powerAt(wire, values.volts, state[0]), radiated: radiatedAt(wire, state[0], values.room), convected: convectedAt(wire, state[0], values.room),
+  });
+  let state = [values.room, values.room, 0, 0, 0, 0, 0];
+  const track = [point(0, state)], dt = DECLARED.step;
   for (let step = 1; step * DECLARED.step <= DECLARED.heaterRun + 1e-9; step++) {
-    const previous = track[step - 1];
-    celsius += (previous.power - previous.radiated - previous.convected) * DECLARED.step / capacityAt(wire, previous.celsius);
-    celsius = Math.min(celsius, NIKROTHAL.melting);
-    track.push({
-      t: step * DECLARED.step, celsius,
-      power: powerAt(wire, values.volts, celsius),
-      radiated: radiatedAt(wire, celsius, values.room),
-      convected: convectedAt(wire, celsius, values.room),
-    });
+    const k1 = derivative(state), k2 = derivative(state.map((v, i) => v + dt * k1[i] / 2));
+    const k3 = derivative(state.map((v, i) => v + dt * k2[i] / 2)), k4 = derivative(state.map((v, i) => v + dt * k3[i]));
+    state = state.map((v, i) => v + dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6);
+    track.push(point(step * dt, state));
   }
   const settled = track.at(-1);
-  const share = values.reflector ? DECLARED.reflected : DECLARED.bare;
+  let lo = values.room, hi = NIKROTHAL.melting;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (powerAt(wire, values.volts, mid) > radiatedAt(wire, mid, values.room) + convectedAt(wire, mid, values.room)) lo = mid;
+    else hi = mid;
+  }
   const plan = {
     values, wire, cold, coldPower, track, settled, duration: DECLARED.heaterRun,
+    equilibrium: (lo + hi) / 2,
     hot: resistanceAt(wire, settled.celsius),
     steady: settled.celsius, power: settled.power, radiated: settled.radiated, convected: settled.convected,
     forward: settled.radiated * share, share,
@@ -186,12 +223,20 @@ export function heaterAt(plan, time) {
   const place = clamp(t / DECLARED.step, 0, plan.track.length - 1);
   const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
   const between = key => plan.track[low][key] + part * (plan.track[high][key] - plan.track[low][key]);
-  const celsius = between('celsius');
+  const celsius = between('celsius'), tile = between('tile'), on = t > 0 && plan.values.volts > 0;
+  const power = on ? powerAt(plan.wire, plan.values.volts, celsius) : 0;
+  const radiated = radiatedAt(plan.wire, celsius, plan.values.room), convected = convectedAt(plan.wire, celsius, plan.values.room);
   return {
-    time, t, celsius, power: between('power'), radiated: between('radiated'), convected: between('convected'),
-    forward: between('radiated') * plan.share,
+    time, t, celsius, tile, on, power, radiated, convected, storedPower: power - radiated - convected,
+    forward: radiated * plan.share, backward: radiated * (1 - plan.share),
+    absorbed: radiated * plan.share * HEATER_TILE.capture,
+    tileReleased: HEATER_TILE.conductance * (tile - plan.values.room),
+    storedEnergy: plan.wire.mass * (specificEnergyAt(celsius) - specificEnergyAt(plan.values.room)),
+    tileStoredEnergy: HEATER_TILE.capacity * (tile - plan.values.room),
+    inputEnergy: between('inputEnergy'), radiatedEnergy: between('radiatedEnergy'), convectedEnergy: between('convectedEnergy'),
+    tileReceivedEnergy: between('tileReceivedEnergy'), tileReleasedEnergy: between('tileReleasedEnergy'),
     resistance: resistanceAt(plan.wire, celsius),
-    current: currentAt(plan.wire, plan.values.volts, celsius),
+    current: on ? currentAt(plan.wire, plan.values.volts, celsius) : 0,
     glows: celsius >= DRAPER.celsius, done: t >= plan.duration,
   };
 }

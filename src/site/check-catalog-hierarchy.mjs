@@ -465,3 +465,11 @@ assert.deepEqual(tags(scanner.entry.id), ['light-and-images', 'sensors-and-detec
 assert.equal(catalog.groups.find(group => group.id === scanner.entry.group).place, 'workshop');
 assert.equal(catalog.groups.find(group => group.id === scanner.entry.group).room, 'Tools and making');
 for (const id of ['bench', 'cloud', 'profile', 'sensor', 'chart']) assert(hasCatalogPart(scanner.entry.id, id), `${id} remains bookmarkable in the scanning lesson`);
+
+const electricHeating = families.find(family => family.entry.id === 'electric-heating');
+assert(electricHeating && !componentParentIds[electricHeating.entry.id], 'Electric heating is a complete circuit, heater and absorbing object study');
+assert.deepEqual(electricHeating.components, []);
+assert.deepEqual(tags(electricHeating.entry.id), ['electricity', 'exploiting-heat']);
+assert.equal(catalog.groups.find(group => group.id === electricHeating.entry.group).place, 'home');
+assert.equal(catalog.groups.find(group => group.id === electricHeating.entry.group).room, 'Heating and cooling');
+for (const id of ['body', 'circuit', 'element', 'reflector', 'guard', 'beam', 'tile', 'chart']) assert(hasCatalogPart(electricHeating.entry.id, id), `${id} remains bookmarkable in the electric heating lesson`);

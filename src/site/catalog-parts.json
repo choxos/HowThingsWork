@@ -1743,6 +1743,48 @@
       "parentId": "delivery"
     }
   ],
+  "electric-heating": [
+    {
+      "id": "body",
+      "name": "Case and feet",
+      "parentId": "system"
+    },
+    {
+      "id": "reflector",
+      "name": "Reflector",
+      "parentId": "system"
+    },
+    {
+      "id": "element",
+      "name": "Resistance element",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit",
+      "name": "Supply and switch",
+      "parentId": "system"
+    },
+    {
+      "id": "guard",
+      "name": "Guard",
+      "parentId": "system"
+    },
+    {
+      "id": "tile",
+      "name": "Absorbing test tile",
+      "parentId": "system"
+    },
+    {
+      "id": "beam",
+      "name": "Heat leaving the element",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "The element warming up",
+      "parentId": "system"
+    }
+  ],
   "toaster": [
     {
       "id": "system",

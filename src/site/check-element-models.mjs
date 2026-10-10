@@ -1,4 +1,6 @@
-// Checks the three resistance heaters, their shared physics and their lessons
+// Checks shared resistance physics and the kettle and dryer drafts.
+// Electric-heating geometry and lesson checks live in check-electric-heating-model.mjs.
+// Compares against sources typed in again and their lessons
 // against the sources typed in again and the physics worked out by other
 // routes: the wire's resistance rebuilt from its resistivity, length and
 // section, its warm up integrated again with Runge-Kutta at a twentieth of the
@@ -12,7 +14,6 @@ import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './element-physics.js';
 import * as S from './element-scene.js';
-import * as HM from './electric-heating-model.js';
 import * as KM from './electric-kettle-model.js';
 import * as DM from './hair-dryer-model.js';
 import * as L from './element-lessons.js';
@@ -49,7 +50,7 @@ const SRC = {
     name: 'Nikrothal 80', chromium: [19.0, 21.0], resistivity: 1.09e-6, resistivityAt: 20,
     density: 8300, melting: 1400, continuous: 1200, emissivity: 0.88,
     ctFrom: 100, ctStep: 100, ct: [1.01, 1.02, 1.03, 1.04, 1.05, 1.04, 1.04, 1.04, 1.04, 1.05, 1.06, 1.07],
-    heatFrom: 20, heatStep: 100, heat: [460, 460, 480, 500, 520, 540, 560, 600, 630, 650, 670, 700],
+    thermalTemperatures: [20, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100], heat: [460, 460, 480, 500, 520, 540, 560, 600, 630, 650, 670, 700],
     conductivity: [15, 15, 15, 15, 17, 19, 21, 22, 24, 26, 28, 30],
     expansion: [14.1, 14.9, 16.0, 17.2], expansionTo: [250, 500, 750, 1000],
   },
@@ -93,8 +94,8 @@ t.ok(P.DRAPER.celsius < P.NIKROTHAL.continuous && P.NIKROTHAL.continuous < P.NIK
 // The datasheet tables, read the way the datasheet tabulates them.
 {
   SRC.nikrothal.ct.forEach((value, i) => t.near(P.ctAt(SRC.nikrothal.ctFrom + i * SRC.nikrothal.ctStep), value, 1e-12, `the temperature factor at ${SRC.nikrothal.ctFrom + i * 100} °C`));
-  SRC.nikrothal.heat.forEach((value, i) => t.near(P.specificAt(SRC.nikrothal.heatFrom + i * SRC.nikrothal.heatStep), value, 1e-12, `the specific heat at ${SRC.nikrothal.heatFrom + i * 100} °C`));
-  SRC.nikrothal.conductivity.forEach((value, i) => t.near(P.conductivityAt(SRC.nikrothal.heatFrom + i * SRC.nikrothal.heatStep), value, 1e-12, 'the thermal conductivity'));
+  SRC.nikrothal.heat.forEach((value, i) => t.near(P.specificAt(SRC.nikrothal.thermalTemperatures[i]), value, 1e-12, `the specific heat at ${SRC.nikrothal.thermalTemperatures[i]} °C`));
+  SRC.nikrothal.conductivity.forEach((value, i) => t.near(P.conductivityAt(SRC.nikrothal.thermalTemperatures[i]), value, 1e-12, 'the thermal conductivity'));
   t.near(P.ctAt(SRC.nikrothal.resistivityAt), 1, 1e-12, 'and the factor is one where the resistivity is quoted');
   t.near(P.ctAt(150), (SRC.nikrothal.ct[0] + SRC.nikrothal.ct[1]) / 2, 1e-12, 'halfway between two tabulated points is halfway between their values');
   t.ok(P.ctAt(2000) === SRC.nikrothal.ct.at(-1) && P.specificAt(-100) === SRC.nikrothal.heat[0], 'past either end the tables are held flat rather than run off');
@@ -324,79 +325,6 @@ const inside = (a, b) => a.x[0] > b.x[0] - 1e-9 && a.x[1] < b.x[1] + 1e-9 && a.y
 const apart = (a, b) => a.x[1] < b.x[0] || b.x[1] < a.x[0] || a.y[1] < b.y[0] || b.y[1] < a.y[0];
 const sameColor = (color, other) => Math.abs(color.r - other.r) < 1e-6 && Math.abs(color.g - other.g) < 1e-6 && Math.abs(color.b - other.b) < 1e-6;
 
-// The heater.
-const heater = HM.createElectricHeatingModel(), HT = heater.topology;
-const poseHeater = (values, time) => { heater.reset(); if (values) heater.update(values); if (time) heater.advance(time); heater.root.updateMatrixWorld(true); counts.poses++; return heater.getState(); };
-{
-  poseHeater(null, 0);
-  const casing = extent(pointsOf(HT.caseLine));
-  t.near(casing.x[1] - casing.x[0], SRC.drawn.heaterCase[0] * SRC.drawn.mmPerUnit, drawn, 'the heater is drawn its 600 mm wide');
-  t.near(casing.y[1] - casing.y[0], SRC.drawn.heaterCase[1] * SRC.drawn.mmPerUnit, drawn, 'and its 260 mm tall');
-  t.near(casing.y[1] - casing.y[0], HM.HEATER.casing[1] * HM.MM, drawn, 'and its 260 mm tall');
-  t.ok(HM.MM * 1000 === 2 && HM.WIRE_TIMES === 25, 'at true size, with only the wire thickened');
-  const coilBox = worldRectOf(HT.coil), caseBox = worldRectOf(HT.caseLine);
-  t.ok(inside(coilBox, caseBox), 'the element sits inside the case');
-  // Measured from the drawn points, not from a world box: the scene carries a small
-  // rotation, which foreshortens a world box by a fraction of a percent.
-  const coilDrawn = extent(pointsOf(HT.coil));
-  t.near(coilDrawn.x[1] - coilDrawn.x[0], SRC.drawn.heaterCoil * SRC.drawn.mmPerUnit, drawn, 'and the coil is drawn its true 28 mm across');
-  t.near(coilDrawn.y[1] - coilDrawn.y[0], 2 * HM.HEATER.element[2] * HM.MM, drawn, 'and as tall as it is wide, being a circle');
-  t.ok(apart(worldRectOf(HT.bars), coilBox), 'the guard never touches the element');
-  t.ok(worldRectOf(HT.bars).x[0] > coilBox.x[1], 'and stands in front of it');
-  // The coil takes the color of its own temperature, and nothing glows cold.
-  for (const values of [{}, {volts: 120}, {length: 4}, {volts: 0}]) {
-    const state = poseHeater(values, 30);
-    t.ok(sameColor(HT.coil.material.color, S.wireColor(state.now.celsius)), `the element is drawn at the ${f0(state.now.celsius)} °C it reached`);
-    t.near(HT.halo.material.opacity, S.glowOpacity(state.now.celsius), 1e-9, 'and its halo follows the same glow');
-  }
-  poseHeater({volts: 0}, 30);
-  t.ok(HT.halo.material.opacity === 0, 'a cold element has no glow at all');
-  {
-    const cold = poseHeater({volts: 60, length: 12}, 119), coldHex = HT.coil.material.color.getHex();
-    t.ok(cold.now.celsius < 525, 'this setting keeps the wire below the Draper point');
-    t.ok(coldHex === S.wireColor(300).getHex(), 'and the coil is drawn its cold color, not a glowing one');
-    const warm = poseHeater(null, 119);
-    t.ok(warm.now.celsius > 525 && HT.coil.material.color.getHex() !== coldHex, 'while a glowing wire is drawn differently');
-  }
-  // The reflector turns the rearward arrows round, and the arrows are on one fixed scale.
-  const directions = () => HT.beams.map(arrow => new THREE.Vector3(0, 1, 0).applyQuaternion(arrow.quaternion).x);
-  poseHeater({reflector: 1}, 30);
-  t.ok(HT.dish.visible && HT.dishFill.visible, 'the dish is drawn when it is fitted');
-  t.ok(directions().every(x => x > -1e-9), 'with the reflector fitted every arrow points into the room');
-  const withDish = HT.beams[0].userData.length;
-  poseHeater({reflector: 0}, 30);
-  t.ok(!HT.dish.visible && !HT.dishFill.visible, 'and not drawn when it is not');
-  t.ok(directions().some(x => x < -1e-9), 'without it some point back at the wall');
-  t.near(HT.beams[0].userData.length, withDish, 1e-12, 'and the arrows are the same length either way, since the reflector makes no heat');
-  for (const [values, expected] of [[{}, null], [{volts: 120}, null], [{length: 4}, null]]) {
-    const state = poseHeater(values, 30);
-    t.ok(HM.BEAM_FULL === SRC.drawn.beamFull, 'the arrows reach full length at the stated 1,800 W');
-    const wanted = HM.HEATER.beam[0] + HM.HEATER.beam[1] * Math.min(1, state.now.radiated / SRC.drawn.beamFull);
-    for (const arrow of HT.beams) t.near(arrow.userData.length, wanted, 1e-9, `each arrow is drawn for the ${f0(state.now.radiated)} W it radiates, on the one scale`);
-    counts.points += HT.beams.length;
-  }
-  // The chart.
-  for (const values of [{}, {volts: 120}, {length: 4}]) {
-    const state = poseHeater(values, 0);
-    const guide = pointsOf(HT.guideCurve);
-    t.ok(guide.length === P.DECLARED.samples, 'the whole warm up is drawn faintly');
-    state.chart.forEach((sample, i) => {
-      t.near(guide[i][0], HM.chartX(state, sample.t), drawn, 'each sample at its time');
-      t.near(guide[i][1], HM.chartY(sample.celsius), drawn, 'and at its temperature');
-    });
-    counts.points += guide.length;
-    t.ok(guide.every(point => point[1] >= HM.CHART.y - drawn && point[1] <= HM.CHART.y + HM.CHART.h + drawn), 'and stays inside its frame');
-    t.near(pointsOf(HT.draperLine)[0][1], HM.chartY(SRC.draper.celsius), drawn, 'the Draper point is drawn where it falls');
-    t.near(pointsOf(HT.limitLine)[0][1], HM.chartY(SRC.nikrothal.continuous), drawn, 'and so is the datasheet’s limit');
-  }
-  poseHeater(null, 0);
-  t.ok(pointsOf(HT.curve).length === 0 && pointsOf(HT.cursor).length === 0, 'nothing is drawn dark before the run starts');
-  const half = poseHeater(null, 5), grown = pointsOf(HT.curve).length;
-  t.ok(grown > 1 && grown < P.DECLARED.samples, 'the dark curve grows with the clock');
-  t.near(pointsOf(HT.curve).at(-1)[1], HM.chartY(half.now.celsius), drawn, 'and its last point is what the element reads now');
-  t.ok(apart(extent(pointsOf(HT.chartFrame)), worldRectOf(HT.caseLine)), 'the chart is kept clear of the heater');
-}
-
 // The kettle.
 const kettle = KM.createElectricKettleModel(), KT = kettle.topology;
 const poseKettle = (values, time) => { kettle.reset(); if (values) kettle.update(values); if (time) kettle.advance(time / KM.FASTER); kettle.root.updateMatrixWorld(true); counts.poses++; return kettle.getState(); };
@@ -498,13 +426,12 @@ const poseDryer = (values, time) => { dryer.reset(); if (values) dryer.update(va
 }
 
 // Nothing anywhere is left infinite, at any setting or time.
-const heaterSettings = [{}, {volts: 0}, {volts: 120}, {length: 4}, {length: 12}, {reflector: 0}, {room: 30}];
 const kettleSettings = [{}, {volts: 0}, {volts: 120}, {mass: 0.2}, {mass: 1.7}, {start: 40}, {filled: 0}];
 const dryerSettings = [{}, {volts: 0}, {volts: 120}, {airflow: 20}, {airflow: 45}, {blocked: 1}, {room: 30}];
-for (const [pose, settings] of [[poseHeater, heaterSettings], [poseKettle, kettleSettings], [poseDryer, dryerSettings]]) {
+for (const [pose, settings] of [[poseKettle, kettleSettings], [poseDryer, dryerSettings]]) {
   for (const values of settings) for (const time of [0, 1, 10, 1e4]) { pose(values, time); }
 }
-for (const model of [heater, kettle, dryer]) checkFinite(model.root, t);
+for (const model of [kettle, dryer]) checkFinite(model.root, t);
 
 // ---------------------------------------------------------------------------
 // 3. The lessons.
@@ -521,19 +448,6 @@ function covered(text, expected, where) {
   }
 }
 const texts = item => [['simple', item.simple], ['overview', item.overview], ...item.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...item.parts.map((part, i) => [`part ${i + 1}`, part.role]), ['misconception', item.misconception], ['quiz', [item.quiz.question, ...item.quiz.options].join(' ')]];
-
-const heaterDefault = P.heaterPlan({}), heaterBare = P.heaterPlan({reflector: 0});
-const heaterLong = P.heaterPlan({length: 12}), heaterShort = P.heaterPlan({length: 4});
-const heaterLow = P.heaterPlan({volts: 120}), heaterWarm = P.heaterPlan({room: 30});
-checkTrialNumbers(L.electricHeatingLesson, {
-  'Switch it on cold': s => ({959: s.steady, 972: s.power, 866: s.radiated}),
-  'Take the reflector away': s => { t.ok(s.power === heaterDefault.power && s.steady === heaterDefault.steady, 'the element is untouched by the reflector'); return {649: heaterDefault.forward, 303: s.forward, 346: heaterDefault.radiated * (P.DECLARED.reflected - P.DECLARED.bare)}; },
-  'Wind in more wire': s => ({'104.1': P.resistanceAt(s.wire, s.values.room), '52.0': P.resistanceAt(heaterDefault.wire, heaterDefault.values.room), 487: s.power, 564: s.steady}),
-  'Cut the element short': s => { t.ok(s.tooHot, 'a short element runs past the datasheet limit'); return {'1,425': s.power, '1,246': s.steady, '1,200': P.NIKROTHAL.continuous}; },
-  'Plug it in in America': s => ({266: s.power, 972: heaterDefault.power, 585: s.steady}),
-  'Follow the heat out': s => ({866: s.radiated, 106: s.convected, 89: 100 * s.radiantShare, 11: 100 - 100 * s.radiantShare}),
-  'Warm the room it stands in': s => ({960: s.steady, 105: s.convected, 106: heaterDefault.convected}),
-}, values => P.heaterPlan(values), t);
 
 const kettleDefault = P.kettlePlan({}), kettleSmall = P.kettlePlan({mass: 0.2}), kettleFull = P.kettlePlan({mass: 1.7});
 const kettleWarm = P.kettlePlan({start: 40}), kettleLow = P.kettlePlan({volts: 120}), kettleDry = P.kettlePlan({filled: 0});
@@ -553,13 +467,13 @@ checkTrialNumbers(L.hairDryerLesson, {
   'Switch it on': s => ({'2,000': s.rating, 139: s.steady, 66: s.outlet}),
   'Turn the fan down': s => ({'2,000': s.rating, '24.1': 1000 * s.massFlow, 100: s.outlet, 177: s.steady}),
   'Turn the fan up': s => ({'54.2': 1000 * s.massFlow, 56: s.outlet, 125: s.steady}),
-  'Block the inlet': s => { t.ok(s.cycles, 'blocked, it cycles'); return {'1.1': s.opened, '8.0': s.closed}; },
+  'Block the inlet': s => { t.ok(s.cycles, 'blocked, it cycles'); return {'1.1': s.opened, '7.9': s.closed}; },
   'Plug it in in America': s => ({544: s.rating, 33: s.outlet, 53: s.steady}),
   'Follow the air through': s => ({'42.1': 1000 * s.massFlow, '2,000': s.rating, 47: s.idealRise}),
   'Use it in a warm room': s => ({10: s.values.room - dryerDefault.values.room, 76: s.outlet}),
 }, values => P.dryerPlan(values), t);
 
-for (const lesson of [L.electricHeatingLesson, L.electricKettleLesson, L.hairDryerLesson]) {
+for (const lesson of [L.electricKettleLesson, L.hairDryerLesson]) {
   for (const [where, text] of texts(lesson)) covered(text, {}, `${lesson.simple.slice(0, 20)} ${where}`);
 }
 
@@ -567,10 +481,6 @@ const sharedLimits = {
   [`carry ${f0(P.DECLARED.still)} W from each square meter`]: 'carry 15 W from each square meter',
 };
 covered(L.elementLimits, sharedLimits, 'element limits');
-covered(L.electricHeatingLimits, {
-  ...sharedLimits,
-  [`send ${f0(100 * P.DECLARED.reflected)} percent of the radiation forward instead of ${f0(100 * P.DECLARED.bare)} percent`]: 'send 75 percent of the radiation forward instead of 35 percent',
-}, 'heater limits');
 covered(L.electricKettleLimits, {
   ...sharedLimits,
   [`pass ${f0(P.DECLARED.toWater)} W to the water for each degree`]: 'pass 400 W to the water for each degree',
@@ -582,17 +492,6 @@ covered(L.electricKettleLimits, {
 // The deeper sections, whose numbers no mapping covered until now.
 {
   const d = P.heaterPlan({}), dry = P.dryerPlan({});
-  covered(L.electricHeatingLesson.deeper[1].body, {
-    [`from ${f1(P.resistanceAt(d.wire, 20))} \u03a9 to ${f1(d.hot)} \u03a9`]: 'from 52.0 \u03a9 to 54.4 \u03a9',
-    [`from ${f0(d.coldPower)} W the instant it is switched on to ${f0(d.power)} W once it is hot, ${f1(100 * (1 - d.drift))}% less`]: 'from 1,016 W the instant it is switched on to 972 W once it is hot, 4.4% less',
-  }, 'heater deeper 2');
-  covered(L.electricHeatingLesson.deeper[2].body, {
-    [`weighs ${f1(1000 * d.wire.mass)} g`]: 'weighs 6.3 g',
-    [`that is ${f1(d.wire.mass * P.specificAt(20))} J for each degree`]: 'that is 2.9 J for each degree',
-  }, 'heater deeper 3');
-  covered(L.electricHeatingLesson.deeper[3].body, {
-    [`puts it at ${f0(SRC.draper.celsius)} \u00b0C, or ${f0(SRC.draper.kelvin)} K, established by John William Draper in ${SRC.draper.found}`]: 'puts it at 525 \u00b0C, or 798 K, established by John William Draper in 1847',
-  }, 'heater deeper 4');
   covered(L.hairDryerLesson.deeper[1].body, {
     [`dry air ${f2(SRC.air.density)} kg/m\u00b3`]: 'dry air 1.20 kg/m\u00b3',
     [`give it ${f0(SRC.air.heat)} J for each kilogram and degree`]: 'give it 1,012 J for each kilogram and degree',
@@ -600,13 +499,6 @@ covered(L.electricKettleLimits, {
     [`at ${f0(20)} L/s the same element sends out air at ${f0(P.dryerPlan({airflow: 20}).outlet)} \u00b0C`]: 'at 20 L/s the same element sends out air at 100 \u00b0C',
   }, 'dryer deeper 2');
 }
-covered(L.electricHeatingLesson.limits, {
-  [`${f0(HM.WIRE_TIMES)} times thicker`]: '25 times thicker',
-  [`lasts ${f0(P.DECLARED.heaterRun)} s`]: 'lasts 120 s',
-  [`plays ${f0(P.DECLARED.heaterFaster)} times faster`]: 'plays 8 times faster',
-  ...sharedLimits,
-  [`send ${f0(100 * P.DECLARED.reflected)} percent of the radiation forward instead of ${f0(100 * P.DECLARED.bare)} percent`]: 'send 75 percent of the radiation forward instead of 35 percent',
-}, 'heater lesson limits');
 covered(L.electricKettleLesson.limits, {
   [`plays ${f0(KM.FASTER)} times faster`]: 'plays 10 times faster',
   ...sharedLimits,
@@ -632,9 +524,6 @@ covered(L.hairDryerLimits, {
 // ---------------------------------------------------------------------------
 
 const machines = [
-  ['Electric heating', heater, HT, L.electricHeatingLesson, P.HEATER_DOMAINS, P.HEATER_DEFAULTS, 'electric-heating',
-    () => [HT.coil.material.color.getHex(), HT.halo.material.opacity, HT.dish.visible, HT.beams.map(a => [Number(a.userData.length.toFixed(5)), Number(a.quaternion.z.toFixed(5))]), pointsOf(HT.guideCurve).slice(0, 20), pointsOf(HT.curve).slice(-2)],
-    model => model.advance(P.DECLARED.heaterRun)],
   ['Electric kettle', kettle, KT, L.electricKettleLesson, P.KETTLE_DOMAINS, P.KETTLE_DEFAULTS, 'electric-kettle',
     () => [KT.pool.material.color.getHex(), KT.pool.scale.y, KT.coil.material.color.getHex(), KT.strip.position.y, KT.puffs[0].visible, pointsOf(KT.guideWater).slice(0, 20), pointsOf(KT.curveWater).slice(-2)],
     model => model.advance(P.DECLARED.kettleRun)],
@@ -654,7 +543,6 @@ for (const [name, model, topology, lesson, domains, defaults, id, snapshot, sett
   model.reset();
   checkFinite(model.root, t);
   t.ok(!model.playback.complete() && !model.resultPart.available(), `${name}: nothing to inspect before the run`);
-  if (name === 'Electric heating') { model.reset(); model.advance(1); t.near(model.getState().clock, SRC.drawn.heaterFaster, 1e-9, 'a second of heater playback is eight seconds of run'); model.reset(); }
   if (name === 'Electric kettle') { model.reset(); model.advance(1); t.near(model.getState().clock, SRC.drawn.kettleFaster, 1e-9, 'a second of kettle playback is ten seconds of run'); model.reset(); }
   t.ok(!model.playback.blocked(), 'and the run is ready to press');
   model.update({volts: 0});
@@ -692,7 +580,7 @@ for (const [name, model, topology, lesson, domains, defaults, id, snapshot, sett
   t.ok(routed && routed.controls.map(control => control.key).join() === Object.keys(domains).join(), `${name}: the heating models route it here`);
   routed.dispose();
   t.ok(previewEntryIds.includes(id), `${name}: routed into the preview as ${id}`);
-  for (const values of (name === 'Electric heating' ? heaterSettings : name === 'Electric kettle' ? kettleSettings : dryerSettings)) {
+  for (const values of (name === 'Electric kettle' ? kettleSettings : dryerSettings)) {
     for (const time of [0, 2, 1e4]) {
       model.reset(); model.update(values); model.advance(time);
       const readings = model.getState().readings;
@@ -703,13 +591,12 @@ for (const [name, model, topology, lesson, domains, defaults, id, snapshot, sett
 }
 
 const released = [
-  checkDisposal((() => { const fresh = HM.createElectricHeatingModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = KM.createElectricKettleModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = DM.createHairDryerModel(); fresh.advance(3); return fresh; })(), t),
 ].reduce((sum, value) => sum + value, 0);
 // A kettle switched on dry draws no water: fillLine shows any line it fills, so the order matters.
 kettle.update({...kettle.getState().values, filled: 0}); t.ok(!KT.surface.visible && !KT.pool.visible, 'a dry kettle draws no water surface');
 kettle.update({...kettle.getState().values, filled: 1}); t.ok(KT.surface.visible && KT.pool.visible, 'a filled kettle draws its water surface');
-for (const model of [heater, kettle, dryer]) model.dispose();
+for (const model of [kettle, dryer]) model.dispose();
 
-console.log(`PASS resistance elements: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 3 lessons, ${released} resources released exactly once.`);
+console.log(`PASS resistance elements: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 2 draft lessons, ${released} resources released exactly once.`);

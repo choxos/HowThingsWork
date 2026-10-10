@@ -3,7 +3,7 @@ import {HEATER_DEFAULTS, KETTLE_DEFAULTS, DRYER_DEFAULTS} from './element-physic
 const trial = (defaults, part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
 
 export const sources = {
-  nikrothal: {title: 'Kanthal: Nikrothal 80 wire, material datasheet', url: 'https://www.kanthal.com/en/products/material-datasheets/wire/resistance-heating-wire-and-resistance-wire/nikrothal-80/'},
+  nikrothal: {title: 'Kanthal: Nikrothal 80 wire, material datasheet', url: 'https://www.kanthal.com/products/datasheets/material-datasheets/wire/resistance-heating-wire-and-resistance-wire/nikrothal-80/'},
   nichrome: {title: 'Wikipedia: Nichrome', url: 'https://en.wikipedia.org/wiki/Nichrome'},
   joule: {title: 'Wikipedia: Joule heating', url: 'https://en.wikipedia.org/wiki/Joule_heating'},
   electricHeating: {title: 'Wikipedia: Electric heating', url: 'https://en.wikipedia.org/wiki/Electric_heating'},
@@ -19,7 +19,7 @@ export const sources = {
   incandescence: {title: 'Wikipedia: Incandescence', url: 'https://en.wikipedia.org/wiki/Incandescence'},
   emissivity: {title: 'Wikipedia: Emissivity', url: 'https://en.wikipedia.org/wiki/Emissivity'},
   thermalRadiation: {title: 'Wikipedia: Thermal radiation', url: 'https://en.wikipedia.org/wiki/Thermal_radiation'},
-  stefan: {title: 'NIST: Stefan-Boltzmann constant, CODATA 2022', url: 'https://physics.nist.gov/cgi-bin/cuu/Value?sigma'},
+  stefan: {title: 'NIST: Stefan-Boltzmann constant, CODATA 2022', url: 'https://physics.nist.gov/cuu/Constants/Table/allascii.txt'},
   resistivity: {title: 'Wikipedia: Electrical resistivity and conductivity', url: 'https://en.wikipedia.org/wiki/Electrical_resistivity_and_conductivity'},
 };
 
@@ -27,59 +27,62 @@ export const sources = {
 export const elementLimits = 'Not from a source: every dimension of every element and of the case, vessel or barrel around it, chosen so that each machine comes out at the power its own page gives; a room that never warms, however long the machine runs; and still air taken to carry 15 W from each square meter of wire for each degree it stands above that room, which is a stated figure rather than a measured one. The wire is taken as one temperature all through, with no allowance for the ends being cooler, and its datasheet tables are read straight between their tabulated points.';
 
 const heaterTrial = {
-  element: trial(HEATER_DEFAULTS, 'element'), reflector: trial(HEATER_DEFAULTS, 'reflector'),
-  beam: trial(HEATER_DEFAULTS, 'beam'), chart: trial(HEATER_DEFAULTS, 'chart'), guard: trial(HEATER_DEFAULTS, 'guard'),
+  element: trial(HEATER_DEFAULTS, 'element', 'reset'), reflector: trial(HEATER_DEFAULTS, 'reflector', 'reset'),
+  beam: trial(HEATER_DEFAULTS, 'beam', 'reset'), chart: trial(HEATER_DEFAULTS, 'chart', 'reset'), guard: trial(HEATER_DEFAULTS, 'guard', 'reset'),
 };
 
-export const electricHeatingLimits = `${elementLimits} The reflector is taken to send 75 percent of the radiation forward instead of 35 percent, both stated shares rather than measured ones, and it moves heat about rather than making any. The element's glow is drawn from its temperature through a chosen ramp of color, not a calculated spectrum, and the heater is drawn from the side with the room in front of it rather than around it.`;
+export const electricHeatingLimits = 'This is an illustrative heater and tile, not a measured appliance. The wire and room each have one temperature. Wire dimensions are chosen; electrical resistance, heat capacity and emissivity use the Nikrothal 80 datasheet. Tables are interpolated at their actual temperature knots and held constant beyond their endpoints, including specific heat above 1,100 °C and resistivity factor above 1,200 °C. Convection uses 15 W/(m²·K). Radiation treats the surrounding room as a fixed-temperature reservoir and ignores coil self-shielding, housing absorption and reflected energy returning to the wire. The reflector redirects a declared 75% of radiation forward instead of 35%; geometry does not calculate those shares. The test tile absorbs a declared 10% of forward radiation, has heat capacity 500 J/K, and loses 1.5 W/K above room temperature. Its energy is included in the emitted radiation, never added to it. Glow color and arrow paths are explanatory; arrows are not rays and their widths have a small visibility floor. No thermal expansion, local hot spots, cooling run, fuse or thermostat is simulated.';
 
 export const electricHeatingLesson = {
-  simple: 'How does a wire give a room its warmth just by carrying a current?',
-  overview: 'A bar heater is the simplest machine in the house: a length of wire, a dish behind it, and a guard in front. Current forced through the wire gives up its energy as heat, and with nowhere to put that heat the wire climbs until it is losing as fast as it is taking. By then it is glowing, and most of what it gives out leaves as radiation, which crosses the room without warming the air on the way. Change the voltage, change how much wire is in the coil, take the reflector away, and press Play to switch it on cold.',
+  simple: 'How can current in a wire warm an object without touching it?',
+  overview: 'Close the switch and current flows through a coil of resistance wire. Electrical energy increases the wire’s internal energy, so its temperature rises. The hot wire transfers energy to moving air and emits radiation. Some radiation reaches the separate test tile, making it warmer. Change the voltage or wire length, or remove the reflector, then compare the same length of heating time.',
   steps: [
-    {title: 'Push a current through the wire', body: 'A complete circuit across the element drives charge through it, and the wire resists that passage.'},
-    {title: 'Turn the resistance into heat', body: 'The moving charge jostles the metal as it goes, so every bit of electrical energy taken from the supply ends up as heat in the wire.'},
-    {title: 'Climb until the losses catch up', body: 'The wire has almost nothing to store heat in, so it warms quickly, and it keeps warming until what it radiates and what the air carries off together match what it is taking in.'},
-    {title: 'Glow, and radiate', body: 'Past a certain temperature a hot solid emits enough visible light to be seen, and by then it is throwing out far more than the air beside it can carry away.'},
-    {title: 'Aim it into the room', body: 'The dish behind the element turns the radiation that would have gone into the wall round and sends it forward instead, so more of the same heat lands where somebody is sitting.'},
+    {title: 'Complete the circuit', body: 'The switch joins the supply, coil and return lead. Before it closes, the wire carries no current and draws no power.'},
+    {title: 'Transfer energy to the metal', body: 'An electric field drives charge through the wire. Interactions with the metal transfer electrical energy to its internal energy, warming the wire.'},
+    {title: 'Warm until heat loss catches up', body: 'At first, much of the input stays in the wire. Radiation and convection grow as it warms. Its temperature stops rising when heat leaving matches electrical input.'},
+    {title: 'Heat a separate object', body: 'Radiation crosses the gap to the test tile. The tile warms as it absorbs energy, while also losing some energy to the surrounding room.'},
+    {title: 'Redirect the radiation', body: 'The reflector sends a larger share forward. The tile receives more energy, even though the wire draws the same electrical power.'},
   ],
   parts: [
-    {name: 'Case and feet', role: 'Holds the element clear of everything and stands the heater on the floor.'},
-    {name: 'Reflector', role: 'Turns the radiation that would go backward round and sends it into the room.'},
-    {name: 'Resistance element', role: 'The wire that turns the electricity into heat and glows while it does.'},
-    {name: 'Guard', role: 'Keeps anything in the room from touching the element.'},
-    {name: 'Heat leaving the element', role: 'Where the element sends its heat, and how much goes each way.'},
-    {name: 'The element warming up', role: 'The element’s temperature from the moment it is switched on.'},
+    {name: 'Case and feet', role: 'Supports the coil and its surrounding parts.'},
+    {name: 'Supply and switch', role: 'Makes or breaks the electrical circuit through the coil.'},
+    {name: 'Resistance element', role: 'Converts electrical energy to internal energy and transfers heat to its surroundings.'},
+    {name: 'Reflector', role: 'Directs more of the radiation forward in this model.'},
+    {name: 'Guard', role: 'Separates the exposed hot coil from the front of the heater; a real guard can also become hot.'},
+    {name: 'Heat leaving the element', role: 'Shows radiation toward the tile and other surfaces, plus heat transferred to air.'},
+    {name: 'Absorbing test tile', role: 'Warms without touching the coil, using energy it absorbs from radiation.'},
+    {name: 'The element warming up', role: 'Records the wire temperature as this experiment runs.'},
   ],
   tryIt: [
-    heaterTrial.chart('Switch it on cold', 'Press Play and watch the element.', 'The wire climbs to 959 °C and settles there, taking 972 W and radiating 866 W of it.'),
-    heaterTrial.reflector('Take the reflector away', 'Choose no reflector.', 'Nothing changes about the element at all, but what it sends into the room falls from 649 W to 303 W; the other 346 W now warms the wall behind it.', {reflector: 0}),
-    heaterTrial.element('Wind in more wire', 'Set the element length to 12 m.', 'Twice the wire is twice the resistance, 104.1 Ω instead of 52.0 Ω cold, so the power halves to 487 W and the wire settles cooler, at 564 °C.', {length: 12}),
-    heaterTrial.element('Cut the element short', 'Set the element length to 4 m.', 'Less wire is less resistance and more power: 1,425 W, and the wire settles at 1,246 °C, above the 1,200 °C its datasheet allows it to run at continuously.', {length: 4}),
-    heaterTrial.element('Plug it in in America', 'Set the supply to 120 V.', 'Power goes with the square of the voltage, so a little over half the voltage gives 266 W instead of 972 W, and the wire settles at 585 °C.', {volts: 120}),
-    heaterTrial.beam('Follow the heat out', 'Press Play and look at the arrows.', 'At its settled temperature the element radiates 866 W and the air carries off only 106 W: 89% of its output leaves as radiation and 11% as warm air.'),
-    heaterTrial.guard('Warm the room it stands in', 'Set the room temperature to 30 °C.', 'A warmer room takes back less, so the same element settles a degree hotter, at 960 °C, and the air carries off 105 W instead of 106 W.', {room: 30}),
+    heaterTrial.chart('Switch it on cold', 'Press Play and watch the switch, wire and tile.', 'After 120 s, the wire is 959 °C and draws 972 W. The tile has warmed from 20 °C to 32.8 °C.'),
+    heaterTrial.reflector('Take the reflector away', 'Run the heater without its reflector.', 'The wire still draws 972 W. Forward radiation falls from 649 W to 303 W, and the tile reaches 26.0 °C instead of 32.8 °C.', {reflector: 0}),
+    heaterTrial.element('Wind in more wire', 'Run with 12 m of wire and compare the denser coil.', 'Cold resistance doubles to 104.1 Ω. The wire reaches 564 °C and draws 487 W; the tile reaches 25.2 °C.', {length: 12}),
+    heaterTrial.element('Cut the element short', 'Run the shorter 4 m coil.', 'The wire draws 1,425 W and reaches 1,246 °C, above the datasheet’s 1,200 °C continuous operating temperature. The tile reaches 39.9 °C.', {length: 4}),
+    heaterTrial.element('Lower the supply voltage', 'Run the same coil at 120 V.', 'The wire draws 266 W and reaches 585 °C. The tile reaches only 22.9 °C after the same 120 s.', {volts: 120}),
+    heaterTrial.beam('Follow the heat out', 'Compare the radiation, convection and stored-energy readings.', 'At the end, 866 W leaves the wire as radiation and 106 W by convection. The wire also holds 3.22 kJ above its starting internal energy.'),
+    heaterTrial.guard('Warm the room it stands in', 'Start the wire and tile in a room at 30 °C.', 'The wire reaches 960 °C. The tile starts warmer and finishes at 42.8 °C; its rise above room temperature remains close to the default run.', {room: 30}),
   ],
   deeper: [
-    {title: 'Why this wire', body: 'The datasheet gives Nikrothal 80 a resistivity of 1.09 Ω·mm²/m, and the Nichrome page puts nichrome at about 1.12 μΩ·m, some 67 times copper’s 16.78 nΩ·m. That is the whole point: a wire you can hold in one hand has enough resistance to turn kilowatts into heat, where the same length of copper would have almost none. The Nichrome page adds the other half of the trick: heated red hot in air, the alloy grows a skin of chromium oxide that oxygen cannot get through, so it does not burn away. Its datasheet lets it work at 1,200 °C continuously, against a melting point of 1,400 °C.'},
-    {title: 'Resistance that will not sit still', body: 'A heating element is not quite the fixed resistor of a textbook. The datasheet tabulates a temperature factor of resistivity, and following it up from cold this element goes from 52.0 Ω to 54.4 Ω by the time it settles. The power falls with it, from 1,016 W the instant it is switched on to 972 W once it is hot, 4.4% less. That is small for this alloy, which is exactly why it is used: an element whose resistance ran away with temperature would be far harder to build around.'},
-    {title: 'Why it comes up so fast', body: 'There is almost nothing there to heat. The whole element weighs 6.3 g, and at the specific heat its datasheet gives near room temperature that is 2.9 J for each degree, so a kilowatt moves it hundreds of degrees a second. A bar heater is warm the moment you switch it on and cold the moment you switch it off, and no amount of leaving it running stores anything up.'},
-    {title: 'When metal begins to glow', body: 'The Draper point is the temperature above which almost every solid glows visibly, and the Draper point page puts it at 525 °C, or 798 K, established by John William Draper in 1847. Below it a body is radiating hard, but almost all of it in the infrared. This element passes that point on its way up and settles well above it, which is why a bar heater is something you can see working from across the room.'},
-    {title: 'The fourth power', body: 'Radiation does not grow in proportion to temperature; it grows with the fourth power of it. Stefan and Boltzmann give the power off a surface as its emissivity times 5.670e-8 W/(m²·K⁴) times its area times that fourth power, less what comes back from the room. The datasheet gives fully oxidized wire an emissivity of 0.88, and this coil offers 75 cm² of surface. It is the fourth power that decides the character of the machine: at 585 °C radiation is 76% of the output, but by 1,246 °C it is 94%, and the air has almost stopped mattering.'},
-    {title: 'Efficient, and still not the best way', body: 'The Electric heating page says the efficiency of electric space heating is 100% for the customer, because every unit bought becomes heat in the room. Nothing is lost up a flue and nothing is wasted. But the same page points out that a heat pump reaches 150% to 600%, a coefficient of performance of 1.5 to 6, because it moves heat that is already there instead of making it. A resistance element cannot beat 1, and the air conditioner in this same room, run backward, would.'},
+    {title: 'Why resistance wire works', body: 'At a fixed voltage, power equals voltage squared divided by resistance. Wire resistance increases with length and decreases with cross-sectional area. This is why adding more of the same thin wire reduces the power here. A manufactured heating element must choose wire size, length and material together.'},
+    {title: 'Resistance changes with temperature', body: 'The manufacturer tabulates a temperature factor for electrical resistance. This model applies that factor as the wire warms, so current and power change during the run. Voltage is an effective AC value; individual alternating-current cycles are not animated.'},
+    {title: 'A hot wire stores energy', body: 'Electrical input does not all leave the wire immediately. During warm-up, some energy raises the wire’s temperature. The stored amount uses the wire’s mass and temperature-dependent specific heat. Once temperature is steady, input and outgoing heat match, but the hot wire still contains stored energy. A real wire therefore takes time to cool after power is removed.'},
+    {title: 'Radiation does not require a visible glow', body: 'The wire emits thermal radiation even when it looks dark. Its emission grows strongly with absolute temperature, and a sufficiently hot wire also emits visible light. The drawn color is an illustrative temperature cue. It does not calculate a spectrum or predict when a particular observer would first see a glow.'},
+    {title: 'Why the tile warms slowly', body: 'Only part of the forward radiation reaches and is absorbed by this tile. Its temperature depends on that input, its heat capacity, and its heat loss to the room. A tile can keep warming after the wire has reached an almost constant temperature. The two objects have different energy balances.'},
+    {title: 'Where all the energy goes', body: 'Electrical input equals energy stored in the wire plus radiation and convection leaving it, within numerical integration accuracy. The tile receives part of that radiation. Counting its absorbed energy again as extra heater output would double-count the same transfer. A reflector redistributes energy; it does not create any.'},
   ],
-  misconception: 'A reflector does not make a heater more powerful. The element takes exactly the same electricity and gives out exactly the same heat with it or without it; all the dish does is decide how much of that heat goes toward you rather than into the wall.',
-  limits: `The heater is drawn at true size from the side, and only the element’s wire is drawn thicker than it is, 25 times thicker, so that it can be seen. The run lasts 120 s, long enough for even the coolest element here to stop climbing, and plays 8 times faster than the real thing. ${electricHeatingLimits}`,
-  sources: [sources.nikrothal, sources.nichrome, sources.joule, sources.electricHeating, sources.mains, sources.draper, sources.incandescence, sources.emissivity, sources.thermalRadiation, sources.stefan, sources.resistivity],
+  misconception: 'A reflector does not increase electrical power. In this model it changes where radiation goes, so an object in front can warm more while the wire draws the same power.',
+  limits: `The 600 mm by 260 mm enclosure is illustrative. The coil’s centerline is 14 mm across and spans 460 mm; its 0.4 mm wire is drawn 2 times thicker. A run records 120 simulated seconds at 8 times normal speed. Pause freezes time, and changing a setting starts a new cold run. ${electricHeatingLimits}`,
+  sources: [
+    sources.nikrothal, sources.stefan,
+    {title: 'OpenStax: Electrical energy and power', url: 'https://openstax.org/books/university-physics-volume-2/pages/9-5-electrical-energy-and-power'},
+    {title: 'OpenStax: Mechanisms of heat transfer', url: 'https://openstax.org/books/university-physics-volume-2/pages/1-6-mechanisms-of-heat-transfer'},
+    {title: 'Australian Government: Electric resistance and radiant heating', url: 'https://www.energy.gov.au/households/heating-and-cooling'},
+  ],
   quiz: {
-    question: 'Fitting a reflector behind the element changes which of these?',
-    options: [
-      'Where the heat goes, and nothing else.',
-      'How much heat the element makes.',
-      'How much current the element draws.',
-    ],
+    question: 'Why does the tile become warmer with the reflector fitted?',
+    options: ['More of the same radiation is directed toward it.', 'The reflector makes the wire draw more current.', 'The reflector creates extra energy.'],
     answer: 0,
-    explanation: 'The element settles at the same temperature and takes the same power either way; only the share sent forward changes, from 303 W to 649 W.',
+    explanation: 'The declared forward share increases, so the tile absorbs more energy. The wire’s electrical power and temperature are unchanged.',
   },
 };
 
@@ -171,7 +174,7 @@ export const hairDryerLesson = {
     dryerTrial.chart('Switch it on', 'Press Play and watch the run.', 'The fan comes up first, then the element: 2,000 W settles the wire at 139 °C and sends air out of the nozzle at 66 °C.'),
     dryerTrial.fan('Turn the fan down', 'Set the airflow to 20 L/s.', 'The same 2,000 W now has only 24.1 g of air a second to warm, so it leaves at 100 °C and the wire behind it sits at 177 °C.', {airflow: 20}),
     dryerTrial.fan('Turn the fan up', 'Set the airflow to 45 L/s.', 'Now 54.2 g of air a second carries the same heat, so it leaves at only 56 °C and the wire cools to 125 °C.', {airflow: 45}),
-    dryerTrial.cutout('Block the inlet', 'Choose a blocked inlet.', 'With no air at all the wire runs straight up, the switch opens 1.1 s in, and as the wire cools the switch closes again at 8.0 s, ready to do it all over again.', {blocked: 1}),
+    dryerTrial.cutout('Block the inlet', 'Choose a blocked inlet.', 'With no air at all the wire runs straight up, the switch opens 1.1 s in, and as the wire cools the switch closes again at 7.9 s, ready to do it all over again.', {blocked: 1}),
     dryerTrial.element('Plug it in in America', 'Set the supply to 120 V.', 'A little over half the voltage is about a quarter of the power, 544 W, so the air leaves at 33 °C and the wire never passes 53 °C.', {volts: 120}),
     dryerTrial.air('Follow the air through', 'Press Play and watch the marks.', 'The fan moves 42.1 g of air every second, and 2,000 W spread over that much air is a rise of 47 °C above the room it came from.'),
     dryerTrial.body('Use it in a warm room', 'Set the room temperature to 30 °C.', 'Everything the element does is added on top of whatever came in, so air entering 10 degrees warmer leaves 10 degrees warmer, at 76 °C.', {room: 30}),
@@ -180,7 +183,7 @@ export const hairDryerLesson = {
     {title: 'A very long coil of thin wire', body: 'The Hair dryer page describes the element as a bare, coiled nichrome wire wrapped around mica insulators, chosen for its high resistivity and its refusal to corrode when heated. Thin and long is how you get resistance into a small space: this element is 3.05 m of 0.4 mm wire, which at the datasheet’s 1.09 Ω·mm²/m is 26.5 Ω, and 26.5 Ω across the mains is 2,000 W. The same page puts a dryer today at up to 2,000 W, against the 100 W the first ones managed.'},
     {title: 'Why the fan decides the temperature', body: 'The heat the air carries away is its mass each second times its heat capacity times how much it warms. The Density of air page gives dry air 1.20 kg/m³ and the heat capacity tables give it 1,012 J for each kilogram and degree, so 35 L/s is 42.1 g/s, and 2,000 W spread over that is 47 °C of rise. Halve the air and you double the rise: at 20 L/s the same element sends out air at 100 °C. Nothing about the element changed; only how many kilograms had to share its heat.'},
     {title: 'The wire has to sit above the air', body: 'Heat only moves down a temperature difference, so the wire has to run hotter than the air it is heating. It settles where what the air carries off matches what it takes: at 35 L/s that is 139 °C, and at 20 L/s it is 177 °C. A dryer run slow is hotter everywhere, not just at the nozzle, which is why the switch that protects it matters most at the low setting.'},
-    {title: 'A switch that resets itself', body: 'The Thermal cutoff page separates two devices that look alike. A thermal fuse opens once and has to be replaced, like an electrical fuse. A thermal switch, often a bimetallic strip, opens hot and closes again as it cools. A dryer wants the second: block the inlet and the switch opens 1.1 s in and closes again at 8.0 s, and it will keep cycling for as long as the blockage lasts without ever needing a repair.'},
+    {title: 'A switch that resets itself', body: 'The Thermal cutoff page separates two devices that look alike. A thermal fuse opens once and has to be replaced, like an electrical fuse. A thermal switch, often a bimetallic strip, opens hot and closes again as it cools. A dryer wants the second: block the inlet and the switch opens 1.1 s in and closes again at 7.9 s, and it will keep cycling for as long as the blockage lasts without ever needing a repair.'},
     {title: 'Hot, but not glowing', body: 'At 139 °C this element is nowhere near the Draper point of 525 °C, so there is nothing to see. Run one in the dark at its lowest fan setting and you may catch a dull red, because the Incandescence page puts the first visible glow right at that point, but a dryer that glows brightly is a dryer whose air has stopped.'},
     {title: 'What the heat is really for', body: 'Warm air does not dry hair by being warm; it dries hair by carrying water away, and that takes far more energy than warming the air did. The Latent heat page gives water 2,257 kJ for each kilogram turned to vapor at boiling. This model heats dry air and stops there, so it shows where the heat goes but not what it finally accomplishes; that is why a dryer on its cool setting still works, only slowly.'},
   ],
