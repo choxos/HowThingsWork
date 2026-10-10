@@ -6126,6 +6126,53 @@
       "parentId": "system"
     }
   ],
+  "induction-coil": [
+    {
+      "id": "coil",
+      "name": "Coil, shared core and switching circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "breaker",
+      "name": "Points, cam and parallel capacitor",
+      "parentId": "coil"
+    },
+    {
+      "id": "coil-core",
+      "name": "Shared ignition-coil core",
+      "parentId": "coil"
+    },
+    {
+      "id": "primary",
+      "name": "Primary winding · 3 turns",
+      "parentId": "coil"
+    },
+    {
+      "id": "secondary",
+      "name": "Secondary winding · 30 turns",
+      "parentId": "coil"
+    },
+    {
+      "id": "primary-wires",
+      "name": "Battery, primary and points-node leads",
+      "parentId": "system"
+    },
+    {
+      "id": "points-capacitor",
+      "name": "20 µF points capacitor",
+      "parentId": "breaker"
+    },
+    {
+      "id": "secondary-wires",
+      "name": "Body-referenced secondary and high-voltage lead",
+      "parentId": "routing"
+    },
+    {
+      "id": "stray-capacitor",
+      "name": "Explicit 0.05 µF high-voltage capacitance",
+      "parentId": "system"
+    }
+  ],
   "sensors-and-detectors": [
     {
       "id": "board",
