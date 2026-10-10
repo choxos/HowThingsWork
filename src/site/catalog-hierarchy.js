@@ -86,6 +86,7 @@ export const componentParentIds = {
   'induction-coil': 'car-ignition-system',
   'distributor': 'car-ignition-system',
   'contact-breaker-ignition': 'car-ignition-system',
+  'ignition-coil-primary-and-secondary-windings': 'car-ignition-system',
   'inertial-accelerometer-armature-spring-and-coils': 'inertial-guidance',
   'microchip-deceleration-sensor': 'crash-sensor',
   'crash-sensor-proof-square-and-sensing-strips': 'crash-sensor',

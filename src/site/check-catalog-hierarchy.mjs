@@ -405,8 +405,8 @@ assert.equal(catalog.groups.find(group => group.id === speechRecognition.entry.g
 
 const ignition = families.find(family => family.entry.id === 'car-ignition-system');
 assert(ignition && !componentParentIds['car-ignition-system'], 'Car ignition is a complete battery, starter and ignition system');
-assert.deepEqual(new Set(ignition.components.map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'distributor', 'contact-breaker-ignition', 'electronic-ignition', 'spark-gap']));
-assert.deepEqual(new Set(catalogMachineComponents(ignition.components).map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'distributor', 'contact-breaker-ignition', 'electronic-ignition']), 'The solenoid, coil, distributor and two switching circuits are smaller systems; the gap remains a part study');
+assert.deepEqual(new Set(ignition.components.map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'distributor', 'contact-breaker-ignition', 'electronic-ignition', 'spark-gap', 'ignition-coil-primary-and-secondary-windings']));
+assert.deepEqual(new Set(catalogMachineComponents(ignition.components).map(entry => entry.id)), new Set(['solenoid', 'induction-coil', 'distributor', 'contact-breaker-ignition', 'electronic-ignition']), 'The solenoid, coil, distributor and two switching circuits are smaller systems; the gap and windings remain part studies');
 for (const child of ignition.components) assert.deepEqual(groupCatalogEntries(entries, [child]).map(family => family.entry.id), ['car-ignition-system'], `${child.id} search retains the complete ignition system`);
 assert.deepEqual(tags('car-ignition-system'), ['electricity', 'magnetism']);
 assert.equal(catalog.groups.find(group => group.id === ignition.entry.group).place, 'workshop');
@@ -420,7 +420,8 @@ assert.deepEqual(tags('distributor'), ['electricity']);
 for (const id of ['routing', 'body', 'secondary-wires', 'distributor', 'rotor', 'terminal-0', 'terminal-1', 'terminal-2', 'terminal-3', 'plug-A-leads', 'plug-A', 'plug-B-leads', 'plug-B', 'plug-C-leads', 'plug-C', 'plug-D-leads', 'plug-D', 'cam', 'timing-link']) assert(hasCatalogPart('distributor', id), `${id} remains bookmarkable in the distributor lesson`);
 assert.deepEqual(tags('contact-breaker-ignition'), ['electricity', 'magnetism', 'cams-and-cranks', 'springs']);
 for (const id of ['coil', 'breaker', 'body', 'primary', 'primary-wires', 'points', 'moving-point', 'moving-point-lead', 'points-capacitor', 'points-cap-wires', 'cam', 'follower', 'timing-link', 'points-return-spring', 'points-spring-seat', 'points-spring-anchor']) assert(hasCatalogPart('contact-breaker-ignition', id), `${id} remains bookmarkable in the contact-breaker lesson`);
-for (const id of ['ignition-coil-primary-and-secondary-windings']) assert(!entries.some(entry => entry.id === id), `${id} requires its own completed review before publication`);
+assert.deepEqual(tags('ignition-coil-primary-and-secondary-windings'), ['electricity', 'magnetism']);
+for (const id of ['coil', 'breaker', 'body', 'coil-core', 'primary', 'secondary', 'dots', 'primary-wires', 'points-capacitor', 'secondary-wires', 'stray-capacitor']) assert(hasCatalogPart('ignition-coil-primary-and-secondary-windings', id), `${id} remains bookmarkable in the winding study`);
 
 const sparkPlug = families.find(family => family.entry.id === 'spark-plug');
 assert(sparkPlug && !componentParentIds['spark-plug'], 'The complete plug has its own construction lesson');
