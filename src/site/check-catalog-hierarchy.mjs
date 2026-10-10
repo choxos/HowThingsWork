@@ -457,3 +457,11 @@ assert.deepEqual(tags(cad.entry.id), ['using-bits', 'storing-bits']);
 assert.equal(catalog.groups.find(group => group.id === cad.entry.group).place, 'workshop');
 assert.equal(catalog.groups.find(group => group.id === cad.entry.group).room, 'Tools and making');
 for (const id of ['solid', 'facet', 'file', 'slice', 'path', 'chart']) assert(hasCatalogPart(cad.entry.id, id), `${id} remains bookmarkable in the CAD lesson`);
+
+const scanner = families.find(family => family.entry.id === 'laser-scanning-of-3d-objects');
+assert(scanner && !componentParentIds[scanner.entry.id], 'Laser scanning is an independent measuring system in the workshop');
+assert.deepEqual(scanner.components, []);
+assert.deepEqual(tags(scanner.entry.id), ['light-and-images', 'sensors-and-detectors', 'using-bits']);
+assert.equal(catalog.groups.find(group => group.id === scanner.entry.group).place, 'workshop');
+assert.equal(catalog.groups.find(group => group.id === scanner.entry.group).room, 'Tools and making');
+for (const id of ['bench', 'cloud', 'profile', 'sensor', 'chart']) assert(hasCatalogPart(scanner.entry.id, id), `${id} remains bookmarkable in the scanning lesson`);

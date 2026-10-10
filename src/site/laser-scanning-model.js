@@ -1,270 +1,187 @@
 import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
-import {fixed} from './format.js';
 import {chartText, fillLine, lineObject, segmentLines, textLabel} from './scene-kit.js';
 import {
-  scanPlan, scanAt, traceSample, depthResolution, imageOf, heightAt,
-  SCAN, SCANNER, PIXELS, SUBPIXELS, SCAN_DEFAULTS, SCAN_DOMAINS,
+  scanPlan, scanAt, depthResolution, SCAN, SCANNER, SCAN_DEFAULTS, SCAN_DOMAINS,
   PIXEL_OPTIONS, SUBPIXEL_OPTIONS, SPACING_OPTIONS, SIDE_OPTIONS,
 } from './printing-physics.js';
 
-// ---------------------------------------------------------------------------
-// Laser scanning of 3D objects: a laser line thrown across an object, a
-// receiver off to one side that sees it displaced, and the triangle those two
-// make, which turns the displacement into a distance.
-//
-// Scale: the bench is drawn at true size, 1 mm to 0.018 scene units, so the
-// standoff really is the 53.5 to 78.5 mm of a laser profile scanner's measuring
-// range. The target's cross section is drawn 3 times larger, 1 mm to 0.054
-// units. The sensor is drawn to fit a window of a few pixels, so its
-// magnification changes with the pixel pitch and the interpolation, from about
-// 1,400 times to about 382,000 times; the figure is carried in a reading.
-// The point cloud is drawn at the cross section's scale, slid sideways to show
-// one profile behind another, and the chart is not to scale.
-//
-// Time: the sweep runs at the table's real 4 mm/s, so its 6 seconds are 6
-// seconds; nothing is slowed.
-// ---------------------------------------------------------------------------
-
-export const BENCH = 0.018;
-export const PROFILE = 0.054;
-
-/** How many times larger than true size a scale in units per mm draws. */
+export const BENCH = .03, PROFILE = .09;
 export const timesLarger = perMm => perMm / BENCH;
-
-export const RIG = Object.freeze({origin: Object.freeze([-1.86, -0.62, 0]), table: Object.freeze([30, 3]), head: 5, lens: 3.4, fan: 9});
-export const PROFILEVIEW = Object.freeze({origin: Object.freeze([-0.52, 0.5, 0]), width: 1.42, high: 0.5, dot: 0.017});
-export const SENSOR = Object.freeze({origin: Object.freeze([-0.52, -0.52, 0]), width: 1.42, high: 0.26, cells: 9, tick: 0.05});
-export const CLOUD = Object.freeze({origin: Object.freeze([1.2, 0.42, 0]), slide: 0.021, rise: 0.011, dot: 0.014, room: 700});
-export const CHART = Object.freeze({x: 0.42, y: -0.98, w: 1.5, h: 0.44, top: 0.86, z: 0, samples: 61, cursor: 0.02});
-export const COLORS = Object.freeze({table: 0x8f989b, target: 0x91aa7e, ridge: 0xce825f, laser: 0xc14f39, seen: 0xe3b45e, blocked: 0x9aa39a, head: 0x2f3336, grid: 0x374736, faint: 0x9aa39a, wave: 0x2b5d9c, cloud: 0x374736, gap: 0xc14f39, pixel: 0xc9cdbf, lit: 0xd99a2b, paper: 0xf0dfaf});
-
-/** Where a distance in mm and a depth resolution in microns fall on the chart. */
-export const chartX = z => CHART.x + (z - SCANNER.start) / (SCANNER.end - SCANNER.start) * CHART.w;
-export const chartY = (microns, top) => CHART.y + Math.max(0, Math.min(1, microns / top)) * CHART.top * CHART.h;
+export const SENSOR = Object.freeze({width: 3, high: .5});
+export const CHART = Object.freeze({x: -1.4, y: -.6, w: 2.8, h: 1.2, samples: 61});
+export const COLORS = Object.freeze({target: 0x91aa7e, ridge: 0xce825f, laser: 0xc14f39, seen: 0xd99a2b, hidden: 0x8f989b, grid: 0x374736, measured: 0x2b5d9c, cell: 0xf0dfaf});
+export const chartX = depth => CHART.x + (depth - SCANNER.start) / SCANNER.height * CHART.w;
+export const chartY = microns => CHART.y + (Math.log10(microns) + 1) / 4 * CHART.h;
+const reasonText = {unlit: 'Laser path blocked', hidden: 'Receiver path blocked', range: 'Outside depth window', sensor: 'Outside image window'};
 
 export function createLaserScanningModel() {
   const kit = houseModel('Laser scanning'), {part, control, finish} = kit;
-  let clock = 0, lastClock = 0, disposed = false;
-  const unlit = (color, extra = {}) => new THREE.MeshBasicMaterial({color, ...extra});
-  const flat = (color, parent, extra) => { const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), unlit(color, extra)); parent.add(mesh); return mesh; };
-  const rect = (mesh, x0, x1, y0, y1, z = 0) => { mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, z); mesh.scale.set(Math.max(1e-9, x1 - x0), Math.max(1e-9, y1 - y0), 1); };
-  const frameLine = (line, x, y, w, h, z = 0) => fillLine(line, [[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z], [x, y, z]]);
+  let clock = 0, lastClock = 0, previousValues, disposed = false;
+  const label = (parent, text, y, size = .17, width = 3.6) => textLabel(parent, text, {height: size, width, position: [0, y, .03]});
+  const system = part('system', 'From light to measured shape', 'A real target moves through a fixed laser plane. The camera sits outside that plane, so the two coordinates of the image reveal both position across the line and height. Known table travel supplies the third coordinate. The enlarged cloud holds only acquired returns.');
+  const bench = part('bench', 'Laser, camera and moving target', 'Red rays end at the first surface they reach. Gold segments connect illuminated points to the offset camera. Gray segments stop where the ridge blocks that view. The camera is outside the laser plane. The target moves under both; all physical directions use the same scale.', [-1.15, -1.05, 0], system);
+  const rig = new THREE.Group(); rig.rotation.set(.3, -.5, 0); bench.add(rig);
+  const unitBox = new THREE.BoxGeometry(1, 1, 1);
+  const block = (parent, color) => {
+    const object = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({color, roughness: .85}));
+    parent.add(object); return object;
+  };
+  const table = block(rig, 0xb4c5b0); table.scale.set(30 * BENCH, 2 * BENCH, 54 * BENCH); table.position.y = -3 * BENCH;
+  const target = new THREE.Group(); rig.add(target);
+  const targetBase = block(target, COLORS.target); targetBase.scale.set(SCAN.width * BENCH, SCAN.base * BENCH, SCAN.depth * BENCH); targetBase.position.y = -SCAN.base * BENCH / 2;
+  const ridgeBlock = block(target, COLORS.ridge);
+  const laserHead = block(rig, COLORS.laser), receiverHead = block(rig, COLORS.grid);
+  laserHead.scale.set(3 * BENCH, 4 * BENCH, 3 * BENCH); receiverHead.scale.set(4 * BENCH, 4 * BENCH, 4 * BENCH);
+  const laserRays = segmentLines(25, COLORS.laser, rig), seenRays = segmentLines(25, COLORS.seen, rig), blockedRays = segmentLines(25, COLORS.hidden, rig);
+  const baselineBar = segmentLines(3, COLORS.grid, rig), scanLine = segmentLines(25, COLORS.laser, rig);
+  const benchTitle = label(bench, 'Original target and scanner', 2.75, .15, 1.8);
+  label(bench, 'Red: laser · dark: camera', 2.55, .12, 1.8);
+  const benchDetail = label(bench, '', -.65, .13, 1.8);
 
-  const system = part('system', 'Measuring a shape with light', 'A laser throws a line across an object and a receiver off to one side watches it. Because the receiver looks from an angle, a taller surface pushes the line sideways in its view, and the triangle the laser, the receiver and the lit point make turns that sideways shift into a distance. Press Play to carry the target through the line and gather the points.');
+  const cloud = part('cloud', 'Measured point cloud', 'Each sphere is a recovered point, stored in the target frame after subtracting table movement. Rotate it to inspect all three coordinates. A missing return contributes no sphere. This cloud is enlarged three times relative to the bench, equally in all directions. It is not a closed printable solid.', [.85, -.35, 0], system);
+  const cloudBody = new THREE.Group(); cloudBody.rotation.set(.5, -.4, 0); cloud.add(cloudBody);
+  const cloudDots = new THREE.InstancedMesh(new THREE.SphereGeometry(.026, 8, 6), new THREE.MeshBasicMaterial({color: COLORS.measured}), 625);
+  cloudDots.count = 0; cloudDots.frustumCulled = false; cloudBody.add(cloudDots);
+  const cloudGrid = segmentLines(14, 0x9aa39a, cloudBody), gridPoints = [];
+  for (let k = -12; k <= 12; k += 4) gridPoints.push([k * PROFILE, -.02, -12 * PROFILE], [k * PROFILE, -.02, 12 * PROFILE], [-12 * PROFILE, -.02, k * PROFILE], [12 * PROFILE, -.02, k * PROFILE]);
+  fillLine(cloudGrid, gridPoints);
+  label(cloud, 'Measured cloud · 3× scale', 1.38, .17, 2.4);
+  const cloudCount = label(cloud, '', -1.28, .15, 2.5);
+  const progress = label(system, '', -1.95, .17, 4.4);
 
-  // The bench at true size.
-  const bench = part('bench', 'The bench, true size', `The laser above the middle of the target, the receiver a known distance to one side, and the two paths that have to be clear for a point to be measured: the laser must reach the surface and the light must get back. Drawn at true size, 1 mm to ${BENCH} scene units, so the standoff really is the ${SCANNER.start} to ${SCANNER.end} mm of a real scanner's measuring range.`, RIG.origin, system);
-  const tableTop = flat(COLORS.table, bench);
-  const targetBase = flat(COLORS.target, bench), ridgeBlock = flat(COLORS.ridge, bench);
-  const laserHead = flat(COLORS.head, bench), receiverHead = flat(COLORS.head, bench);
-  const laserRays = segmentLines(40, COLORS.laser, bench);
-  const seenRays = segmentLines(40, COLORS.seen, bench);
-  const blockedRays = segmentLines(40, COLORS.blocked, bench);
-  const baselineBar = segmentLines(3, COLORS.wave, bench);
-  const standoffBar = segmentLines(3, COLORS.grid, bench);
+  const inspections = [];
+  const inspection = (id, name, description) => {
+    const object = part(id, name, description, [0, 0, 0], system);
+    object.userData.inspectionOnly = id; object.userData.explosionExcluded = true; inspections.push(object); return object;
+  };
+  const profile = inspection('profile', 'An acquired cross section', 'Blue marks are recovered coordinates in a stored profile. The gray outline is the known reference target for comparison, not a measured surface. Red hollow marks below it indicate attempted positions with no return. Once acquired, the center profile stays selected. Both axes use the same three-times bench scale.');
+  const profileOutline = lineObject(6, COLORS.hidden, profile);
+  const profileDots = new THREE.InstancedMesh(new THREE.CircleGeometry(.027, 12), new THREE.MeshBasicMaterial({color: COLORS.measured}), 25);
+  const missedDots = new THREE.InstancedMesh(new THREE.RingGeometry(.022, .034, 12), new THREE.MeshBasicMaterial({color: COLORS.laser}), 25);
+  for (const dots of [profileDots, missedDots]) { dots.count = 0; dots.frustumCulled = false; profile.add(dots); }
+  label(profile, 'Stored profile: reference and measurement', 1.25, .2);
+  label(profile, 'Gray: reference · blue: measured · red: missing', 1.01, .15);
+  const profileCaption = label(profile, '', -.75);
+  label(profile, 'Both axes: 3× the bench scale', -.99, .15);
 
-  // The target's cross section with what came back and what did not.
-  const profile = part('profile', 'The cross section, 3 times larger', `The line the laser lays across the target, drawn ${fixed(timesLarger(PROFILE), 0)} times larger. A filled mark is a point the receiver measured; a hollow one is a place it attempted and got nothing, because the ridge stood in one of the two paths. A gap is kept as a gap; nothing is filled in from a shape the scanner cannot see.`, PROFILEVIEW.origin, system);
-  const profileFrame = lineObject(5, COLORS.grid, profile);
-  const surfaceLine = lineObject(9, COLORS.target, profile);
-  const measuredDots = new THREE.InstancedMesh(new THREE.CircleGeometry(PROFILEVIEW.dot, 12), unlit(COLORS.wave), 40);
-  const missedDots = new THREE.InstancedMesh(new THREE.CircleGeometry(PROFILEVIEW.dot, 12), unlit(COLORS.gap), 40);
-  for (const mesh of [measuredDots, missedDots]) { mesh.frustumCulled = false; mesh.count = 0; profile.add(mesh); }
+  const sensor = inspection('sensor', 'From image coordinates to height', 'The camera has a two-dimensional image. This close-up shows one physical pixel in its depth-sensitive direction, v. Blue marks the ideal spot and gold the rounded estimate. Fine divisions represent an ideal estimation grid within that same pixel. The other image coordinate, u, is also rounded before recovering the point. No intensity fitting or sensor noise is simulated.');
+  const sensorCell = new THREE.Mesh(new THREE.PlaneGeometry(SENSOR.width, SENSOR.high), new THREE.MeshBasicMaterial({color: COLORS.cell})); sensor.add(sensorCell);
+  const sensorGrid = segmentLines(51, COLORS.hidden, sensor), spotLine = segmentLines(1, COLORS.measured, sensor), readLine = segmentLines(1, COLORS.seen, sensor);
+  label(sensor, 'One physical pixel, enlarged', .9, .23);
+  label(sensor, 'Blue: ideal spot · gold: estimated position', .64, .16);
+  const sensorCaption = label(sensor, '', -.58), sensorEstimate = label(sensor, '', -.82, .15), sensorScale = label(sensor, '', -1.05, .14);
 
-  // The sensor, drawn to fit a window of a few pixels.
-  const sensor = part('sensor', 'The sensor, close up', `Where the light lands on the receiver. The cells are the sensor's pixels and the gold one is the pixel the spot falls in; the blue line is where the spot really is. The reading can only be a whole cell, so the measurement is rounded to one, exactly as the stage in the positioning lesson can stop only on a whole microstep. Drawn to fit a window of ${SENSOR.cells} cells, so the magnification changes with the pixel and is carried in a reading.`, SENSOR.origin, system);
-  const sensorFrame = lineObject(5, COLORS.grid, sensor);
-  const sensorCells = [];
-  for (let k = 0; k < SENSOR.cells; k++) sensorCells.push(flat(COLORS.pixel, sensor));
-  const sensorEdges = segmentLines(SENSOR.cells + 1, COLORS.faint, sensor);
-  const spotLine = segmentLines(1, COLORS.wave, sensor);
-  const readLine = segmentLines(1, COLORS.lit, sensor);
-
-  // The cloud the sweep gathers.
-  const cloud = part('cloud', 'The measured cloud', 'Every point the receiver actually measured, laid out one profile behind another. It is worked out from where the light landed and the known geometry, never copied from the shape the bench already knows. Where the receiver saw nothing, the cloud simply has no point.', CLOUD.origin, system);
-  const cloudDots = new THREE.InstancedMesh(new THREE.CircleGeometry(CLOUD.dot, 10), unlit(COLORS.cloud), CLOUD.room);
-  cloudDots.frustumCulled = false;
-  cloudDots.count = 0;
-  cloud.add(cloudDots);
-  const cloudFloor = segmentLines(2, COLORS.faint, cloud);
-
-  // Depth resolution against distance.
-  const chart = part('chart', 'What one pixel is worth', `How much depth a single sensor cell stands for, across the ${SCANNER.height} mm the scanner's measuring range covers. It grows as the square of the distance, because the image of a point moves less and less as the point goes further away, so the far end of the range is always coarser than the near end. A wider baseline pushes the whole curve down.`, [0, 0, 0], system);
-  const chartFrame = lineObject(5, COLORS.grid, chart);
-  const resolutionCurve = lineObject(CHART.samples, COLORS.wave, chart);
-  const catalogLine = segmentLines(1, COLORS.gap, chart);
-  const chartCursor = segmentLines(2, COLORS.grid, chart);
-  // The chart's words: its height is scaled to the curve's own top, so depth is named, not numbered.
-  const TEXT = 0.035, css = color => `#${color.toString(16).padStart(6, '0')}`;
-  const key = (parent, entries) => entries.forEach(([text, color], i) => textLabel(parent, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.04, CHART.y + CHART.h - 0.035 - 0.05 * i, 0.001]}));
-  chartText(chart, (z, v) => [chartX(z), CHART.y + v * CHART.h, CHART.z], {
-    title: 'What one pixel is worth', size: TEXT,
-    x: {min: SCANNER.start, max: SCANNER.end, title: 'Distance from the scanner, mm', ticks: [SCANNER.start, SCANNER.middle, SCANNER.end].map(z => [z, fixed(z, 1)])},
-    y: {min: 0, max: 1, title: 'Depth per sensor cell'},
+  const chart = inspection('chart', 'Depth sensitivity and distance', 'The curve is the local change in recovered depth per estimation-grid step. It grows with distance squared and falls as baseline or focal length increases. This derivative describes ideal quantization sensitivity. It is not measurement accuracy, repeatability or the reference scanner’s linearity.');
+  const chartGrid = segmentLines(6, 0xb4c5b0, chart), chartLines = [];
+  for (let decade = -1; decade <= 3; decade++) chartLines.push([CHART.x,chartY(10**decade),0],[CHART.x+CHART.w,chartY(10**decade),0]);
+  chartLines.push([CHART.x,CHART.y,0],[CHART.x,CHART.y+CHART.h,0]); fillLine(chartGrid, chartLines);
+  const resolutionCurve = lineObject(CHART.samples, COLORS.measured, chart), chartCursor = segmentLines(2, COLORS.laser, chart);
+  chartText(chart, (depth, decade) => [chartX(depth), CHART.y + (decade + 1) / 4 * CHART.h, 0], {
+    title: 'Depth per estimation step, log scale', size: .135,
+    x: {min: SCANNER.start, max: SCANNER.end, title: 'Depth below camera (mm)', ticks: [[53.5, '53.5'], [66, '66'], [78.5, '78.5']]},
+    y: {min: -1, max: 3, title: 'Depth per step (μm)', ticks: [[-1, '0.1'], [0, '1'], [1, '10'], [2, '100'], [3, '1000']]},
   });
-  key(chart, [['Depth per cell', COLORS.wave], ['Datasheet linearity', COLORS.gap]]);
+  const chartValue = label(chart, '', -1.17);
+  system.traverse(object => { if (object.userData.textLabel) object.material.side = THREE.FrontSide; });
 
   const d = SCAN_DEFAULTS;
-  control('standoff', 'Standoff', ...SCAN_DOMAINS.standoff, d.standoff, 'mm', 'How far the scanner stands from the surface. Its measuring range runs from 53.5 mm to 78.5 mm, and one pixel is worth more depth at the far end than at the near one.');
-  control('baseline', 'Baseline', ...SCAN_DOMAINS.baseline, d.baseline, 'mm', 'How far the receiver sits from the laser. A wider baseline makes a fatter triangle, so the same step in height moves the spot further and the measurement is finer; but it also lets the object hide more from the receiver.');
-  control('pixel', 'Pixel', ...SCAN_DOMAINS.pixel, d.pixel, '', 'The pixel pitch of the sensor, from three real cameras.', PIXEL_OPTIONS);
-  control('subpixel', 'Reading', ...SCAN_DOMAINS.subpixel, d.subpixel, '', 'Whether the spot is read to the nearest whole pixel, or interpolated across several to a fiftieth of one.', SUBPIXEL_OPTIONS);
-  control('ridge', 'Ridge', ...SCAN_DOMAINS.ridge, d.ridge, 'mm', 'How tall the step in the middle of the target stands. A taller ridge blocks more of the two paths, so more attempts come back with nothing.');
-  control('spacing', 'Sampling', ...SCAN_DOMAINS.spacing, d.spacing, '', 'How far apart the samples are taken across the line and between profiles.', SPACING_OPTIONS);
-  control('side', 'Receiver', ...SCAN_DOMAINS.side, d.side, '', 'Which side of the laser the receiver stands on. Moving it puts the shadow on the other side of the ridge.', SIDE_OPTIONS);
+  control('standoff', 'Standoff', ...SCAN_DOMAINS.standoff, d.standoff, 'mm', 'Camera height above the base top. Raised surfaces may fall outside the 53.5 to 78.5 mm depth window; those points are rejected.');
+  control('baseline', 'Baseline', ...SCAN_DOMAINS.baseline, d.baseline, 'mm', 'Distance from the laser plane to the camera. A wider baseline improves ideal depth sensitivity and may hide more surface behind the ridge.');
+  control('pixel', 'Pixel', ...SCAN_DOMAINS.pixel, d.pixel, '', 'Illustrative physical pixel pitch. This changes the image-coordinate rounding and the recovered points.', PIXEL_OPTIONS);
+  control('subpixel', 'Reading', ...SCAN_DOMAINS.subpixel, d.subpixel, '', 'Round to a whole pixel or to an ideal grid within it. A finer grid does not guarantee real scanner accuracy.', SUBPIXEL_OPTIONS);
+  control('ridge', 'Ridge', ...SCAN_DOMAINS.ridge, d.ridge, 'mm', 'Raise the actual block on the target. It can block illumination or the camera view, and its top may leave the depth window.');
+  control('spacing', 'Sampling', ...SCAN_DOMAINS.spacing, d.spacing, '', 'Spacing of attempted upper-face samples across each line and between acquired profiles. Wider spacing leaves fewer measured points.', SPACING_OPTIONS);
+  control('side', 'Receiver', ...SCAN_DOMAINS.side, d.side, '', 'Move the camera to the opposite side of the laser plane. The camera shadow moves across the target; missing data is not filled.', SIDE_OPTIONS);
 
   const matrix = new THREE.Matrix4();
+  const finishDots = (dots, count) => { dots.count = count; dots.instanceMatrix.needsUpdate = true; dots.computeBoundingBox(); dots.computeBoundingSphere(); };
   const result = finish(v => {
-    const plan = scanPlan(v), now = scanAt(plan, clock), S = BENCH;
-    const half = SCAN.width / 2, ridgeHalf = SCAN.ridgeWidth / 2;
-
-    // The bench.
-    rect(tableTop, -RIG.table[0] / 2 * S, RIG.table[0] / 2 * S, -RIG.table[1] * S, 0, -0.002);
-    rect(targetBase, -half * S, half * S, 0, 2 * S, -0.001);
-    rect(ridgeBlock, -ridgeHalf * S, ridgeHalf * S, 2 * S, (2 + plan.ridge) * S, 0);
-    ridgeBlock.visible = plan.ridge > 0;
-    const top = (2 + plan.standoff) * S, receiverX = plan.sideSign * plan.baseline * S;
-    rect(laserHead, -RIG.head / 2 * S, RIG.head / 2 * S, top, top + RIG.head * S, 0.001);
-    rect(receiverHead, receiverX - RIG.lens / 2 * S, receiverX + RIG.lens / 2 * S, top, top + RIG.head * S, 0.001);
-    const lit = [], seen = [], missed = [];
-    for (const sample of plan.samples) {
-      const hit = [sample.x * S, (2 + sample.surface) * S, 0.002];
-      lit.push([0, top, 0.002], hit);
-      if (sample.measured !== null) seen.push([receiverX, top, 0.003], hit);
-      else if (sample.reason === 'The receiver cannot see it') missed.push([receiverX, top, 0.002], hit);
+    const plan = scanPlan(v), valuesKey = JSON.stringify(plan.values);
+    if (previousValues && previousValues !== valuesKey) { clock = 0; lastClock = 0; }
+    previousValues = valuesKey;
+    const now = scanAt(plan, clock), middle = now.middle, active = clock > 0;
+    target.position.z = -now.position * BENCH;
+    ridgeBlock.visible = plan.ridge > 0; ridgeBlock.scale.set(SCAN.ridgeWidth * BENCH, Math.max(plan.ridge, 1e-9) * BENCH, SCAN.ridgeDepth * BENCH); ridgeBlock.position.y = plan.ridge * BENCH / 2;
+    laserHead.position.set(0, (plan.standoff + 2) * BENCH, 0);
+    receiverHead.position.set(0, (plan.standoff + 2) * BENCH, -plan.sideSign * plan.baseline * BENCH);
+    const at = point => [point[0] * BENCH, point[1] * BENCH, (point[2] - now.position) * BENCH];
+    const lit = [], seen = [], hidden = [], illuminated = [];
+    if (active) for (const sample of now.current.samples) {
+      lit.push(at(sample.laser), at(sample.laserEnd));
+      if (sample.lit) {
+        if (sample.seen) seen.push(at(sample.target), at(sample.receiver));
+        else hidden.push(at(sample.receiver), at(sample.receiverEnd));
+        const point = at(sample.target); illuminated.push([point[0] - .012, point[1] + .004, point[2]], [point[0] + .012, point[1] + .004, point[2]]);
+      }
     }
-    fillLine(laserRays, lit);
-    fillLine(seenRays, seen);
-    fillLine(blockedRays, missed);
-    fillLine(baselineBar, [[0, top + RIG.head * S + 0.03, 0.003], [receiverX, top + RIG.head * S + 0.03, 0.003],
-      [0, top + RIG.head * S + 0.01, 0.003], [0, top + RIG.head * S + 0.05, 0.003],
-      [receiverX, top + RIG.head * S + 0.01, 0.003], [receiverX, top + RIG.head * S + 0.05, 0.003]]);
-    fillLine(standoffBar, [[-half * S - 0.05, 2 * S, 0.003], [-half * S - 0.05, top, 0.003],
-      [-half * S - 0.07, 2 * S, 0.003], [-half * S - 0.03, 2 * S, 0.003],
-      [-half * S - 0.07, top, 0.003], [-half * S - 0.03, top, 0.003]]);
+    fillLine(laserRays, lit); fillLine(seenRays, seen); fillLine(blockedRays, hidden); fillLine(scanLine, illuminated);
+    const h = (plan.standoff + 6) * BENCH, b = -plan.sideSign * plan.baseline * BENCH;
+    fillLine(baselineBar, [[0,h,0],[0,h,b],[-.035,h,0],[.035,h,0],[-.035,h,b],[.035,h,b]]);
+    benchDetail.userData.setText(`Table: ${now.moved.toFixed(1)} / 24 mm`);
+    let count = 0;
+    for (const point of now.cloud) { matrix.makeTranslation(...point.map(value => value * PROFILE)); cloudDots.setMatrixAt(count++, matrix); }
+    finishDots(cloudDots, count);
+    cloudCount.userData.setText(active ? `${now.held} returns · ${now.gaps} missing` : 'Empty until scanning starts');
+    progress.userData.setText(active ? `${now.done ? 'Complete' : 'Scanning'} · ${now.profiles}/${plan.profiles} profiles` : 'Press Play to acquire the shape');
 
-    // The cross section and what came back.
-    const pw = PROFILEVIEW.width, ph = PROFILEVIEW.high;
-    frameLine(profileFrame, -pw / 2, -ph / 2, pw, ph, 0);
-    const tall = Math.max(4, plan.ridge + 2), perMm = (ph - 0.1) / tall;
-    const atX = x => x / SCAN.width * (pw - 0.1), atY = h => -ph / 2 + 0.05 + h * perMm;
-    fillLine(surfaceLine, [[atX(-half), atY(0), 0.001], [atX(-ridgeHalf), atY(0), 0.001], [atX(-ridgeHalf), atY(plan.ridge), 0.001],
-      [atX(ridgeHalf), atY(plan.ridge), 0.001], [atX(ridgeHalf), atY(0), 0.001], [atX(half), atY(0), 0.001],
-      [atX(half), atY(0), 0.001], [atX(half), atY(0), 0.001], [atX(half), atY(0), 0.001]]);
+    const stored = now.detailProfile, sectionHeight = stored && Math.abs(stored.z) <= SCAN.ridgeDepth / 2 ? plan.ridge : 0;
+    const y0 = -.25;
+    fillLine(profileOutline, stored ? [[-12,0],[-6,0],[-6,sectionHeight],[6,sectionHeight],[6,0],[12,0]].map(([x,y]) => [x * PROFILE, y0 + y * PROFILE, 0]) : []);
     let good = 0, bad = 0;
-    for (const sample of plan.samples) {
-      const y = sample.measured !== null ? atY(sample.measured) : atY(sample.surface);
-      matrix.makeTranslation(atX(sample.x), y, sample.measured !== null ? 0.003 : 0.002);
-      if (sample.measured !== null) measuredDots.setMatrixAt(good++, matrix); else missedDots.setMatrixAt(bad++, matrix);
+    if (stored) for (const sample of stored.samples) {
+      if (sample.point) { matrix.makeTranslation(sample.point[0] * PROFILE, y0 + sample.point[1] * PROFILE, .005); profileDots.setMatrixAt(good++, matrix); }
+      else { matrix.makeTranslation(sample.x * PROFILE, y0 - .15, .005); missedDots.setMatrixAt(bad++, matrix); }
     }
-    measuredDots.count = good;
-    missedDots.count = bad;
-    measuredDots.instanceMatrix.needsUpdate = missedDots.instanceMatrix.needsUpdate = true;
-    measuredDots.computeBoundingSphere();
-    missedDots.computeBoundingSphere();
+    finishDots(profileDots, good); finishDots(missedDots, bad);
+    profileCaption.userData.setText(stored ? `At Z = ${stored.z} mm: ${good} returns, ${bad} missing` : 'No profile acquired yet');
 
-    // The sensor, around the spot the middle ray makes.
-    const middle = plan.samples.find(sample => Math.abs(sample.x) < 1e-9) || plan.samples[0];
-    const spot = middle && middle.image !== null && middle.image !== undefined ? middle.image : imageOf(plan.standoff, SCAN.focal, plan.baseline);
-    const cell = plan.grid, window = SENSOR.cells * cell, perCell = (SENSOR.width - 0.06) / SENSOR.cells;
-    const centerCell = Math.round(spot / cell);
-    frameLine(sensorFrame, -SENSOR.width / 2, -SENSOR.high / 2, SENSOR.width, SENSOR.high, 0);
-    const edges = [];
-    sensorCells.forEach((box, k) => {
-      const index = centerCell - Math.floor(SENSOR.cells / 2) + k;
-      const x0 = (k - SENSOR.cells / 2) * perCell, x1 = x0 + perCell;
-      rect(box, x0 + 0.004, x1 - 0.004, -SENSOR.high / 2 + 0.05, SENSOR.high / 2 - 0.05, 0.001);
-      box.material.color.setHex(index === (middle && middle.reached !== null && middle.reached !== undefined ? Math.round(middle.reached / cell) : centerCell) ? COLORS.lit : COLORS.pixel);
-      edges.push([x0, -SENSOR.high / 2 + 0.03, 0.002], [x0, SENSOR.high / 2 - 0.03, 0.002]);
-    });
-    edges.push([SENSOR.cells / 2 * perCell, -SENSOR.high / 2 + 0.03, 0.002], [SENSOR.cells / 2 * perCell, SENSOR.high / 2 - 0.03, 0.002]);
-    fillLine(sensorEdges, edges);
-    const spotX = (spot / cell - centerCell) * perCell;
-    fillLine(spotLine, [[spotX, -SENSOR.high / 2, 0.004], [spotX, SENSOR.high / 2, 0.004]]);
-    const readAt = middle && middle.reached !== null && middle.reached !== undefined ? (middle.reached / cell - centerCell) * perCell : 0;
-    fillLine(readLine, [[readAt, -SENSOR.high / 2 + 0.02, 0.004], [readAt, SENSOR.high / 2 - 0.02, 0.004]]);
-
-    // The cloud.
-    let drawn = 0;
-    for (const [x, height, y] of now.cloud) {
-      if (drawn >= CLOUD.room) break;
-      matrix.makeTranslation(x * PROFILE + y * CLOUD.slide, height * PROFILE + y * CLOUD.rise, 0.002);
-      cloudDots.setMatrixAt(drawn++, matrix);
+    const divisions = plan.subpixel, edges = [];
+    for (let i = 0; i <= divisions; i++) {
+      const x = -SENSOR.width / 2 + i / divisions * SENSOR.width;
+      edges.push([x,-SENSOR.high / 2,.001],[x,SENSOR.high / 2,.001]);
     }
-    cloudDots.count = drawn;
-    cloudDots.instanceMatrix.needsUpdate = true;
-    cloudDots.computeBoundingSphere();
-    fillLine(cloudFloor, [[-half * PROFILE - SCAN.depth / 2 * CLOUD.slide, -SCAN.depth / 2 * CLOUD.rise, 0], [half * PROFILE - SCAN.depth / 2 * CLOUD.slide, -SCAN.depth / 2 * CLOUD.rise, 0],
-      [-half * PROFILE + SCAN.depth / 2 * CLOUD.slide, SCAN.depth / 2 * CLOUD.rise, 0], [half * PROFILE + SCAN.depth / 2 * CLOUD.slide, SCAN.depth / 2 * CLOUD.rise, 0]]);
-
-    // The chart.
-    frameLine(chartFrame, CHART.x, CHART.y, CHART.w, CHART.h, CHART.z);
-    const topMicrons = Math.max(depthResolution(SCANNER.end, SCAN.focal, plan.baseline, plan.grid) * 1000, SCANNER.linearity) * 1.15;
-    fillLine(resolutionCurve, Array.from({length: CHART.samples}, (_, k) => {
-      const z = SCANNER.start + (SCANNER.end - SCANNER.start) * k / (CHART.samples - 1);
-      return [chartX(z), chartY(depthResolution(z, SCAN.focal, plan.baseline, plan.grid) * 1000, topMicrons), CHART.z];
+    fillLine(sensorGrid, edges);
+    const image = middle?.image, reached = middle?.reached, whole = image ? Math.round(image[1] / plan.pixel) : 0;
+    const sensorX = value => (value / plan.pixel - whole) * SENSOR.width;
+    fillLine(spotLine, image ? [[sensorX(image[1]),-.36,.003],[sensorX(image[1]),.36,.003]] : []);
+    fillLine(readLine, reached ? [[sensorX(reached[1]),-.31,.004],[sensorX(reached[1]),.31,.004]] : []);
+    sensorCaption.userData.setText(middle ? middle.reason ? reasonText[middle.reason] : `Stored center sample: ${middle.measured.toFixed(4)} mm high` : 'No image acquired yet');
+    sensorEstimate.userData.setText(`${plan.pixelMicrons.toFixed(1)} μm pixel · ${plan.gridMicrons.toFixed(3)} μm estimation step`);
+    const magnification = SENSOR.width / plan.pixel / BENCH;
+    sensorScale.userData.setText(`Pixel close-up: ${magnification.toFixed(0)}× the bench scale`);
+    fillLine(resolutionCurve, Array.from({length: CHART.samples}, (_, i) => {
+      const depth = SCANNER.start + SCANNER.height * i / (CHART.samples - 1);
+      return [chartX(depth), chartY(depthResolution(depth, plan.focal, plan.baseline, plan.grid) * 1000), 0];
     }));
-    fillLine(catalogLine, [[CHART.x, chartY(SCANNER.linearity, topMicrons), CHART.z], [CHART.x + CHART.w, chartY(SCANNER.linearity, topMicrons), CHART.z]]);
-    const cx = chartX(plan.standoff), cy = chartY(plan.resolutionMicrons, topMicrons);
-    fillLine(chartCursor, [[cx - CHART.cursor, cy, CHART.z], [cx + CHART.cursor, cy, CHART.z], [cx, cy - CHART.cursor, CHART.z], [cx, cy + CHART.cursor, CHART.z]]);
-
-    // Readings.
-    const magnification = (perCell / cell) / BENCH;
-    const heightNow = clock > 0 && middle && middle.measured !== null ? middle.measured : null;
-    const status = clock <= 0 ? `Ready · nothing measured yet; press Play to carry the target through the line`
-      : !now.done ? `Scanning · ${fixed(now.profiles, 0)} profiles taken, ${fixed(now.held, 0)} points held and ${fixed(now.gaps, 0)} attempts that came back with nothing`
-      : `Scanned · ${fixed(now.held, 0)} points from ${fixed(now.attempted, 0)} attempts, with ${fixed(now.gaps, 0)} gaps the receiver could not see into`;
-    return {
-      state: {...plan, now, clock, magnification, spot, middle},
-      readings: [
-        r('Your result', status),
-        r('Measured height', heightNow === null ? 'not yet measured' : `${fixed(heightNow, 4)} mm`, heightNow === null
-          ? `Nothing has been measured yet. The height shown here is worked out from where the light lands, so before the sweep starts there is no reading to give.`
-          : `The middle of the line sits ${fixed(middle.surface, 2)} mm up, so it is ${fixed(middle.depth, 2)} mm from the receiver. Its light lands ${fixed(middle.image, 4)} mm off the sensor's axis, which rounds to the cell at ${fixed(middle.reached, 4)} mm, and that cell works back to ${fixed(heightNow, 4)} mm: out by ${fixed(Math.abs(middle.error) * 1000, 1)} μm.`),
-        r('One pixel is worth', `${fixed(plan.resolutionMicrons, plan.resolutionMicrons < 10 ? 2 : 1)} μm`, `A point at ${fixed(plan.standoff, 1)} mm images at the focal length times the baseline over the distance. Move the point and that image moves the other way as the square of the distance, so one grid step of ${fixed(plan.gridMicrons, 3)} μm on the sensor stands for ${fixed(plan.resolutionMicrons, 2)} μm of depth here: ${fixed(plan.atStart, 2)} μm at the near end of the range and ${fixed(plan.atEnd, 2)} μm at the far end. A real scanner of this range holds its line to ${SCANNER.linearity} μm.`),
-        r('The triangle', `${fixed(plan.baseline, 0)} mm baseline`, `The laser, the receiver and the lit point make a triangle whose base is the ${fixed(plan.baseline, 0)} mm between laser and receiver, which stands to the ${plan.sideSign > 0 ? 'right' : 'left'} of it. The receiver looks along it at ${fixed(Math.atan2(plan.baseline, plan.standoff) * 180 / Math.PI, 2)}° from straight down. Widening the base moves the spot further for the same change in height, so the measurement is finer; the cost is that the object hides more from the receiver.`),
-        r('Returns', `${fixed(plan.returned, 0)} of ${fixed(plan.samples.length, 0)}`, plan.missing > 0
-          ? `A point needs two clear paths: the laser has to reach it, and the light has to get back to the receiver. ${fixed(plan.samples.filter(sample => !sample.lit).length, 0)} of these attempts were never lit and ${fixed(plan.samples.filter(sample => sample.lit && !sample.seen).length, 0)} were lit but hidden from the receiver, on the ${plan.sideSign > 0 ? 'left' : 'right'} of the ridge, the side away from the receiver. Putting the receiver on the other side moves the shadow across; it does not remove it.`
-          : `Every attempt came back. With no ridge in the way, both paths are clear everywhere along the line, whichever side the receiver stands on.`),
-        r('The sweep', `${fixed(plan.profiles, 0)} profiles`, `The table carries the target through the fixed laser line at ${SCAN.speed} mm/s, taking a profile every ${fixed(plan.spacing, 0)} mm over ${SCAN.depth} mm, so the whole sweep is ${fixed(plan.duration, 0)} s and gathers at most ${fixed(plan.profiles * plan.returned, 0)} points. A real scanner of this kind reads ${fixed(SCANNER.points, 0)} points along each profile and can take ${fixed(SCANNER.fast, 0)} profiles a second.`),
-        r('Drawn', `${fixed(magnification, 0)} times larger`, `The bench is at true size, 1 mm to ${BENCH} scene units, so the standoff really is ${fixed(plan.standoff, 1)} mm. The cross section is ${fixed(timesLarger(PROFILE), 0)} times larger. The sensor fits ${SENSOR.cells} cells of ${fixed(plan.gridMicrons, 3)} μm into its window, which is ${fixed(magnification, 0)} times larger than true size. The chart is not to scale.`),
-      ],
-    };
+    const cx = chartX(plan.standoff), cy = chartY(plan.resolutionMicrons);
+    fillLine(chartCursor, [[cx-.04,cy,.003],[cx+.04,cy,.003],[cx,cy-.04,.003],[cx,cy+.04,.003]]);
+    chartValue.userData.setText(`${plan.standoff} mm depth → ${plan.resolutionMicrons.toFixed(2)} μm per step`);
+    const reasons = now.reasons;
+    return {state: {...plan, now, middle, clock, magnification}, readings: [
+      r('Your result', !active ? 'Ready · no acquired points' : `${now.done ? 'Scanned' : 'Scanning'} · ${now.held} of ${now.attempted} attempts returned`, 'Changing any setting clears the old measurements and restarts the scan. Complete means the sweep ended; it does not mean the whole object was recovered.'),
+      r('Stored center height', !middle ? 'Not acquired yet' : middle.point ? `${middle.measured.toFixed(4)} mm` : reasonText[middle.reason], !middle ? 'The middle sample of the latest acquired profile appears here. Once the center profile is acquired, its sample stays selected for comparison.' : middle.point ? `At X = 0, Z = ${middle.z} mm, the reference height is ${middle.surface.toFixed(2)} mm. Recovered height differs by ${(Math.abs(middle.error)*1000).toFixed(2)} μm. This is ideal rounding error, not real scanner accuracy.` : 'No height is inferred for this sample. The cloud keeps the gap.'),
+      r('Missing returns', `${now.gaps}`, `${reasons.unlit} illumination blocks; ${reasons.hidden} camera blocks; ${reasons.range} outside the depth window; ${reasons.sensor} outside the image window. Unattempted profiles are not counted as missing.`),
+      r('Image coordinates', middle?.reached ? `u ${middle.reached[0].toFixed(5)}, v ${middle.reached[1].toFixed(5)} mm` : 'No accepted image', 'Both image coordinates are rounded to the selected grid. Depth comes from v and the known baseline; u then gives position across the line. Z comes from table motion. The virtual image is drawn in front of the pinhole.'),
+      r('Depth per grid step', `${plan.resolutionMicrons.toFixed(2)} μm`, `At the ${plan.standoff} mm reference depth, local sensitivity is depth squared times grid pitch divided by focal length and baseline. This derivative is not an exact error bound. Grid pitch is ${plan.gridMicrons.toFixed(3)} μm; physical pixel pitch is ${plan.pixelMicrons.toFixed(1)} μm.`),
+      r('Profiles acquired', `${now.profiles} of ${plan.profiles}`, `${plan.columns.length} upper-face positions per profile, ${plan.spacing} mm apart in both sampling directions. The table travels 24 mm at 4 mm/s. The first profile is acquired when playback begins; none exists before Play.`),
+      r('Camera offset', `${plan.sideSign * plan.baseline} mm`, 'The signed baseline is perpendicular to the laser plane. Reversing it moves the camera shadow to the other side. The receiver remains outside the plane at every setting.'),
+      r('What the cloud contains', `${now.held} measured points`, 'Only accepted image records become 3D points. Vertical faces, underside, hidden regions and spaces between samples remain unmeasured. There is no surface interpolation, closed mesh, or automatic route from this cloud to a printer.'),
+    ]};
   });
-
   const render = result.update;
-  const duration = () => result.getState().duration;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(duration(), clock + dt); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
-  result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
-  const inspect = time => { clock = Math.min(duration(), time); return render(); };
-  result.actions = [
-    {label: 'Inspect: the bench', part: 'bench', view: 'front', replay: false, run() { return render(); }},
-    {label: 'Inspect: the cross section', part: 'profile', view: 'front', replay: false, run() { return render(); }},
-    {label: 'Inspect: the sensor', part: 'sensor', view: 'front', replay: false, run() { return render(); }},
-    {label: 'Inspect: what one pixel is worth', part: 'chart', view: 'front', replay: false, run() { return inspect(duration()); }},
-  ];
-  result.playback = {
-    label: 'Scan the target',
-    description: `The table carries the target through the fixed laser line at ${SCAN.speed} mm/s, taking one profile every few millimeters. The sweep runs at its real speed.`,
-    stepLabel: 'Advance 1 s',
-    advance: result.advance,
-    step: () => result.advance(1),
-    complete: () => clock >= duration(),
-    blocked: () => false,
-  };
-  result.resultPart = {id: 'cloud', label: 'Inspect the measured cloud', view: 'front', focusOnComplete: false, available: () => clock >= duration()};
-
-  kit.root.rotation.set(0, 0, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.62;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, bench, tableTop, targetBase, ridgeBlock, laserHead, receiverHead, laserRays, seenRays, blockedRays, baselineBar, standoffBar, profile, profileFrame, surfaceLine, measuredDots, missedDots, sensor, sensorFrame, sensorCells, sensorEdges, spotLine, readLine, cloud, cloudDots, cloudFloor, chart, chartFrame, resolutionCurve, catalogLine, chartCursor};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(SCAN.duration, clock + dt); return render(); };
+  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0,t-lastClock) : 0; if (Number.isFinite(t)) lastClock=t; return result.advance(dt); };
+  result.reset = () => { clock=0; lastClock=0; return render(result.defaults); };
+  result.actions = [['bench','the scanner'],['profile','a stored profile'],['sensor','the image estimate'],['cloud','measured points'],['chart','depth sensitivity']].map(([part,title]) => ({label:`Inspect: ${title}`,part,view:'front',replay:false,isolate:true,run:()=>render()}));
+  result.playback = {label:'Scan the target',description:'Move the target through the fixed laser plane. Profiles accumulate at the selected spacing; hidden and out-of-range samples remain missing.',stepLabel:'Advance 1 s',advance:result.advance,step:()=>result.advance(1),complete:()=>clock>=SCAN.duration,blocked:()=>false};
+  result.resultPart = {id:'cloud',label:'Inspect the measured cloud',view:'front',focusOnComplete:false,available:()=>clock>=SCAN.duration};
+  result.initialPart='system'; result.initialView='front'; result.frameVisibleOnly=true; result.framePadding=.52; result.autoFramePart='system';
+  result.selectionOutline=false; result.transparentBackground=true;
+  result.inspectionObjects=id=>inspections.filter(object=>object.userData.inspectionOnly===id); result.thumbnailOmit=inspections;
+  result.catalogParts=result.parts.filter(p=>p.id!=='system');
+  result.frameBoundsForPart=id=>id==='system'?new THREE.Box3(new THREE.Vector3(-2.2,-2.12,-1.8),new THREE.Vector3(2.35,1.95,1.8)).applyMatrix4(system.matrixWorld):null;
+  result.topology={system,bench,rig,table,target,targetBase,ridgeBlock,laserHead,receiverHead,laserRays,seenRays,blockedRays,scanLine,baselineBar,benchTitle,benchDetail,cloud,cloudBody,cloudDots,cloudGrid,cloudCount,progress,profile,profileOutline,profileDots,missedDots,profileCaption,sensor,sensorCell,sensorGrid,spotLine,readLine,sensorCaption,sensorEstimate,sensorScale,chart,chartGrid,resolutionCurve,chartCursor,chartValue};
+  const dispose=result.dispose; result.dispose=()=>{if(!disposed){disposed=true;dispose();}};
   return result;
 }

@@ -1,59 +1,11 @@
 import {validateControls, validTime, clamp} from './physics-kit.js';
 import {cupSurface, designSlices} from './cad-design-geometry.js';
 
-// ---------------------------------------------------------------------------
-// Making a three dimensional object: a design held as numbers, a machine that
-// puts a tool at a point in space, and a scanner that measures a real object
-// back into numbers.
-//
-// The three share one piece of physics: a position that exists only on a grid.
-// The stage can stop only on whole microsteps, so a commanded millimeter is
-// rounded to the nearest one; the scanner can read the laser only on whole
-// sensor pixels, so a measured spot is rounded the same way. Both call
-// `onGrid`, and both report the residual it leaves. The grid is 12.5 μm wide
-// on the stage at Marlin's 80 steps per millimeter and 3.7 μm wide on the
-// sensor at the pixel pitch of a real camera; the same function answers both.
-// The slicer is the other link: the path it lays out for one layer is handed
-// to the stage's own planner, so the design's facets set the move times.
-//
-// Exact within the model: steps per millimeter from step angle, microstepping
-// and either belt pitch times pulley teeth or screw lead; the reached point as
-// the commanded point rounded to the nearest microstep; lost motion on a
-// reversal as a dead band the drive must cross before the table follows; a
-// move's trapezoidal speed profile under an acceleration and a feed rate limit,
-// and where it stands at a time; the area and volume of a regular polygon
-// standing in for a circle, and the chord error the sagitta gives; the triangle
-// count and byte size of a binary STL file; a bead's cross section as a
-// rectangle with two semicircular ends; and laser triangulation, where a point
-// at depth z on the laser plane images at u = f·b/z, so z = f·b/u and one pixel
-// of pitch p is worth z²·p/(f·b) of depth.
-//
-// Sourced: 200 full steps a revolution at 1.8°, and 400 at 0.9° and 48 at 7.5°;
-// microstepping to 1/32; step travel repeatable to 3 or 5 percent down to about
-// 1/10 step; a NEMA 17's 43.18 mm faceplate; one motor's step angle, phases,
-// current, voltage, resistance, inductance and holding torque; a belt pitch of
-// 2 mm and the M5, M6, M8 and 8 mm screw leads; Marlin's 80, 80 and 4000 steps
-// per millimeter, its feed rate and acceleration limits, its default
-// acceleration of 3000 mm/s², its junction deviation, and the 0.5 mm limit and
-// 5 μm resolution of its backlash measurement; a binary STL's 80 byte header,
-// 4 byte count and 50 bytes a triangle; Prusa's layer height band, its 0.45 mm
-// extrusion width, its 0.86 mm for two of them at a 0.2 mm layer, its two
-// perimeter minimum and its 0.20 mm first layer; a nozzle of 0.3 to 1.0 mm;
-// a laser profile scanner's 53.5, 66 and 78.5 mm measuring range, its 25 mm
-// height, its 2 μm line linearity, its 1,280 points a profile, its 2,000 Hz and
-// its 658 nm laser; sub-pixel interpolation down to 1/50 pixel; and pixel
-// pitches of 1.1, 3.7 and 6 μm.
-//
-// Declared, not from a source: the 20 tooth pulley that, with the sourced 2 mm
-// pitch, gives Marlin's sourced 80 steps per millimeter; the stage's 60 mm of
-// travel and its out and back move; the cup the design describes and every one
-// of its dimensions; the infill drawn as straight lines at one spacing; the
-// scanner's focal length of 20 mm, its baseline of 8 mm and its 1,280 pixel
-// sensor line, chosen so that at the sourced 66 mm, the sourced 3.7 μm pixel
-// and the sourced 1/50 pixel interpolation the depth resolution comes out at
-// the 2 μm the catalog gives; the stepped target and its ridge; and a surface
-// that returns light to the receiver from everywhere the two paths are clear.
-// ---------------------------------------------------------------------------
+// Shared numerical fixtures for printer positioning, cup tessellation and line
+// triangulation. Each lesson states which dimensions are illustrative. The
+// scanner uses both coordinates of a virtual pinhole image and a known laser
+// plane, with an ideal image-estimation grid. Its quantization sensitivity is
+// separate from the manufacturer's stated linearity and from real accuracy.
 
 // --- Sourced constants ------------------------------------------------------
 
@@ -93,10 +45,10 @@ export const SLICING = Object.freeze({suggestFrom: 0.1, fine: Object.freeze([0.0
 /** One laser profile scanner: measuring range in mm at start, middle and end, its height, line linearity in μm, points a profile, profile rates in Hz and the laser's wavelength in nm and power in mW. */
 export const SCANNER = Object.freeze({start: 53.5, middle: 66, end: 78.5, height: 25, linearity: 2, points: 1280, standard: 300, fast: 2000, wavelength: 658, power: 8});
 
-/** Pixel pitches of three real cameras, μm. */
+/** Illustrative sensor pitches, μm; not specifications of the reference scanner. */
 export const PIXELS = Object.freeze([1.1, 3.7, 6]);
 
-/** Sub-pixel interpolation: a whole pixel, or the 1/50 pixel structured light reaches. */
+/** Ideal estimation grids; a finer grid does not establish real accuracy. */
 export const SUBPIXELS = Object.freeze([1, 50]);
 
 // --- The physics the stage and the scanner share ----------------------------
@@ -198,7 +150,7 @@ export const AXIS_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'a be
 export const MOTOR_OPTIONS = Object.freeze(MOTORS.map((motor, value) => Object.freeze({value, label: `${motor.angle}°, ${motor.steps} a turn`})));
 export const MICRO_OPTIONS = Object.freeze(MICROSTEPS.map((micro, value) => Object.freeze({value, label: micro === 1 ? 'whole steps' : `${micro} microsteps`})));
 export const PIXEL_OPTIONS = Object.freeze(PIXELS.map((pitch, value) => Object.freeze({value, label: `${pitch} μm pixels`})));
-export const SUBPIXEL_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'whole pixels'}), Object.freeze({value: 1, label: 'a fiftieth of a pixel'})]);
+export const SUBPIXEL_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'whole pixels'}), Object.freeze({value: 1, label: 'ideal 1/50 pixel'})]);
 export const SPACING_OPTIONS = Object.freeze([1, 2, 4].map((mm, value) => Object.freeze({value, label: `${mm} mm apart`})));
 export const SIDE_OPTIONS = Object.freeze([Object.freeze({value: 0, label: 'one side'}), Object.freeze({value: 1, label: 'the other side'})]);
 
@@ -360,8 +312,8 @@ export function designAt(plan, time) {
 
 export const sampleDesign = (input, time = 0) => designAt(designPlan(input), time);
 
-/** Declared: the scanner's focal length and sensor line, the target it measures, and how long the sweep takes. */
-export const SCAN = Object.freeze({focal: 20, sensorHalf: 3.5, width: 24, ridgeWidth: 12, ridgeDepth: 4, depth: 24, duration: 6, speed: 4});
+/** Illustrative optics, upper-face sampling grid, target dimensions and table speed, in mm and seconds. */
+export const SCAN = Object.freeze({focal: 20, sensorHalf: 3.5, sensorWidth: 14, width: 24, ridgeWidth: 12, ridgeDepth: 4, depth: 24, base: 2, duration: 6, speed: 4});
 
 export const SCAN_DEFAULTS = Object.freeze({standoff: 66, baseline: 8, pixel: 1, subpixel: 1, ridge: 6, spacing: 0, side: 0});
 export const SCAN_DOMAINS = Object.freeze({
@@ -369,37 +321,77 @@ export const SCAN_DOMAINS = Object.freeze({
   ridge: Object.freeze([0, 12, 2]), spacing: Object.freeze([0, 2, 1]), side: Object.freeze([0, 1, 1]),
 });
 
-/** The target's height above its table at `x` mm across: a flat surface with one raised ridge in the middle. */
-export const heightAt = (x, ridge) => (ridge > 0 && Math.abs(x) <= SCAN.ridgeWidth / 2 ? ridge : 0);
+/** Y is height; X spans the line and Z spans the target's travel. */
+export const heightAt = (x, ridge, z = 0) => ridge > 0 && Math.abs(x) <= SCAN.ridgeWidth / 2 && Math.abs(z) <= SCAN.ridgeDepth / 2 ? ridge : 0;
 
-/**
- * One attempted sample at `x` across the laser line. The laser stands above the
- * middle of the target and fans across it; the receiver stands a baseline to one
- * side. Both paths must clear the ridge, and the spot must land on the sensor.
- */
-export function traceSample(x, plan) {
-  const {ridge, standoff} = plan, half = SCAN.ridgeWidth / 2;
-  const surface = heightAt(x, ridge), depth = standoff - surface;
-  const clears = (fromX, toX, toHeight) => {
-    if (ridge <= 0) return true;
-    for (const edge of [-half, half]) {
-      if ((edge - fromX) * (edge - toX) > 0) continue;
-      if (Math.abs(toX) <= half + 1e-12 && Math.abs(fromX - toX) < 1e-12) continue;
-      const share = (edge - fromX) / (toX - fromX);
-      const heightThere = standoff + share * (toHeight - standoff);
-      if (heightThere < ridge - 1e-12) return false;
-    }
-    return true;
-  };
-  if (!clears(0, x, surface)) return {x, surface, depth, reason: 'The laser never reaches it', lit: false, seen: false, measured: null, image: null, reached: null};
-  const receiver = plan.sideSign * plan.baseline;
-  if (!clears(receiver, x, surface)) return {x, surface, depth, reason: 'The receiver cannot see it', lit: true, seen: false, measured: null, image: null, reached: null};
-  const image = imageOf(depth, SCAN.focal, plan.baseline);
-  if (Math.abs(image - plan.sensorCenter) > SCAN.sensorHalf) return {x, surface, depth, reason: 'The spot falls off the sensor', lit: true, seen: true, measured: null, image, reached: null};
-  const grid = onGrid(image, plan.grid);
-  const measured = plan.standoff - depthOf(grid.reached, SCAN.focal, plan.baseline);
-  return {x, surface, depth, reason: null, lit: true, seen: true, image, reached: grid.reached, residual: grid.residual, measured, error: measured - surface};
+function validScanOptics(plan) {
+  if (!plan || ![plan.standoff, plan.focal, plan.baseline, plan.sideSign].every(Number.isFinite) ||
+      plan.standoff <= 0 || plan.focal <= 0 || plan.baseline <= 0 || Math.abs(plan.sideSign) !== 1) {
+    throw new RangeError('Laser triangulation needs positive standoff, focal length and baseline, and a receiver side');
+  }
 }
+
+/** Virtual image in front of a downward-facing pinhole. The camera is outside the laser plane. */
+export function projectScanPoint(point, plan) {
+  validScanOptics(plan);
+  if (!Array.isArray(point) || point.length !== 3 || !point.every(Number.isFinite) || point[1] >= plan.standoff) {
+    throw new RangeError('A scan point must be finite and below the camera');
+  }
+  const depth = plan.standoff - point[1];
+  return [plan.focal * point[0] / depth, plan.focal * plan.sideSign * plan.baseline / depth];
+}
+
+/** Recover X/Y from the image and Z from known table motion, without the reference surface. */
+export function reconstructScanPoint(image, plan, z) {
+  validScanOptics(plan);
+  if (!Array.isArray(image) || image.length !== 2 || !image.every(Number.isFinite) ||
+      !Number.isFinite(z) || image[1] * plan.sideSign <= 1e-12) {
+    throw new RangeError('A scan image must define a finite forward ray outside the laser plane');
+  }
+  const depth = plan.focal * plan.sideSign * plan.baseline / image[1];
+  return [image[0] * depth / plan.focal, plan.standoff - depth, z];
+}
+
+/** First intersection before the requested endpoint; a tangent point alone does not hide a sample. */
+export function ridgeIntersection(from, to, ridge) {
+  if (!Array.isArray(from) || !Array.isArray(to) || from.length !== 3 || to.length !== 3 ||
+      ![...from, ...to, ridge].every(Number.isFinite) || ridge < 0) throw new RangeError('Invalid ridge segment');
+  if (ridge === 0) return null;
+  const low = [-SCAN.ridgeWidth / 2, 0, -SCAN.ridgeDepth / 2], high = [SCAN.ridgeWidth / 2, ridge, SCAN.ridgeDepth / 2];
+  let enter = 0, leave = 1;
+  for (let axis = 0; axis < 3; axis++) {
+    const delta = to[axis] - from[axis];
+    if (Math.abs(delta) < 1e-12) {
+      if (from[axis] < low[axis] || from[axis] > high[axis]) return null;
+    } else {
+      const a = (low[axis] - from[axis]) / delta, b = (high[axis] - from[axis]) / delta;
+      enter = Math.max(enter, Math.min(a, b)); leave = Math.min(leave, Math.max(a, b));
+    }
+  }
+  if (enter >= 1 - 1e-10 || leave <= enter + 1e-10) return null;
+  return from.map((value, axis) => value + enter * (to[axis] - value));
+}
+
+/** Attempt a point on the upper-face grid; obscured and out-of-range points have no measurement. */
+export function traceSample(x, plan, z = 0) {
+  if (![x, z].every(Number.isFinite) || Math.abs(x) > SCAN.width / 2 || Math.abs(z) > SCAN.depth / 2) {
+    throw new RangeError('Sample position is outside the target');
+  }
+  const surface = heightAt(x, plan.ridge, z), depth = plan.standoff - surface, target = [x, surface, z];
+  const laser = [0, plan.standoff, z], receiver = [0, plan.standoff, z - plan.sideSign * plan.baseline];
+  const laserHit = ridgeIntersection(laser, target, plan.ridge), receiverHit = ridgeIntersection(receiver, target, plan.ridge);
+  const sample = {x, z, surface, depth, target, laser, receiver, laserEnd: laserHit || target, receiverEnd: receiverHit || target,
+    lit: !laserHit, seen: !laserHit && !receiverHit, reason: null, image: null, reached: null, point: null, measured: null, error: null};
+  if (laserHit) return {...sample, reason: 'unlit'};
+  if (receiverHit) return {...sample, reason: 'hidden'};
+  const image = projectScanPoint(target, plan);
+  if (depth < SCANNER.start - 1e-10 || depth > SCANNER.end + 1e-10) return {...sample, image, reason: 'range'};
+  if (Math.abs(image[0]) > SCAN.sensorWidth / 2 || Math.abs(image[1] - plan.sensorCenter) > SCAN.sensorHalf) return {...sample, image, reason: 'sensor'};
+  const reached = image.map(value => onGrid(value, plan.grid).reached), point = reconstructScanPoint(reached, plan, z);
+  return {...sample, image, reached, point, measured: point[1], error: point[1] - surface, lateralError: point[0] - x};
+}
+
+const scanProfile = (plan, z) => ({z, samples: plan.columns.map(x => traceSample(x, plan, z))});
 
 const scanPlans = new Map();
 
@@ -413,7 +405,7 @@ export function scanPlan(input) {
   const plan = {
     values, standoff: values.standoff, baseline: values.baseline, ridge: values.ridge, spacing,
     pixel, pixelMicrons: PIXELS[values.pixel], subpixel, grid, gridMicrons: grid * 1000,
-    sensorCenter: imageOf(SCANNER.middle, SCAN.focal, values.baseline), sensorPixels: Math.round(2 * SCAN.sensorHalf / pixel), catalogPoints: SCANNER.points,
+    sensorCenter: (values.side === 0 ? 1 : -1) * imageOf(SCANNER.middle, SCAN.focal, values.baseline),
     sideSign: values.side === 0 ? 1 : -1, focal: SCAN.focal, duration: SCAN.duration, speed: SCAN.speed,
     resolution: depthResolution(values.standoff, SCAN.focal, values.baseline, grid),
     resolutionMicrons: depthResolution(values.standoff, SCAN.focal, values.baseline, grid) * 1000,
@@ -422,8 +414,9 @@ export function scanPlan(input) {
     columns: [], profiles: Math.round(SCAN.depth / spacing) + 1,
   };
   for (let x = -SCAN.width / 2; x <= SCAN.width / 2 + 1e-9; x += spacing) plan.columns.push(Number(x.toFixed(6)));
-  plan.samples = plan.columns.map(x => traceSample(x, plan));
-  plan.returned = plan.samples.filter(sample => sample.measured !== null).length;
+  plan.profileData = Array.from({length: plan.profiles}, (_, i) => scanProfile(plan, -SCAN.depth / 2 + i * spacing));
+  plan.samples = plan.profileData.flatMap(profile => profile.samples);
+  plan.returned = plan.samples.filter(sample => sample.point).length;
   plan.missing = plan.samples.length - plan.returned;
   const errors = plan.samples.filter(sample => sample.measured !== null).map(sample => Math.abs(sample.error));
   plan.worstError = errors.length ? Math.max(...errors) : null;
@@ -438,13 +431,15 @@ export function scanAt(plan, time) {
   validTime(time);
   const t = Math.min(time, plan.duration);
   const moved = Math.min(SCAN.depth, t * plan.speed), position = -SCAN.depth / 2 + moved;
-  const taken = Math.min(plan.profiles, Math.floor(moved / plan.spacing + 1e-9) + 1);
-  const cloud = [];
-  for (let profile = 0; profile < taken; profile++) {
-    const y = -SCAN.depth / 2 + profile * plan.spacing;
-    for (const sample of plan.samples) if (sample.measured !== null) cloud.push([sample.x, sample.measured, y]);
-  }
-  return {time, t, moved, position, profiles: taken, cloud, attempted: taken * plan.samples.length, held: taken * plan.returned, gaps: taken * plan.missing, done: time >= plan.duration};
+  const taken = time === 0 ? 0 : Math.min(plan.profiles, Math.floor(moved / plan.spacing + 1e-9) + 1);
+  const acquired = plan.profileData.slice(0, taken), samples = acquired.flatMap(profile => profile.samples);
+  const cloud = samples.filter(sample => sample.point).map(sample => sample.point);
+  const reasons = {unlit: 0, hidden: 0, range: 0, sensor: 0};
+  for (const sample of samples) if (sample.reason) reasons[sample.reason]++;
+  const detailProfile = acquired.find(profile => Math.abs(profile.z) < 1e-9) || acquired.at(-1) || null;
+  const middle = detailProfile?.samples.find(sample => Math.abs(sample.x) < 1e-9) || null;
+  return {time, t, moved, position, profiles: taken, acquired, current: scanProfile(plan, position), detailProfile, middle,
+    cloud, reasons, attempted: samples.length, held: cloud.length, gaps: samples.length - cloud.length, done: time >= plan.duration};
 }
 
 export const sampleScan = (input, time = 0) => scanAt(scanPlan(input), time);

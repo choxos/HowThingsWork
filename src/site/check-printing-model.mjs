@@ -1,4 +1,5 @@
-// Checks the remaining CAD and scanner draft benches and shared math fixtures.
+// Checks shared printer math and the CAD viewer contract.
+// Scanner geometry and acquisition have dedicated independent checks.
 // Three-axis positioning has its own numerical, model and browser checks.
 // The draft models are checked against their recorded fixtures and physics by
 // other routes: steps a millimeter counted rather than divided, a trapezoidal
@@ -8,12 +9,10 @@
 // cell is worth differentiated numerically. Then every drawn line, block, dot
 // and curve is read back from the geometry at swept settings and times.
 import assert from 'node:assert/strict';
-import * as THREE from 'three';
 import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './printing-physics.js';
 import * as D from './cad-design-model.js';
-import * as R from './laser-scanning-model.js';
 import * as L from './printing-lessons.js';
 import {dailyLifeLessons} from './daily-life-lessons.js';
 import {createDailyLifeMachine} from './daily-life-models.js';
@@ -21,14 +20,10 @@ import {createDailyLifeMachine} from './daily-life-models.js';
 const t = tally();
 const counts = {steps: 0, poses: 0, points: 0, numbers: 0, samples: 0, facets: 0};
 const relative = (value, share = 1e-12) => Math.abs(value) * share + 1e-18;
-const f0 = v => fixed(v, 0), f1 = v => fixed(v, 1), f2 = v => fixed(v, 2), f3 = v => fixed(v, 3), f4 = v => fixed(v, 4);
-const deg = radians => radians * 180 / Math.PI;
-// Geometry lives in Float32Array buffers, so anything read back out of one is
-// compared in scene units at the precision a 32 bit float really carries.
-const DRAWN = 5e-6;
+const f2 = v => fixed(v, 2);
 
 // ---------------------------------------------------------------------------
-// 1. Sources, typed in again, and the physics by other routes.
+// 1. Source constants, declared fixture values, and independent math checks.
 // ---------------------------------------------------------------------------
 
 const SRC = {
@@ -202,48 +197,6 @@ for (const focal of [20]) {
   const wide = P.depthResolution(66, focal, 16, 1), narrow = P.depthResolution(66, focal, 4, 1);
   t.near(narrow / wide, 4, 1e-9, 'and a baseline four times wider resolves four times finer');
 }
-// The declared focal length, baseline and pixel reproduce the catalog's own figure.
-t.ok(f0(P.depthResolution(SRC.scanner.middle, P.SCAN.focal, P.SCAN_DEFAULTS.baseline, SRC.pixels[1] / 1000 / SRC.subpixels[1]) * 1000) === f0(SRC.scanner.linearity), "the declared optics give the catalog's 2 micron line linearity at its own middle of range");
-
-// Every sample the scanner takes, traced again by walking the two paths.
-for (const ridge of [0, 2, 6, 12]) {
-  for (const baseline of [4, 8, 16]) {
-    for (const side of [0, 1]) {
-      const plan = P.scanPlan({ridge, baseline, side}), sign = side === 0 ? 1 : -1, half = P.SCAN.ridgeWidth / 2;
-      for (const sample of plan.samples) {
-        const surface = P.heightAt(sample.x, ridge);
-        t.near(sample.surface, surface, 1e-12, 'the surface height where the sample was taken');
-        // Walk each path in small steps and see whether it ever enters the ridge.
-        const enters = (fromX, fromY) => {
-          for (let i = 1; i < 400; i++) {
-            const share = i / 400, x = fromX + (sample.x - fromX) * share, y = fromY + (surface - fromY) * share;
-            if (Math.abs(x) < half - 1e-9 && y < ridge - 1e-9) return true;
-          }
-          return false;
-        };
-        const litBlocked = ridge > 0 && enters(0, plan.standoff);
-        const seenBlocked = ridge > 0 && enters(sign * baseline, plan.standoff);
-        t.ok(sample.lit === !litBlocked, `x=${sample.x}: the laser reaches it only when nothing stands in the way`);
-        if (sample.lit) t.ok(sample.seen === !seenBlocked, `x=${sample.x}: the receiver sees it only when nothing stands in the way`);
-        if (sample.measured !== null) {
-          t.near(sample.measured, plan.standoff - P.depthOf(sample.reached, P.SCAN.focal, baseline), 1e-12, 'the height comes back from the rounded image, not from the surface');
-          t.ok(Math.abs(sample.error) <= P.depthResolution(sample.depth, P.SCAN.focal, baseline, plan.grid) / 2 + 1e-9, 'and it is out by no more than half of what a cell is worth');
-        }
-        counts.samples++;
-      }
-      // The shadow is the mirror image when the receiver changes sides.
-      if (side === 0) {
-        const other = P.scanPlan({ridge, baseline, side: 1});
-        const lost = p => p.samples.filter(s => s.measured === null).map(s => s.x).sort((a, b) => a - b);
-        assert.deepEqual(lost(other), lost(plan).map(x => -x).sort((a, b) => a - b), `ridge ${ridge}, baseline ${baseline}: the shadow mirrors`);
-        t.add();
-      }
-    }
-  }
-}
-t.ok(P.scanPlan({ridge: 0}).missing === 0, 'with nothing in the way every attempt comes back');
-t.ok(P.scanPlan({ridge: 12}).missing > P.scanPlan({ridge: 6}).missing, 'and a taller ridge hides more');
-
 // The stage's plan, the design's plan: every derived number by another route.
 for (const values of [{}, {axis: 1}, {micro: 0}, {micro: 5}, {motor: 0}, {motor: 2}, {lash: 0}, {lash: 0.5}, {travel: 1, feed: 200, accel: 3000}]) {
   const plan = P.stagePlan(values), slot = plan.belt ? 0 : 2;
@@ -264,94 +217,19 @@ await import('./check-cad-design-physics.mjs');
 await import('./check-cad-design-model.mjs');
 
 // ---------------------------------------------------------------------------
-// 2. The drawing, read back from the geometry.
+// 2. Dedicated geometry and acquisition checks.
 // ---------------------------------------------------------------------------
 
-const pointsOf = line => { const array = line.geometry.attributes.position.array, n = line.geometry.drawRange.count; return Array.from({length: Number.isFinite(n) ? Math.min(n, array.length / 3) : array.length / 3}, (_, i) => [array[3 * i], array[3 * i + 1], array[3 * i + 2]]); };
-const instancesOf = mesh => Array.from({length: mesh.count}, (_, i) => { const matrix = new THREE.Matrix4(); mesh.getMatrixAt(i, matrix); const e = matrix.elements; return {x: e[12], y: e[13]}; });
-const boxOf = (object, toSystem) => {
-  const box = new THREE.Box3(), local = new THREE.Box3(), matrix = new THREE.Matrix4();
-  object.traverse(child => {
-    for (let node = child; node; node = node.parent) if (!node.visible) return;
-    if (!child.geometry) return;
-    child.geometry.computeBoundingBox();
-    const count = child.isInstancedMesh ? child.count : 1;
-    for (let i = 0; i < count; i++) {
-      local.copy(child.geometry.boundingBox);
-      if (child.isInstancedMesh) { child.getMatrixAt(i, matrix); local.applyMatrix4(matrix); }
-      box.union(local.applyMatrix4(child.matrixWorld).applyMatrix4(toSystem));
-    }
-  });
-  return box;
-};
-const clearOf = (model, ids, gap) => {
-  model.root.updateMatrixWorld(true);
-  const toSystem = new THREE.Matrix4().copy(model.parts.find(p => p.id === 'system').object.matrixWorld).invert();
-  const boxes = ids.map(id => [id, boxOf(model.parts.find(p => p.id === id).object, toSystem)]);
-  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-    const [a, A] = boxes[i], [b, B] = boxes[j];
-    if (A.isEmpty() || B.isEmpty()) continue;
-    t.ok(A.max.x + gap <= B.min.x || B.max.x + gap <= A.min.x || A.max.y + gap <= B.min.y || B.max.y + gap <= A.min.y, `the ${a} and the ${b} stay clear of one another`);
-  }
-};
-
+await import('./check-laser-scanning-physics.mjs');
+await import('./check-laser-scanning-model.mjs');
 const design = D.createCADDesignModel();
-
-// The scanner.
-const scanner = R.createLaserScanningModel(), RT = scanner.topology;
-for (const values of [{}, {ridge: 0}, {ridge: 12}, {baseline: 4}, {baseline: 16}, {side: 1}, {standoff: 53.5}, {standoff: 78.5}, {pixel: 0}, {pixel: 2}, {subpixel: 0}, {spacing: 2}]) {
-  const plan = P.scanPlan({...P.SCAN_DEFAULTS, ...values});
-  for (const share of [0, 0.5, 1]) {
-    scanner.reset();
-    scanner.update(values);
-    scanner.advance(plan.duration * share);
-    scanner.root.updateMatrixWorld(true);
-    const now = P.scanAt(plan, plan.duration * share);
-    counts.poses++;
-
-    // Every drawn laser ray starts at the laser and ends on the surface.
-    const rays = pointsOf(RT.laserRays), top = (2 + plan.standoff) * R.BENCH;
-    t.ok(rays.length === 2 * plan.samples.filter(s => s.surface !== undefined).length, 'a ray drawn for every attempt');
-    for (let i = 0; i < rays.length; i += 2) {
-      t.near(rays[i][0], 0, DRAWN, 'a laser ray leaves the laser');
-      t.near(rays[i][1], top, DRAWN, 'from the height the standoff gives');
-      t.near(rays[i + 1][1], (2 + plan.samples[i / 2].surface) * R.BENCH, DRAWN, 'and lands on the surface');
-      counts.points++;
-    }
-    // The receiver's rays all leave the receiver, on the side chosen.
-    const receiverX = plan.sideSign * plan.baseline * R.BENCH;
-    for (const rayset of [pointsOf(RT.seenRays), pointsOf(RT.blockedRays)]) {
-      for (let i = 0; i < rayset.length; i += 2) { t.near(rayset[i][0], receiverX, DRAWN, 'a return path leaves the receiver'); counts.points++; }
-    }
-    t.near(RT.receiverHead.position.x, receiverX, 1e-9, 'and the receiver is drawn on that side');
-    t.ok(pointsOf(RT.seenRays).length / 2 === plan.returned, 'one return drawn for every point measured');
-
-    // The ridge is drawn as tall as it is, or not at all.
-    t.ok(RT.ridgeBlock.visible === plan.ridge > 0, 'the ridge shows only when there is one');
-    if (plan.ridge > 0) t.near(RT.ridgeBlock.scale.y, plan.ridge * R.BENCH, 1e-9, 'drawn as tall as it stands');
-
-    // The cross section: a filled mark for every measurement, hollow for every gap.
-    t.ok(RT.measuredDots.count === plan.returned && RT.missedDots.count === plan.missing, 'a mark for every attempt, filled or not');
-    // The cloud holds exactly the points gathered so far.
-    t.ok(RT.cloudDots.count === Math.min(now.cloud.length, R.CLOUD.room), 'the cloud holds what the sweep has gathered');
-    t.ok(now.cloud.length === now.profiles * plan.returned, 'which is the profiles taken times the points each one holds');
-    for (const dot of instancesOf(RT.cloudDots)) t.ok(Number.isFinite(dot.x) && Number.isFinite(dot.y), 'every cloud point drawn somewhere');
-
-    // The sensor: the spot and the cell it is read as.
-    const spot = pointsOf(RT.spotLine)[0][0], read = pointsOf(RT.readLine)[0][0];
-    t.ok(Math.abs(spot - read) <= (R.SENSOR.width - 0.06) / R.SENSOR.cells / 2 + DRAWN, 'the cell read is the one the spot falls in');
-    t.ok(RT.sensorCells.filter(cell => cell.material.color.getHex() === R.COLORS.lit).length <= 1, 'and only one cell is lit');
-  }
-  clearOf(scanner, ['bench', 'profile', 'sensor', 'cloud', 'chart'], 0.02);
-}
-t.ok(Math.abs(R.timesLarger(R.BENCH) - 1) < 1e-12 && Math.abs(R.timesLarger(R.PROFILE) - 3) < 1e-12, 'the scales the header states: true size and three times larger');
 
 // ---------------------------------------------------------------------------
 // 3. The lessons: every number they quote is one the model computes.
 // ---------------------------------------------------------------------------
 
 const runner = make => values => { const m = make(); m.reset(); m.update(values); m.advance(1e4); const s = m.getState(); m.dispose(); return s; };
-const runDesign = runner(D.createCADDesignModel), runScan = runner(R.createLaserScanningModel);
+const runDesign = runner(D.createCADDesignModel);
 
 checkTrialNumbers(L.cadDesignLesson, {
   'Describe the shape': s => ({252:s.triangles,60:s.layers}),
@@ -365,33 +243,6 @@ checkTrialNumbers(L.cadDesignLesson, {
   'Try a thin wall and wide bead': () => ({}),
 }, runDesign, t);
 
-const blockedOf = s => s.samples.filter(sample => sample.measured === null).map(sample => sample.x);
-checkTrialNumbers(L.laserScanningLesson, {
-  'Measure one point': s => ({'6.00': s.middle.surface, '60.00': s.middle.depth, '2.6667': s.middle.image, '5.9999': s.middle.measured, '2.01': s.resolutionMicrons}),
-  'Read only whole pixels': s => ({'3.700': s.gridMicrons, '0.074': s.pixelMicrons / P.SUBPIXELS[1], '2.6677': s.middle.reached, '6.0232': s.middle.measured, '23.2': Math.abs(s.middle.error) * 1000, '100.73': s.resolutionMicrons}),
-  'Widen the baseline': s => ({'13.63': deg(Math.atan2(s.baseline, s.standoff)), '5.3333': s.middle.image, '2.6667': P.imageOf(s.middle.depth, P.SCAN.focal, P.SCAN_DEFAULTS.baseline), '1.01': s.resolutionMicrons, 2: s.missing, 1: P.scanPlan({}).missing}),
-  'Narrow it': s => ({'3.47': deg(Math.atan2(s.baseline, s.standoff)), 25: s.returned, '1.3333': s.middle.image, '4.03': s.resolutionMicrons}),
-  'Stand further off': s => ({'72.50': s.middle.depth, '2.2069': s.middle.image, '2.6667': P.imageOf(P.SCAN_DEFAULTS.standoff - s.middle.surface, P.SCAN.focal, s.baseline), '2.85': s.resolutionMicrons, '2.01': P.scanPlan({}).resolutionMicrons}),
-  'Raise the ridge': s => ({'11.9999': s.middle.measured, 25: s.samples.length, 21: s.returned, 2: s.samples.filter(sample => !sample.lit).length}),
-  'Move the receiver over': s => ({24: s.returned, 25: s.samples.length, 1: s.missing, 7: blockedOf(s)[0]}),
-}, runScan, t);
-
-// Free text: every snippet computed, and every number inside a checked snippet.
-const NUMBER = /(?<![A-Za-z\d.,])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?/g;
-function covered(text, expected, where) {
-  checkQuotedText(text, expected, t);
-  const spans = [];
-  for (const snippet of Object.keys(expected)) for (let i = text.indexOf(snippet); i >= 0; i = text.indexOf(snippet, i + 1)) spans.push([i, i + snippet.length]);
-  for (const match of text.matchAll(NUMBER)) {
-    t.ok(spans.some(([a, b]) => a <= match.index && match.index + match[0].length <= b), `${where}: the number ${match[0]} in “${text.slice(Math.max(0, match.index - 40), match.index + 20)}” is checked`);
-    counts.numbers++;
-  }
-}
-const texts = lesson => [['simple', lesson.simple], ['overview', lesson.overview], ...lesson.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...lesson.parts.map((item, i) => [`part ${i + 1}`, item.role]), ['misconception', lesson.misconception], ['quiz', [lesson.quiz.question, ...lesson.quiz.options].join(' ')]];
-const expectNone = (lesson, name) => { for (const [where, text] of texts(lesson)) covered(text, {}, `${name} ${where}`); };
-
-covered(L.sharedLimits, {}, 'shared limits');
-
 const designDefault = P.designPlan({});
 checkQuotedText(L.cadDesignLesson.deeper[2].body, {
   [`At R = ${designDefault.radius} mm and N = ${designDefault.facets}, the error is ${designDefault.outerError.toFixed(4)} mm`]: 'At R = 12 mm and N = 32, the error is 0.0578 mm',
@@ -400,42 +251,11 @@ checkQuotedText(L.cadDesignLesson.deeper[5].body, {
   [`Two ${designDefault.width.toFixed(2)} mm beads at ${designDefault.layer.toFixed(2)} mm height occupy about ${P.beadsWide(2,designDefault.width,designDefault.layer).toFixed(3)} mm`]: 'Two 0.45 mm beads at 0.20 mm height occupy about 0.857 mm',
 }, t);
 
-const scanDefault = P.scanPlan({}), whole = P.scanPlan({subpixel: 0}), tallRidge = P.scanPlan({ridge: 12});
-expectNone(L.laserScanningLesson, 'Laser');
-covered(L.laserScanningLesson.deeper[0].body, {}, 'Laser deeper 1');
-covered(L.laserScanningLesson.deeper[1].body, {
-  [`that is ${f2(scanDefault.resolutionMicrons)} μm; at the near end ${f2(scanDefault.atStart)} μm and at the far end ${f2(scanDefault.atEnd)} μm`]: 'that is 2.01 μm; at the near end 1.32 μm and at the far end 2.85 μm',
-  [`holds its line to ${P.SCANNER.linearity} μm`]: 'holds its line to 2 μm',
-}, 'Laser deeper 2');
-covered(L.laserScanningLesson.deeper[2].body, {
-  [`a cell of ${f3(whole.gridMicrons)} μm read whole, or a grid of ${f3(scanDefault.gridMicrons)} μm read between, and a height out by ${f1(Math.abs(whole.samples.find(s => Math.abs(s.x) < 1e-9).error) * 1000)} μm`]: 'a cell of 3.700 μm read whole, or a grid of 0.074 μm read between, and a height out by 23.2 μm',
-}, 'Laser deeper 3');
-covered(L.laserScanningLesson.deeper[3].body, {}, 'Laser deeper 4');
-covered(L.laserScanningLesson.deeper[4].body, {}, 'Laser deeper 5');
-covered(L.laserScanningLesson.deeper[5].body, {
-  [`runs from ${P.SCANNER.start} mm to ${P.SCANNER.end} mm, ${P.SCANNER.height} mm deep, holding its line to ${P.SCANNER.linearity} μm and reading ${f0(P.SCANNER.points)} points along every profile at up to ${f0(P.SCANNER.fast)} profiles a second with a ${P.SCANNER.wavelength} nm laser`]: 'runs from 53.5 mm to 78.5 mm, 25 mm deep, holding its line to 2 μm and reading 1,280 points along every profile at up to 2,000 profiles a second with a 658 nm laser',
-}, 'Laser deeper 6');
-covered(L.scanLimits, {[`focal length of ${P.SCAN.focal} mm`]: 'focal length of 20 mm', [`the ${P.SCANNER.linearity} μm the catalog quotes`]: 'the 2 μm the catalog quotes'}, 'scan limits');
-covered(L.laserScanningLesson.quiz.explanation, {[`${f0(tallRidge.missing)} of the ${f0(tallRidge.samples.length)} attempts fail`]: '4 of the 25 attempts fail'}, 'Laser quiz');
-
-// The models' own words, and their readings.
-const partText = (model, id) => model.parts.find(item => item.id === id).description;
-scanner.reset();
-covered(partText(scanner, 'bench'), {[`1 mm to ${R.BENCH} scene units`]: '1 mm to 0.018 scene units', [`the ${P.SCANNER.start} to ${P.SCANNER.end} mm`]: 'the 53.5 to 78.5 mm'}, 'scan bench text');
-covered(partText(scanner, 'profile'), {[`drawn ${f0(R.timesLarger(R.PROFILE))} times larger`]: 'drawn 3 times larger'}, 'scan profile text');
-covered(partText(scanner, 'sensor'), {[`a window of ${R.SENSOR.cells} cells`]: 'a window of 9 cells'}, 'scan sensor text');
-covered(partText(scanner, 'chart'), {[`across the ${P.SCANNER.height} mm`]: 'across the 25 mm'}, 'scan chart text');
-
 {
   design.reset();
   const dReadings = design.getState().readings, dFind = label => dReadings.find(item => item.label === label);
   t.ok(dFind('Triangles').value === '252' && dFind('Chord error').value === '57.8 μm' && dFind('STL size').value === '12,684 bytes' && dFind('Layers').value === '60', 'the design’s figures');
-  scanner.reset();
-  const rReadings = scanner.getState().readings, rFind = label => rReadings.find(item => item.label === label);
-  t.ok(rFind('Measured height').value === 'not yet measured', 'nothing measured before the sweep starts');
-  scanner.advance(P.SCAN.duration);
-  t.ok(scanner.getState().readings.find(item => item.label === 'Measured height').value === '5.9999 mm', 'and a height once it has run');
-  t.ok(rFind('One pixel is worth').value === '2.01 μm', 'the scanner’s figure');
+
 }
 
 // Routing: three machines, each with its own lesson and its own model.
@@ -453,7 +273,6 @@ for (const [name, lesson] of [['Three-axis positioning', L.threeAxisLesson], ['C
 
 const benches = [
   ['the design', design, D.createCADDesignModel, P.DESIGN_DOMAINS, P.DESIGN_DEFAULTS, P.sampleDesign, L.cadDesignLesson, m => m.advance(20)],
-  ['the scanner', scanner, R.createLaserScanningModel, P.SCAN_DOMAINS, P.SCAN_DEFAULTS, P.sampleScan, L.laserScanningLesson, m => m.advance(20)],
 ];
 // Array.map hands its callback an index, so the walker is named and called
 // with one argument: passing it straight to map would make every topology
@@ -542,4 +361,4 @@ for (const [name, model, make, domains, defaults, sample, lesson, settle] of ben
 const released = benches.reduce((total, [, , make]) => total + checkDisposal((() => { const fresh = make(); fresh.advance(2); return fresh; })(), t), 0);
 for (const [, model] of benches) model.dispose();
 
-console.log(`PASS CAD and scanner benches plus shared math fixtures: ${t.count} checks, ${counts.poses} poses, ${counts.steps} integration and simulation steps, ${counts.points} drawn points read back, ${counts.samples} traced samples, ${counts.facets} faceted curves, ${counts.numbers} quoted numbers traced, 2 bench lessons and ${L.cadDesignLesson.tryIt.length + L.laserScanningLesson.tryIt.length} trials, 3 lesson routes, ${released} resources released exactly once.`);
+console.log(`PASS CAD viewer contract and shared printer math: ${t.count} checks, ${counts.poses} poses, ${counts.steps} integration steps, ${counts.samples} triangulation derivative checks, ${counts.facets} facet comparisons, 3 lesson routes, ${released} resources released exactly once.`);

@@ -196,7 +196,9 @@
     "check:three-axis-model": "node src/site/check-three-axis-physics.mjs && node src/site/check-three-axis-model.mjs",
     "check:three-axis": "node src/site/check-three-axis.mjs",
     "check:cad-design-model": "node src/site/check-cad-design-physics.mjs && node src/site/check-cad-design-model.mjs",
-    "check:cad-design": "node src/site/check-cad-design.mjs"
+    "check:cad-design": "node src/site/check-cad-design.mjs",
+    "check:laser-scanning-model": "node src/site/check-laser-scanning-physics.mjs && node src/site/check-laser-scanning-model.mjs",
+    "check:laser-scanning": "node src/site/check-laser-scanning.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

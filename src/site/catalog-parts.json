@@ -9552,6 +9552,33 @@
       "parentId": "system"
     }
   ],
+  "laser-scanning-of-3d-objects": [
+    {
+      "id": "bench",
+      "name": "Laser, camera and moving target",
+      "parentId": "system"
+    },
+    {
+      "id": "cloud",
+      "name": "Measured point cloud",
+      "parentId": "system"
+    },
+    {
+      "id": "profile",
+      "name": "An acquired cross section",
+      "parentId": "system"
+    },
+    {
+      "id": "sensor",
+      "name": "From image coordinates to height",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Depth sensitivity and distance",
+      "parentId": "system"
+    }
+  ],
   "generator-slip-rings": [
     {
       "id": "output",
