@@ -3,6 +3,7 @@ import {previewEntryIds} from './published-catalog.js';
 import * as THREE from 'three';
 import {solenoidLesson} from './solenoid-lesson.js';
 import {frameModel} from './machine-viewer.js';
+import {createPartExplosion} from './part-explosion.js';
 import {createSolenoidTrial,createSolenoidModel,solenoidConstants as C} from './solenoid-model.js';
 const near=(a,b,t=1e-8)=>assert.ok(Math.abs(a-b)<=t,`${a} ≠ ${b} (tol ${t})`),v={voltage:12,preload:4,program:1};
 let worstEnergy=0,worstRefinement=0,grid=0;
@@ -31,3 +32,10 @@ let views=0;for(const aspect of [1,1.16])for(const inside of [true,false])for(co
 assert.ok(previewEntryIds.includes('solenoid'),'solenoid is routed into the preview');
 {const hm=createSolenoidModel(),hr=hm.update();for(const hl of ['Coil current','Magnetic force','Return spring force','Main-contact gap','Main current']){const hx=hr.find(r=>r&&r.label===hl);assert.ok(hx,`${hl} is still a reading`);assert.ok(typeof hx.hint==='string'&&hx.hint.length>20,`${hl} carries a hint`);}hm.dispose&&hm.dispose();}
 console.log(JSON.stringify({presetHistories,framePartitions:partitions.length,views},null,2));
+
+// Cached result records are independent snapshots; the separated inventory contains physical parts only.
+for(const stage of [2,3,4]){
+ const m=createSolenoidModel();m.actions[stage].run();const before=structuredClone(m.getState()),snapshot=m.getState();snapshot.events[0].time=-1;snapshot.events.push({kind:'fake',time:-2});snapshot.readings[0].value='corrupted';snapshot.readings.push({label:'fake',value:'corrupted'});assert.deepEqual(m.getState(),before);
+ const T=m.topology,guides=new Set();for(const object of [T.energyMeter,...T.currentArrows])object.traverse(child=>{if(child.geometry)guides.add(child.geometry);});const {camera}=frameModel(m,1.2),exploded=createPartExplosion(m,camera,1.2,{width:767,height:621});exploded.update(1);const physical=new Set();exploded.root.traverse(object=>{if(object.geometry){assert.ok(!guides.has(object.geometry),'A symbolic display must not become a loose physical component');physical.add(object.geometry);}});for(const object of [T.winding,T.core,T.bridgeMesh,...T.fixedContacts,T.springMesh])assert.ok(physical.has(object.geometry));assert.deepEqual(m.catalogParts.map(part=>part.id).sort(),['battery','bridge','coil','key','load','plunger','return-spring','shunt']);assert.deepEqual(m.getState(),before);exploded.dispose();m.dispose();
+}
+console.log('PASS independent result snapshots and physical separated inventory at three contact stages.');

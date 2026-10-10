@@ -82,6 +82,7 @@ export const componentParentIds = {
   'spark-plug-electrodes-and-ceramic-insulator': 'car-ignition-system',
   'spark-gap': 'car-ignition-system',
   'electronic-ignition': 'car-ignition-system',
+  'solenoid': 'car-ignition-system',
   'inertial-accelerometer-armature-spring-and-coils': 'inertial-guidance',
   'microchip-deceleration-sensor': 'crash-sensor',
   'crash-sensor-proof-square-and-sensing-strips': 'crash-sensor',
@@ -106,6 +107,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 }
 
 const nestedMachineIds = new Set([
+  "solenoid",
   "electronic-ignition",
   "electrowetting-display",
   "ionization-smoke-detector",

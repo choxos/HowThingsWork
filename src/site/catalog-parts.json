@@ -6084,6 +6084,48 @@
       "parentId": "system"
     }
   ],
+  "solenoid": [
+    {
+      "id": "battery",
+      "name": "Adjustable battery",
+      "parentId": "system"
+    },
+    {
+      "id": "coil",
+      "name": "Wound control coil",
+      "parentId": "system"
+    },
+    {
+      "id": "plunger",
+      "name": "Sliding iron plunger",
+      "parentId": "system"
+    },
+    {
+      "id": "bridge",
+      "name": "Insulated moving main-contact bridge",
+      "parentId": "plunger"
+    },
+    {
+      "id": "return-spring",
+      "name": "Preloaded compression return spring",
+      "parentId": "system"
+    },
+    {
+      "id": "key",
+      "name": "Control key",
+      "parentId": "system"
+    },
+    {
+      "id": "shunt",
+      "name": "96 Ω discharge resistor",
+      "parentId": "system"
+    },
+    {
+      "id": "load",
+      "name": "0.3 Ω resistive starter equivalent",
+      "parentId": "system"
+    }
+  ],
   "sensors-and-detectors": [
     {
       "id": "board",
