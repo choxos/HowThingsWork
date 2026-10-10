@@ -73,6 +73,7 @@ export const componentParentIds = {
   'power-line-insulator': 'electricity-transmission',
   'power-pylon': 'electricity-transmission',
   'heated-extrusion-nozzle': '3d-printer',
+  'three-axis-positioning': '3d-printer',
   'printer-filament-reel': '3d-printer',
   'layer-by-layer-fabrication': '3d-printer',
   'horizontal-seismograph-pendulum': 'seismograph',
@@ -111,6 +112,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 }
 
 const nestedMachineIds = new Set([
+  "three-axis-positioning",
   "contact-breaker-ignition",
   "distributor",
   "induction-coil",

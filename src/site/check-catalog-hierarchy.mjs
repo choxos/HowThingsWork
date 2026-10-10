@@ -438,3 +438,14 @@ assert.deepEqual(tags('door-closer'), ['springs', 'gears-and-belts', 'pressure-p
 assert.equal(catalog.groups.find(group => group.id === doorCloser.entry.group).place, 'home');
 assert.equal(catalog.groups.find(group => group.id === doorCloser.entry.group).room, 'Doors and daily life');
 for (const id of ['frame', 'door', 'latch', 'closer', 'body', 'piston', 'rack', 'pinion', 'spring', 'valves', 'sweep-valve', 'latch-valve', 'backcheck-valve', 'bypass', 'trace']) assert(hasCatalogPart('door-closer', id), `${id} remains bookmarkable in the door closer lesson`);
+
+const positioning = entries.find(entry => entry.id === 'three-axis-positioning');
+assert(positioning, 'Three-axis positioning is a published, coordinated motion lesson');
+assert.equal(componentParentIds[positioning.id], '3d-printer');
+const printerFamily = families.find(family => family.entry.id === '3d-printer');
+assert(catalogMachineComponents(printerFamily.components).some(entry => entry.id === positioning.id), 'The three linked drives form a smaller positioning system');
+assert.deepEqual(groupCatalogEntries(entries, [positioning]).map(family => family.entry.id), ['3d-printer'], 'Positioning searches retain the complete printer');
+assert.deepEqual(tags(positioning.id), ['gears-and-belts', 'screws', 'using-bits']);
+assert.equal(catalog.groups.find(group => group.id === positioning.group).place, 'workshop');
+assert.equal(catalog.groups.find(group => group.id === positioning.group).room, 'Tools and making');
+for (const id of ['frame', 'x-drive', 'x-belt', 'x-carriage', 'x-coupling', 'x-coupling-pin', 'y-drive', 'y-belt', 'bed', 'z-drive', 'z-screw', 'z-nut', 'controller']) assert(hasCatalogPart(positioning.id, id), `${id} remains bookmarkable in the positioning system`);

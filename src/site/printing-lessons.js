@@ -1,4 +1,4 @@
-import {STAGE_DEFAULTS, DESIGN_DEFAULTS, SCAN_DEFAULTS} from './printing-physics.js';
+import {DESIGN_DEFAULTS, SCAN_DEFAULTS} from './printing-physics.js';
 
 const trial = (defaults, part, view = 'front') => (title, instruction, observe, values = {}) => ({title, instruction, observe, values: {...defaults, ...values}, reset: true, part, isolate: false, view});
 
@@ -25,10 +25,7 @@ export const sources = {
 };
 
 /** What all three lessons take without a source. */
-export const sharedLimits = 'The three benches share one idea and one piece of code: a position that exists only on a grid. The stage rounds a commanded millimeter to a whole microstep and the scanner rounds a measured spot to a whole sensor cell, and the same function does both.';
-
-/** What the stage takes without a source. */
-export const stageLimits = 'Not from a source: the 20 tooth pulley, which with the sourced 2 mm belt pitch gives exactly the 80 steps a millimeter Marlin ships; the stage’s size and its out and back move; and the play in the coupling, which Marlin ships at zero and measures rather than assumes. The drive is taken as ideal: the motor never loses a step, the belt does not stretch, nothing flexes under load, and the only two things standing between the point asked for and the point reached are the step grid and the play. Motor torque, current, heating and resonance are left out, and so is homing, which is what tells a real machine where zero is.';
+export const sharedLimits = 'These benches use illustrative dimensions and idealized models. Read each lesson’s limits before interpreting its numbers as hardware performance.';
 
 /** What the design takes without a source. */
 export const designLimits = 'Not from a source: the cup itself and every one of its dimensions, and the infill drawn as straight lines at one spacing. The solid is described only as triangles, which is what the file format carries; the smooth surface a designer actually draws is kept elsewhere and is left out here. The slicer is reduced to layers, loops and infill: supports, brims, the order the tool walks the loops, the speed it walks them and where it starts and stops each one are all left out, and so is anything about whether the result would be strong enough.';
@@ -36,57 +33,7 @@ export const designLimits = 'Not from a source: the cup itself and every one of 
 /** What the scanner takes without a source. */
 export const scanLimits = 'Not from a source: the focal length of 20 mm, the baseline, and the sensor, chosen together so that at the catalog’s own middle of range, its own pixel and the interpolation the structured light page gives, the depth resolution comes out at the 2 μm the catalog quotes. The stepped target and its ridge are invented. The surface is taken as perfectly matte, returning light to the receiver from everywhere both paths are clear, and the geometry is taken as known exactly. Speckle, noise, lens distortion, calibration error, second reflections off shiny surfaces, and the way a real laser line has width rather than being infinitely thin are all left out. One sweep from one side is all there is: there is no second view, no merging, no surface built over the points, and nothing is ever filled in where the receiver saw nothing.';
 
-// ---------------------------------------------------------------------------
-// Three axis positioning.
-// ---------------------------------------------------------------------------
-
-const stageGrid = trial(STAGE_DEFAULTS, 'grid'), stageLash = trial(STAGE_DEFAULTS, 'lash'), stageChart = trial(STAGE_DEFAULTS, 'chart'), stageDrive = trial(STAGE_DEFAULTS, 'drive');
-
-export const threeAxisLesson = {
-  simple: 'How does a machine put a tool exactly where you asked?',
-  overview: 'A stepper motor does not turn smoothly; it turns in steps, and its driver can split each step into smaller ones. A belt or a screw turns that turning into travel, so the tool can stop only on a grid of fixed places. Ask for a point between two of them and the machine goes to the nearer one. Reverse, and the play in the coupling is given up before anything moves at all. Press Play to run a move out and back, then change the motor, the driver, the drive and the play.',
-  steps: [
-    {title: 'Count the steps', body: 'The motor turns by a fixed angle each time it is told to step, and the driver can divide that angle further.'},
-    {title: 'Turn turning into travel', body: 'A toothed belt on a pulley, or a screw in a nut, carries a fixed distance for every turn of the motor.'},
-    {title: 'Round to a step', body: 'Dividing the steps a turn by the distance a turn carries gives the steps a millimeter, and the tool can stop only on those.'},
-    {title: 'Plan the speed', body: 'The drive cannot start at speed. It ramps up, holds the feed rate if the move is long enough to reach it, and ramps down in time to stop.'},
-    {title: 'Give up the play on a reversal', body: 'Turning back, the drive crosses the slack in the coupling before it touches the other face, so the tool stands still for that much of the move.'},
-  ],
-  parts: [
-    {name: 'The stage, true size', role: 'The rail, the carriage and the belt that carry the tool.'},
-    {name: 'The motor, true size', role: 'The stepper whose fixed step angle every position is counted in.'},
-    {name: 'Belt or screw, close up', role: 'What turns a revolution into a distance.'},
-    {name: 'The step grid', role: 'Every place the drive can actually stand, and the gap left over.'},
-    {name: 'Lost motion, close up', role: 'The play the coupling gives up whenever the drive reverses.'},
-    {name: 'Speed through the move', role: 'The ramp up, the cruise and the ramp down the acceleration limit forces.'},
-  ],
-  tryIt: [
-    stageGrid('Ask for a point between two steps', 'Ask the stage for 6.37 mm and press Play.', 'A 1.8° motor takes 200 whole steps a turn, and a driver dividing each into 16 makes 3,200 a turn. A 20 tooth pulley at a 2 mm pitch carries 40.0 mm a turn, so the stage moves in steps of 12.50 μm and can stand nowhere else. The nearest one to 6.37 mm is 6.3750 mm, which is 5.00 μm away; rounding can never miss by more than half a step, 6.25 μm.'),
-    stageGrid('Turn the driver off', 'Set the driver to whole steps and press Play.', 'Now the motor moves only in its own 200 steps a turn, so the grid is 200.00 μm wide. The nearest place to the point asked for is 6.4000 mm, a whole 30.00 μm away, and the worst the stage could be is 100.00 μm.', {micro: 0}),
-    stageGrid('Divide the step finely', 'Set the driver to its finest division and press Play.', 'A step is now cut into 32, making 6,400 a turn and a grid 6.25 μm wide. The stage reaches 6.3688 mm, 1.25 μm from the point asked for. The page these motors come from warns that this is not free: step travel stays even only down to about a tenth of a step.', {micro: 5}),
-    stageDrive('Drive it with a screw instead', 'Choose the screw axis and press Play.', 'The screw carries only 0.8 mm a turn against the belt’s 40.0 mm, so the same 3,200 microsteps a turn now make 4,000.0 steps a millimeter and a grid just 0.25 μm wide; this is exactly what Marlin ships for its up and down axis. The point asked for lands on a step exactly. The cost is speed: the axis is held to 2.25 mm/s, so the move takes 5.71 s instead of a third of a second.', {axis: 1}),
-    stageLash('Take the play out', 'Set the lost motion to 0 mm and press Play.', 'With no slack in the coupling the carriage follows the drive in both directions and comes back to 0.0 μm from where it started.', {lash: 0}),
-    stageLash('Put the play back', 'Set the lost motion to 0.5 mm and press Play.', 'Going out, the drive pushes on one face and the carriage follows it exactly. Coming back it has to cross the whole slot before it touches the other face, so the carriage stops 500.0 μm short of where it began. Nothing was miscounted; the motion was simply lost.', {lash: 0.5}),
-    stageChart('Ask for a move too short to get up to speed', 'Ask for a 1 mm move at 200 mm/s with 3,000 mm/s² and press Play.', 'The move never reaches the feed rate asked for. It accelerates for 0.50 mm, which is half the whole move, tops out at 54.77 mm/s and brakes from there, so the speed is a triangle with no flat top and the whole move out and back takes 0.07 s.', {travel: 1, feed: 200, accel: 3000}),
-  ],
-  deeper: [
-    {title: 'Where the steps a millimeter come from', body: 'Marlin asks for one number an axis: how many steps make a millimeter. Its own page says that number depends on belt pitch, the teeth on the pulley, the thread pitch on lead screws and the microstepping, and it ships 80 for the two flat axes and 4000 for the up and down one. Both fall straight out of the arithmetic: 200 steps a turn at a sixteenth is 3,200 microsteps, over a 20 tooth pulley of 2 mm pitch carrying 40.0 mm a turn, is 80.0; the same 3,200 over an M5 screw carrying 0.8 mm a turn is 4,000.0.'},
-    {title: 'Finer is not always better', body: 'Dividing a step further shrinks the grid, and the machine lands nearer what was asked. But the page on stepper motors says that a motor holds its 3 or 5 percent evenness of step travel only down to about a tenth of a step, and that past that the repeatability decays until many microstep commands can pass before anything moves at all and the motion arrives as a jump. The grid this model draws is the ideal one; a real motor sits somewhere inside each cell.'},
-    {title: 'Why a reversal loses motion', body: 'The page on backlash calls it lash, play or slop, and says it shows itself when the direction of movement is reversed and the lost motion is taken up before the reversal is complete. That is exactly what the close up draws: a slot the drive must cross before it touches the far face. Marlin can compensate for it, ships the distance at zero because it is a property of the machine and not of the firmware, and when asked to measure it does so to 5.00 μm and expects an answer under 0.5 mm.'},
-    {title: 'Arriving together', body: 'Marlin says a linear move traces a straight line from one point to another, ensuring that the specified axes arrive simultaneously at the given coordinates. That is why the axes cannot simply run at their own speeds: they are scaled so they finish together, and the slowest one sets the pace. It is also why the screw axis is the one that hurts, because its ceiling of 2.25 mm/s is a two hundredth of the belts’ 500 mm/s.'},
-    {title: 'Why it cannot start at speed', body: 'Marlin ships an acceleration of 3000 mm/s² and explains it as an axis gaining 100 mm/s within a thirtieth of a second. A move long enough to reach its feed rate spends a ramp getting there, cruises, and spends an equal ramp stopping. A short move never gets there at all: it accelerates to the middle and brakes, and its top speed is the square root of the acceleration times the length. That is why a machine covered in short segments runs far below the speed it was asked for.'},
-    {title: 'What the book draws and what this draws', body: 'The book’s spread on this machine has chains and cogs turning the two flat axes and a screw turning the up and down one, with a plate that moves backward and forward under a head that moves side to side. The kinematics here are the same and the drive is different: a toothed belt in place of the chain, which is what small machines actually use now, and what lets the pitch and the tooth count be quoted as one number. A chain and a belt both carry a fixed distance for every turn of their cog, which is the only property any of this arithmetic needs.'},
-  ],
-  misconception: 'Asking for a position is not the same as reaching it. The machine can only stop where its steps let it, and reversing costs it whatever play the coupling holds, so the point reached is always the nearest one it can stand on and sometimes not even that.',
-  limits: `${stageLimits} ${sharedLimits}`,
-  sources: [sources.marlinConfig, sources.marlinMove, sources.calculator, sources.stepper, sources.nema17, sources.datasheet, sources.backlash, sources.leadscrew],
-  quiz: {
-    question: 'Why does the carriage not come back to exactly where it started?',
-    options: ['The drive has to cross the play in its coupling before it pushes the other way.', 'The motor forgets how many steps it has taken.', 'The belt stretches a little more each time it is used.'],
-    answer: 0,
-    explanation: 'The count is never lost. With half a millimeter of play the drive spends the first half millimeter of the return crossing the slot, so the carriage stands still for it and stops 500.0 μm short.',
-  },
-};
+export {threeAxisLesson} from './three-axis-lesson.js';
 
 // ---------------------------------------------------------------------------
 // Computer aided design.

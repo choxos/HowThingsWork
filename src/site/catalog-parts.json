@@ -9353,6 +9353,173 @@
       "parentId": "system"
     }
   ],
+  "three-axis-positioning": [
+    {
+      "id": "frame",
+      "name": "Rigid printer frame",
+      "parentId": "system"
+    },
+    {
+      "id": "y-drive",
+      "name": "Y plate drive and guides",
+      "parentId": "system"
+    },
+    {
+      "id": "bed",
+      "name": "Moving build plate",
+      "parentId": "system"
+    },
+    {
+      "id": "gantry",
+      "name": "Screw-lifted X gantry",
+      "parentId": "system"
+    },
+    {
+      "id": "z-drive",
+      "name": "Z lead screw and guide rods",
+      "parentId": "system"
+    },
+    {
+      "id": "z-motor",
+      "name": "Z screw motor",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-screw",
+      "name": "Two-millimeter lead screw",
+      "parentId": "z-drive"
+    },
+    {
+      "id": "z-nut",
+      "name": "Captive screw nut",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-drive",
+      "name": "X head drive",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-belt",
+      "name": "X continuous timing belt",
+      "parentId": "x-drive"
+    },
+    {
+      "id": "x-pulley-drive",
+      "name": "X driven timing pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-pulley-idler",
+      "name": "X supported idler pulley",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "x-motor",
+      "name": "X belt motor",
+      "parentId": "x-belt"
+    },
+    {
+      "id": "y-belt",
+      "name": "Y continuous timing belt",
+      "parentId": "y-drive"
+    },
+    {
+      "id": "y-pulley-drive",
+      "name": "Y driven timing pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-pulley-idler",
+      "name": "Y supported idler pulley",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "y-motor",
+      "name": "Y belt motor",
+      "parentId": "y-belt"
+    },
+    {
+      "id": "x-carriage",
+      "name": "Guided printing head carriage",
+      "parentId": "gantry"
+    },
+    {
+      "id": "x-coupling",
+      "name": "Slotted X coupling",
+      "parentId": "x-carriage"
+    },
+    {
+      "id": "x-coupling-pin",
+      "name": "Belt clamp and driving pin",
+      "parentId": "x-coupling"
+    },
+    {
+      "id": "extruder",
+      "name": "Direct-drive filament extruder",
+      "parentId": "x-carriage"
+    },
+    {
+      "id": "feed-gears",
+      "name": "Filament feed gear and idler",
+      "parentId": "extruder"
+    },
+    {
+      "id": "feed-gear",
+      "name": "Driven gripping gear",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-idler",
+      "name": "Pressure idler",
+      "parentId": "feed-gears"
+    },
+    {
+      "id": "feed-motor",
+      "name": "Filament-feed motor",
+      "parentId": "extruder"
+    },
+    {
+      "id": "hotend",
+      "name": "Cutaway cold side, heat break and melt zone",
+      "parentId": "extruder"
+    },
+    {
+      "id": "heater",
+      "name": "Electrical heater and cutaway melt block",
+      "parentId": "hotend"
+    },
+    {
+      "id": "nozzle",
+      "name": "Cutaway 0.6-mm nozzle",
+      "parentId": "hotend"
+    },
+    {
+      "id": "material-in-head",
+      "name": "Primed filament and melt path",
+      "parentId": "hotend"
+    },
+    {
+      "id": "reel",
+      "name": "Supported filament reel",
+      "parentId": "system"
+    },
+    {
+      "id": "spool",
+      "name": "Rotating reel core and flanges",
+      "parentId": "reel"
+    },
+    {
+      "id": "filament",
+      "name": "Continuous reel-to-head filament",
+      "parentId": "system"
+    },
+    {
+      "id": "controller",
+      "name": "Printer controller",
+      "parentId": "system"
+    }
+  ],
   "generator-slip-rings": [
     {
       "id": "output",

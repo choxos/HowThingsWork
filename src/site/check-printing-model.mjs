@@ -1,5 +1,6 @@
-// Checks the three axis positioning, computer aided design and laser scanning
-// models against their sources typed in again and their physics worked out by
+// Checks the remaining CAD and scanner draft benches and shared math fixtures.
+// Three-axis positioning has its own numerical, model and browser checks.
+// The draft models are checked against their recorded fixtures and physics by
 // other routes: steps a millimeter counted rather than divided, a trapezoidal
 // move integrated from its own speed, lost motion simulated one small step at a
 // time, the chord error measured off a sampled arc, a polygon's area by the
@@ -11,7 +12,6 @@ import * as THREE from 'three';
 import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './printing-physics.js';
-import * as S from './three-axis-model.js';
 import * as D from './cad-design-model.js';
 import * as R from './laser-scanning-model.js';
 import * as L from './printing-lessons.js';
@@ -306,68 +306,6 @@ const clearOf = (model, ids, gap) => {
   }
 };
 
-// The stage.
-const stage = S.createThreeAxisModel(), ST = stage.topology;
-for (const values of [{}, {axis: 1}, {micro: 0}, {micro: 5}, {motor: 0}, {motor: 2}, {lash: 0}, {lash: 0.5}, {travel: 20}, {travel: 1, feed: 200, accel: 3000}]) {
-  const plan = P.stagePlan({...P.STAGE_DEFAULTS, ...values});
-  for (const share of [0, 0.25, 0.5, 0.75, 1]) {
-    stage.reset();
-    stage.update(values);
-    stage.advance(plan.duration * plan.slow * share);
-    stage.root.updateMatrixWorld(true);
-    const state = stage.getState(), now = state.now;
-    counts.poses++;
-
-    // The carriage sits where the table is, on the scale the header declares.
-    const span = S.RIG.span, home = -span / 2 + S.RIG.carriage[0], mmToUnits = span / P.STAGE.travel;
-    t.near(ST.carriage.position.x, (home + now.table * mmToUnits) * S.BENCH, 1e-9, 'the carriage drawn where the table stands');
-    t.near(ST.tool.position.x, ST.carriage.position.x, 1e-12, 'with the tool under it');
-    t.ok(Math.abs(ST.carriage.position.x) <= (span / 2) * S.BENCH + 1e-9, 'and never off the rail');
-
-    // The step grid: every drawn line on a whole step, and the two marks apart
-    // by exactly the residual.
-    const win = S.gridWindow(plan), perMm = S.GRIDVIEW.width / win;
-    const onStep = (x, pitch, what) => {
-      const k = Math.round((x / perMm + plan.commanded) / pitch);
-      t.ok(Math.abs(x - (k * pitch - plan.commanded) * perMm) < DRAWN, what);
-      counts.points++;
-    };
-    const fine = pointsOf(ST.fineLines), heavy = pointsOf(ST.heavyLines);
-    for (const [x] of fine) onStep(x, plan.microstep, 'a light line stands on a microstep');
-    for (const [x] of heavy) onStep(x, plan.micro * plan.microstep, 'a heavy line stands on a whole step');
-    t.ok(fine.length <= 2 * S.GRIDVIEW.fine && heavy.length <= 2 * S.GRIDVIEW.heavy, 'and neither runs out of room');
-    const commandedX = pointsOf(ST.gridCommanded)[0][0], reachedX = pointsOf(ST.gridReached)[0][0];
-    t.near(commandedX, 0, DRAWN, 'the point asked for sits in the middle of the window');
-    t.near(reachedX - commandedX, plan.residual * perMm, DRAWN, 'and the point reached sits exactly the residual away');
-    t.ok(ST.residualBar.visible === Math.abs(reachedX - commandedX) > 1e-6, 'the bar between them shows only when there is a gap');
-
-    // The lost motion: the slot is as wide as the play and the table lags by the gap.
-    const lashWin = Math.max(plan.lash, plan.microstep * 4), lashPer = (S.LASHVIEW.width - S.LASHVIEW.slot) / (2 * lashWin);
-    t.near(ST.lashTable.position.x, (now.table - now.motor) * lashPer, 1e-9, 'the table drawn where it lags the drive');
-    t.near(ST.lashSlot.scale.x, S.LASHVIEW.slot + plan.lash * lashPer, 1e-9, 'the slot drawn as wide as the play');
-    t.ok(now.table - now.motor >= -1e-9 && now.table - now.motor <= plan.lash + 1e-9, 'and the table never leaves the slot');
-
-    // The speed chart never draws above the feed rate.
-    for (const [, y] of pointsOf(ST.speedGuide)) { t.ok(y <= S.CHART.y + S.CHART.top * S.CHART.h + DRAWN && y >= S.CHART.y - DRAWN, 'the speed curve stays inside its frame'); counts.points++; }
-    t.near(pointsOf(ST.feedLine)[0][1], S.chartY(plan, plan.feed), DRAWN, 'the feed rate line at the feed rate');
-    t.near(pointsOf(ST.legLine)[0][0], S.chartX(plan, plan.out.time), DRAWN, 'and the turn where the move reverses');
-
-    // The belt or the screw, never both.
-    t.ok(ST.beltBody.visible === plan.belt && ST.screwBody.visible === !plan.belt, 'the drive drawn is the one being used');
-  }
-  clearOf(stage, ['stage', 'motor', 'drive', 'grid', 'lash', 'chart'], 0.02);
-}
-t.ok(Math.abs(S.timesLarger(S.BENCH) - 1) < 1e-12 && Math.abs(S.timesLarger(S.CLOSE) - 10) < 1e-12, 'the scales the header states: true size and ten times larger');
-{
-  // The motor really is drawn at the size its datasheet gives.
-  stage.reset();
-  ST.motorBody.geometry.computeBoundingBox();
-  const size = new THREE.Vector3();
-  ST.motorBody.geometry.boundingBox.getSize(size);
-  t.near(size.x * ST.motorBody.scale.x / S.BENCH, SRC.nema.faceplate, 1e-9, 'a 43.18 mm faceplate at true size');
-  t.near(size.y * ST.motorBody.scale.y / S.BENCH, SRC.nema.faceplate, 1e-9, 'square, as the standard says');
-}
-
 // The design.
 const design = D.createCADDesignModel(), DT = design.topology;
 for (const values of [{}, {facets: 8}, {facets: 128}, {radius: 20}, {layer: 0.05}, {layer: 0.3}, {perimeters: 1}, {perimeters: 4}, {infill: 0}, {infill: 100}]) {
@@ -494,17 +432,7 @@ t.ok(Math.abs(R.timesLarger(R.BENCH) - 1) < 1e-12 && Math.abs(R.timesLarger(R.PR
 // ---------------------------------------------------------------------------
 
 const runner = make => values => { const m = make(); m.reset(); m.update(values); m.advance(1e4); const s = m.getState(); m.dispose(); return s; };
-const runStage = runner(S.createThreeAxisModel), runDesign = runner(D.createCADDesignModel), runScan = runner(R.createLaserScanningModel);
-
-checkTrialNumbers(L.threeAxisLesson, {
-  'Ask for a point between two steps': s => ({'1.8': s.motor.angle, 200: s.motor.steps, 16: s.micro, '3,200': s.motor.steps * s.micro, 20: P.BELT.teeth, 2: P.BELT.pitch, '40.0': s.lead, '12.50': s.microstepMicrons, '6.37': s.commanded, '6.3750': s.reached, '5.00': Math.abs(s.residual) * 1000, '6.25': s.worst * 1000}),
-  'Turn the driver off': s => ({200: s.motor.steps, '200.00': s.microstepMicrons, '6.4000': s.reached, '30.00': Math.abs(s.residual) * 1000, '100.00': s.worst * 1000}),
-  'Divide the step finely': s => ({32: s.micro, '6,400': s.motor.steps * s.micro, '6.25': s.microstepMicrons, '6.3688': s.reached, '1.25': Math.abs(s.residual) * 1000}),
-  'Drive it with a screw instead': s => ({'0.8': s.lead, '40.0': P.BELT.pitch * P.BELT.teeth, '3,200': s.motor.steps * s.micro, '4,000.0': s.stepsPerMm, '0.25': s.microstepMicrons, '2.25': s.feed, '5.71': s.duration}),
-  'Take the play out': s => ({'0.0': s.endTable * 1000}),
-  'Put the play back': s => ({'500.0': s.endTable * 1000}),
-  'Ask for a move too short to get up to speed': s => ({'0.50': s.out.ramp, '54.77': s.out.top, '0.07': s.duration}),
-}, runStage, t);
+const runDesign = runner(D.createCADDesignModel), runScan = runner(R.createLaserScanningModel);
 
 checkTrialNumbers(L.cadDesignLesson, {
   'Describe the shape': s => ({252: s.triangles, '57.8': s.outerError * 1000, '5.63': 180 / s.facets, '2,632': s.facetedVolume, '2,649': s.roundVolume, '17.0': s.missing}),
@@ -541,21 +469,7 @@ function covered(text, expected, where) {
 const texts = lesson => [['simple', lesson.simple], ['overview', lesson.overview], ...lesson.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...lesson.parts.map((item, i) => [`part ${i + 1}`, item.role]), ['misconception', lesson.misconception], ['quiz', [lesson.quiz.question, ...lesson.quiz.options].join(' ')]];
 const expectNone = (lesson, name) => { for (const [where, text] of texts(lesson)) covered(text, {}, `${name} ${where}`); };
 
-const stagePlan = P.stagePlan({}), screwPlan = P.stagePlan({axis: 1}), playPlan = P.stagePlan({lash: 0.5});
-expectNone(L.threeAxisLesson, 'Three axis');
-covered(L.threeAxisLesson.deeper[0].body, {
-  [`it ships ${P.MARLIN.stepsPerMm[0]} for the two flat axes and ${P.MARLIN.stepsPerMm[2]} for the up and down one`]: 'it ships 80 for the two flat axes and 4000 for the up and down one',
-  [`${stagePlan.motor.steps} steps a turn at a sixteenth is ${f0(stagePlan.motor.steps * stagePlan.micro)} microsteps, over a ${P.BELT.teeth} tooth pulley of ${P.BELT.pitch} mm pitch carrying ${f1(P.BELT.pitch * P.BELT.teeth)} mm a turn, is ${f1(stagePlan.stepsPerMm)}`]: '200 steps a turn at a sixteenth is 3,200 microsteps, over a 20 tooth pulley of 2 mm pitch carrying 40.0 mm a turn, is 80.0',
-  [`the same ${f0(screwPlan.motor.steps * screwPlan.micro)} over an M5 screw carrying ${P.LEADS.m5} mm a turn is ${f1(screwPlan.stepsPerMm)}`]: 'the same 3,200 over an M5 screw carrying 0.8 mm a turn is 4,000.0',
-}, 'Three axis deeper 1');
-covered(L.threeAxisLesson.deeper[1].body, {[`its ${P.MOTOR.repeatableLow} or ${P.MOTOR.repeatable} percent`]: 'its 3 or 5 percent'}, 'Three axis deeper 2');
-covered(L.threeAxisLesson.deeper[2].body, {[`does so to ${f2(P.MARLIN.lashResolution * 1000)} μm and expects an answer under ${P.MARLIN.lashLimit} mm`]: 'does so to 5.00 μm and expects an answer under 0.5 mm'}, 'Three axis deeper 3');
-covered(L.threeAxisLesson.deeper[3].body, {[`ceiling of ${P.MARLIN.maxFeed[2]} mm/s is a two hundredth of the belts’ ${P.MARLIN.maxFeed[0]} mm/s`]: 'ceiling of 2.25 mm/s is a two hundredth of the belts’ 500 mm/s'}, 'Three axis deeper 4');
-covered(L.threeAxisLesson.deeper[4].body, {[`an acceleration of ${P.MARLIN.accel} mm/s²`]: 'an acceleration of 3000 mm/s²', [`gaining ${SRC.marlin.per30} mm/s within a thirtieth`]: 'gaining 100 mm/s within a thirtieth'}, 'Three axis deeper 5');
-covered(L.threeAxisLesson.deeper[5].body, {}, 'Three axis deeper 6');
-covered(L.stageLimits, {[`the ${P.BELT.teeth} tooth pulley, which with the sourced ${P.BELT.pitch} mm belt pitch gives exactly the ${P.MARLIN.stepsPerMm[0]} steps a millimeter Marlin ships`]: 'the 20 tooth pulley, which with the sourced 2 mm belt pitch gives exactly the 80 steps a millimeter Marlin ships'}, 'stage limits');
 covered(L.sharedLimits, {}, 'shared limits');
-covered(L.threeAxisLesson.quiz.explanation, {[`stops ${f1(playPlan.endTable * 1000)} μm short`]: 'stops 500.0 μm short'}, 'Three axis quiz');
 
 const designDefault = P.designPlan({}), coarse = P.designPlan({facets: 8}), fineDesign = P.designPlan({facets: 128});
 expectNone(L.cadDesignLesson, 'Design');
@@ -601,11 +515,6 @@ covered(L.laserScanningLesson.quiz.explanation, {[`${f0(tallRidge.missing)} of t
 
 // The models' own words, and their readings.
 const partText = (model, id) => model.parts.find(item => item.id === id).description;
-stage.reset();
-covered(partText(stage, 'motor'), {[`a ${f2(P.MOTOR.faceplate)} mm faceplate`]: 'a 43.18 mm faceplate', [`a toothed pulley of ${P.BELT.teeth} teeth at a ${P.BELT.pitch} mm pitch`]: 'a toothed pulley of 20 teeth at a 2 mm pitch'}, 'stage motor text');
-covered(partText(stage, 'drive'), {[`drawn ${f0(S.timesLarger(S.CLOSE))} times larger`]: 'drawn 10 times larger', [`A belt of ${P.BELT.pitch} mm pitch on a ${P.BELT.teeth} tooth pulley carries ${f0(P.BELT.pitch * P.BELT.teeth)} mm a turn; an M5 screw of ${P.LEADS.m5} mm lead carries ${P.LEADS.m5} mm a turn`]: 'A belt of 2 mm pitch on a 20 tooth pulley carries 40 mm a turn; an M5 screw of 0.8 mm lead carries 0.8 mm a turn'}, 'stage drive text');
-covered(partText(stage, 'grid'), {[`at most ${S.GRIDVIEW.cells} microsteps`]: 'at most 64 microsteps'}, 'stage grid text');
-covered(partText(stage, 'stage'), {[`bar below is ${S.RIG.scaleBar} mm long`]: 'bar below is 20 mm long'}, 'stage rig text');
 design.reset();
 covered(partText(design, 'solid'), {[`1 mm to ${D.CUP} scene units`]: '1 mm to 0.04 scene units'}, 'design solid text');
 covered(partText(design, 'facet'), {[`drawn ${f0(D.timesLarger(D.FACET))} times larger`]: 'drawn 100 times larger'}, 'design facet text');
@@ -619,10 +528,6 @@ covered(partText(scanner, 'sensor'), {[`a window of ${R.SENSOR.cells} cells`]: '
 covered(partText(scanner, 'chart'), {[`across the ${P.SCANNER.height} mm`]: 'across the 25 mm'}, 'scan chart text');
 
 {
-  stage.reset();
-  const readings = stage.getState().readings, find = label => readings.find(item => item.label === label);
-  t.ok(readings.map(item => item.label).join() === 'Your result,Steps a millimeter,One microstep,Reached,Lost motion,The move,Drawn', 'seven readings on the stage');
-  t.ok(find('Steps a millimeter').value === '80.0' && find('One microstep').value === '12.5 μm' && find('Reached').value === '6.3750 mm' && find('Lost motion').value === '100.0 μm', 'carrying the lesson’s figures');
   design.reset();
   const dReadings = design.getState().readings, dFind = label => dReadings.find(item => item.label === label);
   t.ok(dFind('Triangles').value === '252' && dFind('Chord error').value === '57.8 μm' && dFind('File size').value === '12,684 bytes' && dFind('Layers').value === '60', 'the design’s figures');
@@ -648,7 +553,6 @@ for (const [name, lesson] of [['Three-axis positioning', L.threeAxisLesson], ['C
 // ---------------------------------------------------------------------------
 
 const benches = [
-  ['the stage', stage, S.createThreeAxisModel, P.STAGE_DOMAINS, P.STAGE_DEFAULTS, P.sampleStage, L.threeAxisLesson, m => m.advance(20)],
   ['the design', design, D.createCADDesignModel, P.DESIGN_DOMAINS, P.DESIGN_DEFAULTS, P.sampleDesign, L.cadDesignLesson, m => m.advance(20)],
   ['the scanner', scanner, R.createLaserScanningModel, P.SCAN_DOMAINS, P.SCAN_DEFAULTS, P.sampleScan, L.laserScanningLesson, m => m.advance(20)],
 ];
@@ -739,4 +643,4 @@ for (const [name, model, make, domains, defaults, sample, lesson, settle] of ben
 const released = benches.reduce((total, [, , make]) => total + checkDisposal((() => { const fresh = make(); fresh.advance(2); return fresh; })(), t), 0);
 for (const [, model] of benches) model.dispose();
 
-console.log(`PASS three axis positioning, computer aided design and laser scanning: ${t.count} checks, ${counts.poses} poses, ${counts.steps} integration and simulation steps, ${counts.points} drawn points read back, ${counts.samples} traced samples, ${counts.facets} faceted curves, ${counts.numbers} quoted numbers traced, 3 lessons and 21 trials, ${released} resources released exactly once.`);
+console.log(`PASS CAD and scanner draft benches plus shared math fixtures: ${t.count} checks, ${counts.poses} poses, ${counts.steps} integration and simulation steps, ${counts.points} drawn points read back, ${counts.samples} traced samples, ${counts.facets} faceted curves, ${counts.numbers} quoted numbers traced, 2 bench lessons and 14 trials, 3 lesson routes, ${released} resources released exactly once.`);
