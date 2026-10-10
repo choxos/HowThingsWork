@@ -1944,6 +1944,53 @@
       "parentId": "system"
     }
   ],
+  "bimetal-thermostat": [
+    {
+      "id": "body",
+      "name": "Mounting plate and clamp",
+      "parentId": "system"
+    },
+    {
+      "id": "strip",
+      "name": "Bonded brass and iron",
+      "parentId": "system"
+    },
+    {
+      "id": "contact",
+      "name": "Moving and fixed contacts",
+      "parentId": "system"
+    },
+    {
+      "id": "magnet",
+      "name": "Magnetic contact retention",
+      "parentId": "system"
+    },
+    {
+      "id": "dial",
+      "name": "Setting screw and dial",
+      "parentId": "system"
+    },
+    {
+      "id": "room",
+      "name": "Room and thermometer",
+      "parentId": "system"
+    },
+    {
+      "id": "heater",
+      "name": "Switched resistance heater",
+      "parentId": "room"
+    },
+    {
+      "id": "circuit",
+      "name": "Main switch and heater circuit",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Elapsed room temperature",
+      "parentId": "system"
+    }
+  ],
   "liquid-in-glass-thermometer": [
     {
       "id": "system",

@@ -28,60 +28,68 @@ export const thermostatLimits = 'Not from a source: every dimension of every str
 // Bimetal thermostat.
 // ---------------------------------------------------------------------------
 
-const bimetal = {
-  strip: trial(BIMETAL_DEFAULTS, 'strip'), contact: trial(BIMETAL_DEFAULTS, 'contact'),
-  dial: trial(BIMETAL_DEFAULTS, 'dial'), heater: trial(BIMETAL_DEFAULTS, 'heater'),
-  chart: trial(BIMETAL_DEFAULTS, 'chart'),
-};
+const bimetalTrial = trial(BIMETAL_DEFAULTS, 'system');
 
-export const bimetalLimits = `${thermostatLimits} The strip is taken as two equal layers of brass and iron 50 mm long and 0.6 mm thick overall, bent as a cantilever so that its tip stands at half the curvature times the length squared, which is only true while the bend is gentle. The contact's overtravel is taken as 20 micrometers, which is what makes the switching band about a degree wide; a real snap disc buckles rather than sliding, and its band is set by its shape.`;
+export const bimetalLimits = 'The book shows a brass and iron strip opening and closing a heating circuit. The visible magnet and room calculation extend that explanation. This illustrative strip is 50 × 6 × 0.6 mm, with two equal layers, flat at 20 °C. Generic near-room expansion coefficients are 19 and 12 millionths per kelvin; representative elastic moduli are 110 and 207 GPa. These properties are not a calibrated material pair. Linear small-deflection beam theory combines thermal curvature with contact force. A fixed magnetic release load corresponds to 20 micrometers of free-tip travel; cooling recaptures the contact at zero gap. A real magnet has a force that changes with gap. The 40 m³ room has a declared effective heat capacity of 300 kJ/K and loss conductance of 55 W/K. Room and strip share one temperature, with no sensor lag, heater heat storage, cold corners, or prediction of real thermostat performance.';
 
 export const bimetalThermostatLesson = {
-  simple: 'How does a strip of metal know when a room is warm enough?',
-  overview: 'Two metals bonded face to face cannot expand by the same amount, and since neither can slide on the other the pair has no choice but to curl. That curl is the whole mechanism: it carries a contact away from its post at one temperature and brings it back at a slightly lower one, and in between it holds whatever it was doing. Put that switch in front of a heater and a room, and the pair of them cycle: the room drifts up until the contact parts, coasts down until it meets again, and settles into a rhythm around your setting. Move the setting, change the weather, change the heater, and press Play.',
+  simple: 'How can two metals keep a room warm?',
+  overview: 'Brass expands more than iron as it warms. Bond the two face to face and the free strip curves, with brass on the outside of the heated bend. Here that strip carries an electrical contact. When it pulls away from a fixed pad, the heater switches off. Cooling brings the contact back and switches the heater on again. A visible magnet gives the switch different opening and closing temperatures. Turn the setting screw, change the weather or heater, then watch what happens to the room.',
   steps: [
-    {title: 'Bond two metals that disagree', body: 'Brass and iron are joined along their whole length, so neither can take up the length it would choose on its own.'},
-    {title: 'Let the disagreement bend the strip', body: 'As the strip warms, the brass side wants to be longer than the iron side, and the only shape that lets both be attached is a curve with the brass on the outside.'},
-    {title: 'Carry the contact off its post', body: 'The tip of the strip moves far more than either metal changed length, and that movement carries one contact away from the other.'},
-    {title: 'Overtravel so it does not chatter', body: 'The contact does not simply touch and part at one temperature; it snaps a little past the parting point, so the strip has to come back further before they meet again.'},
-    {title: 'Let the room cycle', body: 'With the heater off the room cools until the contacts meet, and with it on the room warms until they part, so the room hunts gently around the setting instead of resting exactly on it.'},
+    {title: 'Bond brass to iron', body: 'The metals cannot slide apart. The lower brass layer wants to expand more than the upper iron layer, so a free warmed strip bends upward.'},
+    {title: 'Close a complete circuit', body: 'Press Play to close the main switch. If the strip contact touches its pad, current has a route through the heater and back to the supply.'},
+    {title: 'Let the room warm the strip', body: 'The heater supplies energy while heat also flows between the room and outdoors. The room temperature determines the strip’s free bend.'},
+    {title: 'Pull free of the magnet', body: 'While the contacts touch, their force constrains the strip tip. At the opening temperature, the strip overcomes the modeled magnetic retention and opens the heater circuit.'},
+    {title: 'Cool until contact returns', body: 'With the heater off and colder air outside, the room cools. At a slightly lower temperature the moving contact touches the pad again. The gap between thresholds is hysteresis.'},
+    {title: 'Move the setting, observe the room', body: 'The dial moves the contact and magnet together. A higher position needs a warmer strip to open. Regulation succeeds only when the heater can warm the room through the band and the surroundings can cool it back.'},
   ],
   parts: [
-    {name: 'Bonded bimetal strip', role: 'Turns the room’s temperature into a movement by curling.'},
-    {name: 'Switch contacts', role: 'Carry the heater’s current, and part when the strip has bent far enough.'},
-    {name: 'Setting dial', role: 'Moves the fixed contact, and so sets the temperature at which the strip reaches it.'},
-    {name: 'The heater it switches', role: 'The load on the other side of the contacts, which is either fully on or fully off.'},
-    {name: 'The room through the run', role: 'What the room reads from the moment the heating is switched on.'},
+    {name: 'Mounting plate and clamp', role: 'Hold the strip root fixed and support the moving carriage.'},
+    {name: 'Bonded brass and iron', role: 'Convert temperature into a free bend, modified by force while the contact is held.'},
+    {name: 'Moving and fixed contacts', role: 'Make or break the electrical route through the heater.'},
+    {name: 'Magnetic contact retention', role: 'Hold the contact until the strip can pull free, creating a switching band.'},
+    {name: 'Setting screw and dial', role: 'Move the fixed contact and magnet to change the opening temperature.'},
+    {name: 'Room and thermometer', role: 'Show the useful result: the room temperature after heat input and loss.'},
+    {name: 'Switched resistance heater', role: 'Supply the selected power while both switches are closed.'},
+    {name: 'Main switch and heater circuit', role: 'Connect the supply, strip, contact and heater in one complete route.'},
+    {name: 'Elapsed room temperature', role: 'Record the temperature and switching levels up to the current time.'},
   ],
   tryIt: [
-    bimetal.chart('Switch the heating on', 'Press Play and watch the room.', 'The room climbs to the setting, the contacts part, and it settles into a rhythm: 15 switches in the run, with the heater on 41% of the time.'),
-    bimetal.contact('Watch the band, not the setting', 'Press Play and watch the contacts.', 'They part at 20.0 °C and do not meet again until 19.1 °C, a band of 0.91 °C. Between those two the strip keeps whatever it was doing, which is the whole of what hysteresis means.'),
-    bimetal.dial('Ask for more', 'Set the dial to 24 °C.', 'A warmer room loses faster, so the heater has to be on 52% of the time instead of 41%, and it cycles 12 times instead of 15.', {setting: 24}),
-    bimetal.chart('A cold night', 'Set the outdoor temperature to ten degrees below zero.', 'The room now needs 1,650 W to stand still, so the heater runs 83% of the time and the cycles stretch out: only 5 of them in the whole run.', {outdoor: -10}),
-    bimetal.heater('Too small a heater', 'Set the heater to 500 W.', 'It never gets there. The contacts never part at all, the heater simply stays on, and the room settles at 14.1 °C, wherever its losses happen to balance.', {power: 500}),
-    bimetal.heater('Too large a heater', 'Set the heater to 3,000 W.', 'It races through the band and overshoots it, so the contacts work harder: 21 switches, with the heater on only 28% of the time.', {power: 3000}),
-    bimetal.strip('How far it actually bends', 'Look at the strip.', 'The tip moves 22.0 micrometers for each degree, and the contact only has to overtravel 20 micrometers to set the whole band. That is why the bend has to be drawn larger than it is.'),
+    bimetalTrial('Warm a cool room', 'Press Play. Follow the strip, heater and room through 90 simulated minutes.', 'The heater first switches off after about 22.5 minutes. It then regulates between 19.06 and 20.00 °C. The chart draws only time already observed.'),
+    bimetalTrial('Ask for 24 °C', 'Press Play with the higher setting already selected.', 'The screw has raised the contact carriage. First opening takes about 41.3 minutes. The room ends near 23.64 °C, warmer than in the default trial.', {setting: 24}),
+    bimetalTrial('A cold night', 'Press Play with outdoors at −10 °C.', 'The larger temperature difference increases heat loss. The first opening now takes about 60.4 minutes, and the heater is on for about 93.6% of this whole trial, including the initial warm-up.', {outdoor: -10}),
+    bimetalTrial('Too little heater power', 'Press Play with a 500 W heater.', 'The contacts stay touching. The room ends near 14.06 °C and cannot reach 20 °C, because the full-power heat balance is only about 14.09 °C.', {power: 500}),
+    bimetalTrial('More power, earlier opening', 'Press Play with a 3,000 W heater.', 'The first opening comes after about 12.8 minutes. The room does not overshoot the opening temperature in this ideal model because the sensor has no lag and the heater stores no heat.', {power: 3000}),
+    bimetalTrial('Start with a warm room', 'Press Play with the room already at 25 °C.', 'The thermostat contact begins open. The heater stays off while the room cools, first switching on near 19.06 °C after about 32.0 minutes.', {start: 25}),
+    bimetalTrial('Can a heater make a room cooler?', 'Press Play with a 10 °C setting, 15 °C outdoors, and a room starting at 14 °C.', 'The heater remains off. Heat enters from the warmer outdoors and the room rises to about 14.63 °C. A heating-only thermostat cannot supply cooling.', {setting: 10, outdoor: 15, start: 14}),
   ],
   deeper: [
-    {title: 'Why it curls at all', body: 'The Bimetallic strip page puts it plainly: the metals expand at different rates, they are joined along their length, and so the strip bends, with the higher expanding metal on the outside of the curve. The Bimetal page says a bimetal bar is usually brass and iron, which is the pair the book draws. Brass expands 19 millionths of its length for each degree and iron 11.8, so the mismatch doing all the work is only 7.2 millionths, and the Engineering ToolBox table agrees within its own spread.'},
-    {title: 'Villarceau’s formula', body: 'The curvature is not guessed. The Bimetallic strip page gives the formula the French physicist Yvon Villarceau published in 1863: the change in curvature is three over two a, times the difference in expansion, times the warming, divided by the total thickness, where a is a dimensionless number built from both metals’ stiffnesses and thicknesses. With brass at 106 GPa and wrought iron at 193 GPa, a comes to 1.023, close to the 1 the page says you may use when the two are similar. A cantilever of that curvature puts its tip at half the curvature times the length squared.'},
-    {title: 'Small movements, usefully amplified', body: 'The page notes that the sideways movement of the strip is much larger than the lengthwise expansion of either metal, and that is the trick. Over this 50 mm strip the tip moves 22.0 micrometers for each degree, which is a thousandth of an inch, and yet it is enough to work a contact. The same page says the strip is often wound into a coil instead, purely because the extra length makes it more sensitive still.'},
-    {title: 'Why there has to be a band', body: 'A contact that opened and closed at exactly one temperature would open and close continuously, because the room is never perfectly still. The overtravel prevents it: 20 micrometers of it here, which at 22.0 micrometers a degree is a band of 0.91 °C. Inside the band the switch holds its state. Narrow the band and the room is held closer but the contacts work harder; widen it and the contacts last longer but the room wanders.'},
-    {title: 'One setting, two behaviors', body: 'The dial does not change the strip at all; it moves the post the strip has to reach. Everything else follows from the room. Ask for 24 °C instead of 20 °C against the same weather and the heater has to run 52% of the time instead of 41%; drop the outside to 10 below zero and the same setting needs 83%. A thermostat never changes how hard a heater works, only how much of the time it is allowed to.'},
-    {title: 'Why the size of the heater matters', body: 'A resistance heater has one setting, on, so the thermostat can only ration time. At 500 W this room cannot be held at all: the contacts never part and it stalls at 14.1 °C. At 3,000 W it is held easily, but the room shoots through the band before the heat has spread, so the contacts work 21 times instead of 15. Both extremes are worse than a heater matched to the room, which is an argument about sizing, not about thermostats.'},
+    {title: 'Why brass goes outside the warm bend', body: 'Near room temperature, the representative expansion coefficients are 19 millionths per kelvin for brass and 12 for iron. The bonded strip must accommodate that mismatch. Above the declared 20 °C flat reference, the longer brass face is outside the free curve. Below that reference, the free bend reverses. Contact forces can change either shape while the switch is held shut.'},
+    {title: 'From tiny expansion to visible motion', body: 'The bimetal handbook relates curvature to the two layer thicknesses, expansion coefficients and elastic moduli. For this equal-layer strip, the free cantilever tip moves about 21.3 micrometers per kelvin. Its deflection is enlarged 100 times in the drawing, and its thickness three times. The calculated physical travel is not enlarged.'},
+    {title: 'A touching contact changes the beam', body: 'The closed strip cannot pass through its pad. The calculation adds the deflection of a point-loaded cantilever to its free thermal bend, holding the tip exactly at the contact. As the room warms, the required holding force changes. At about 7.64 mN of magnetic pull in this model, the strip releases and springs to its free shape.'},
+    {title: 'Where hysteresis comes from', body: 'Bare bimetal expansion alone does not create the switching band shown here. Magnetic retention delays release until the free tip would be 20 micrometers above the touching position. Cooling closes the contact at zero free gap. Those two positions correspond to temperatures about 0.938 °C apart. Real magnetic force varies with gap; this is a declared idealization.'},
+    {title: 'Heat in, stored heat, heat out', body: 'The room obeys C dT/dt = P − G(T − Tout) while the heater is on, and the same equation with P = 0 while it is off. Here C is 300 kJ/K and G is 55 W/K. Each interval is solved as an exponential until the next exact switch event. Supplied heater energy equals the change stored in the room plus net outward heat transfer.'},
+    {title: 'Why regulation sometimes fails', body: 'A weak heater can stay on without reaching the opening temperature. Warmer surroundings can prevent cooling through the closing temperature, even with the heater off. More heater power reduces warming time, but this no-lag model has no temperature overshoot at its opening threshold. Real sensors and heaters can store heat and respond with delay.'},
   ],
-  misconception: 'A thermostat does not turn a heater down. It can only turn it off and on, so a room is never held at one temperature; it is walked up and down through a narrow band, and the setting is the top of that walk rather than a promise about every corner of the room.',
-  limits: `The strip is drawn at true size along its length and its bend 12 times larger, because the tip moves only micrometers. The run covers 90 minutes and plays 120 times faster. ${bimetalLimits}`,
-  sources: [sources.bimetallic, sources.bimetal, sources.thermostat, sources.expansion, sources.toolbox, sources.modulus, sources.brass],
+  misconception: 'This thermostat controls its heater by switching it on and off. That does not mean every thermostat or heater works only that way: real systems can also modulate power. Nor can this heating-only model cool a room below warm surroundings.',
+  limits: `Deflection is drawn 100 times larger, thickness three times larger; the room and chart use separate schematic scales. The 90-minute trial plays 120 times faster. ${bimetalLimits}`,
+  sources: [
+    {title: 'OpenStax: thermal expansion and bimetal strips', url: 'https://openstax.org/books/university-physics-volume-2/pages/1-3-thermal-expansion'},
+    {title: 'Kanthal: Thermostatic Bimetal Handbook, curvature and loaded cantilevers', url: 'https://cdn.thomasnet.com/ccp/10021079/106138.pdf'},
+    {title: 'Copper Development Association: C26000 elastic properties', url: 'https://alloys.copper.org/alloy/C26000'},
+    {title: 'ARMCO Pure Iron: manufacturer property data', url: 'https://www.aksteel.nl/files/downloads/clf_productdata__armco_pure_iron_pdb_euro_final_072022_92.pdf'},
+    {title: 'Honeywell patent US3171003A: magnetic retention in a thermostat', url: 'https://patents.google.com/patent/US3171003A/en'},
+    {title: 'OpenStax: the first law of thermodynamics', url: 'https://openstax.org/books/college-physics-2e/pages/15-1-the-first-law-of-thermodynamics'},
+  ],
   quiz: {
-    question: 'Why do the contacts not meet again at the same temperature that parted them?',
+    question: 'What gives this model different opening and closing temperatures?',
     options: [
-      'They overtravel a little, so the strip must bend back further before they touch.',
-      'The strip cools more slowly than it warms.',
-      'The heater keeps the contacts warm after it switches off.',
+      'The magnet retains the touching contact until the strip can pull free; cooling closes the gap at a lower temperature.',
+      'Brass naturally stops expanding between two temperatures.',
+      'The heater keeps running through an open contact.',
     ],
     answer: 0,
-    explanation: 'They part at 20.0 °C and meet at 19.1 °C, because 20 micrometers of overtravel is 0.91 °C of room temperature.',
+    explanation: 'The declared magnetic retention corresponds to 20 micrometers of free-tip travel. That creates a band of about 0.938 °C. The bare strip’s thermal expansion alone would not supply this hysteresis.',
   },
 };
 

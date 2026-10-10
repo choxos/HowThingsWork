@@ -8,19 +8,19 @@ import {validateControls, validTime, clamp} from './physics-kit.js';
 // piston. Each one then regulates something, so the point is not the movement
 // but the cycle it drives.
 //
-// Exact within the model: the curvature of a bimetal strip from the formula
-// Villarceau published in 1863, 1/R − 1/R0 = (3/2a)(α2 − α1)(T − T0)/h, with
+// Exact within the model: linear two-layer bimetal curvature, equivalent to
+// equation 1 in the Kanthal handbook, (3/2a)(α2 − α1)(T − T0)/h, with
 // the dimensionless a built from both metals' moduli and thicknesses, and the
 // tip of a cantilever of that curvature at κL²/2; the differential expansion of
 // a tube and the rod inside it, L(α_tube − α_rod)(T − T0); the share of a wax
 // pellet melted across its melting range and the volume that adds; the piston
 // that volume drives through a known bore; the gas or coolant through an
-// opening from the orifice equation, and every regulating loop integrated step
-// by step as one stirred volume.
+// opening from the orifice equation. Rod and wax loops are integrated step by
+// step; the bimetal room uses exact exponential segments between switch events.
 //
-// Sourced: the Villarceau formula and the fact that a bimetal is usually steel
-// and copper, or steel and brass, with the higher expanding metal on the
-// outside of the curve; the book's brass and iron; linear expansion
+// Sourced: the bimetal handbook curvature and loaded-beam relations, with the
+// higher expanding metal outside a free heated bend; the book's brass and iron.
+// BIMETAL_MATERIAL uses the reviewed primary-source properties. Shared linear expansion
 // coefficients for brass, iron, carbon steel, copper and invar, from the
 // Thermal expansion page and checked against the Engineering ToolBox table;
 // Young's moduli for brass, wrought iron and steel; brass's density and melting
@@ -35,8 +35,8 @@ import {validateControls, validTime, clamp} from './physics-kit.js';
 // coefficient of 0.6 to 0.85; and the Ideal Vogue sheet's 20 mbar gas supply.
 //
 // Not from a source, each said in the lessons' limits: every dimension of every
-// strip, rod, tube, pellet, piston, valve and contact; the snap action taken as
-// a fixed overtravel at the contact rather than a modeled buckling disc; a room
+// strip, rod, tube, pellet, piston, valve and contact; magnetic contact retention
+// taken as a fixed release travel and zero-gap recapture; a room
 // of stated size and loss, an oven of stated size and loss, and an engine of
 // stated heat capacity and heat output, each treated as one stirred volume at
 // one temperature; natural gas taken at the density of methane with the
@@ -59,6 +59,8 @@ export const EXPANSION = Object.freeze({brass: 19e-6, iron: 11.8e-6, carbonSteel
 export const EXPANSION_OTHER = Object.freeze({brass: Object.freeze([18e-6, 19e-6]), ironForged: 11.3e-6, ironPure: 12.0e-6, steel: Object.freeze([10.8e-6, 12.5e-6]), copper: Object.freeze([16e-6, 16.7e-6]), invar: 1.5e-6});
 /** Young's moduli, Pa, from the Young's modulus page. */
 export const MODULUS = Object.freeze({brass: 106e9, wroughtIron: 193e9, steel: 200e9, copper: 110e9});
+/** Representative near-room expansion (OpenStax) and elastic moduli (CDA and ARMCO), not a calibrated alloy pair. */
+export const BIMETAL_MATERIAL = Object.freeze({brassAlpha: 19e-6, ironAlpha: 12e-6, brassYoung: 110e9, ironYoung: 207e9});
 /** Brass, from the Brass page. */
 export const BRASS = Object.freeze({density: Object.freeze([8400, 8730]), melting: Object.freeze([900, 940])});
 
@@ -82,8 +84,8 @@ export const COOLANT = Object.freeze({density: 1000, heat: 4184});
 export const DECLARED = Object.freeze({
   // The bimetal strip, its contact and the room it keeps.
   stripLength: 0.05, stripThickness: 0.0006, stripWidth: 0.006, stripAt: 20,
-  gap: 0.0004, snap: 0.00002,
-  roomVolume: 40, roomLoss: 55, roomFurnishings: 6, heaterPower: 2000, outdoor: 5,
+  snap: 0.00002,
+  roomVolume: 40, roomLoss: 55, roomCapacity: 300000,
   // The rod thermostat, its valve and the oven it keeps.
   rodLength: 0.2, rodAt: 20, valveBore: 0.0038, valveTravel: 0.00015, bypassBore: 0.00045, lever: 6,
   ovenCapacity: 42000, ovenLoss: 2.6, ovenAmbient: 20, burnerEfficiency: 0.45,
@@ -109,14 +111,29 @@ export function villarceauA(e1, h1, e2, h2) {
  */
 export function curvatureAt(celsius, from = DECLARED.stripAt) {
   const h1 = DECLARED.stripThickness / 2, h2 = h1, h = h1 + h2;
-  const a = villarceauA(MODULUS.brass, h1, MODULUS.wroughtIron, h2);
-  return 3 / (2 * a) * (EXPANSION.brass - EXPANSION.iron) * (celsius - from) / h;
+  const a = villarceauA(BIMETAL_MATERIAL.brassYoung, h1, BIMETAL_MATERIAL.ironYoung, h2);
+  return 3 / (2 * a) * (BIMETAL_MATERIAL.brassAlpha - BIMETAL_MATERIAL.ironAlpha) * (celsius - from) / h;
 }
 
 /** Where the tip of a cantilever of length L and curvature κ stands, m: κL²/2 for a gentle bend. */
 export const tipOf = curvature => curvature * DECLARED.stripLength ** 2 / 2;
 /** How far the strip's tip has moved at `celsius`, m. */
 export const stripTipAt = celsius => tipOf(curvatureAt(celsius));
+
+const layer = DECLARED.stripThickness / 2;
+const neutralAxis = layer / 2 * (BIMETAL_MATERIAL.ironYoung - BIMETAL_MATERIAL.brassYoung) / (BIMETAL_MATERIAL.ironYoung + BIMETAL_MATERIAL.brassYoung);
+const bendingRigidity = DECLARED.stripWidth * (BIMETAL_MATERIAL.brassYoung * (layer ** 3 / 12 + layer * (-layer / 2 - neutralAxis) ** 2) + BIMETAL_MATERIAL.ironYoung * (layer ** 3 / 12 + layer * (layer / 2 - neutralAxis) ** 2));
+export const BIMETAL_BEAM = Object.freeze({neutralAxis, bendingRigidity, tipStiffness: 3 * bendingRigidity / DECLARED.stripLength ** 3});
+
+/** Small-deflection thermal cantilever plus endpoint load, with brass on its lower face. */
+export function bimetalBeamAt(plan, now, x = DECLARED.stripLength) {
+  const q = clamp(x / DECLARED.stripLength), distance = q * DECLARED.stripLength;
+  const free = now.curvature * distance ** 2 / 2;
+  const displacement = now.closed ? plan.tipAtClose - now.tip : 0;
+  return {x: distance, free, y: free + displacement * q ** 2 * (3 - q) / 2,
+    slope: now.curvature * distance + displacement * 3 * q * (2 - q) / (2 * DECLARED.stripLength),
+    force: displacement * BIMETAL_BEAM.tipStiffness};
+}
 
 /** How much longer a tube of `length` is than the rod inside it at `celsius`, m. */
 export const differentialAt = (celsius, length = DECLARED.rodLength, from = DECLARED.rodAt) =>
@@ -154,40 +171,38 @@ export function bimetalPlan(input = {}) {
   const values = validateControls(input, BIMETAL_DEFAULTS, BIMETAL_DOMAINS, 'bimetal thermostat');
   const key = JSON.stringify(values);
   if (rooms.has(key)) return rooms.get(key);
-  // The contact is set so that it parts at the setting; the snap carries it a
-  // little further, and that overtravel is the whole of the switching band.
+  // shortcut: fixed magnetic release force and zero-gap recapture; use a measured force-gap law for hardware prediction.
   const opensAt = values.setting;
   const closesAt = temperatureForTip(stripTipAt(opensAt) - DECLARED.snap);
-  const band = opensAt - closesAt;
-  const mass = 1.2041 * DECLARED.roomVolume, capacity = mass * 1012 * DECLARED.roomFurnishings;
-  const track = [{t: 0, celsius: values.start, on: true}];
-  let celsius = values.start, on = true, reached = null;
-  for (let step = 1; step * DECLARED.step <= DECLARED.roomRun + 1e-9; step++) {
-    const previous = track[step - 1], t = step * DECLARED.step;
-    const heat = previous.on ? values.power : 0;
-    const lost = DECLARED.roomLoss * (previous.celsius - values.outdoor);
-    celsius = previous.celsius + (heat - lost) * DECLARED.step / capacity;
-    if (on && celsius >= opensAt) on = false;
-    else if (!on && celsius <= closesAt) on = true;
-    if (reached === null && celsius >= opensAt) reached = t;
-    track.push({t, celsius, on});
+  const capacity = DECLARED.roomCapacity, tau = capacity / DECLARED.roomLoss;
+  const equilibrium = values.outdoor + values.power / DECLARED.roomLoss;
+  const segments = [{t: 0, celsius: values.start, closed: values.start < opensAt, onTime: 0}];
+  const events = [];
+  while (segments.at(-1).t < DECLARED.roomRun) {
+    const segment = segments.at(-1);
+    const target = segment.closed ? opensAt : closesAt;
+    const limit = segment.closed ? equilibrium : values.outdoor;
+    const canCross = segment.closed ? limit > target : limit < target;
+    const until = canCross ? -tau * Math.log1p((target - segment.celsius) / (segment.celsius - limit)) : Infinity;
+    const remaining = DECLARED.roomRun - segment.t;
+    segment.end = segment.t + Math.min(until, remaining);
+    if (until > remaining) break;
+    const next = {t: segment.end, celsius: target, closed: !segment.closed, onTime: segment.onTime + (segment.closed ? until : 0)};
+    events.push({t: next.t, celsius: target, closed: next.closed});
+    segments.push(next);
   }
-  const settled = track.at(-1);
-  const switches = track.filter((point, i) => i > 0 && point.on !== track[i - 1].on).length;
-  const holds = values.power > DECLARED.roomLoss * (values.setting - values.outdoor);
+  segments.at(-1).end = DECLARED.roomRun;
   const plan = {
-    values, opensAt, closesAt, band, capacity, mass, track, settled, reached, switches, holds,
-    duration: DECLARED.roomRun,
+    values, opensAt, closesAt, band: opensAt - closesAt, capacity, tau, equilibrium, segments, events,
+    duration: DECLARED.roomRun, canCycle: equilibrium > opensAt && values.outdoor < closesAt,
+    limit: equilibrium <= opensAt ? 'insufficientHeat' : values.outdoor >= closesAt ? 'noCooling' : 'cyclingPossible',
     tipAtOpen: stripTipAt(opensAt), tipAtClose: stripTipAt(closesAt),
     curvatureAtOpen: curvatureAt(opensAt),
-    needed: DECLARED.roomLoss * (values.setting - values.outdoor),
-    dutyCycle: DECLARED.roomLoss * (values.setting - values.outdoor) / values.power,
+    needed: Math.max(0, DECLARED.roomLoss * (values.setting - values.outdoor)),
   };
-  plan.chart = Array.from({length: DECLARED.samples}, (_, i) => {
-    const t = plan.duration * i / (DECLARED.samples - 1), now = bimetalAt(plan, t);
-    return {t, celsius: now.celsius, on: now.on};
-  });
-  if (rooms.size >= 64) rooms.clear();
+  const times = [...new Set([...Array.from({length: DECLARED.samples}, (_, i) => plan.duration * i / (DECLARED.samples - 1)), ...events.map(event => event.t)])].sort((a, b) => a - b);
+  plan.chart = times.map(t => { const now = bimetalAt(plan, t); return {t, celsius: now.celsius, closed: now.closed}; });
+  if (rooms.size >= 8) rooms.delete(rooms.keys().next().value);
   rooms.set(key, plan);
   return plan;
 }
@@ -195,11 +210,17 @@ export function bimetalPlan(input = {}) {
 /** The room and the strip at a time in the run. */
 export function bimetalAt(plan, time) {
   const t = Math.min(validTime(time), plan.duration);
-  const place = clamp(t / DECLARED.step, 0, plan.track.length - 1);
-  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
-  const celsius = plan.track[low].celsius + part * (plan.track[high].celsius - plan.track[low].celsius);
-  const on = plan.track[low].on && plan.track[high].on;
-  return {time, t, celsius, on, tip: stripTipAt(celsius), curvature: curvatureAt(celsius), done: t >= plan.duration};
+  let low = 0, high = plan.segments.length - 1;
+  while (low < high) { const middle = Math.ceil((low + high) / 2); if (plan.segments[middle].t <= t) low = middle; else high = middle - 1; }
+  const segment = plan.segments[low], elapsed = t - segment.t;
+  const limit = plan.values.outdoor + (segment.closed ? plan.values.power / DECLARED.roomLoss : 0);
+  const celsius = segment.celsius + (limit - segment.celsius) * -Math.expm1(-elapsed / plan.tau);
+  const onTime = segment.onTime + (segment.closed ? elapsed : 0), inputEnergy = onTime * plan.values.power;
+  const storedEnergy = plan.capacity * (celsius - plan.values.start);
+  const mainOn = t > 0, on = mainOn && segment.closed;
+  return {time, t, celsius, closed: segment.closed, mainOn, on, power: on ? plan.values.power : 0,
+    switches: low, onTime, duty: t > 0 ? onTime / t : 0, inputEnergy, storedEnergy, environmentEnergy: inputEnergy - storedEnergy,
+    heatLoss: DECLARED.roomLoss * (celsius - plan.values.outdoor), tip: stripTipAt(celsius), curvature: curvatureAt(celsius), done: t >= plan.duration};
 }
 
 export const sampleBimetal = (input = {}, time = 0) => bimetalAt(bimetalPlan(input), time);

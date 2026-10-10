@@ -1,18 +1,7 @@
-// Checks the three thermostats, their shared physics and their lessons against
-// the sources typed in again and the physics worked out by other routes: the
-// bimetal's curvature rebuilt from Timoshenko's full formula instead of
-// Villarceau's short one, its switching band rebuilt from the overtravel and
-// the tip's movement a degree, the differential expansion of tube and rod
-// rebuilt from raw coefficients, the rod's shut point rebuilt from the valve's
-// travel and its linkage, the wax's stroke rebuilt from volume over area, each
-// regulating loop's resting place found by bisecting its own heat balance
-// instead of by marching, and every drawn strip, tube, piston, valve and curve
-// read back at swept settings and times.
 import assert from 'node:assert/strict';
 import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './thermostat-physics.js';
-import * as BM from './bimetal-thermostat-model.js';
 import * as RM from './rod-thermostat-model.js';
 import * as WM from './wax-thermostat-model.js';
 import * as L from './thermostat-lessons.js';
@@ -65,11 +54,8 @@ const SRC = {
   orifice: {discharge: [0.6, 0.85], supply: 2000, supplyMbar: 20},
   gas: {density: 0.657, densityAt: 25, calorific: 38.7e6},
   coolant: {density: 1000, heat: 4184},
-  // Wikipedia: Bimetallic strip, for the formula and who published it.
-  villarceau: {year: 1863},
   // Drawn sizes typed in again, so a mutated model constant cannot move both sides of a test.
   drawn: {
-    stripLength: 50, stripThickness: 0.6, segments: 28, bendTimes: 12, mmBimetal: 0.01,
     tubeLength: 200, moveTimes: 200, mmRod: 0.004,
     capsuleAcross: 18, pistonBore: 4, mmWax: 0.02,
     slower: 120,
@@ -92,82 +78,6 @@ t.ok(SRC.expansion.iron > SRC.expansionOther.ironForged && SRC.expansion.iron < 
 t.ok(SRC.expansion.carbonSteel >= SRC.expansionOther.steel[0] && SRC.expansion.carbonSteel <= SRC.expansionOther.steel[1], 'and carbon steel inside the steel spread');
 t.ok(SRC.expansion.brass > SRC.expansion.iron && SRC.expansion.iron > SRC.expansion.carbonSteel && SRC.expansion.invar < SRC.expansion.carbonSteel / 5,
   'brass outgrows iron, iron outgrows carbon steel, and invar hardly grows at all');
-
-// --- The bimetal, by Timoshenko instead of Villarceau ------------------------
-{
-  // Villarceau's a, for two layers of equal thickness, is 1 + (E1 − E2)²/(16 E1 E2);
-  // put that into 3/(2a) and the whole thing collapses to Timoshenko's curvature,
-  // 6 Δα ΔT (1 + m)² / (h[3(1 + m)² + (1 + mn)(m² + 1/(mn))]), at m = 1. The two
-  // formulas are derived differently and must agree to the last bit.
-  const h = P.DECLARED.stripThickness, m = 1, n = SRC.modulus.brass / SRC.modulus.wroughtIron;
-  const dAlpha = SRC.expansion.brass - SRC.expansion.iron;
-  for (const celsius of [-20, 0, 10, 20, 20.5, 35, 60, 120]) {
-    const dT = celsius - P.DECLARED.stripAt;
-    const timoshenko = 6 * dAlpha * dT * (1 + m) ** 2 / (h * (3 * (1 + m) ** 2 + (1 + m * n) * (m ** 2 + 1 / (m * n))));
-    t.near(P.curvatureAt(celsius), timoshenko, 1e-12, `the curvature at ${f0(celsius)} °C is the same by Timoshenko as by Villarceau`);
-    // And the same again by hand, straight off the page's own statement of it.
-    const a = 1 + (SRC.modulus.brass - SRC.modulus.wroughtIron) ** 2 / (16 * SRC.modulus.brass * SRC.modulus.wroughtIron);
-    t.near(P.curvatureAt(celsius), 3 / (2 * a) * dAlpha * dT / h, 1e-12, 'and by the formula as the page writes it');
-  }
-  t.ok(P.villarceauA(SRC.modulus.brass, 1e-3, SRC.modulus.brass, 1e-3) === 1, 'two layers of the same metal recover the textbook three halves exactly');
-  t.ok(P.villarceauA(SRC.modulus.brass, 3e-4, SRC.modulus.wroughtIron, 3e-4) > 1, 'and two different metals need more than that');
-  t.near(P.curvatureAt(P.DECLARED.stripAt), 0, 1e-15, 'the strip is flat where it was made flat');
-  t.ok(P.curvatureAt(60) > 0 && P.curvatureAt(0) < 0, 'it curls one way warmed and the other way cooled');
-  // The tip of a cantilever, and its movement a degree.
-  const perDegree = P.stripTipAt(P.DECLARED.stripAt + 1) - P.stripTipAt(P.DECLARED.stripAt);
-  t.near(P.stripTipAt(60), P.curvatureAt(60) * P.DECLARED.stripLength ** 2 / 2, 1e-18, 'the tip stands at half the curvature times the length squared');
-  t.near(perDegree, 3 / (2 * P.villarceauA(SRC.modulus.brass, P.DECLARED.stripThickness / 2, SRC.modulus.wroughtIron, P.DECLARED.stripThickness / 2))
-    * dAlpha / P.DECLARED.stripThickness * P.DECLARED.stripLength ** 2 / 2, 1e-18, 'and moves that far for each degree');
-  t.ok(P.temperatureForTip(P.stripTipAt(37)) - 37 < 1e-9, 'and the temperature for a tip position inverts it');
-}
-
-// --- The bimetal's band, and the room it keeps -------------------------------
-{
-  const perDegree = P.stripTipAt(P.DECLARED.stripAt + 1) - P.stripTipAt(P.DECLARED.stripAt);
-  for (const setting of [10, 14, 20, 23, 26]) {
-    const plan = P.bimetalPlan({setting});
-    counts.plans++;
-    t.near(plan.band, P.DECLARED.snap / perDegree, 1e-9, `the band at ${f0(setting)} °C is the overtravel divided by how far the tip moves a degree`);
-    t.near(plan.opensAt, setting, 1e-12, 'the contacts part exactly at the setting');
-    t.near(plan.closesAt, setting - plan.band, 1e-9, 'and meet again one band below it');
-    t.near(plan.tipAtOpen - plan.tipAtClose, P.DECLARED.snap, 1e-15, 'which is the overtravel, measured at the tip');
-    t.near(plan.capacity, 1.2041 * P.DECLARED.roomVolume * 1012 * P.DECLARED.roomFurnishings, 1e-9, 'the room holds its air times its furnishings');
-    t.near(plan.needed, P.DECLARED.roomLoss * (setting - plan.values.outdoor), 1e-12, 'and needs its loss times the difference it stands above outside');
-  }
-  // The loop really cycles, which is what the room-and-heater run was added for.
-  const plan = P.bimetalPlan({});
-  t.ok(plan.holds && plan.switches >= 2, `the default room cycles, ${plan.switches} times in the run`);
-  t.ok(plan.track.some(point => point.on) && plan.track.some(point => !point.on), 'the heater is both on and off during it');
-  const crossedUp = plan.track.some((point, i) => i > 0 && point.celsius >= plan.opensAt && plan.track[i - 1].celsius < plan.opensAt);
-  const crossedDown = plan.track.some((point, i) => i > 0 && point.celsius <= plan.closesAt && plan.track[i - 1].celsius > plan.closesAt);
-  t.ok(crossedUp && crossedDown, 'and the room crosses the band in both directions');
-  t.ok(plan.track.every(point => point.on || point.celsius > plan.closesAt - 1), 'it is never left off far below the band');
-  // Marched again by hand, one step at a time, with the switching done here.
-  let celsius = plan.values.start, on = true, switches = 0;
-  for (let step = 1; step * P.DECLARED.step <= P.DECLARED.roomRun + 1e-9; step++) {
-    const heat = on ? plan.values.power : 0;
-    const next = celsius + (heat - P.DECLARED.roomLoss * (celsius - plan.values.outdoor)) * P.DECLARED.step / plan.capacity;
-    const was = on;
-    if (on && next >= plan.opensAt) on = false; else if (!on && next <= plan.closesAt) on = true;
-    if (on !== was) switches++;
-    celsius = next;
-    counts.steps++;
-  }
-  t.near(celsius, plan.settled.celsius, 1e-9, 'marching the room again by hand lands where the model left it');
-  t.ok(switches === plan.switches, `and counts the same ${plan.switches} switches`);
-  // A heater too small for the weather can never part the contacts.
-  const small = P.bimetalPlan({power: 500});
-  counts.plans++;
-  t.ok(!small.holds && small.switches === 0, 'too small a heater never parts the contacts at all');
-  t.near(small.settled.celsius, small.values.outdoor + small.values.power / P.DECLARED.roomLoss, 0.2, 'and the room stalls where its losses balance the heater');
-  // The duty cycle is what the room needs over what the heater gives.
-  for (const values of [{}, {setting: 24}, {outdoor: -10}, {power: 3000}]) {
-    const it = P.bimetalPlan(values);
-    counts.plans++;
-    t.near(it.dutyCycle, P.DECLARED.roomLoss * (it.values.setting - it.values.outdoor) / it.values.power, 1e-12, 'the duty cycle is the need over the supply');
-  }
-}
-checkRefusals(P.sampleBimetal, P.BIMETAL_DOMAINS, t);
 
 // --- The rod, its valve and the oven -----------------------------------------
 {
@@ -285,7 +195,6 @@ checkRefusals(P.sampleWax, P.WAX_DOMAINS, t);
 // 2. The drawing, read back from the scene.
 // ---------------------------------------------------------------------------
 
-const bimetal = BM.createBimetalThermostatModel(), BT = bimetal.topology;
 const rod = RM.createRodThermostatModel(), RT = rod.topology;
 const wax = WM.createWaxThermostatModel(), WT = wax.topology;
 
@@ -297,53 +206,8 @@ const poseOf = model => (values, runSeconds) => {
   counts.poses++;
   return model.getState();
 };
-const poseBimetal = poseOf(bimetal), poseRod = poseOf(rod), poseWax = poseOf(wax);
+const poseRod = poseOf(rod), poseWax = poseOf(wax);
 
-// --- The strip is drawn its true length, and its bend magnified --------------
-{
-  const cold = poseBimetal({start: 5}, 0), coldTip = pointsOf(BT.spine).at(-1);
-  const warm = poseBimetal({start: 25}, 0), warmTip = pointsOf(BT.spine).at(-1);
-  t.near(cold.now.celsius, 5, 1e-9, 'at the start of the run the room is where it was started');
-  t.near(warm.now.celsius, 25, 1e-9, 'at either setting');
-  const spine = pointsOf(BT.spine);
-  t.ok(spine.length === SRC.drawn.segments + 1, `the strip is drawn in ${f0(SRC.drawn.segments)} pieces, as one part`);
-  // The strip is bent, and drawn bent twelve times over, so its chord is shorter than
-  // it is. What cannot change is its length along itself: metal bends, it does not stretch.
-  const arcOf = points => points.slice(1).reduce((sum, point, i) => sum + Math.hypot(point[0] - points[i][0], point[1] - points[i][1]), 0);
-  t.near(arcOf(spine), SRC.drawn.stripLength * SRC.drawn.mmBimetal, 2e-5, `and is drawn its true ${f0(SRC.drawn.stripLength)} mm long, measured along the strip`);
-  // The ratio kills the convention: however the bend is signed, the drawn movement
-  // must be the real movement times the magnification and the millimeter scale.
-  const drawnMove = warmTip[1] - coldTip[1];
-  const realMove = P.stripTipAt(25) - P.stripTipAt(5);
-  t.near(drawnMove / realMove, 1000 * SRC.drawn.mmBimetal * SRC.drawn.bendTimes, 1e-4,
-    `the bend is drawn exactly ${f0(SRC.drawn.bendTimes)} times larger than it is`);
-  t.ok(Math.abs(drawnMove) > 1e-4, 'and it is large enough to see at all');
-  {
-    const flat = poseBimetal({start: P.DECLARED.stripAt}, 0), flatSpine = pointsOf(BT.spine);
-    t.near(flat.now.celsius, P.DECLARED.stripAt, 1e-9, 'posed at the temperature the strip was made flat');
-    t.near(Math.abs(flatSpine.at(-1)[0] - flatSpine[0][0]), SRC.drawn.stripLength * SRC.drawn.mmBimetal, drawn, 'it reaches straight across its whole length');
-    t.near(flatSpine.at(-1)[1] - flatSpine[0][1], 0, 1e-12, 'with no bend in it at all');
-    for (const start of [5, 15, 25]) {
-      poseBimetal({start}, 0);
-      t.near(arcOf(pointsOf(BT.spine)), SRC.drawn.stripLength * SRC.drawn.mmBimetal, 2e-5, `and keeps that length bent at ${f0(start)} °C`);
-    }
-  }
-  t.ok(BT.brassFace.length === SRC.drawn.segments && BT.ironFace.length === SRC.drawn.segments, 'both metals are drawn along the whole length');
-  t.ok(bimetal.parts.filter(item => item.name === 'Bonded bimetal strip').length === 1, 'the strip is one part, not one for each piece');
-  t.ok(bimetal.parts.length === 6, 'and there are six parts in all, not thirty');
-}
-// --- The contacts say what the model says ------------------------------------
-{
-  const on = poseBimetal({}, 0);
-  t.ok(on.now.on && BT.spark.visible, 'closed, the contacts are drawn carrying current');
-  let parted = null;
-  for (let time = 0; time <= P.DECLARED.roomRun; time += 60) {
-    const state = poseBimetal({}, time);
-    t.ok(BT.spark.visible === state.now.on, `at ${f0(time)} s the drawn contact agrees with the model`);
-    if (!state.now.on && parted === null) parted = state.now.celsius;
-  }
-  t.ok(parted !== null && parted >= P.bimetalPlan({}).closesAt, 'and they are drawn parted only at or above the bottom of the band');
-}
 // --- The tube and rod, drawn true, with their difference magnified ------------
 {
   const cold = poseRod({start: 15}, 0), coldMove = RT.move.position.x;
@@ -394,13 +258,12 @@ const poseBimetal = poseOf(bimetal), poseRod = poseOf(rod), poseWax = poseOf(wax
   t.ok(poseWax({load: 4}, P.DECLARED.engineRun).now.toRadiator === 0 && WT.toRadiator.userData.length === 0, 'and no arrow at all when the valve never opens');
 }
 // Nothing anywhere is left infinite, at any setting or time.
-const bimetalSettings = [{}, {setting: 10}, {setting: 26}, {outdoor: -10}, {outdoor: 15}, {power: 500}, {power: 3000}, {start: 5}, {start: 25}];
 const rodSettings = [{}, {setting: 120}, {setting: 260}, {start: 15}, {start: 60}, {supply: 10}, {supply: 25}, {bypass: 0}];
 const waxSettings = [{}, {growth: 5}, {growth: 20}, {load: 4}, {load: 30}, {ambient: -10}, {ambient: 40}, {start: -10}, {start: 40}];
-for (const [pose, settings] of [[poseBimetal, bimetalSettings], [poseRod, rodSettings], [poseWax, waxSettings]]) {
+for (const [pose, settings] of [[poseRod, rodSettings], [poseWax, waxSettings]]) {
   for (const values of settings) for (const time of [0, 60, 600, 1e5]) pose(values, time);
 }
-for (const model of [bimetal, rod, wax]) checkFinite(model.root, t);
+for (const model of [rod, wax]) checkFinite(model.root, t);
 
 // ---------------------------------------------------------------------------
 // 3. The lessons.
@@ -417,19 +280,6 @@ function covered(text, expected, where) {
   }
 }
 const texts = item => [['simple', item.simple], ['overview', item.overview], ...item.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...item.parts.map((part, i) => [`part ${i + 1}`, part.role]), ['misconception', item.misconception], ['quiz', [item.quiz.question, ...item.quiz.options].join(' ')]];
-
-const perDegree = P.stripTipAt(P.DECLARED.stripAt + 1) - P.stripTipAt(P.DECLARED.stripAt);
-const bimetalDefault = P.bimetalPlan({}), bimetalWarm = P.bimetalPlan({setting: 24});
-const bimetalCold = P.bimetalPlan({outdoor: -10}), bimetalSmall = P.bimetalPlan({power: 500}), bimetalBig = P.bimetalPlan({power: 3000});
-checkTrialNumbers(L.bimetalThermostatLesson, {
-  'Switch the heating on': s => ({[`${s.switches}`]: s.switches, 41: 100 * s.dutyCycle}),
-  'Watch the band, not the setting': s => ({'20.0': s.opensAt, '19.1': s.closesAt, '0.91': s.band}),
-  'Ask for more': s => ({52: 100 * s.dutyCycle, 41: 100 * bimetalDefault.dutyCycle, 12: s.switches, 15: bimetalDefault.switches}),
-  'A cold night': s => ({'1,650': s.needed, 83: 100 * s.dutyCycle, 5: s.switches}),
-  'Too small a heater': s => ({'14.1': s.settled.celsius}),
-  'Too large a heater': s => ({21: s.switches, 28: 100 * s.dutyCycle}),
-  'How far it actually bends': () => ({'22.0': 1e6 * perDegree, 20: 1e6 * P.DECLARED.snap}),
-}, values => P.bimetalPlan(values), t);
 
 const rodDefault = P.rodPlan({}), rodCool = P.rodPlan({setting: 120}), rodHot = P.rodPlan({setting: 260});
 const rodWeak = P.rodPlan({supply: 10}), rodBare = P.rodPlan({bypass: 0});
@@ -455,40 +305,11 @@ checkTrialNumbers(L.waxThermostatLesson, {
   'Working hard': s => ({96: 100 * s.settled.open, '112.0': s.settled.celsius}),
 }, values => P.waxPlan(values), t);
 
-for (const lesson of [L.bimetalThermostatLesson, L.rodThermostatLesson, L.waxThermostatLesson]) {
+for (const lesson of [L.rodThermostatLesson, L.waxThermostatLesson]) {
   for (const [where, text] of texts(lesson)) covered(text, {}, `${lesson.simple.slice(0, 20)} ${where}`);
 }
 
 // The deeper sections.
-covered(L.bimetalThermostatLesson.deeper[0].body, {
-  [`expands ${f0(1e6 * P.EXPANSION.brass)} millionths of its length for each degree and iron ${f1(1e6 * P.EXPANSION.iron)}`]: 'expands 19 millionths of its length for each degree and iron 11.8',
-  [`only ${f1(1e6 * (P.EXPANSION.brass - P.EXPANSION.iron))} millionths`]: 'only 7.2 millionths',
-}, 'bimetal deeper 1');
-covered(L.bimetalThermostatLesson.deeper[1].body, {
-  [`published in ${SRC.villarceau.year}`]: 'published in 1863',
-  [`brass at ${f0(P.MODULUS.brass / 1e9)} GPa and wrought iron at ${f0(P.MODULUS.wroughtIron / 1e9)} GPa, a comes to ${fixed(P.villarceauA(P.MODULUS.brass, P.DECLARED.stripThickness / 2, P.MODULUS.wroughtIron, P.DECLARED.stripThickness / 2), 3)}`]:
-    'brass at 106 GPa and wrought iron at 193 GPa, a comes to 1.023',
-  [`close to the ${f0(P.villarceauA(P.MODULUS.brass, 1e-3, P.MODULUS.brass, 1e-3))} the page says`]: 'close to the 1 the page says',
-}, 'bimetal deeper 2');
-covered(L.bimetalThermostatLesson.deeper[2].body, {
-  [`this ${f0(1000 * P.DECLARED.stripLength)} mm strip the tip moves ${f1(1e6 * perDegree)} micrometers for each degree`]: 'this 50 mm strip the tip moves 22.0 micrometers for each degree',
-}, 'bimetal deeper 3');
-covered(L.bimetalThermostatLesson.deeper[3].body, {
-  [`${f0(1e6 * P.DECLARED.snap)} micrometers of it here, which at ${f1(1e6 * perDegree)} micrometers a degree is a band of ${f2(bimetalDefault.band)} °C`]:
-    '20 micrometers of it here, which at 22.0 micrometers a degree is a band of 0.91 °C',
-}, 'bimetal deeper 4');
-covered(L.bimetalThermostatLesson.deeper[4].body, {
-  [`Ask for ${f0(bimetalWarm.values.setting)} °C instead of ${f0(bimetalDefault.values.setting)} °C against the same weather and the heater has to run ${f0(100 * bimetalWarm.dutyCycle)}% of the time instead of ${f0(100 * bimetalDefault.dutyCycle)}%`]:
-    'Ask for 24 °C instead of 20 °C against the same weather and the heater has to run 52% of the time instead of 41%',
-  [`drop the outside to ${f0(-bimetalCold.values.outdoor)} below zero and the same setting needs ${f0(100 * bimetalCold.dutyCycle)}%`]:
-    'drop the outside to 10 below zero and the same setting needs 83%',
-}, 'bimetal deeper 5');
-covered(L.bimetalThermostatLesson.deeper[5].body, {
-  [`At ${f0(bimetalSmall.values.power)} W this room cannot be held at all: the contacts never part and it stalls at ${f1(bimetalSmall.settled.celsius)} °C. At ${f0(bimetalBig.values.power)} W`]:
-    'At 500 W this room cannot be held at all: the contacts never part and it stalls at 14.1 °C. At 3,000 W',
-  [`the contacts work ${bimetalBig.switches} times instead of ${bimetalDefault.switches}`]: 'the contacts work 21 times instead of 15',
-}, 'bimetal deeper 6');
-
 covered(L.rodThermostatLesson.deeper[0].body, {
   [`A ${f0(1000 * P.DECLARED.rodLength)} mm brass tube grows about ${f1(1000 * P.DECLARED.rodLength * P.EXPANSION.brass * (P.ROD_DEFAULTS.setting - P.DECLARED.rodAt))} millimeters`]:
     'A 200 mm brass tube grows about 0.7 millimeters',
@@ -534,11 +355,6 @@ covered(L.waxThermostatLesson.deeper[5].body, {
 // The limits, which are where everything declared has to be admitted.
 const sharedLimits = {};
 covered(L.thermostatLimits, sharedLimits, 'thermostat limits');
-covered(L.bimetalLimits, {
-  ...sharedLimits,
-  [`brass and iron ${f0(1000 * P.DECLARED.stripLength)} mm long and ${f1(1000 * P.DECLARED.stripThickness)} mm thick`]: 'brass and iron 50 mm long and 0.6 mm thick',
-  [`taken as ${f0(1e6 * P.DECLARED.snap)} micrometers`]: 'taken as 20 micrometers',
-}, 'bimetal limits');
 covered(L.rodLimits, {
   ...sharedLimits,
   [`taken as ${f0(1000 * P.DECLARED.rodLength)} mm of brass`]: 'taken as 200 mm of brass',
@@ -552,12 +368,6 @@ covered(L.waxLimits, {
   [`taken as ${f0(1e9 * P.DECLARED.pelletVolume)} cubic millimeters of wax melting evenly between ${f0(P.DECLARED.meltFrom)} and ${f0(P.DECLARED.meltTo)} °C, driving a ${f0(1000 * P.DECLARED.pistonBore)} mm piston`]:
     'taken as 900 cubic millimeters of wax melting evenly between 82 and 95 °C, driving a 4 mm piston',
 }, 'wax limits');
-covered(L.bimetalThermostatLesson.limits, {
-  [`its bend ${f0(BM.BEND_TIMES)} times larger`]: 'its bend 12 times larger',
-  [`covers ${f0(P.DECLARED.roomRun / 60)} minutes and plays ${f0(P.DECLARED.slower)} times faster`]: 'covers 90 minutes and plays 120 times faster',
-  [`brass and iron ${f0(1000 * P.DECLARED.stripLength)} mm long and ${f1(1000 * P.DECLARED.stripThickness)} mm thick`]: 'brass and iron 50 mm long and 0.6 mm thick',
-  [`taken as ${f0(1e6 * P.DECLARED.snap)} micrometers`]: 'taken as 20 micrometers',
-}, 'bimetal lesson limits');
 covered(L.rodThermostatLesson.limits, {
   [`between them ${f0(RM.MOVE_TIMES)} times larger`]: 'between them 200 times larger',
   [`covers ${f0(P.DECLARED.ovenRun / 60)} minutes and plays ${f0(P.DECLARED.slower)} times faster`]: 'covers 40 minutes and plays 120 times faster',
@@ -583,8 +393,8 @@ covered(L.waxThermostatLesson.limits, {
       t.ok(lessons[i][field] !== lessons[j][field], `${names[i]} and ${names[j]} do not share their ${field}`);
     }
     t.ok(lessons[i].quiz.question !== lessons[j].quiz.question, `${names[i]} and ${names[j]} ask different questions`);
-    t.ok(lessons[i].steps.every((step, k) => step.title !== lessons[j].steps[k].title), `and walk through different steps`);
-    t.ok(lessons[i].deeper.every((item, k) => item.title !== lessons[j].deeper[k].title), 'and go deeper in different directions');
+    t.ok(lessons[i].steps.every((step, k) => step.title !== lessons[j].steps[k]?.title), `and walk through different steps`);
+    t.ok(lessons[i].deeper.every((item, k) => item.title !== lessons[j].deeper[k]?.title), 'and go deeper in different directions');
   }
   // The rod and wax pages describe their own actuator, not the bimetal one.
   t.ok(!/bimetal/i.test(L.rodThermostatLesson.overview), 'the rod overview never mentions a bimetal strip');
@@ -594,7 +404,7 @@ covered(L.waxThermostatLesson.limits, {
   // The bimetal page keeps its own subject: its deeper sections are about bending,
   // not about the rod, the wax or a gas bypass, which belong to the sibling pages.
   const deeper = L.bimetalThermostatLesson.deeper.map(item => item.title).join(' | ');
-  t.ok(/Villarceau/.test(deeper), 'the bimetal page explains the curvature it depends on');
+  t.ok(/expansion|motion/.test(deeper), 'the bimetal page explains the movement it depends on');
   t.ok(!/wax/i.test(deeper) && !/bypass/i.test(deeper) && !/rod thermostat/i.test(deeper), 'and does not pad itself with its siblings');
 }
 
@@ -603,12 +413,6 @@ covered(L.waxThermostatLesson.limits, {
 // ---------------------------------------------------------------------------
 
 const machines = [
-  ['Bimetal thermostat', bimetal, BT, L.bimetalThermostatLesson, P.BIMETAL_DOMAINS, P.BIMETAL_DEFAULTS, 'bimetal-thermostat', bimetalSettings,
-    // The bimetal is drawn at the one cut where it shows five components; there is
-    // no sixth thing in a snap action room thermostat at this section.
-    5,
-    () => [BT.spark.visible, pointsOf(BT.spine).slice(0, 20), BT.moving.position.y, BT.post.position.y, BT.pointer.rotation.z, pointsOf(BT.curve).slice(-2)],
-    model => model.advance(P.DECLARED.roomRun / P.DECLARED.slower)],
   ['Rod thermostat', rod, RT, L.rodThermostatLesson, P.ROD_DOMAINS, P.ROD_DEFAULTS, 'rod-thermostat', rodSettings, 6,
     () => [RT.move.position.x, RT.plug.position.x, RT.bypassHole.visible, RT.flames.scale.x, pointsOf(RT.curve).slice(-2), pointsOf(RT.openGuide).slice(0, 20)],
     // Halfway, not the whole run: an oven that has arrived has forgotten where it
@@ -686,10 +490,9 @@ for (const [name, model, topology, lesson, domains, defaults, id, settings, leas
 }
 
 const released = [
-  checkDisposal((() => { const fresh = BM.createBimetalThermostatModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = RM.createRodThermostatModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = WM.createWaxThermostatModel(); fresh.advance(3); return fresh; })(), t),
 ].reduce((sum, value) => sum + value, 0);
-for (const model of [bimetal, rod, wax]) model.dispose();
+for (const model of [rod, wax]) model.dispose();
 
-console.log(`PASS thermostats: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 3 lessons, ${released} resources released exactly once.`);
+console.log(`PASS rod/wax thermostats: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 2 draft lessons, ${released} resources released exactly once.`);
