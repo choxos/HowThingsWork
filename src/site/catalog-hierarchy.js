@@ -85,6 +85,7 @@ export const componentParentIds = {
   'solenoid': 'car-ignition-system',
   'induction-coil': 'car-ignition-system',
   'distributor': 'car-ignition-system',
+  'contact-breaker-ignition': 'car-ignition-system',
   'inertial-accelerometer-armature-spring-and-coils': 'inertial-guidance',
   'microchip-deceleration-sensor': 'crash-sensor',
   'crash-sensor-proof-square-and-sensing-strips': 'crash-sensor',
@@ -109,6 +110,7 @@ export function groupCatalogEntries(entries, matches = entries) {
 }
 
 const nestedMachineIds = new Set([
+  "contact-breaker-ignition",
   "distributor",
   "induction-coil",
   "solenoid",

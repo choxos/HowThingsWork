@@ -5,6 +5,7 @@ import {frameModel} from './machine-viewer.js';
 import {createCarIgnitionModel,createIgnitionTrial,carIgnitionConstants as C} from './car-ignition-model.js';
 import {contactBreakerIgnitionLesson as lesson} from './contact-breaker-ignition-lesson.js';
 let checks=0;const ok=(x,label)=>{assert.ok(x,label);checks++;},near=(a,b,t=1e-9)=>ok(Math.abs(a-b)<t,`${a} != ${b}`),model=()=>createCarIgnitionModel({contactBreakerLesson:true});
+{const catalog=model();assert.deepEqual(catalog.catalogParts?.map(part=>part.id),['coil','breaker','body','primary','primary-wires','points','moving-point','moving-point-lead','points-capacitor','points-cap-wires','cam','follower','timing-link','points-return-spring','points-spring-seat','points-spring-anchor']);near(catalog.parts.length,65);catalog.dispose();checks++;}
 const m=model();assert.deepEqual(m.defaults,{voltage:12,rpm:600,points:0});assert.deepEqual(m.controls.map(c=>c.key),['voltage','rpm','points']);checks+=2;
 const energy=o=>.5*C.Lp*o.primaryCurrent**2+C.M*o.primaryCurrent*o.secondaryCurrent+.5*C.Ls*o.secondaryCurrent**2;
 for(const voltage of [0,3,6,9,12])for(let rpm=120;rpm<=1200;rpm+=120)for(const points of [0,1,2]){
@@ -28,7 +29,11 @@ for(const aspect of [1,1.16]){
  for(const part of [T.points,T.cam,T.follower,T.pointsCap.group,T.pointsCapWires,T.pointsSpring])ok(part.parent===T.breaker,'actual connected component belongs to breaker inspection group');ok(T.breaker.parent===T.body.parent,'breaker has zero-origin system parent');ok(focused.resultPart.id==='breaker'&&focused.resultPart.context==='system','result focuses connected component with complete circuit context');ok(focused.parts.some(p=>p.id==='points'&&p.object===T.points),'individual tight points selection remains available');
  const meshes=[];focused.root.traverse(o=>{if(!o.isMesh)return;for(let p=o;p;p=p.parent)if(!p.visible)return;meshes.push(o);});
  for(const mesh of [T.fixedPoint,T.movingContact,T.camMesh,T.followerTip,T.pointsSpringWire,T.pointsSpringArm,T.pointsSpringFixedSeat,T.pointsSpringMovingSeat,T.pointsCap.top,T.pointsCap.bottom,...T.pointsCapWires.children]){
-  const positions=mesh.geometry.attributes.position;let visible=false;for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld).project(camera);ok(Math.abs(p.x)<.98&&Math.abs(p.y)<.98,'entire actual breaker/capacitor stage mesh lies within inspection frame');if(visible)continue;const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(p.x,p.y),camera);visible=ray.intersectObjects(meshes)[0]?.object===mesh;}ok(visible,'connected component surface is visible from wide/mobile inspection camera');
+  const positions=mesh.geometry.attributes.position,visibleAt=p=>{const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(p.x,p.y),camera);return ray.intersectObjects(meshes)[0]?.object===mesh;};let visible=false;
+  for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld).project(camera);ok(Math.abs(p.x)<.98&&Math.abs(p.y)<.98,'entire actual breaker/capacitor stage mesh lies within inspection frame');if(!visible)visible=visibleAt(p);}
+  // A pointed follower can expose a face while its vertices lie behind its support or cam.
+  const index=mesh.geometry.index;for(let i=0;!visible&&i<(index?.count??positions.count);i+=3){const p=new THREE.Vector3();for(let j=0;j<3;j++)p.add(new THREE.Vector3().fromBufferAttribute(positions,index?index.getX(i+j):i+j));visible=visibleAt(p.multiplyScalar(1/3).applyMatrix4(mesh.matrixWorld).project(camera));}
+  ok(visible,'connected component surface is visible from wide/mobile inspection camera');
  }focused.dispose();
 }
 assert.ok(previewEntryIds.includes('contact-breaker-ignition'),'contact-breaker-ignition is routed into the preview');

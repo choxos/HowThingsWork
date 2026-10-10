@@ -9315,6 +9315,88 @@
       "parentId": "system"
     }
   ],
+  "contact-breaker-ignition": [
+    {
+      "id": "coil",
+      "name": "Coil windings and shared core",
+      "parentId": "system"
+    },
+    {
+      "id": "breaker",
+      "name": "Points, cam and parallel capacitor",
+      "parentId": "system"
+    },
+    {
+      "id": "body",
+      "name": "Common battery/body return",
+      "parentId": "system"
+    },
+    {
+      "id": "primary",
+      "name": "Primary winding · 3 turns",
+      "parentId": "coil"
+    },
+    {
+      "id": "primary-wires",
+      "name": "Battery, primary and points-node leads",
+      "parentId": "system"
+    },
+    {
+      "id": "points",
+      "name": "Cam-operated contact points",
+      "parentId": "breaker"
+    },
+    {
+      "id": "moving-point",
+      "name": "Grounded moving contact",
+      "parentId": "points"
+    },
+    {
+      "id": "moving-point-lead",
+      "name": "Flexible grounded point lead",
+      "parentId": "moving-point"
+    },
+    {
+      "id": "points-capacitor",
+      "name": "20 µF points capacitor",
+      "parentId": "breaker"
+    },
+    {
+      "id": "points-cap-wires",
+      "name": "Capacitor across the contact points",
+      "parentId": "breaker"
+    },
+    {
+      "id": "cam",
+      "name": "Four-lobe distributor cam",
+      "parentId": "breaker"
+    },
+    {
+      "id": "follower",
+      "name": "Ideal pointed cam follower",
+      "parentId": "breaker"
+    },
+    {
+      "id": "timing-link",
+      "name": "Prescribed 1:1 cam/distributor linkage",
+      "parentId": "system"
+    },
+    {
+      "id": "points-return-spring",
+      "name": "Contact-points return spring",
+      "parentId": "breaker"
+    },
+    {
+      "id": "points-spring-seat",
+      "name": "Moving grounded points-spring seat",
+      "parentId": "points-return-spring"
+    },
+    {
+      "id": "points-spring-anchor",
+      "name": "Grounded points-spring anchor",
+      "parentId": "points-return-spring"
+    }
+  ],
   "spark-gap": [
     {
       "id": "gap",
