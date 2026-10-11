@@ -1,57 +1,8 @@
 import {validateControls, validTime, clamp} from './physics-kit.js';
 
-// ---------------------------------------------------------------------------
-// Thermostats: three ways of turning a temperature into a movement, and the
-// movement into a switch. A bimetal strip bends because two bonded metals want
-// to be different lengths; a rod thermostat works on the difference between a
-// brass tube and the steel rod inside it; a wax pellet melts and pushes a
-// piston. Each one then regulates something, so the point is not the movement
-// but the cycle it drives.
-//
-// Exact within the model: linear two-layer bimetal curvature, equivalent to
-// equation 1 in the Kanthal handbook, (3/2a)(α2 − α1)(T − T0)/h, with
-// the dimensionless a built from both metals' moduli and thicknesses, and the
-// tip of a cantilever of that curvature at κL²/2; the differential expansion of
-// a tube and the rod inside it, L(α_tube − α_rod)(T − T0); the share of a wax
-// pellet melted across its melting range and the volume that adds; the piston
-// that volume drives through a known bore; the gas or coolant through an
-// opening from the orifice equation. Rod and wax loops are integrated step by
-// step; the bimetal room uses exact exponential segments between switch events.
-//
-// Sourced: the bimetal handbook curvature and loaded-beam relations, with the
-// higher expanding metal outside a free heated bend; the book's brass and iron.
-// BIMETAL_MATERIAL uses the reviewed primary-source properties. Shared linear expansion
-// coefficients for brass, iron, carbon steel, copper and invar, from the
-// Thermal expansion page and checked against the Engineering ToolBox table;
-// Young's moduli for brass, wrought iron and steel; brass's density and melting
-// range; that a wax expands 5 to 20 percent on melting and that the biasing
-// spring is 20 to 30 percent of the operating force; paraffin's melting range
-// of 46 to 68 °C and density of about 900 kg/m³; that automotive wax
-// thermostats are made to open between 70 and 90 °C, that modern engines run
-// over 80 °C, that such an element sits at about half its stroke in normal
-// running, that strokes run from 1.5 to 16 mm and elements cover −15 to
-// +120 °C; that while the thermostat is shut the coolant is sent back through
-// the engine instead of the radiator; the orifice equation and its discharge
-// coefficient of 0.6 to 0.85; and the Ideal Vogue sheet's 20 mbar gas supply.
-//
-// Not from a source, each said in the lessons' limits: every dimension of every
-// strip, rod, tube, pellet, piston, valve and contact; magnetic contact retention
-// taken as a fixed release travel and zero-gap recapture; a room
-// of stated size and loss, an oven of stated size and loss, and an engine of
-// stated heat capacity and heat output, each treated as one stirred volume at
-// one temperature; natural gas taken at the density of methane with the
-// calorific value the boiler sheet gives; a bypass of stated area that keeps a
-// pilot flow while the main valve is shut, and a seat sized so the oven reaches
-// its setting in the ten to fifteen minutes a real one takes, which means the
-// burner is deliberately far larger than the oven's steady loss and the valve
-// throttles down to a few percent to hold it, as a real oven thermostat does; and the wax taken to melt evenly
-// across its range, with no hysteresis of its own beyond the thermal lag the
-// loop already has. The rod's valve is taken to close over 0.15 mm of travel,
-// which is what turns 1.6 micrometers of differential a degree into a
-// proportional band an oven can be set by, and the bimetal's snap is taken as
-// 20 micrometers of overtravel, which is what makes its switching band about a
-// degree wide.
-// ---------------------------------------------------------------------------
+// The bimetal and rod loops use exact exponential segments between mechanism events.
+// The wax loop retains its separate numerical model. Each lesson states its own
+// material sources, dimensions, thermal assumptions and geometry exaggerations.
 
 /** Linear expansion coefficients, per kelvin, from the Thermal expansion page. */
 export const EXPANSION = Object.freeze({brass: 19e-6, iron: 11.8e-6, carbonSteel: 10.8e-6, steel: Object.freeze([11.0e-6, 13.0e-6]), copper: 17e-6, invar: 1.2e-6, aluminum: 23.1e-6});
@@ -61,6 +12,8 @@ export const EXPANSION_OTHER = Object.freeze({brass: Object.freeze([18e-6, 19e-6
 export const MODULUS = Object.freeze({brass: 106e9, wroughtIron: 193e9, steel: 200e9, copper: 110e9});
 /** Representative near-room expansion (OpenStax) and elastic moduli (CDA and ARMCO), not a calibrated alloy pair. */
 export const BIMETAL_MATERIAL = Object.freeze({brassAlpha: 19e-6, ironAlpha: 12e-6, brassYoung: 110e9, ironYoung: 207e9});
+/** Representative linear expansion coefficients from OpenStax, held constant for this lesson. */
+export const ROD_MATERIAL = Object.freeze({brassAlpha: 19e-6, steelAlpha: 12e-6});
 /** Brass, from the Brass page. */
 export const BRASS = Object.freeze({density: Object.freeze([8400, 8730]), melting: Object.freeze([900, 940])});
 
@@ -75,7 +28,7 @@ export const WAX = Object.freeze({
 
 /** The orifice equation's discharge coefficient, from the Orifice plate page, and the gas supply the boiler sheet gives. */
 export const ORIFICE = Object.freeze({discharge: Object.freeze([0.6, 0.85]), supply: 2000, supplyMbar: 20});
-/** Methane, for the gas the rod thermostat lets through: density at 25 °C and gross calorific value, from the gas boiler's own sources. */
+/** Legacy gas reference retained for the unrevised draft source checks. */
 export const GAS = Object.freeze({density: 0.657, densityAt: 25, calorific: 38.7e6});
 /** Water, for the coolant the wax thermostat lets through. */
 export const COOLANT = Object.freeze({density: 1000, heat: 4184});
@@ -87,8 +40,8 @@ export const DECLARED = Object.freeze({
   snap: 0.00002,
   roomVolume: 40, roomLoss: 55, roomCapacity: 300000,
   // The rod thermostat, its valve and the oven it keeps.
-  rodLength: 0.2, rodAt: 20, valveBore: 0.0038, valveTravel: 0.00015, bypassBore: 0.00045, lever: 6,
-  ovenCapacity: 42000, ovenLoss: 2.6, ovenAmbient: 20, burnerEfficiency: 0.45,
+  rodLength: 0.2, rodAt: 20, valveBore: 0.012, bypassBore: 0.00045,
+  ovenCapacity: 12000, ovenLoss: 5, ovenAmbient: 20, burnerEfficiency: 0.45,
   // The wax element, its valve and the engine it keeps.
   pelletVolume: 0.9e-6, pistonBore: 0.004, meltFrom: 82, meltTo: 95,
   springRate: 9000, valveArea: 0.00045, pumpFlow: 0.0011,
@@ -137,7 +90,7 @@ export function bimetalBeamAt(plan, now, x = DECLARED.stripLength) {
 
 /** How much longer a tube of `length` is than the rod inside it at `celsius`, m. */
 export const differentialAt = (celsius, length = DECLARED.rodLength, from = DECLARED.rodAt) =>
-  length * (EXPANSION.brass - EXPANSION.carbonSteel) * (celsius - from);
+  length * (ROD_MATERIAL.brassAlpha - ROD_MATERIAL.steelAlpha) * (celsius - from);
 
 /** The share of a wax pellet melted at `celsius`, taken evenly across its melting range. */
 export const meltedAt = celsius => clamp((celsius - DECLARED.meltFrom) / (DECLARED.meltTo - DECLARED.meltFrom));
@@ -231,71 +184,93 @@ export const sampleBimetal = (input = {}, time = 0) => bimetalAt(bimetalPlan(inp
 // ---------------------------------------------------------------------------
 
 export const ROD_DEFAULTS = Object.freeze({setting: 200, start: 20, supply: 20, bypass: 1});
-export const ROD_DOMAINS = Object.freeze({setting: Object.freeze([120, 260, 10]), start: Object.freeze([15, 60, 5]), supply: Object.freeze([10, 25, 1]), bypass: Object.freeze([0, 1, 1])});
+export const ROD_DOMAINS = Object.freeze({setting: Object.freeze([120, 260, 10]), start: Object.freeze([15, 300, 5]), supply: Object.freeze([10, 25, 1]), bypass: Object.freeze([0, 1, 1])});
 export const BYPASSES = Object.freeze([Object.freeze({value: 0, label: 'No bypass'}), Object.freeze({value: 1, label: 'Bypass fitted'})]);
 
-/** How far the valve is open at `celsius` for a given setting, as a share of its full bore. */
-export function valveOpenAt(celsius, setting) {
-  // The seat is placed so that the band straddles the setting: wide open half a
-  // band below it, shut half a band above, and part open at the setting itself.
-  const band = DECLARED.valveTravel / (DECLARED.lever * DECLARED.rodLength * (EXPANSION.brass - EXPANSION.carbonSteel));
-  const closing = DECLARED.lever * differentialAt(celsius, DECLARED.rodLength, setting - band / 2);
-  return clamp(1 - closing / DECLARED.valveTravel);
+/** Pure methane: NIST molar mass and gross combustion heat; OpenStax gas constant. Inlet conditions and Cd are declared. */
+export const ROD_GAS = Object.freeze({molarMass: 0.0160425, molarHeat: 890350, constant: 8.31, inletKelvin: 298.15, atmosphere: 101325, discharge: 0.6});
+
+function rodSupply(supply) {
+  const pressure = supply * 100, absolute = ROD_GAS.atmosphere + pressure;
+  const molarDensity = absolute / (ROD_GAS.constant * ROD_GAS.inletKelvin);
+  const density = molarDensity * ROD_GAS.molarMass;
+  const speed = ROD_GAS.discharge * Math.sqrt(2 * pressure / density);
+  const flowPerLift = speed * Math.PI * DECLARED.valveBore;
+  const bypassFlow = speed * Math.PI * (DECLARED.bypassBore / 2) ** 2;
+  const energyPerVolume = molarDensity * ROD_GAS.molarHeat;
+  return {pressure, absolute, density, molarDensity, flowPerLift, bypassFlow, energyPerVolume,
+    powerPerDegree: flowPerLift * differentialAt(1, DECLARED.rodLength, 0) * energyPerVolume * DECLARED.burnerEfficiency};
 }
 
 export function rodPlan(input = {}) {
   const values = validateControls(input, ROD_DEFAULTS, ROD_DOMAINS, 'rod thermostat');
   const key = JSON.stringify(values);
   if (ovens.has(key)) return ovens.get(key);
-  const pressure = values.supply * 100;
-  const mainArea = Math.PI * (DECLARED.valveBore / 2) ** 2;
-  const bypassArea = values.bypass ? Math.PI * (DECLARED.bypassBore / 2) ** 2 : 0;
-  const flowAt = celsius => throughOrifice(mainArea * valveOpenAt(celsius, values.setting), pressure, GAS.density) + throughOrifice(bypassArea, pressure, GAS.density);
-  const track = [{t: 0, celsius: values.start, flow: flowAt(values.start), open: valveOpenAt(values.start, values.setting)}];
-  let celsius = values.start, reached = null;
-  for (let step = 1; step * DECLARED.step <= DECLARED.ovenRun + 1e-9; step++) {
-    const previous = track[step - 1], t = step * DECLARED.step;
-    const heat = previous.flow * GAS.calorific * DECLARED.burnerEfficiency;
-    const lost = DECLARED.ovenLoss * (previous.celsius - DECLARED.ovenAmbient);
-    celsius = previous.celsius + (heat - lost) * DECLARED.step / DECLARED.ovenCapacity;
-    const open = valveOpenAt(celsius, values.setting);
-    if (reached === null && celsius >= values.setting - 1) reached = t;
-    track.push({t, celsius, flow: flowAt(celsius), open});
-  }
-  const settled = track.at(-1);
-  const plan = {
-    values, pressure, mainArea, bypassArea, track, settled, reached,
-    duration: DECLARED.ovenRun,
-    fullFlow: throughOrifice(mainArea, pressure, GAS.density),
-    bypassFlow: throughOrifice(bypassArea, pressure, GAS.density),
-    fullPower: throughOrifice(mainArea, pressure, GAS.density) * GAS.calorific * DECLARED.burnerEfficiency,
-    shutsAt: values.setting + DECLARED.valveTravel / (DECLARED.lever * DECLARED.rodLength * (EXPANSION.brass - EXPANSION.carbonSteel)) / 2,
-    differentialPerDegree: differentialAt(1, DECLARED.rodLength, 0),
-    holds: settled.celsius > values.setting - 10,
-    goesOut: !values.bypass && valveOpenAt(settled.celsius, values.setting) <= 0,
+  const nominal = rodSupply(20), supply = rodSupply(values.supply);
+  const nominalBypassPower = nominal.bypassFlow * nominal.energyPerVolume * DECLARED.burnerEfficiency;
+  // The dial is calibrated once with its bypass fitted at 20 mbar, not readjusted as controls change.
+  const shutsAt = values.setting + (DECLARED.ovenLoss * (values.setting - DECLARED.ovenAmbient) - nominalBypassPower) / nominal.powerPerDegree;
+  const differentialPerDegree = differentialAt(1, DECLARED.rodLength, 0);
+  const bypassFlow = values.bypass ? supply.bypassFlow : 0;
+  const bypassPower = bypassFlow * supply.energyPerVolume * DECLARED.burnerEfficiency;
+  const initialLift = Math.max(0, differentialPerDegree * (shutsAt - values.start));
+  // shortcut: one ignition attempt and ideal flame retention; add measured flame stability and safety hardware for appliance prediction.
+  const ignites = initialLift > 0 || bypassFlow > 0;
+  const plan = {values, ...supply, shutsAt, differentialPerDegree, bypassFlow, bypassPower, ignites,
+    duration: DECLARED.ovenRun, dialExtension: differentialAt(shutsAt), segments: [], events: []};
+  const addSegment = (t, celsius, mainOpen) => {
+    const gain = ignites && mainOpen ? supply.powerPerDegree : 0;
+    const loss = DECLARED.ovenLoss + gain;
+    const limit = (DECLARED.ovenLoss * DECLARED.ovenAmbient + (ignites ? bypassPower : 0) + gain * shutsAt) / loss;
+    return {t, celsius, mainOpen, limit, tau: DECLARED.ovenCapacity / loss, end: plan.duration};
   };
-  plan.chart = Array.from({length: DECLARED.samples}, (_, i) => {
-    const t = plan.duration * i / (DECLARED.samples - 1), now = rodAt(plan, t);
-    return {t, celsius: now.celsius, open: now.open};
-  });
-  if (ovens.size >= 64) ovens.clear();
+  const first = addSegment(0, values.start, values.start <= shutsAt);
+  plan.segments.push(first);
+  if (!first.mainOpen && first.limit < shutsAt) {
+    const crossing = -first.tau * Math.log1p((shutsAt - first.celsius) / (first.celsius - first.limit));
+    if (crossing < plan.duration) {
+      first.end = crossing;
+      plan.events.push({t: crossing, celsius: shutsAt, mainOpen: true});
+      plan.segments.push(addSegment(crossing, shutsAt, true));
+    }
+  }
+  plan.equilibrium = addSegment(0, values.start, true).limit;
+  const times = [...new Set([...Array.from({length: DECLARED.samples}, (_, i) => plan.duration * i / (DECLARED.samples - 1)), ...plan.events.map(event => event.t)])].sort((a, b) => a - b);
+  plan.chart = times.map(t => { const now = rodAt(plan, t); return {t, celsius: now.celsius}; });
+  plan.settled = rodAt(plan, plan.duration);
+  if (ovens.size >= 8) ovens.delete(ovens.keys().next().value);
   ovens.set(key, plan);
   return plan;
 }
 
-/** The oven and its valve at a time in the run. */
+/** Exact exponential temperature and integrated flow over each open or closed valve segment. */
 export function rodAt(plan, time) {
   const t = Math.min(validTime(time), plan.duration);
-  const place = clamp(t / DECLARED.step, 0, plan.track.length - 1);
-  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
-  const between = key => plan.track[low][key] + part * (plan.track[high][key] - plan.track[low][key]);
-  const celsius = between('celsius');
-  return {
-    time, t, celsius, flow: between('flow'), open: between('open'),
-    differential: differentialAt(celsius, DECLARED.rodLength, plan.values.setting),
-    power: between('flow') * GAS.calorific * DECLARED.burnerEfficiency,
-    lit: between('flow') > 0, done: t >= plan.duration,
-  };
+  let celsius = plan.values.start, mainVolume = 0, temperatureIntegral = 0;
+  for (const segment of plan.segments) {
+    if (t < segment.t) break;
+    const elapsed = Math.min(t, segment.end) - segment.t;
+    const rise = -Math.expm1(-elapsed / segment.tau);
+    celsius = segment.celsius + (segment.limit - segment.celsius) * rise;
+    const integral = segment.limit * elapsed + (segment.celsius - segment.limit) * segment.tau * rise;
+    temperatureIntegral += integral;
+    if (segment.mainOpen) mainVolume += plan.flowPerLift * plan.differentialPerDegree * Math.max(0, plan.shutsAt * elapsed - integral);
+  }
+  const mainOn = t > 0, lit = mainOn && plan.ignites;
+  const lift = Math.max(0, plan.differentialPerDegree * (plan.shutsAt - celsius));
+  const mainFlow = mainOn ? plan.flowPerLift * lift : 0, bypassFlow = mainOn ? plan.bypassFlow : 0;
+  const flow = mainFlow + bypassFlow, volume = mainVolume + plan.bypassFlow * t;
+  const chemicalEnergy = lit ? volume * plan.energyPerVolume : 0;
+  const inputEnergy = chemicalEnergy * DECLARED.burnerEfficiency;
+  const storedEnergy = DECLARED.ovenCapacity * (celsius - plan.values.start);
+  const environmentEnergy = DECLARED.ovenLoss * (temperatureIntegral - DECLARED.ovenAmbient * t);
+  const power = lit ? flow * plan.energyPerVolume * DECLARED.burnerEfficiency : 0;
+  const heatLoss = DECLARED.ovenLoss * (celsius - DECLARED.ovenAmbient);
+  return {time, t, celsius, mainOn, lit, lift, gap: Math.max(0, plan.differentialPerDegree * (celsius - plan.shutsAt)),
+    differential: differentialAt(celsius), brassExpansion: DECLARED.rodLength * ROD_MATERIAL.brassAlpha * (celsius - DECLARED.rodAt),
+    steelExpansion: DECLARED.rodLength * ROD_MATERIAL.steelAlpha * (celsius - DECLARED.rodAt),
+    mainFlow, bypassFlow, flow, volume, mainVolume, chemicalEnergy, inputEnergy, storedEnergy, environmentEnergy,
+    power, heatLoss, rate: mainOn ? (power - heatLoss) / DECLARED.ovenCapacity : 0, done: t >= plan.duration};
 }
 
 export const sampleRod = (input = {}, time = 0) => rodAt(rodPlan(input), time);

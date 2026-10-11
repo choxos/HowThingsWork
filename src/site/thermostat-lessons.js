@@ -97,61 +97,66 @@ export const bimetalThermostatLesson = {
 // Rod thermostat.
 // ---------------------------------------------------------------------------
 
-const rod = {
-  tube: trial(ROD_DEFAULTS, 'tube'), valve: trial(ROD_DEFAULTS, 'valve'),
-  bypass: trial(ROD_DEFAULTS, 'bypass'), burner: trial(ROD_DEFAULTS, 'burner'),
-  chart: trial(ROD_DEFAULTS, 'chart'),
-};
+const rodTrial = trial(ROD_DEFAULTS, 'system');
 
-export const rodLimits = `${thermostatLimits} The tube is taken as 200 mm of brass with a steel rod inside it, working a valve through a linkage that multiplies their difference 6 times, and the valve is taken to close over 0.15 mm of travel, which is what turns 1.64 micrometers a degree into a band an oven can be set by. The gas is taken at the density of methane with the calorific value the boiler sheet gives, through an orifice with the lowest discharge coefficient its page offers, and the burner is taken to put 45 percent of it into the oven. The seat is sized so the oven reaches its setting in the ten to fifteen minutes a real one takes, which means the burner is far larger than the oven's steady loss and the valve throttles to a few percent to hold it, as a real oven thermostat does.`;
+export const rodLimits = 'This is an illustrative direct rod and poppet mechanism, not a calibrated appliance. Tube and rod are each 200 mm at 20 °C; constant representative expansion coefficients are 19 and 12 millionths per kelvin. Thermal extensions and valve travel are enlarged 100 times. Metal stress, sensor lag and valve friction are omitted. The seat diameter is 12 mm and the bypass diameter 0.45 mm. Flow uses a fixed coefficient of 0.6 and an incompressible low-pressure approximation, without pipe losses or interaction between restrictions. Pure methane enters at 25 °C; absolute inlet pressure is 101325 Pa plus the selected gauge pressure. Its molar mass is 16.0425 g/mol and gross combustion heat is 890.35 kJ/mol; the ideal gas constant is rounded to 8.31 J/(mol K). The oven retains 45% of that gross energy, stores 12 kJ/K and loses 5 W/K to a 20 °C kitchen. These dimensions and thermal values are teaching choices. The dial is calibrated at 20 mbar with the bypass fitted. Ignition is tried once when playback starts, and any resulting flame is assumed stable while fed. Flame failure, real safety shutoff, food and uneven oven temperatures are omitted. No result is a specification or instruction for a real gas appliance.';
 
 export const rodThermostatLesson = {
-  simple: 'How does an oven hold its temperature with no electricity at all?',
-  overview: 'A brass tube reaches into the oven with a steel rod inside it, fixed together at the far end. Brass grows faster than steel, so as the oven warms the tube lengthens more than the rod and drags the rod’s free end back with it. That tiny difference, a millionth or two of a meter for each degree, is levered up and used to let a spring close a valve in the gas. Nothing switches, nothing clicks, and nothing needs power: the burner simply turns down as the oven approaches the setting. A small bypass around the valve keeps a flame alive whatever happens, so the burner can never go out. Set the oven, change the gas pressure, take the bypass away, and press Play.',
+  simple: 'How can two expanding metals control the heat of a gas oven?',
+  overview: 'A brass tube reaches into the oven with a steel rod joined to its far end. Both lengthen as they warm, but brass grows more. That pulls the rod’s free end away from the valve, letting a spring move the poppet toward its seat. Less gas burns, so less heat enters the oven. Cooling moves the rod back to push the valve open. Turn the dial, change supply pressure, then compare the two hot-start trials to see what the separate bypass changes.',
   steps: [
-    {title: 'Put a brass tube in the oven', body: 'The tube reaches into the space being controlled, with a steel rod inside it joined at the closed end.'},
-    {title: 'Let brass outgrow steel', body: 'As the oven warms, both grow, but the brass tube grows faster, so the rod’s free end is drawn back toward the oven.'},
-    {title: 'Lever the difference up', body: 'The difference is far too small to work a valve directly, so a linkage multiplies it before it reaches the valve seat.'},
-    {title: 'Let the spring close the valve', body: 'As the rod withdraws, the spring is allowed to push the valve toward its seat, and less gas reaches the burner.'},
-    {title: 'Keep a flame through the bypass', body: 'A small fixed opening around the valve passes gas whatever the valve does, so the burner is never left unlit with gas still flowing.'},
+    {title: 'Begin with an oven temperature', body: 'Before playback the gas cock is shut. The tube and rod already share the chosen starting temperature, which determines whether the main valve is open or seated.'},
+    {title: 'Open the cock and try ignition', body: 'Play opens the gas supply and attempts ignition once. A cool oven usually has an open main valve. A hot oven may need the separate bypass to supply gas at this instant.'},
+    {title: 'Move both metals together', body: 'The tube’s far cap stays joined to the steel rod. Brass expands more, so warming pulls the free rod end away from the valve even though the steel also lengthens.'},
+    {title: 'Let the spring reduce the opening', body: 'The spring moves the poppet toward its seat as the rod retreats. The shrinking annular opening reduces gas flow. Further retreat after seating leaves a visible gap between rod and adjustable stem.'},
+    {title: 'Watch the oven respond', body: 'Burning gas adds heat while the oven loses heat to the kitchen. The valve can remain partly open where those rates balance. Cooling brings the rod back toward the valve; returning gas does not ignite itself.'},
   ],
   parts: [
-    {name: 'Brass tube', role: 'Feels the oven and grows faster than the rod inside it.'},
-    {name: 'Steel rod', role: 'Stays nearly the same length, so the difference appears at its free end.'},
-    {name: 'Gas valve and spring', role: 'Turns that difference into an opening in the gas, closed by a spring.'},
-    {name: 'Bypass', role: 'Keeps a small flow of gas whatever the valve does, so the burner stays alight.'},
-    {name: 'Burner', role: 'Burns whatever gets through, with flames that follow the opening.'},
-    {name: 'The oven through the run', role: 'What the oven reads from the moment it is lit.'},
+    {name: 'Valve housing and tube support', role: 'Fixes the valve seat and the near end of the sensing tube.'},
+    {name: 'Brass sensing tube', role: 'Carries the far cap away from the valve as it expands.'},
+    {name: 'Steel rod and far-end joint', role: 'Expands less than the tube, so its free end retreats as the joined pair warms.'},
+    {name: 'Poppet valve and closing spring', role: 'Turns rod contact or retreat into an annular gas opening or a seated valve.'},
+    {name: 'Threaded setting adjustment', role: 'Changes how far the rod must retreat before the valve seats.'},
+    {name: 'Separate gas bypass', role: 'Can feed the burner while the main valve is seated; it does not guarantee a flame.'},
+    {name: 'Oven and thermometer', role: 'Shows the temperature produced by burner heat and heat loss.'},
+    {name: 'Gas burner', role: 'Adds heat only when flowing gas is burning.'},
+    {name: 'Gas cock and connected pipes', role: 'Connects the supply, valve and bypass to the burner after playback starts.'},
+    {name: 'Elapsed oven temperature', role: 'Plots only the part of the temperature history already observed.'},
   ],
   tryIt: [
-    rod.chart('Light the oven', 'Press Play and watch the oven.', 'It comes up in 13.9 min and eases to rest at 207.0 °C, with the valve throttled almost shut.'),
-    rod.valve('Watch the valve, not a switch', 'Press Play and watch the valve.', 'It stays wide open the whole way up and then closes gradually as the oven arrives, shutting completely only at 207.6 °C. It never snaps.', {}),
-    rod.tube('How little the metals differ', 'Look at the tube and rod.', 'Brass moves 19 millionths of its length for each degree and steel 10.8, so over this tube the difference is just 1.64 micrometers a degree, and the valve needs only 0.15 mm of travel.'),
-    rod.chart('A cooler oven', 'Set the oven to 120 °C.', 'Less to do, so it arrives in 7.7 min and rests at 127.4 °C.', {setting: 120}),
-    rod.chart('A hotter oven', 'Set the oven to 260 °C.', 'Further to go, so it takes 18.6 min and rests at 266.8 °C.', {setting: 260}),
-    rod.burner('Weaker gas', 'Set the supply to 10 mbar.', 'The burner can only give 6,538 W instead of 9,247 W, so the oven takes 19.9 min to arrive, but it still settles in the same place.', {supply: 10}),
-    rod.bypass('Take the bypass away', 'Choose no bypass.', 'The oven still works, settling at 206.8 °C, but there is now nothing keeping the burner alight when the valve throttles right down.', {bypass: 0}),
+    rodTrial('Warm the oven', 'Press Play for the standard cold start.', 'The rod retreats, the spring reduces valve lift, and the oven reaches about 200.0 °C after 40 min. The main valve remains partly open to replace heat loss.'),
+    rodTrial('Choose a cooler setting', 'Run the prepared 120 °C setting.', 'The shorter threaded adjustment seats the valve at a lower temperature. The oven ends near 120.0 °C.', {setting: 120}),
+    rodTrial('Choose a hotter setting', 'Run the prepared 260 °C setting.', 'The longer adjustment needs more rod retreat. More gas initially reaches the burner, and the oven ends near 260.0 °C.', {setting: 260}),
+    rodTrial('Lower the supply pressure', 'Run the prepared 10 mbar supply.', 'Less gas crosses the same opening. With the dial still at 200 °C, the oven ends near 191.9 °C because its calibration has not changed.', {supply: 10}),
+    rodTrial('Raise the supply pressure', 'Run the prepared 25 mbar supply.', 'More gas crosses the same opening. The unchanged 200 °C dial now gives about 202.1 °C at the end.', {supply: 25}),
+    rodTrial('Start hot with the bypass', 'Press Play with the oven at 220 °C and the dial at 120 °C.', 'The main valve starts seated, but bypass gas is available for ignition. The oven cools, the rod returns to open the main valve, and the run ends near 120.8 °C with a flame.', {setting: 120, start: 220}),
+    rodTrial('Start hot without the bypass', 'Run the same hot start with no bypass in this model.', 'No gas reaches the initial ignition attempt. The valve later opens as the oven cools, but that gas stays unlit. With no burner heat the oven falls to about 93.6 °C.', {setting: 120, start: 220, bypass: 0}),
   ],
   deeper: [
-    {title: 'The whole mechanism is a subtraction', body: 'Neither metal moves usefully on its own. A 200 mm brass tube grows about 0.7 millimeters going from cold to oven heat, and the steel rod inside it grows about 0.4; it is the 0.3 or so millimeters of difference that the valve sees, and per degree that is 1.64 micrometers. The Thermal expansion page gives brass 19 millionths a degree and carbon steel 10.8, and the Engineering ToolBox table agrees.'},
-    {title: 'Why it does not click', body: 'A bimetal room thermostat switches: on, off, on. This one does not. The valve closes gradually across a band, so as the oven nears its setting the burner turns down rather than shutting off. That is called proportional control, and it is the reason an oven holds a steadier temperature than a room does, without any of the overshoot a switching thermostat lives with.'},
-    {title: 'Gas through an opening', body: 'What gets through the valve follows the orifice equation from the Orifice plate page: the area, times the square root of twice the pressure difference over the density, times a discharge coefficient that page puts between 0.6 and 0.85. At 20 mbar this seat passes enough gas for 9,247 W into the oven; at 10 mbar only 6,538 W, which is why a starved supply shows up as a slow oven rather than a cool one.'},
-    {title: 'Why the oven rests above its setting', body: 'A proportional valve has to keep some opening to hold the oven at all, and this burner is deliberately far larger than the oven needs so that it heats in a realistic time. The consequence is that equilibrium sits near the top of the band: 207.0 °C for a setting of 200, with the valve only a percent or two open. A real gas oven behaves the same way, which is why its dial is calibrated rather than trusted as a thermometer.'},
-    {title: 'The bypass is a safety device', body: 'The book is explicit that a little gas reaches the burner through a bypass so that the burner does not go out, which would be dangerous. The danger is not the cold oven; it is gas continuing to flow into a hot box with no flame to burn it. A fixed opening the valve cannot close means there is always a flame for the next gas to light from.'},
-    {title: 'What it does not need', body: 'No electricity, no sensor, no wiring and no electronics. The oven is measured by the same piece of brass that operates the valve, and the only energy involved is the gas itself. That is why rod thermostats outlasted so much else in gas appliances, and why an oven of this kind keeps working through a power cut.'},
+    {title: 'Subtract two growing lengths', body: 'For each metal, growth is its original length times its expansion coefficient times temperature change. From 20 to 200 °C, this 200 mm brass tube grows 0.684 mm and the steel rod grows 0.432 mm. Their 0.252 mm difference moves the rod tip. That is 1.4 micrometers per degree. The scene enlarges both extensions 100 times, preserving their difference and the far-end joint.'},
+    {title: 'A direct push can move a small valve', body: 'The rod can push the adjustable stem directly. Warming removes that push, allowing the spring to move the poppet toward its seat. Once seated, the poppet stops while the rod can retreat farther. The model neglects the small elastic compression from spring and gas forces. Its dimensions illustrate direct rod contact rather than a calibrated valve design.'},
+    {title: 'The dial changes the geometry', body: 'A longer threaded extension requires more rod retreat before the spring can seat the poppet. The dial marks are calibrated to the heat balance at 20 mbar with the bypass fitted. The setting is therefore a calibration, not the exact temperature at which the main valve becomes completely closed. Changing pressure or removing the bypass can shift the balance.'},
+    {title: 'Valve lift controls gas flow', body: 'For a small poppet lift, the opening is approximately the seat circumference times the lift. The model multiplies this area by a fixed discharge coefficient and the square root of twice pressure difference divided by gas density. Density and combustion energy per inlet volume both use the same upstream absolute pressure. Real valve flow also depends on shape, other restrictions and compressibility.'},
+    {title: 'The oven balances energy', body: 'Burning gas supplies heat; the oven stores part of it and transfers heat to the cooler kitchen. The declared heat-loss rule is proportional to temperature difference. An exact exponential solution joins the periods before and after the rod touches the valve stem. There is no sensor delay here, so this result cannot establish whether a real oven overshoots or cycles.'},
+    {title: 'Gas flow and flame are different states', body: 'The book’s bypass maintains a small gas supply when the main valve closes. That can sustain a flame under suitable conditions, but cannot guarantee one. In the hot-start comparison, the bypass makes gas available for the single ignition attempt. Without it, gas returns later with no flame. Real flame-failure valves use a separate flame signal to shut off gas; that protection is outside this model.'},
   ],
-  misconception: 'A rod thermostat does not switch the gas off and on. It squeezes a valve gradually shut as the oven warms, so the burner turns down rather than cycling, and a bypass makes sure it can never be closed far enough to put the flame out.',
-  limits: `The tube and rod are drawn at true size and the movement between them 200 times larger, because it is only micrometers. The run covers 40 minutes and plays 120 times faster. ${rodLimits}`,
-  sources: [sources.thermostat, sources.expansion, sources.toolbox, sources.brass, sources.orifice, sources.gasStove, sources.oven],
+  misconception: 'The steel rod does not stay the same length. Both metals expand, and their difference moves the valve. A bypass supplies gas; it cannot make gas ignite itself or guarantee flame safety.',
+  limits: `The run covers 40 minutes and plays 120 times faster. The oven and graph use separate schematic scales. ${rodLimits}`,
+  sources: [
+    {title: 'US1938187A: direct rod, tube, valve and bypass mechanism', url: 'https://patents.google.com/patent/US1938187A/en'},
+    {title: 'OpenStax: linear thermal expansion and representative brass and steel values', url: 'https://openstax.org/books/university-physics-volume-2/pages/1-3-thermal-expansion'},
+    {title: 'Colorado State University: valve curtain area and discharge coefficient', url: 'https://www.engr.colostate.edu/~allan/fluids/page4/page4.html'},
+    {title: 'OpenStax: Bernoulli equation and its flow assumptions', url: 'https://openstax.org/books/university-physics-volume-1/pages/14-6-bernoullis-equation'},
+    {title: 'OpenStax: ideal gas law and absolute pressure', url: 'https://openstax.org/books/university-physics-volume-2/pages/2-1-molecular-model-of-an-ideal-gas'},
+    {title: 'NIST Chemistry WebBook: methane molecular mass and combustion enthalpy', url: 'https://webbook.nist.gov/cgi/cbook.cgi?ID=C74828&Units=SI&Mask=1'},
+    {title: 'OpenStax: first law of thermodynamics', url: 'https://openstax.org/books/college-physics-2e/pages/15-1-the-first-law-of-thermodynamics'},
+    {title: 'Robertshaw TS11: separate thermocouple flame-failure shutoff', url: 'https://www.robertshaw.com/wp-content/uploads/2026/04/352-00324-001-Robertshaw-TS11-Series-Automatic-Safety-Valve-J-or-K-versions-Install.pdf'},
+  ],
   quiz: {
-    question: 'What actually moves the valve in a rod thermostat?',
-    options: [
-      'The difference between how much the brass tube and the steel rod grow.',
-      'The brass tube growing, on its own.',
-      'Gas pressure rising as the oven warms.',
-    ],
+    question: 'Why does warming the joined tube and rod let the spring close the valve?',
+    options: ['Brass expands more than steel, pulling the free rod end away from the valve stem.', 'Steel does not expand at all, so it stays fixed in space.', 'Hot gas raises the supply pressure until the poppet closes.'],
     answer: 0,
-    explanation: 'Both metals grow; only their difference reaches the valve, and it is 1.64 micrometers for each degree.',
+    explanation: 'Both metals lengthen, but the brass tube grows more. Because their far ends are joined, the free rod end retreats, reducing its push on the spring-loaded valve.',
   },
 };
 

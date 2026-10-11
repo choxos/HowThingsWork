@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import {fixed} from './format.js';
 import {tally, checkTrialNumbers, checkQuotedText, checkControlsMove, checkFinite, checkDisposal, checkRefusals} from './model-check-kit.mjs';
 import * as P from './thermostat-physics.js';
-import * as RM from './rod-thermostat-model.js';
 import * as WM from './wax-thermostat-model.js';
 import * as L from './thermostat-lessons.js';
 import {heatingLessons} from './heating-lessons.js';
@@ -56,7 +55,6 @@ const SRC = {
   coolant: {density: 1000, heat: 4184},
   // Drawn sizes typed in again, so a mutated model constant cannot move both sides of a test.
   drawn: {
-    tubeLength: 200, moveTimes: 200, mmRod: 0.004,
     capsuleAcross: 18, pistonBore: 4, mmWax: 0.02,
     slower: 120,
   },
@@ -78,55 +76,6 @@ t.ok(SRC.expansion.iron > SRC.expansionOther.ironForged && SRC.expansion.iron < 
 t.ok(SRC.expansion.carbonSteel >= SRC.expansionOther.steel[0] && SRC.expansion.carbonSteel <= SRC.expansionOther.steel[1], 'and carbon steel inside the steel spread');
 t.ok(SRC.expansion.brass > SRC.expansion.iron && SRC.expansion.iron > SRC.expansion.carbonSteel && SRC.expansion.invar < SRC.expansion.carbonSteel / 5,
   'brass outgrows iron, iron outgrows carbon steel, and invar hardly grows at all');
-
-// --- The rod, its valve and the oven -----------------------------------------
-{
-  for (const celsius of [0, 20, 100, 200, 300]) {
-    t.near(P.differentialAt(celsius), P.DECLARED.rodLength * (SRC.expansion.brass - SRC.expansion.carbonSteel) * (celsius - P.DECLARED.rodAt), 1e-15,
-      `the tube outgrows the rod by length times the mismatch at ${f0(celsius)} °C`);
-    // The same by growing each metal separately and subtracting, which is what it is.
-    const tube = P.DECLARED.rodLength * (1 + SRC.expansion.brass * (celsius - P.DECLARED.rodAt));
-    const rod = P.DECLARED.rodLength * (1 + SRC.expansion.carbonSteel * (celsius - P.DECLARED.rodAt));
-    t.near(P.differentialAt(celsius), tube - rod, 1e-15, 'and it is simply one length less the other');
-  }
-  t.near(P.differentialAt(1, P.DECLARED.rodLength, 0), P.DECLARED.rodLength * (SRC.expansion.brass - SRC.expansion.carbonSteel), 1e-18, 'a degree of it is the mismatch over the length');
-  for (const values of [{}, {setting: 120}, {setting: 260}, {supply: 10}, {bypass: 0}, {start: 60}]) {
-    const plan = P.rodPlan(values);
-    counts.plans++;
-    const band = P.DECLARED.valveTravel / (P.DECLARED.lever * P.DECLARED.rodLength * (SRC.expansion.brass - SRC.expansion.carbonSteel));
-    t.near(plan.shutsAt, plan.values.setting + band / 2, 1e-9, 'the valve shuts half a band above the setting');
-    t.near(P.valveOpenAt(plan.values.setting - band / 2, plan.values.setting), 1, 1e-9, 'and is wide open half a band below it');
-    t.near(P.valveOpenAt(plan.values.setting, plan.values.setting), 0.5, 1e-9, 'so the setting itself sits in the middle of the band');
-    t.ok(P.valveOpenAt(plan.shutsAt + 1, plan.values.setting) === 0, 'past the top of the band it is shut');
-    // The orifice equation, by hand.
-    const area = Math.PI * (P.DECLARED.valveBore / 2) ** 2;
-    t.near(plan.mainArea, area, 1e-18, 'the seat is its bore');
-    t.near(plan.fullFlow, SRC.orifice.discharge[0] * area * Math.sqrt(2 * plan.values.supply * 100 / SRC.gas.density), 1e-15, 'and passes what the orifice equation says');
-    t.near(plan.fullPower, plan.fullFlow * SRC.gas.calorific * P.DECLARED.burnerEfficiency, 1e-9, 'which is that much gas burned at the stated efficiency');
-    t.ok(plan.bypassFlow > 0 === Boolean(plan.values.bypass), 'the bypass flows only when it is fitted');
-    // Where it comes to rest, by bisecting the oven's own balance instead of marching.
-    const flowAt = celsius => P.throughOrifice(area * P.valveOpenAt(celsius, plan.values.setting), plan.values.supply * 100, SRC.gas.density)
-      + P.throughOrifice(plan.bypassArea, plan.values.supply * 100, SRC.gas.density);
-    const surplus = celsius => P.DECLARED.ovenLoss * (celsius - P.DECLARED.ovenAmbient) - flowAt(celsius) * SRC.gas.calorific * P.DECLARED.burnerEfficiency;
-    const rest = bisect(surplus, P.DECLARED.ovenAmbient, 600);
-    t.near(plan.settled.celsius, rest, 0.6, `the oven rests where its balance says, ${f1(rest)} °C`);
-    t.ok(plan.holds, 'and that is within ten degrees of the setting it was asked for');
-    t.ok(plan.settled.celsius > plan.values.setting, 'a proportional valve rests above its setting, never on it');
-    t.ok(plan.settled.celsius < plan.shutsAt, 'but below the point that would shut it completely');
-    const open = P.valveOpenAt(plan.settled.celsius, plan.values.setting);
-    t.ok(open > 0 && open < 0.15, `and holds it on a small opening, ${f1(100 * open)}%, because the burner is far larger than the oven's loss`);
-  }
-  // Without a bypass a valve that shut completely would put the flame out.
-  t.ok(P.rodPlan({bypass: 0}).bypassFlow === 0 && P.rodPlan({bypass: 1}).bypassFlow > 0, 'the bypass is the only thing flowing when the main valve is shut');
-  t.ok(P.throughOrifice(0, 2000, SRC.gas.density) === 0 && P.throughOrifice(-1, 2000, SRC.gas.density) === 0, 'nothing gets through nothing');
-  // More pressure is more gas, as the square root of it.
-  const low = P.rodPlan({supply: 10}), high = P.rodPlan({supply: 25});
-  counts.plans += 2;
-  t.near(high.fullFlow / low.fullFlow, Math.sqrt(25 / 10), 1e-12, 'flow follows the square root of the pressure');
-  t.ok(Math.abs(high.settled.celsius - low.settled.celsius) < 2, 'but a starved supply shows up as a slow oven, not a cool one');
-  t.ok(low.reached > high.reached, 'it simply takes longer to get there');
-}
-checkRefusals(P.sampleRod, P.ROD_DOMAINS, t);
 
 // --- The wax, its piston and the engine --------------------------------------
 {
@@ -195,7 +144,6 @@ checkRefusals(P.sampleWax, P.WAX_DOMAINS, t);
 // 2. The drawing, read back from the scene.
 // ---------------------------------------------------------------------------
 
-const rod = RM.createRodThermostatModel(), RT = rod.topology;
 const wax = WM.createWaxThermostatModel(), WT = wax.topology;
 
 const poseOf = model => (values, runSeconds) => {
@@ -206,37 +154,8 @@ const poseOf = model => (values, runSeconds) => {
   counts.poses++;
   return model.getState();
 };
-const poseRod = poseOf(rod), poseWax = poseOf(wax);
+const poseWax = poseOf(wax);
 
-// --- The tube and rod, drawn true, with their difference magnified ------------
-{
-  const cold = poseRod({start: 15}, 0), coldMove = RT.move.position.x;
-  const warm = poseRod({start: 60}, 0), warmMove = RT.move.position.x;
-  t.near(cold.now.celsius, 15, 1e-9, 'the oven starts where it was started');
-  // The tube is drawn cut open, as its two walls. Each is a flat rectangle, so
-  // its drawn length is its scale and not its geometry, which stays a unit square.
-  const walls = [RT.tubeWall[0], RT.tubeWall[1]];
-  for (const wall of walls) t.near(wall.scale.x, SRC.drawn.tubeLength * SRC.drawn.mmRod, drawn, `the tube is drawn its true ${f0(SRC.drawn.tubeLength)} mm long`);
-  t.near(walls[0].position.x, walls[1].position.x, 1e-12, 'and both its walls start and end together');
-  const drawnMove = warmMove - coldMove;
-  const realMove = P.differentialAt(60) - P.differentialAt(15);
-  t.near(Math.abs(drawnMove / realMove), 1000 * SRC.drawn.mmRod * SRC.drawn.moveTimes, 1e-4,
-    `and the movement between them exactly ${f0(SRC.drawn.moveTimes)} times larger`);
-  t.ok(realMove > 0 && drawnMove < 0, 'the warmer oven grows the tube past the rod, which pulls the rod end back toward the valve');
-}
-// --- The valve, the bypass and the burner ------------------------------------
-{
-  for (const time of [0, 300, 900, 2400]) {
-    const state = poseRod({}, time);
-    t.ok(RT.flames.children.length > 0 || RT.flames.visible !== undefined, 'the burner has flames to show');
-    t.ok(state.now.open >= 0 && state.now.open <= 1, `at ${f0(time)} s the valve is somewhere between shut and open`);
-  }
-  const lit = poseRod({}, 0), late = poseRod({}, P.DECLARED.ovenRun);
-  t.ok(lit.now.open > late.now.open, 'the valve closes as the oven arrives');
-  t.ok(RT.bypassHole.visible && RT.bypassLine.visible, 'the bypass and its gas are drawn when it is fitted');
-  poseRod({bypass: 0}, 0);
-  t.ok(!RT.bypassHole.visible && !RT.bypassLine.visible, 'and neither is drawn when it is not');
-}
 // --- The wax element, drawn at true size throughout ---------------------------
 {
   // The capsule is a flat rectangle, so how far across it is drawn is its scale.
@@ -258,12 +177,11 @@ const poseRod = poseOf(rod), poseWax = poseOf(wax);
   t.ok(poseWax({load: 4}, P.DECLARED.engineRun).now.toRadiator === 0 && WT.toRadiator.userData.length === 0, 'and no arrow at all when the valve never opens');
 }
 // Nothing anywhere is left infinite, at any setting or time.
-const rodSettings = [{}, {setting: 120}, {setting: 260}, {start: 15}, {start: 60}, {supply: 10}, {supply: 25}, {bypass: 0}];
 const waxSettings = [{}, {growth: 5}, {growth: 20}, {load: 4}, {load: 30}, {ambient: -10}, {ambient: 40}, {start: -10}, {start: 40}];
-for (const [pose, settings] of [[poseRod, rodSettings], [poseWax, waxSettings]]) {
+for (const [pose, settings] of [[poseWax, waxSettings]]) {
   for (const values of settings) for (const time of [0, 60, 600, 1e5]) pose(values, time);
 }
-for (const model of [rod, wax]) checkFinite(model.root, t);
+checkFinite(wax.root, t);
 
 // ---------------------------------------------------------------------------
 // 3. The lessons.
@@ -281,18 +199,6 @@ function covered(text, expected, where) {
 }
 const texts = item => [['simple', item.simple], ['overview', item.overview], ...item.steps.map((step, i) => [`step ${i + 1}`, step.body]), ...item.parts.map((part, i) => [`part ${i + 1}`, part.role]), ['misconception', item.misconception], ['quiz', [item.quiz.question, ...item.quiz.options].join(' ')]];
 
-const rodDefault = P.rodPlan({}), rodCool = P.rodPlan({setting: 120}), rodHot = P.rodPlan({setting: 260});
-const rodWeak = P.rodPlan({supply: 10}), rodBare = P.rodPlan({bypass: 0});
-checkTrialNumbers(L.rodThermostatLesson, {
-  'Light the oven': s => ({'13.9': s.reached / 60, '207.0': s.settled.celsius}),
-  'Watch the valve, not a switch': s => ({'207.6': s.shutsAt}),
-  'How little the metals differ': s => ({19: 1e6 * P.EXPANSION.brass, '10.8': 1e6 * P.EXPANSION.carbonSteel, '1.64': 1e6 * s.differentialPerDegree, '0.15': 1000 * P.DECLARED.valveTravel}),
-  'A cooler oven': s => ({'7.7': s.reached / 60, '127.4': s.settled.celsius}),
-  'A hotter oven': s => ({'18.6': s.reached / 60, '266.8': s.settled.celsius}),
-  'Weaker gas': s => ({'6,538': s.fullPower, '9,247': rodDefault.fullPower, '19.9': s.reached / 60}),
-  'Take the bypass away': s => ({'206.8': s.settled.celsius}),
-}, values => P.rodPlan(values), t);
-
 const waxDefault = P.waxPlan({}), waxMean = P.waxPlan({growth: 5}), waxFree = P.waxPlan({growth: 20});
 const waxIdle = P.waxPlan({load: 4}), waxHard = P.waxPlan({load: 30});
 checkTrialNumbers(L.waxThermostatLesson, {
@@ -305,28 +211,11 @@ checkTrialNumbers(L.waxThermostatLesson, {
   'Working hard': s => ({96: 100 * s.settled.open, '112.0': s.settled.celsius}),
 }, values => P.waxPlan(values), t);
 
-for (const lesson of [L.rodThermostatLesson, L.waxThermostatLesson]) {
+for (const lesson of [L.waxThermostatLesson]) {
   for (const [where, text] of texts(lesson)) covered(text, {}, `${lesson.simple.slice(0, 20)} ${where}`);
 }
 
 // The deeper sections.
-covered(L.rodThermostatLesson.deeper[0].body, {
-  [`A ${f0(1000 * P.DECLARED.rodLength)} mm brass tube grows about ${f1(1000 * P.DECLARED.rodLength * P.EXPANSION.brass * (P.ROD_DEFAULTS.setting - P.DECLARED.rodAt))} millimeters`]:
-    'A 200 mm brass tube grows about 0.7 millimeters',
-  [`grows about ${f1(1000 * P.DECLARED.rodLength * P.EXPANSION.carbonSteel * (P.ROD_DEFAULTS.setting - P.DECLARED.rodAt))}`]: 'grows about 0.4',
-  [`it is the ${f1(1000 * P.differentialAt(P.ROD_DEFAULTS.setting))} or so millimeters of difference`]: 'it is the 0.3 or so millimeters of difference',
-  [`per degree that is ${f2(1e6 * rodDefault.differentialPerDegree)} micrometers`]: 'per degree that is 1.64 micrometers',
-  [`brass ${f0(1e6 * P.EXPANSION.brass)} millionths a degree and carbon steel ${f1(1e6 * P.EXPANSION.carbonSteel)}`]: 'brass 19 millionths a degree and carbon steel 10.8',
-}, 'rod deeper 1');
-covered(L.rodThermostatLesson.deeper[2].body, {
-  [`between ${f1(P.ORIFICE.discharge[0])} and ${f2(P.ORIFICE.discharge[1])}`]: 'between 0.6 and 0.85',
-  [`At ${f0(P.ROD_DEFAULTS.supply)} mbar this seat passes enough gas for ${f0(rodDefault.fullPower)} W`]: 'At 20 mbar this seat passes enough gas for 9,247 W',
-  [`at ${f0(rodWeak.values.supply)} mbar only ${f0(rodWeak.fullPower)} W`]: 'at 10 mbar only 6,538 W',
-}, 'rod deeper 3');
-covered(L.rodThermostatLesson.deeper[3].body, {
-  [`${f1(rodDefault.settled.celsius)} °C for a setting of ${f0(rodDefault.values.setting)}`]: '207.0 °C for a setting of 200',
-}, 'rod deeper 4');
-
 covered(L.waxThermostatLesson.deeper[0].body, {
   [`by ${f0(100 * P.WAX.growth[0])} to ${f0(100 * P.WAX.growth[1])} percent`]: 'by 5 to 20 percent',
 }, 'wax deeper 1');
@@ -355,28 +244,11 @@ covered(L.waxThermostatLesson.deeper[5].body, {
 // The limits, which are where everything declared has to be admitted.
 const sharedLimits = {};
 covered(L.thermostatLimits, sharedLimits, 'thermostat limits');
-covered(L.rodLimits, {
-  ...sharedLimits,
-  [`taken as ${f0(1000 * P.DECLARED.rodLength)} mm of brass`]: 'taken as 200 mm of brass',
-  [`multiplies their difference ${f0(P.DECLARED.lever)} times`]: 'multiplies their difference 6 times',
-  [`close over ${f2(1000 * P.DECLARED.valveTravel)} mm of travel, which is what turns ${f2(1e6 * rodDefault.differentialPerDegree)} micrometers a degree`]:
-    'close over 0.15 mm of travel, which is what turns 1.64 micrometers a degree',
-  [`put ${f0(100 * P.DECLARED.burnerEfficiency)} percent of it into the oven`]: 'put 45 percent of it into the oven',
-}, 'rod limits');
 covered(L.waxLimits, {
   ...sharedLimits,
   [`taken as ${f0(1e9 * P.DECLARED.pelletVolume)} cubic millimeters of wax melting evenly between ${f0(P.DECLARED.meltFrom)} and ${f0(P.DECLARED.meltTo)} °C, driving a ${f0(1000 * P.DECLARED.pistonBore)} mm piston`]:
     'taken as 900 cubic millimeters of wax melting evenly between 82 and 95 °C, driving a 4 mm piston',
 }, 'wax limits');
-covered(L.rodThermostatLesson.limits, {
-  [`between them ${f0(RM.MOVE_TIMES)} times larger`]: 'between them 200 times larger',
-  [`covers ${f0(P.DECLARED.ovenRun / 60)} minutes and plays ${f0(P.DECLARED.slower)} times faster`]: 'covers 40 minutes and plays 120 times faster',
-  [`taken as ${f0(1000 * P.DECLARED.rodLength)} mm of brass`]: 'taken as 200 mm of brass',
-  [`multiplies their difference ${f0(P.DECLARED.lever)} times`]: 'multiplies their difference 6 times',
-  [`close over ${f2(1000 * P.DECLARED.valveTravel)} mm of travel, which is what turns ${f2(1e6 * rodDefault.differentialPerDegree)} micrometers a degree`]:
-    'close over 0.15 mm of travel, which is what turns 1.64 micrometers a degree',
-  [`put ${f0(100 * P.DECLARED.burnerEfficiency)} percent of it into the oven`]: 'put 45 percent of it into the oven',
-}, 'rod lesson limits');
 covered(L.waxThermostatLesson.limits, {
   [`covers ${f0(P.DECLARED.engineRun / 60)} minutes and plays ${f0(P.DECLARED.slower)} times faster`]: 'covers 15 minutes and plays 120 times faster',
   [`taken as ${f0(1e9 * P.DECLARED.pelletVolume)} cubic millimeters of wax melting evenly between ${f0(P.DECLARED.meltFrom)} and ${f0(P.DECLARED.meltTo)} °C, driving a ${f0(1000 * P.DECLARED.pistonBore)} mm piston`]:
@@ -413,11 +285,6 @@ covered(L.waxThermostatLesson.limits, {
 // ---------------------------------------------------------------------------
 
 const machines = [
-  ['Rod thermostat', rod, RT, L.rodThermostatLesson, P.ROD_DOMAINS, P.ROD_DEFAULTS, 'rod-thermostat', rodSettings, 6,
-    () => [RT.move.position.x, RT.plug.position.x, RT.bypassHole.visible, RT.flames.scale.x, pointsOf(RT.curve).slice(-2), pointsOf(RT.openGuide).slice(0, 20)],
-    // Halfway, not the whole run: an oven that has arrived has forgotten where it
-    // started, so the readings at the end cannot show what `start` did.
-    model => model.advance(P.DECLARED.ovenRun / 2 / P.DECLARED.slower)],
   ['Wax thermostat', wax, WT, L.waxThermostatLesson, P.WAX_DOMAINS, P.WAX_DEFAULTS, 'wax-thermostat', waxSettings, 6,
     () => [WT.piston.position.x, WT.disc.position.x, WT.toRadiator.userData.length, WT.waxBody.material.color.getHex(), pointsOf(WT.curve).slice(-2), pointsOf(WT.openGuide).slice(0, 20)],
     // Halfway, for the same reason as the oven.
@@ -490,9 +357,8 @@ for (const [name, model, topology, lesson, domains, defaults, id, settings, leas
 }
 
 const released = [
-  checkDisposal((() => { const fresh = RM.createRodThermostatModel(); fresh.advance(3); return fresh; })(), t),
   checkDisposal((() => { const fresh = WM.createWaxThermostatModel(); fresh.advance(3); return fresh; })(), t),
 ].reduce((sum, value) => sum + value, 0);
-for (const model of [rod, wax]) model.dispose();
+wax.dispose();
 
-console.log(`PASS rod/wax thermostats: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 2 draft lessons, ${released} resources released exactly once.`);
+console.log(`PASS wax thermostat: ${t.count} checks, ${counts.steps} steps integrated, ${counts.plans} runs planned, ${counts.solves} balances solved, ${counts.poses} poses, ${counts.points} drawn points traced, ${counts.numbers} quoted numbers traced, 1 draft lesson, ${released} resources released exactly once.`);

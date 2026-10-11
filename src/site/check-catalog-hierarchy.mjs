@@ -497,3 +497,11 @@ assert.deepEqual(tags(bimetalThermostat.entry.id), ['exploiting-heat', 'sensors-
 assert.equal(catalog.groups.find(group => group.id === bimetalThermostat.entry.group).place, 'home');
 assert.equal(catalog.groups.find(group => group.id === bimetalThermostat.entry.group).room, 'Heating and cooling');
 for (const id of ['body', 'strip', 'contact', 'magnet', 'dial', 'room', 'heater', 'circuit', 'chart']) assert(hasCatalogPart(bimetalThermostat.entry.id, id), `${id} remains bookmarkable in the thermostat lesson`);
+
+const rodThermostat = families.find(family => family.entry.id === 'rod-thermostat');
+assert(rodThermostat && !componentParentIds[rodThermostat.entry.id], 'Rod thermostat is an independent gas-oven temperature-control mechanism');
+assert.deepEqual(rodThermostat.components, []);
+assert.deepEqual(tags(rodThermostat.entry.id), ['exploiting-heat', 'sensors-and-detectors', 'springs', 'pressure-power']);
+assert.equal(catalog.groups.find(group => group.id === rodThermostat.entry.group).place, 'home');
+assert.equal(catalog.groups.find(group => group.id === rodThermostat.entry.group).room, 'Heating and cooling');
+for (const id of ['body', 'tube', 'rod', 'valve', 'dial', 'bypass', 'oven', 'burner', 'circuit', 'chart']) assert(hasCatalogPart(rodThermostat.entry.id, id), `${id} remains bookmarkable in the rod thermostat lesson`);

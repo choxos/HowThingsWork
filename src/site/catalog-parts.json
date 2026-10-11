@@ -1991,6 +1991,58 @@
       "parentId": "system"
     }
   ],
+  "rod-thermostat": [
+    {
+      "id": "body",
+      "name": "Valve housing and tube support",
+      "parentId": "system"
+    },
+    {
+      "id": "tube",
+      "name": "Brass sensing tube",
+      "parentId": "system"
+    },
+    {
+      "id": "rod",
+      "name": "Steel rod and far-end joint",
+      "parentId": "system"
+    },
+    {
+      "id": "valve",
+      "name": "Poppet valve and closing spring",
+      "parentId": "system"
+    },
+    {
+      "id": "dial",
+      "name": "Threaded setting adjustment",
+      "parentId": "system"
+    },
+    {
+      "id": "bypass",
+      "name": "Separate gas bypass",
+      "parentId": "system"
+    },
+    {
+      "id": "oven",
+      "name": "Oven and thermometer",
+      "parentId": "system"
+    },
+    {
+      "id": "burner",
+      "name": "Gas burner",
+      "parentId": "oven"
+    },
+    {
+      "id": "circuit",
+      "name": "Gas cock and connected pipes",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Elapsed oven temperature",
+      "parentId": "system"
+    }
+  ],
   "liquid-in-glass-thermometer": [
     {
       "id": "system",
