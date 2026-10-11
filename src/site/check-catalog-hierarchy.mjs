@@ -513,3 +513,11 @@ assert.deepEqual(tags(waxThermostat.entry.id), ['exploiting-heat', 'sensors-and-
 assert.equal(catalog.groups.find(group => group.id === waxThermostat.entry.group).place, 'home');
 assert.equal(catalog.groups.find(group => group.id === waxThermostat.entry.group).room, 'Heating and cooling');
 for (const id of ['frame', 'piston', 'capsule', 'wax', 'valve', 'spring', 'engine', 'pump', 'radiator', 'bypass', 'circuit', 'chart']) assert(hasCatalogPart(waxThermostat.entry.id, id), `${id} remains bookmarkable in the wax thermostat lesson`);
+
+const polarizingFilter = entries.find(entry => entry.id === 'polarizing-filter');
+assert(polarizingFilter, 'The reviewed polarizing filter lesson is published');
+assert.equal(componentParentIds[polarizingFilter.id], 'polarized-light');
+assert(families.find(family => family.entry.id === 'polarized-light').components.includes(polarizingFilter));
+assert.equal(catalog.groups.find(group => group.id === polarizingFilter.group).place, 'studio');
+assert.deepEqual(tags(polarizingFilter.id), ['light-and-images']);
+for (const id of ['first', 'middle', 'analyzer', 'source', 'result', 'meter']) assert(hasCatalogPart(polarizingFilter.id, id), `${id} remains bookmarkable in the polarizing filter lesson`);

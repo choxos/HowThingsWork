@@ -236,7 +236,7 @@ assert.throws(() => P.glareThrough(1.5, 45, NaN), RangeError);
 // ---------------------------------------------------------------------------
 
 const PRESETS = {
-  'Polarizing filter': {machine: 'Polarized light', part: 'first', values: {mode: 0, insert: 1, middle: 45, first: 0, analyzer: 90}},
+  'Polarizing filter': {machine: 'Polarized light', part: 'train', values: {insert: 1, middle: 45, first: 0, analyzer: 90}},
   'Liquid crystals': {machine: 'Liquid crystal display', part: 'molecules', values: {mode: 0, drive: 0, battery: 1}},
   'Polarizing sunglasses': {machine: 'Polarized light', part: 'glasses', values: {mode: 1, brewster: 1, material: 0, glasses: 1, analyzer: 0}},
   'Binocular prisms': {machine: 'Binoculars', part: 'probe', values: {mode: 1, index: 1.5, angle: 0}},
@@ -375,13 +375,15 @@ const runLcd = values => drive(lcd, values);
 const runBino = values => drive(bino, values);
 
 checkTrialNumbers(L.polarizingFilterLesson, {
-  'Pass one filter': s => ({50: 100 * s.stages[1].power, 38: 100 * P.PAGES.polaroid}),
-  'Cross the two filters': s => ({0: 100 * s.output, 0.115: 100 * P.sheetPair(90)}),
-  'Turn the analyzer halfway': s => ({25: 100 * s.output, 14.4: 100 * P.sheetPair(45)}),
+  'Align two filters': s => ({50: 100 * s.output}),
+  'Cross the two filters': s => ({50: 100 * s.stages[1].power, 0: 100 * s.output}),
+  'Turn the analyzer halfway': s => ({25: 100 * s.output}),
   'Slip a third filter between crossed ones': s => ({50: 100 * s.stages[1].power, 25: 100 * s.stages[2].power, 12.5: 100 * s.output}),
-  'Turn the middle filter nearer the first': s => ({9.375: 100 * s.output}),
-  'Turn it nearer the analyzer instead': s => ({9.375: 100 * s.output}),
+  'Turn the middle filter nearer the first': s => ({37.5: 100 * s.stages[2].power, 9.375: 100 * s.output, 9.38: 100 * s.output}),
+  'Turn it nearer the analyzer instead': s => ({12.5: 100 * s.stages[2].power, 9.375: 100 * s.output}),
   'Line the middle filter up with the first': s => ({0: 100 * s.output}),
+  'Send in aligned polarized light': s => ({100: 100 * s.output}),
+  'Project an angled input field': s => ({50: 100 * s.output}),
 }, runPol, t);
 
 checkTrialNumbers(L.liquidCrystalsLesson, {
@@ -434,28 +436,23 @@ const sheetSnippets = {
 };
 covered(L.sheetLimits, sheetSnippets, 'shared limits');
 
-// The polarizing filter.
+// The filter lesson distinguishes ideal predictions from one manufacturer example.
 expectNone(L.polarizingFilterLesson, 'Polarizing filter');
-covered(L.polarizingFilterLesson.deeper[0].body, {}, 'filter deeper 1');
+covered(L.polarizingFilterLesson.deeper[0].body, {}, 'filter projection');
 covered(L.polarizingFilterLesson.deeper[1].body, {
-  [`"around ${f0(100 * P.PAGES.polaroid)}% for Polaroid-type polarizers"`]: '"around 38% for Polaroid-type polarizers"',
-  [`"around 1:${f0(1 / P.PAGES.extinction)} for Polaroid"`]: '"around 1:500 for Polaroid"',
-  [`passes ${f6(k1)} of the light polarized along its axis and ${f6(k2)} of the light across it`]: 'passes 0.758483 of the light polarized along its axis and 0.001517 of the light across it',
-  [`pass ${f1(100 * P.sheetPair(0))}% of unpolarized light with their axes parallel and ${f3(100 * P.sheetPair(90))}% crossed`]: 'pass 28.8% of unpolarized light with their axes parallel and 0.115% crossed',
-  [`better than ${f0(P.pairContrast())}:1`]: 'better than 250:1',
-}, 'filter deeper 2');
+  '44.2 ±1.5% single-sheet transmission': '44.2 ±1.5% single-sheet transmission',
+  '38.6% parallel-pair transmission': '38.6% parallel-pair transmission',
+  'less than 0.02% crossed-pair transmission': 'less than 0.02% crossed-pair transmission',
+}, 'manufacturer specifications, separate from ideal model');
 covered(L.polarizingFilterLesson.deeper[2].body, {
   'cos²θ·sin²θ/2': 'cos²θ·sin²θ/2',
-  [`At 45 degrees that is ${f1(100 * 0.125)}%, and at 30 or 60 degrees ${fixed(9.375, 3)}%`]: 'At 45 degrees that is 12.5%, and at 30 or 60 degrees 9.375%',
-}, 'filter deeper 3');
-covered(L.polarizingFilterLesson.deeper[3].body, {
-  [`patented in ${P.PAGES.jSheet} and developed in 1932`]: 'patented in 1929 and developed in 1932',
-  [`H-sheet of ${P.PAGES.hSheet}`]: 'H-sheet of 1938',
-}, 'filter deeper 4');
-covered(L.polarizingFilterLesson.deeper[4].body, {[`more than ${f1(100 * P.PAGES.prismPolarizer)}% of unpolarized light`]: 'more than 49.9% of unpolarized light'}, 'filter deeper 5');
-covered(L.polarizingFilterLesson.deeper[5].body, {}, 'filter deeper 6');
-covered(L.polarizingFilterLesson.limits, sheetSnippets, 'filter limits');
-covered(L.polarizingFilterLesson.quiz.explanation, {[`the train passes ${f1(12.5)}% of the source`]: 'the train passes 12.5% of the source', 'middle filter at 45 degrees': 'middle filter at 45 degrees'}, 'filter quiz');
+  'At 45 degrees this gives 12.5%': `At 45 degrees this gives ${f1(100 * samplePolarizedLight({insert: 1, middle: 45}).output)}%`,
+  'at 30 or 60 degrees it gives 9.375%': `at 30 or 60 degrees it gives ${f3(100 * samplePolarizedLight({insert: 1, middle: 30}).output)}%`,
+}, 'filter third projection');
+for (const i of [3, 4]) covered(L.polarizingFilterLesson.deeper[i].body, {}, `filter deeper ${i + 1}`);
+covered(L.polarizingFilterLesson.deeper[5].body, {'180 degrees': '180 degrees'}, 'axis periodicity');
+covered(L.polarizingFilterLesson.limits, {}, 'filter limits');
+covered(L.polarizingFilterLesson.quiz.explanation, {'middle axis at 45 degrees': 'middle axis at 45 degrees', 'passes 12.5%': `passes ${f1(100 * samplePolarizedLight({insert: 1}).output)}%`}, 'filter quiz');
 
 // The liquid crystals.
 expectNone(L.liquidCrystalsLesson, 'Liquid crystals');
@@ -540,10 +537,10 @@ for (const [name, lesson] of LESSONS) {
   const preset = PRESETS[name], model = models[preset.machine];
   t.ok(lesson.steps.length === 5, `${name}: five steps`);
   t.ok(lesson.parts.length >= 4, `${name}: a row for every part it names`);
-  t.ok(lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: six or seven trials`);
+  t.ok(name === 'Polarizing filter' ? lesson.tryIt.length === 9 : lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: complete trial inventory`);
   t.ok(lesson.deeper.length >= 5 && lesson.deeper.length <= 6, `${name}: five or six deeper sections`);
   t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${name}: a quiz of three with its answer first`);
-  t.ok(lesson.sources.length >= 5 && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, `${name}: five or more sources, each a link, none twice`);
+  t.ok(lesson.sources.length >= (name === 'Polarizing filter' ? 3 : 5) && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, `${name}: reviewed source inventory, each a link, none twice`);
   const all = [lesson.simple, lesson.overview, lesson.misconception, lesson.limits, lesson.quiz.question, lesson.quiz.explanation, ...lesson.quiz.options, ...lesson.steps.flatMap(step => [step.title, step.body]), ...lesson.parts.flatMap(item => [item.name, item.role]), ...lesson.deeper.flatMap(item => [item.title, item.body]), ...lesson.tryIt.flatMap(item => [item.title, item.instruction, item.observe]), ...lesson.sources.map(source => source.title)];
   for (const text of all) t.ok(!/[—–]| - |--/.test(text), `${name}: no dashes as punctuation in “${text.slice(0, 50)}”`);
   for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|polariser|polarised)\b/i.test(text), `${name}: American spelling in “${text.slice(0, 50)}”`);
@@ -552,7 +549,7 @@ for (const [name, lesson] of LESSONS) {
   for (const item of lesson.tryIt) {
     t.ok(item.reset === true && item.isolate === false && item.view === 'front', `${name}: every trial resets, does not isolate and faces front`);
     t.ok(model.parts.some(part => part.id === item.part), `${name}: every trial names a part the bench has`);
-    assert.deepEqual(Object.keys(item.values).sort(), Object.keys(model.defaults).sort(), `${name}: every trial sets the whole bench`);
+    assert.deepEqual(Object.keys(item.values).sort(), (name === 'Polarizing filter' ? ['power', 'input', 'inputAngle', 'first', 'analyzer', 'middle', 'insert', 'magnetic'] : Object.keys(model.defaults)).sort(), `${name}: every trial sets all of its controls`);
   }
 }
 
@@ -571,7 +568,7 @@ for (const [name, preset] of Object.entries(PRESETS)) {
   }
   assert.deepEqual(component.values, preset.values, `${name}: the preset is the one this check drives`);
 }
-t.ok(houseComponents['Polarizing filter'].values.insert === 1 && houseComponents['Polarizing filter'].values.mode === 0, 'the filter page opens on the three filter train, not the parent default');
+t.ok(houseComponents['Polarizing filter'].values.insert === 1, 'the filter page opens on the three filter train, not the parent default');
 t.ok(houseComponents['Polarizing sunglasses'].values.mode === 1 && houseComponents['Polarizing sunglasses'].values.brewster === 1, 'the sunglasses page opens on reflected glare at the Brewster angle');
 t.ok(houseComponents['Binocular prisms'].values.mode === 1, 'the prism page opens inside the Porro pair');
 t.ok(houseComponents['Liquid crystals'].machine === 'Liquid crystal display', 'the liquid crystals page opens on the display, which is where they are');

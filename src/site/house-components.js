@@ -6,7 +6,7 @@ import {reviewedIonizationSmokeLesson} from './ionization-smoke-lesson.js';
 import {createCapillaryModel} from './capillary-model.js';
 import {createOpticalReadoutModel} from './optical-readout-model.js';
 import {createSiphonModel} from './siphon-model.js';
-import {createPolarizedLightModel} from './polarized-light-model.js';
+import {createPolarizingFilterModel} from './polarizing-filter-model.js';
 import {createLCDModel} from './lcd-model.js';
 import {rotatingSprayArmLesson} from './dishwasher-lessons.js';
 import {createDishwasherModel} from './dishwasher-model.js';
@@ -168,7 +168,7 @@ export const houseComponents={
  'Video games console':{machine:'Games controller',createModel:createVideoGamesConsoleModel,part:'console-experiment',isolate:true,view:'front',lesson:videoGamesConsoleLesson,intro:videoGamesConsoleLesson.simple},
  'Phonemes':{machine:'Speech recognition',createModel:createPhonemesModel,part:'system',isolate:true,view:'front',lesson:phonemesLesson,intro:phonemesLesson.simple},
  'Head tracking':{machine:'Virtual reality headset',createModel:createHeadTrackingModel,part:'system',isolate:true,view:'front',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
- 'Polarizing filter':{machine:'Polarized light',createModel:()=>{const model=createPolarizedLightModel();model.parts.find(part=>part.id==='first').framePadding=1.6;return model;},part:'first',isolate:false,view:'front',values:{mode:0,insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
+ 'Polarizing filter':{machine:'Polarized light',createModel:createPolarizingFilterModel,part:'train',isolate:false,view:'front',values:{insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
  'Liquid crystals':{machine:'Liquid crystal display',createModel:()=>{const model=createLCDModel();model.parts.find(part=>part.id==='molecules').framePadding=1.6;return model;},part:'molecules',isolate:false,view:'front',values:{mode:0,drive:0,battery:1},lesson:liquidCrystalsLesson,intro:liquidCrystalsLesson.simple},
  'Polarizing sunglasses':{machine:'Polarized light',part:'glasses',isolate:false,view:'front',values:{mode:1,brewster:1,material:0,glasses:1,analyzer:0},lesson:polarizingSunglassesLesson,intro:polarizingSunglassesLesson.simple},
  'Binocular prisms':{machine:'Binoculars',part:'probe',isolate:false,view:'front',values:{mode:1,index:1.5,angle:0},lesson:binocularPrismsLesson,intro:binocularPrismsLesson.simple},

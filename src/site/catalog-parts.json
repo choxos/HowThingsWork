@@ -2107,6 +2107,38 @@
       "parentId": "train"
     }
   ],
+  "polarizing-filter": [
+    {
+      "id": "first",
+      "name": "First polarizer",
+      "parentId": "train"
+    },
+    {
+      "id": "middle",
+      "name": "Inserted polarizer",
+      "parentId": "train"
+    },
+    {
+      "id": "analyzer",
+      "name": "Analyzer",
+      "parentId": "train"
+    },
+    {
+      "id": "source",
+      "name": "Input light",
+      "parentId": "train"
+    },
+    {
+      "id": "result",
+      "name": "Transmitted light meter",
+      "parentId": "train"
+    },
+    {
+      "id": "meter",
+      "name": "Power comparison",
+      "parentId": "train"
+    }
+  ],
   "liquid-crystal-display": [
     {
       "id": "front",
