@@ -208,7 +208,9 @@
     "check:bimetal-thermostat-model": "node src/site/check-bimetal-thermostat-physics.mjs && node src/site/check-bimetal-thermostat-model.mjs",
     "check:bimetal-thermostat": "node src/site/check-bimetal-thermostat.mjs",
     "check:rod-thermostat-model": "node src/site/check-rod-thermostat-physics.mjs && node src/site/check-rod-thermostat-model.mjs",
-    "check:rod-thermostat": "node src/site/check-rod-thermostat.mjs"
+    "check:rod-thermostat": "node src/site/check-rod-thermostat.mjs",
+    "check:wax-thermostat-model": "node src/site/check-wax-thermostat-physics.mjs && node src/site/check-wax-thermostat-model.mjs",
+    "check:wax-thermostat": "node src/site/check-wax-thermostat.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

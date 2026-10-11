@@ -8310,6 +8310,68 @@
       "parentId": "system"
     }
   ],
+  "wax-thermostat": [
+    {
+      "id": "frame",
+      "name": "Fixed housing, seat and supports",
+      "parentId": "system"
+    },
+    {
+      "id": "piston",
+      "name": "Fixed piston",
+      "parentId": "frame"
+    },
+    {
+      "id": "capsule",
+      "name": "Moving wax capsule and seal",
+      "parentId": "frame"
+    },
+    {
+      "id": "wax",
+      "name": "Wax and phase change",
+      "parentId": "capsule"
+    },
+    {
+      "id": "valve",
+      "name": "Moving valve disc",
+      "parentId": "capsule"
+    },
+    {
+      "id": "spring",
+      "name": "Return spring",
+      "parentId": "frame"
+    },
+    {
+      "id": "engine",
+      "name": "Engine and coolant jacket",
+      "parentId": "system"
+    },
+    {
+      "id": "pump",
+      "name": "Independent coolant pump",
+      "parentId": "system"
+    },
+    {
+      "id": "radiator",
+      "name": "Radiator and outdoor air",
+      "parentId": "system"
+    },
+    {
+      "id": "bypass",
+      "name": "Always-open bypass",
+      "parentId": "system"
+    },
+    {
+      "id": "circuit",
+      "name": "Connected coolant paths",
+      "parentId": "system"
+    },
+    {
+      "id": "chart",
+      "name": "Elapsed engine and wax temperatures",
+      "parentId": "system"
+    }
+  ],
   "bobbin-and-bobbin-thread": [
     {
       "id": "stitch-formation",

@@ -2,6 +2,7 @@ import {neighborhoodCatalog as drafts} from './catalog-data.js';
 
 // Add routes only after the item's source, controls, browser, and review gates pass.
 export const publishedEntryIds = [
+  "wax-thermostat",
   "rod-thermostat",
   "bimetal-thermostat",
   "hair-dryer",
@@ -314,6 +315,7 @@ const groupPrinciples = {
   'car-ignition-system': ['electricity', 'magnetism'],
 };
 const entryPrinciples = {
+  'wax-thermostat': ['exploiting-heat', 'sensors-and-detectors', 'springs', 'pressure-power'],
   'rod-thermostat': ['exploiting-heat', 'sensors-and-detectors', 'springs', 'pressure-power'],
   'bimetal-thermostat': ['exploiting-heat', 'sensors-and-detectors', 'magnetism', 'electricity'],
   'hair-dryer': ['electricity', 'exploiting-heat', 'sensors-and-detectors'],

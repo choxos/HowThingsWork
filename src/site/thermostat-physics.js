@@ -17,21 +17,13 @@ export const ROD_MATERIAL = Object.freeze({brassAlpha: 19e-6, steelAlpha: 12e-6}
 /** Brass, from the Brass page. */
 export const BRASS = Object.freeze({density: Object.freeze([8400, 8730]), melting: Object.freeze([900, 940])});
 
-/** What the wax pages give: how much it grows on melting, what a spring has to be, and where these elements work. */
-export const WAX = Object.freeze({
-  growth: Object.freeze([0.05, 0.20]), bias: Object.freeze([0.20, 0.30]),
-  paraffinMelting: Object.freeze([46, 68]), paraffinDensity: 900,
-  automotive: Object.freeze([70, 90]), modernEngine: 80, halfStroke: 0.5,
-  strokes: Object.freeze([1.5, 16]), range: Object.freeze([-15, 120]),
-  patent: 2115501, patentFiled: 1934, patentIssued: 1938,
-});
-
 /** The orifice equation's discharge coefficient, from the Orifice plate page, and the gas supply the boiler sheet gives. */
 export const ORIFICE = Object.freeze({discharge: Object.freeze([0.6, 0.85]), supply: 2000, supplyMbar: 20});
 /** Legacy gas reference retained for the unrevised draft source checks. */
 export const GAS = Object.freeze({density: 0.657, densityAt: 25, calorific: 38.7e6});
-/** Water, for the coolant the wax thermostat lets through. */
-export const COOLANT = Object.freeze({density: 1000, heat: 4184});
+/** Dow 50%-by-volume ethylene glycol data at 90 °C, held constant in the wax lesson. */
+export const COOLANT = Object.freeze({density: 1032.15, heat: 3554, glycolVolumeFraction: 0.5,
+  referenceCelsius: 90, minimumPressure: 200000, minCelsius: -10, maxCelsius: 120, saturationAtMax: 155300});
 
 /** Not from a source, each said in the lessons' limits. */
 export const DECLARED = Object.freeze({
@@ -42,12 +34,8 @@ export const DECLARED = Object.freeze({
   // The rod thermostat, its valve and the oven it keeps.
   rodLength: 0.2, rodAt: 20, valveBore: 0.012, bypassBore: 0.00045,
   ovenCapacity: 12000, ovenLoss: 5, ovenAmbient: 20, burnerEfficiency: 0.45,
-  // The wax element, its valve and the engine it keeps.
-  pelletVolume: 0.9e-6, pistonBore: 0.004, meltFrom: 82, meltTo: 95,
-  springRate: 9000, valveArea: 0.00045, pumpFlow: 0.0011,
-  engineCapacity: 90000, enginePower: 14000, radiatorLoss: 320, engineAmbient: 20,
   // How the runs are marched and drawn.
-  step: 0.5, samples: 161, roomRun: 5400, ovenRun: 2400, engineRun: 900, slower: 120,
+  samples: 161, roomRun: 5400, ovenRun: 2400, slower: 120,
 });
 
 const K = 273.15;
@@ -91,14 +79,6 @@ export function bimetalBeamAt(plan, now, x = DECLARED.stripLength) {
 /** How much longer a tube of `length` is than the rod inside it at `celsius`, m. */
 export const differentialAt = (celsius, length = DECLARED.rodLength, from = DECLARED.rodAt) =>
   length * (ROD_MATERIAL.brassAlpha - ROD_MATERIAL.steelAlpha) * (celsius - from);
-
-/** The share of a wax pellet melted at `celsius`, taken evenly across its melting range. */
-export const meltedAt = celsius => clamp((celsius - DECLARED.meltFrom) / (DECLARED.meltTo - DECLARED.meltFrom));
-/** How far the wax pushes its piston at `celsius`, m: the volume the melt adds, over the piston's area. */
-export function pistonAt(celsius, growth = (WAX.growth[0] + WAX.growth[1]) / 2) {
-  const area = Math.PI * (DECLARED.pistonBore / 2) ** 2;
-  return DECLARED.pelletVolume * growth * meltedAt(celsius) / area;
-}
 
 /** What flows through an opening of `area` under `pressure`, m³/s: the orifice equation. */
 export const throughOrifice = (area, pressure, density, discharge = ORIFICE.discharge[0]) =>
@@ -276,74 +256,102 @@ export function rodAt(plan, time) {
 export const sampleRod = (input = {}, time = 0) => rodAt(rodPlan(input), time);
 
 // ---------------------------------------------------------------------------
-// Wax thermostat: a pellet that melts, a piston it pushes, and the coolant it
-// lets through to the radiator.
+// Wax thermostat: a fixed piston, moving capsule and valve, and a connected cooling loop.
 // ---------------------------------------------------------------------------
 
 export const WAX_DEFAULTS = Object.freeze({growth: 12, load: 14, ambient: 20, start: 20});
-export const WAX_DOMAINS = Object.freeze({growth: Object.freeze([5, 20, 1]), load: Object.freeze([4, 30, 1]), ambient: Object.freeze([-10, 40, 5]), start: Object.freeze([-10, 40, 5])});
+export const WAX_DOMAINS = Object.freeze({growth: Object.freeze([5, 20, 1]), load: Object.freeze([0, 24, 2]), ambient: Object.freeze([-10, 40, 5]), start: Object.freeze([-10, 120, 5])});
+/** Declared teaching parameters, not a calibrated commercial wax element or engine. */
+export const WAX_SPEC = Object.freeze({
+  volume: 0.9e-6, pistonBore: 0.004, capsuleDiameter: 0.013, seatDiameter: 0.040,
+  springRate: 9000, springPreload: 30, sensibleCapacity: 7.32, phaseEnergy: 162,
+  meltFrom: 82, freezeFrom: 78, phaseSpan: 13, thermalContact: 0.6,
+  engineCapacity: 90000, blockLoss: 12, radiatorUA: 400,
+  pumpFlow: 0.0008, bypassArea: 0.0014, duration: 1200, slower: 60, step: 0.125, samples: 161,
+});
 
-/** How far the valve is open at `celsius`, as a share of its full travel, against the spring. */
-export function coolantOpenAt(celsius, growth) {
-  const stroke = pistonAt(celsius, growth / 100);
-  return clamp(stroke / pistonAt(DECLARED.meltTo, (WAX.growth[0] + WAX.growth[1]) / 2));
+const springEnergy = stroke => WAX_SPEC.springPreload * stroke + WAX_SPEC.springRate * stroke ** 2 / 2;
+export const waxEnergyAt = (celsius, melted, fullStroke) => WAX_SPEC.sensibleCapacity * celsius + WAX_SPEC.phaseEnergy * melted + springEnergy(fullStroke * melted);
+
+/** Hysteretic phase return map: retain the fraction between the heating and cooling boundaries. */
+export function waxPhaseAt(energy, previous, fullStroke) {
+  const S = WAX_SPEC, capacity = S.sensibleCapacity;
+  const free = (energy - S.phaseEnergy * previous - springEnergy(fullStroke * previous)) / capacity;
+  const heating = free > S.meltFrom + S.phaseSpan * previous;
+  const cooling = free < S.freezeFrom + S.phaseSpan * previous;
+  let melted = previous;
+  if (heating || cooling) {
+    const excess = Math.max(0, energy - capacity * (heating ? S.meltFrom : S.freezeFrom));
+    const a = S.springRate * fullStroke ** 2 / 2;
+    const b = capacity * S.phaseSpan + S.phaseEnergy + S.springPreload * fullStroke;
+    melted = clamp(2 * excess / (b + Math.sqrt(b * b + 4 * a * excess)));
+  }
+  return {melted, waxCelsius: (energy - S.phaseEnergy * melted - springEnergy(fullStroke * melted)) / capacity};
+}
+
+function waxRates(plan, state) {
+  const S = WAX_SPEC, stroke = plan.fullStroke * state.melted;
+  const area = Math.min(Math.PI * S.seatDiameter * stroke, plan.portArea);
+  const toRadiator = S.pumpFlow * area / (area + S.bypassArea), toBypass = S.pumpFlow - toRadiator;
+  const capacityRate = toRadiator * COOLANT.density * COOLANT.heat;
+  // shortcut: fixed-temperature reservoir; use a finite-air crossflow model for radiator design.
+  const conductance = capacityRate > 0 ? -capacityRate * Math.expm1(-S.radiatorUA / capacityRate) : 0;
+  const radiatorHeat = conductance * (state.celsius - plan.values.ambient);
+  const radiatorOutlet = capacityRate > 0 ? state.celsius - radiatorHeat / capacityRate : plan.values.ambient;
+  const returnCelsius = (toRadiator * radiatorOutlet + toBypass * state.celsius) / S.pumpFlow;
+  const blockHeat = S.blockLoss * (state.celsius - plan.values.ambient);
+  const waxHeat = S.thermalContact * (state.celsius - state.waxCelsius);
+  return {stroke, area, toRadiator, toBypass, radiatorHeat, radiatorOutlet, returnCelsius, blockHeat, waxHeat,
+    rate: (plan.power - radiatorHeat - blockHeat - waxHeat) / S.engineCapacity};
+}
+
+function waxStep(plan, state, dt) {
+  const before = waxRates(plan, state), midEnergy = state.energy + before.waxHeat * dt / 2;
+  const middle = {...state, celsius: state.celsius + before.rate * dt / 2, ...waxPhaseAt(midEnergy, state.melted, plan.fullStroke)};
+  const flux = waxRates(plan, middle), energy = state.energy + flux.waxHeat * dt;
+  return {t: state.t + dt, celsius: state.celsius + flux.rate * dt, energy,
+    ...waxPhaseAt(energy, state.melted, plan.fullStroke),
+    radiatorEnergy: state.radiatorEnergy + flux.radiatorHeat * dt,
+    blockEnergy: state.blockEnergy + flux.blockHeat * dt,
+    radiatorVolume: state.radiatorVolume + flux.toRadiator * dt};
 }
 
 export function waxPlan(input = {}) {
-  const values = validateControls(input, WAX_DEFAULTS, WAX_DOMAINS, 'wax thermostat');
-  const key = JSON.stringify(values);
+  const values = validateControls(input, WAX_DEFAULTS, WAX_DOMAINS, 'wax thermostat'), key = JSON.stringify(values);
   if (engines.has(key)) return engines.get(key);
-  const power = values.load * 1000;
-  const track = [{t: 0, celsius: values.start, open: coolantOpenAt(values.start, values.growth)}];
-  let celsius = values.start, opened = null, reached = null;
-  for (let step = 1; step * DECLARED.step <= DECLARED.engineRun + 1e-9; step++) {
-    const previous = track[step - 1], t = step * DECLARED.step;
-    // Shut, the coolant goes round the engine and only the block loses heat;
-    // open, the radiator carries off what it can at that opening.
-    const lost = DECLARED.radiatorLoss * previous.open * (previous.celsius - values.ambient) + 12 * (previous.celsius - values.ambient);
-    celsius = previous.celsius + (power - lost) * DECLARED.step / DECLARED.engineCapacity;
-    const open = coolantOpenAt(celsius, values.growth);
-    if (opened === null && open > 0) opened = t;
-    if (reached === null && open >= WAX.halfStroke) reached = t;
-    track.push({t, celsius, open});
-  }
-  const settled = track.at(-1);
-  const plan = {
-    values, power, track, settled, opened, reached, duration: DECLARED.engineRun,
-    fullStroke: pistonAt(DECLARED.meltTo, values.growth / 100),
-    strokeAtOpen: pistonAt(DECLARED.meltFrom, values.growth / 100),
-    withinStrokes: pistonAt(DECLARED.meltTo, values.growth / 100) * 1000 >= WAX.strokes[0],
-    withinRange: DECLARED.meltFrom >= WAX.automotive[0] && DECLARED.meltTo <= WAX.automotive[1] + 5,
-    // Some settings have no resting place inside the run: an undersized wax cannot
-    // open far enough, so the engine is still on its way up when the run ends.
-    climbing: (track.at(-1).celsius - track.at(-2).celsius) / DECLARED.step > 0.001,
-    boils: settled.celsius >= 100,
-    halfOpen: settled.open >= WAX.halfStroke * 0.5 && settled.open <= 1,
-  };
-  plan.chart = Array.from({length: DECLARED.samples}, (_, i) => {
-    const t = plan.duration * i / (DECLARED.samples - 1), now = waxAt(plan, t);
-    return {t, celsius: now.celsius, open: now.open};
+  const S = WAX_SPEC, fullStroke = S.volume * values.growth / 100 / (Math.PI * S.pistonBore ** 2 / 4);
+  const melted = clamp((values.start - S.meltFrom) / S.phaseSpan), initialEnergy = waxEnergyAt(values.start, melted, fullStroke);
+  const plan = {values, power: values.load * 1000, duration: S.duration, fullStroke, initialEnergy,
+    portArea: Math.PI * (S.seatDiameter ** 2 - S.capsuleDiameter ** 2) / 4};
+  plan.track = [{t: 0, celsius: values.start, waxCelsius: values.start, melted, energy: initialEnergy, radiatorEnergy: 0, blockEnergy: 0, radiatorVolume: 0}];
+  for (let i = 1; i <= S.duration / S.step; i++) plan.track.push(waxStep(plan, plan.track.at(-1), S.step));
+  plan.chart = Array.from({length: S.samples}, (_, i) => {
+    const now = waxAt(plan, S.duration * i / (S.samples - 1));
+    return {t: now.t, celsius: now.celsius, waxCelsius: now.waxCelsius};
   });
-  if (engines.size >= 64) engines.clear();
+  if (engines.size >= 8) engines.delete(engines.keys().next().value);
   engines.set(key, plan);
   return plan;
 }
 
-/** The engine and its thermostat at a time in the run. */
+/** Current state, including a partial numerical step when time lies between stored nodes. */
 export function waxAt(plan, time) {
-  const t = Math.min(validTime(time), plan.duration);
-  const place = clamp(t / DECLARED.step, 0, plan.track.length - 1);
-  const low = Math.floor(place), high = Math.min(low + 1, plan.track.length - 1), part = place - low;
-  const between = key => plan.track[low][key] + part * (plan.track[high][key] - plan.track[low][key]);
-  const celsius = between('celsius'), open = between('open');
-  return {
-    time, t, celsius, open,
-    melted: meltedAt(celsius),
-    stroke: pistonAt(celsius, plan.values.growth / 100),
-    spring: DECLARED.springRate * pistonAt(celsius, plan.values.growth / 100),
-    toRadiator: open * DECLARED.pumpFlow,
-    done: t >= plan.duration,
-  };
+  const S = WAX_SPEC, t = Math.min(validTime(time), plan.duration);
+  const low = Math.min(Math.floor(t / S.step), plan.track.length - 1), base = plan.track[low];
+  const now = t > base.t ? waxStep(plan, base, t - base.t) : base;
+  const flow = waxRates(plan, now), mainOn = t > 0, stroke = flow.stroke;
+  const inputEnergy = plan.power * t, storedEnergy = S.engineCapacity * (now.celsius - plan.values.start);
+  const actuatorEnergy = now.energy - plan.initialEnergy, pumpVolume = S.pumpFlow * t;
+  return {...now, ...flow, time, t, mainOn, done: t >= plan.duration,
+    power: mainOn ? plan.power : 0, pumpFlow: mainOn ? S.pumpFlow : 0,
+    toRadiator: mainOn ? flow.toRadiator : 0, toBypass: mainOn ? flow.toBypass : 0,
+    radiatorOutlet: mainOn ? flow.radiatorOutlet : now.celsius, returnCelsius: mainOn ? flow.returnCelsius : now.celsius,
+    radiatorHeat: mainOn ? flow.radiatorHeat : 0, blockHeat: mainOn ? flow.blockHeat : 0,
+    waxHeat: mainOn ? flow.waxHeat : 0, rate: mainOn ? flow.rate : 0,
+    spring: S.springPreload + S.springRate * stroke, springEnergy: springEnergy(stroke),
+    waxVolume: S.volume * (1 + plan.values.growth / 100 * now.melted),
+    inputEnergy, storedEnergy, actuatorEnergy, pumpVolume, bypassVolume: pumpVolume - now.radiatorVolume,
+    energyResidual: inputEnergy - storedEnergy - actuatorEnergy - now.radiatorEnergy - now.blockEnergy};
 }
 
 export const sampleWax = (input = {}, time = 0) => waxAt(waxPlan(input), time);

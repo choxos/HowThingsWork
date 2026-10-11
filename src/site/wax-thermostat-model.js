@@ -2,239 +2,228 @@ import * as THREE from 'three';
 import {houseModel, reading as r} from './house-model-kit.js';
 import {fixed} from './format.js';
 import {clamp} from './physics-kit.js';
-import {chartText, fillLine, lineObject, segmentLines, solidArrow, textLabel} from './scene-kit.js';
-import {panel} from './element-scene.js';
-import {
-  waxPlan, waxAt, pistonAt, meltedAt, coolantOpenAt,
-  WAX_DEFAULTS, WAX_DOMAINS, DECLARED, WAX, COOLANT,
-} from './thermostat-physics.js';
+import {chartText, fillLine, lineObject, solidArrow, textLabel} from './scene-kit.js';
+import {waxPlan, waxAt, WAX_DEFAULTS, WAX_DOMAINS, WAX_SPEC as S, COOLANT} from './thermostat-physics.js';
 
-// ---------------------------------------------------------------------------
-// Wax thermostat: the capsule cut open at true size, the wax melting inside it,
-// the piston that melting drives, the valve it opens against a return spring,
-// and the engine the whole thing keeps.
-//
-// This is the book's mechanism and not an electrical switch: wax melts, the
-// capsule grows, a rod pushes a valve open in the cooling water, and a spring
-// closes it again as the wax freezes. Nothing here switches a contact.
-//
-// Scale: the capsule, piston and valve are drawn at true size, 1 mm to 0.02
-// scene units, the piston 4 mm across and its stroke a true 8.6 mm at the
-// default wax. Nothing is exaggerated, which is the whole point of a wax motor:
-// unlike a bimetal strip or a rod and tube, its movement is big enough to see.
-// The chart is not to scale.
-//
-// Time: the run covers 15 minutes of engine time and plays 120 times faster.
-// ---------------------------------------------------------------------------
-
-export const MM = 0.02;
-
-/** The element, mm about the base of the capsule. */
-export const ELEMENT = Object.freeze({
-  origin: Object.freeze([-0.74, 0.34, 0]),
-  capsule: Object.freeze([-9, 9, 0, 16]), wall: 1.4,
-  piston: Object.freeze([-2, 2]), pistonFrom: 16,
-  seal: Object.freeze([-4, 4, 15, 18]),
-  valve: Object.freeze([-14, 14, 2]), valveFrom: 30,
-  spring: Object.freeze([10, 18, 34, 3]),
-  grains: 26,
-  radiator: Object.freeze([26, 58, -6, 30]), tubes: 5,
-  engine: Object.freeze([-58, -26, -6, 30]),
-});
-
-/** The engine through the run. */
-export const CHART = Object.freeze({
-  x: -0.06, y: -0.66, w: 1.72, h: 0.76,
-  temperature: Object.freeze([0, 120]), tickEvery: 180, tick: 0.02, mark: 0.028, cursor: 0.02,
-});
-
-export const COLORS = Object.freeze({
-  casing: 0xe9e4d8, shell: 0x2f3336, faint: 0x9aa39a, chart: 0x374736,
-  solid: 0xe3b45e, liquid: 0xc14f39, brass: 0xb4c5b0, cool: 0x3f7fbf, hot: 0xc14f39,
-  spring: 0x8e948c, open: 0x7d5ba6, melt: 0x7d5ba6,
-});
-
-export const chartX = (plan, t) => CHART.x + clamp(t / plan.duration) * CHART.w;
-export const chartY = celsius => CHART.y + clamp((celsius - CHART.temperature[0]) / (CHART.temperature[1] - CHART.temperature[0])) * CHART.h;
-
-const cool = new THREE.Color(COLORS.cool), hot = new THREE.Color(COLORS.hot);
-/** The color of coolant at `celsius`. */
-export const coolantColor = celsius => cool.clone().lerp(hot, clamp(celsius / 110));
+export const MM = 0.04;
+export const ELEMENT = Object.freeze({origin: Object.freeze([0, .5, 0]), rodTip: -18, rodTop: 23, cupFloor: -20,
+  innerRadius: Math.sqrt((900 + Math.PI * 4 * 18) / (20 * Math.PI)), outerRadius: 6.5,
+  seatRadius: 20, discRadius: 22, discThickness: 2, springBase: -44, springRadius: 10, springWire: .7});
+export const CHART = Object.freeze({x: -2.85, y: -3.45, w: 5.7, h: .64, temperature: Object.freeze([-10, 120])});
+export const COLORS = Object.freeze({body: 0xe1ddd0, edge: 0x374736, brass: 0xc9a66a, steel: 0x9baeb2,
+  solid: 0xe8bd65, liquid: 0xb96d39, cool: 0x5a9db9, hot: 0xcb6550, wax: 0x987136, flow: 0xbcece9, heat: 0xd8783f});
+export const chartX = (plan, time) => CHART.x + time / plan.duration * CHART.w;
+export const chartY = temperature => CHART.y + (temperature + 10) / 130 * CHART.h;
+export const coolantColor = temperature => new THREE.Color(COLORS.cool).lerp(new THREE.Color(COLORS.hot), clamp((temperature + 10) / 130));
 
 export function createWaxThermostatModel() {
-  const kit = houseModel('Wax thermostat'), {part, control, finish} = kit;
-  const {flat, rect, millimeters, outline, circlePoints} = panel(MM);
+  const kit = houseModel('Wax thermostat'), {part, box, cylinder, sphere, tube, control, finish} = kit;
   let clock = 0, lastClock = 0, disposed = false;
+  const mm = (x, y, z = 0) => [x * MM, y * MM, z * MM];
+  const mesh = (geometry, color, parent) => { const object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color, roughness: .55, side: THREE.DoubleSide})); parent.add(object); return object; };
+  const label = (parent, text, position, width = 1.6, height = .15) => { const object = textLabel(parent, text, {position, width, height}); object.material.depthTest = false; object.material.side = THREE.FrontSide; object.renderOrder = 2; return object; };
+  const annulus = (outer, inner, height, top, color, parent, half = false) => {
+    const shape = new THREE.Shape();
+    if (half) {
+      shape.moveTo(outer * MM, 0); shape.absarc(0, 0, outer * MM, 0, Math.PI, true);
+      if (inner) { shape.lineTo(-inner * MM, 0); shape.absarc(0, 0, inner * MM, Math.PI, 0, false); }
+      else shape.lineTo(0, 0);
+      shape.closePath();
+    } else {
+      shape.absarc(0, 0, outer * MM, 0, Math.PI * 2, false);
+      if (inner) { const hole = new THREE.Path(); hole.absarc(0, 0, inner * MM, 0, Math.PI * 2, true); shape.holes.push(hole); }
+    }
+    const object = mesh(new THREE.ExtrudeGeometry(shape, {depth: height * MM, bevelEnabled: false, curveSegments: 48}), color, parent);
+    object.material.side = THREE.FrontSide;
+    object.rotation.x = Math.PI / 2; object.position.y = top * MM; return object;
+  };
+  const route = (points, parent, count = 4) => {
+    const path = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+    const pipe = tube(points, .047, COLORS.cool, parent); pipe.material = pipe.material.clone();
+    const marks = Array.from({length: count}, () => sphere(.061, [0, 0, 0], COLORS.flow, parent));
+    return {points, path, pipe, marks};
+  };
+  const showFlow = (path, temperature, flow, volume) => {
+    path.pipe.material.color.copy(coolantColor(temperature));
+    path.marks.forEach((mark, i) => { mark.visible = flow > 0; path.path.getPoint((volume / .05 + i / path.marks.length) % 1, mark.position); });
+  };
 
-  const [capX0, capX1, capY0, capY1] = ELEMENT.capsule;
-  const system = part('system', 'Wax thermostat, cut open', `The capsule cut open at true size, ${fixed(capX1 - capX0, 0)} mm across, with the wax inside it, the piston the melting wax drives, and the valve that piston opens in the cooling water. Nothing here is drawn larger than it is. Beneath, the engine it keeps. Press Play to start the engine cold.`);
+  const system = part('system', 'Wax thermostat and cooling loop', 'A pump sends coolant through the engine. Warm coolant heats the wax; expansion drives a rigid capsule and valve downward against a return spring. Opening the valve sends some coolant through the radiator. The thermostat is enlarged relative to the schematic loop; its internal dimensions share one scale.');
+  const frame = part('frame', 'Fixed housing, seat and supports', 'The upper bridge anchors the piston. The housing holds a fixed annular seat and the lower spring support. Coolant enters the lower chamber and can cross the seat only when the valve moves down. Front halves of the housing and capsule are cut away.', ELEMENT.origin, system);
+  const housing = mesh(new THREE.CylinderGeometry(30 * MM, 30 * MM, 74 * MM, 64, 1, true, Math.PI / 2, Math.PI), COLORS.body, frame); housing.position.y = -11 * MM;
+  const housingInside = mesh(new THREE.CylinderGeometry(28.5 * MM, 28.5 * MM, 74 * MM, 64, 1, true, Math.PI / 2, Math.PI), COLORS.body, frame); housingInside.position.y = -11 * MM;
+  const cutEdges = [[-29.25, -48, -35], [-29.25, -29, 26], [29.25, -48, 9], [29.25, 15, 26]].map(([x, low, high]) => box(mm(1.5, high - low, 1.5), mm(x, (low + high) / 2), COLORS.body, frame));
+  const ports = [[-30, -32, 2], [30, 12, 2]].map(position => { const port = kit.ring(2 * MM, .8 * MM, mm(...position), COLORS.edge, frame); port.rotation.y = Math.PI / 2; return port; });
+  const seat = annulus(29.25, ELEMENT.seatRadius, 2, 2, COLORS.edge, frame);
+  const lowerSeat = annulus(14, 7, 2, ELEMENT.springBase, COLORS.edge, frame);
+  const supports = [-1, 1].flatMap(side => [
+    kit.rod(mm(side * 27, 2, -7), mm(side * 4, 24.5, -7), 1.3 * MM, COLORS.steel, frame),
+    kit.rod(mm(side * 27, -2, -7), mm(side * 13, -45, -7), 1.3 * MM, COLORS.steel, frame),
+  ]);
+  const bridge = box(mm(10, 3, 16), mm(0, 24.5, -3), COLORS.steel, frame);
+  label(frame, 'Fixed rod · moving cup', mm(0, 44, 0), 2.25, .16);
 
-  const capsule = part('capsule', 'Wax capsule', `A sealed brass cup packed with a wax chosen for the temperature it melts at. Solid wax sits still; melting wax takes up between ${fixed(100 * WAX.growth[0], 0)} and ${fixed(100 * WAX.growth[1], 0)} percent more room than it did, and since the capsule cannot grow, everything that extra volume has to go somewhere pushes the piston out.`, ELEMENT.origin, system);
-  const shell = flat(COLORS.brass, capsule);
-  const waxBody = flat(COLORS.solid, capsule);
-  const grains = Array.from({length: ELEMENT.grains}, () => flat(COLORS.liquid, capsule));
+  const piston = part('piston', 'Fixed piston', 'This rod does not stretch or rise. Its upper end bears on the fixed bridge, so expanding wax pushes the capsule downward around it. A sliding seal keeps the wax inside. The drawing simplifies the flexible boot used in many commercial elements.', [0, 0, 0], frame);
+  const rod = mesh(new THREE.CylinderGeometry(2 * MM, 2 * MM, (ELEMENT.rodTop - ELEMENT.rodTip) * MM, 96), COLORS.steel, piston);
+  rod.position.y = (ELEMENT.rodTop + ELEMENT.rodTip) / 2 * MM;
 
-  const piston = part('piston', 'Piston and seal', `The rod the wax pushes, through a flexible seal that keeps the wax in. Its travel is the extra volume divided by the rod's own area, which is why a narrow rod moves so far for so little melting: ${fixed(1000 * pistonAt(DECLARED.meltTo, 0.12), 1)} mm of stroke out of a capsule only ${fixed(capY1 - capY0, 0)} mm deep.`, ELEMENT.origin, system);
-  const rod = flat(COLORS.shell, piston);
-  const seal = flat(COLORS.brass, piston);
-  const travel = solidArrow(kit, COLORS.melt, piston, 0.006);
+  const capsule = part('capsule', 'Moving wax capsule and seal', 'The rigid brass cup, seal and attached valve descend together. Their dimensions stay fixed. In the declared geometry, extra wax volume equals piston area times travel. The front half of the cup is removed so the wax and rod overlap can be inspected.', [0, 0, 0], frame);
+  const shell = annulus(ELEMENT.outerRadius, ELEMENT.innerRadius, 22, 0, COLORS.brass, capsule, true);
+  const floor = annulus(ELEMENT.innerRadius, 0, 2, ELEMENT.cupFloor, COLORS.brass, capsule, true);
+  const seal = annulus(ELEMENT.outerRadius, 2, 2, 2, COLORS.edge, capsule, true);
+  const waxPart = part('wax', 'Wax and phase change', 'Wax absorbs heat before and during melting. Here its temperature can lag behind the coolant, and freezing follows a lower temperature curve than melting. The amber-to-brown color represents the liquid fraction of a uniform mixture. The occupied volume grows as the cup moves away from the fixed rod.', [0, 0, 0], capsule);
+  const waxUpper = annulus(ELEMENT.innerRadius, 2, 1, 0, COLORS.solid, waxPart, true);
+  const waxLower = annulus(ELEMENT.innerRadius, 0, 1, ELEMENT.rodTip, COLORS.solid, waxPart, true);
+  const valve = part('valve', 'Moving valve disc', 'The disc is attached to the capsule. Cold, its upper face touches the underside of the fixed seat. As it moves down, coolant can pass around its edge and upward through the annular port. The opening area grows with seat circumference times lift until the port becomes the limit.', [0, 0, 0], capsule);
+  const disc = annulus(ELEMENT.discRadius, ELEMENT.outerRadius, ELEMENT.discThickness, 0, COLORS.hot, valve);
+  const liftArrow = solidArrow(kit, COLORS.hot, frame, .009); liftArrow.position.set(...mm(24, 0, 10)); liftArrow.userData.setDirection(new THREE.Vector3(0, -1, 0));
+  const valveWord = label(frame, '', mm(0, 36, 0), 2.0, .15);
 
-  const valve = part('valve', 'Valve disc', `The disc the piston pushes off its seat, uncovering the way to the radiator. It does not snap open: it lifts gradually as more of the wax melts, so the engine is held inside the melting range instead of being swung past it.`, ELEMENT.origin, system);
-  const disc = flat(COLORS.shell, valve);
+  const springPart = part('spring', 'Return spring', 'The lower frame supports a preloaded spring under the valve disc. Opening compresses it. When wax releases heat and contracts, the spring raises the cup and reseats the valve. The model omits seal friction and mechanical failure; real thermostats can jam.', [0, 0, 0], frame);
+  const spring = kit.spring(mm(0, ELEMENT.springBase + ELEMENT.springWire), ELEMENT.springRadius * MM, (42 - 2 * ELEMENT.springWire) * MM, 6, springPart, ELEMENT.springWire * MM);
+  const springEnds = [ELEMENT.springBase + ELEMENT.springWire, -2 - ELEMENT.springWire].map(y => { const end = kit.ring(ELEMENT.springRadius * MM, ELEMENT.springWire * MM, mm(0, y), COLORS.steel, springPart); end.rotation.x = Math.PI / 2; return end; });
+  const waxWord = label(frame, '', mm(0, -58, 4), 2.3, .15);
 
-  const spring = part('spring', 'Return spring', `The spring that closes the valve again, and the only thing that puts the thermostat back. Melting wax pushes hard, but frozen wax cannot pull, so as the wax cools and shrinks it is the spring that drives the piston home. That is why a wax thermostat needs no power and cannot stick open once the engine cools.`, ELEMENT.origin, system);
-  const springCoil = lineObject(33, COLORS.spring, spring);
+  const engine = part('engine', 'Engine and coolant jacket', 'Engine heat enters a lumped 90 kJ/K thermal store. Coolant returns from the pump, crosses the cutaway jacket and leaves toward the wax capsule. Heat also transfers between the block and outdoor air. A zero heat setting removes engine input while the independent model pump keeps running.', [0, 0, 0], system);
+  const engineBack = box([1.18, 1.5, .12], [-2.45, .08, -.25], COLORS.body, engine);
+  const engineSides = [[-3.04, -.67, .83], [-1.86, -.67, .40], [-1.86, .72, .83]].map(([x, low, high]) => box([.09, high - low, .48], [x, (low + high) / 2, -.06], COLORS.body, engine));
+  const cylinders = [-2.78, -2.45, -2.12].map(x => { const object = cylinder(.12, .83, [x, .08, .04], COLORS.hot, engine); object.material = object.material.clone(); return object; });
+  const jacket = route([[-2.45, -.67, .14], [-2.45, -.43, .14], [-2.89, -.43, .14], [-2.89, .56, .14], [-1.86, .56, .14]], engine);
+  const inputArrows = [-2.62, -2.28].map(x => { const arrow = solidArrow(kit, COLORS.heat, engine, .015); arrow.position.set(x, -.05, .28); return arrow; });
+  const engineWord = label(engine, '', [-2.45, 1.17, .2], 1.6, .17);
+  const loadWord = label(engine, '', [-2.45, .93, .2], 1.6, .14);
 
-  const flow = part('flow', 'Where the coolant goes', `While the valve is shut the water goes round the engine and nowhere else, so the engine warms as fast as it can; once the valve opens, some of it is sent through the radiator instead. The book's point is that an engine has to be kept warm as well as kept from boiling.`, ELEMENT.origin, system);
-  const engineBlock = flat(COLORS.cool, flow);
-  const radiator = flat(COLORS.cool, flow);
-  const radiatorTubes = segmentLines(ELEMENT.tubes, COLORS.shell, flow);
-  const toRadiator = solidArrow(kit, COLORS.hot, flow, 0.005);
+  const pump = part('pump', 'Independent coolant pump', 'The teaching pump supplies 0.8 L/s after Play, including when engine heat is zero. The rotor and moving markers show circulation. A real engine-driven pump may stop with its engine; this separate pump is used to make the cooling trial possible.', [0, 0, 0], system);
+  const pumpBody = new THREE.Group(); pumpBody.position.set(-2.45, -1.85, .1); pump.add(pumpBody);
+  for (const [start, end] of [[.25, Math.PI / 2 - .25], [Math.PI / 2 + .25, Math.PI * 2 - .25]]) { const casing = mesh(new THREE.TorusGeometry(.26, .055, 8, 64, end - start), COLORS.edge, pumpBody); casing.rotation.z = start; }
+  const pumpLiquid = kit.disk(.205, .035, [-2.45, -1.85, .055], COLORS.cool, pump); pumpLiquid.material = pumpLiquid.material.clone();
+  const rotor = new THREE.Group(); rotor.position.set(-2.45, -1.85, .12); pump.add(rotor);
+  const pumpHub = kit.disk(.07, .07, [0, 0, 0], COLORS.steel, rotor);
+  const blades = Array.from({length: 5}, (_, i) => { const blade = box([.2, .065, .055], [.09, 0, 0], COLORS.steel, rotor); const holder = new THREE.Group(); rotor.add(holder); holder.add(blade); holder.rotation.z = i * 2 * Math.PI / 5; return holder; });
+  const pumpWord = label(pump, '', [-2.45, -2.33, .2], 1.5, .14);
 
-  const chartPart = part('chart', 'The engine through the run', `What the engine reads from cold, from ${fixed(CHART.temperature[0], 0)} to ${fixed(CHART.temperature[1], 0)} °C, with a tick every ${fixed(CHART.tickEvery / 60, 0)} minutes. The pale band is where the wax melts, and the engine settles inside it: that is what a wax thermostat is for, holding the engine in the narrow range where it runs best.`, [0, 0, 0], system);
-  const chartFrame = lineObject(5, COLORS.chart, chartPart);
-  outline(chartFrame, CHART.x, CHART.x + CHART.w, CHART.y, CHART.y + CHART.h, 0, 1);
-  const meltBand = flat(COLORS.melt, chartPart, {transparent: true, opacity: 0.22});
-  const boilLine = segmentLines(1, COLORS.hot, chartPart);
-  const ticks = segmentLines(Math.ceil(DECLARED.engineRun / CHART.tickEvery), COLORS.chart, chartPart);
-  const guide = lineObject(DECLARED.samples, COLORS.faint, chartPart);
-  const openGuide = lineObject(DECLARED.samples, COLORS.open, chartPart);
-  const curve = lineObject(DECLARED.samples + 1, COLORS.hot, chartPart);
-  const cursor = segmentLines(1, COLORS.chart, chartPart);
-  // The chart's words: its scale at the left, the run's length under its right end, and its name and key to its right, clear of the leader that meets its top.
-  const TEXT = 0.045, css = color => `#${color.toString(16).padStart(6, '0')}`;
-  chartText(chartPart, (share, celsius) => [CHART.x + share * CHART.w, chartY(celsius), 0], {
-    size: TEXT,
-    x: {min: 0, max: 1, title: `Minutes, a tick every ${fixed(CHART.tickEvery / 60, 0)}`, ticks: [[0, '0']]},
-    y: {min: CHART.temperature[0], max: CHART.temperature[1], ticks: [0, 40, 80, 120].map(celsius => [celsius, `${fixed(celsius, 0)} °C`])},
-  });
-  const endWord = textLabel(chartPart, '', {height: TEXT, width: TEXT * 3.5, color: css(COLORS.chart), position: [CHART.x + CHART.w, CHART.y - 1.1 * TEXT, 0.001]});
-  textLabel(chartPart, 'The engine through the run', {height: TEXT, align: 'left', weight: '600', color: css(COLORS.chart), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.03, 0.001]});
-  [['Engine', COLORS.hot], ['Valve open', COLORS.open], ['Wax melts', COLORS.melt]].forEach(([text, color], i) => textLabel(chartPart, text, {height: TEXT, align: 'left', color: css(color), position: [CHART.x + CHART.w + 0.05, CHART.y + CHART.h - 0.11 - 0.065 * i, 0.001]}));
-  const leader = segmentLines(1, COLORS.faint, system);
+  const radiator = part('radiator', 'Radiator and outdoor air', 'Opening the thermostat sends coolant through these parallel tubes. Heat flows toward the cooler side. The model approximates air as a reservoir at the selected temperature, with fixed radiator conductance. Tube colors and outlet temperature show the resulting cooling or warming.', [0, 0, 0], system);
+  const radiatorFrame = box([1.18, 1.87, .12], [2.45, .14, -.16], COLORS.edge, radiator);
+  const fins = Array.from({length: 10}, (_, i) => box([1.12, .045, .34], [2.45, -.68 + i * .18, -.07], COLORS.steel, radiator));
+  const radiatorTop = kit.rod([1.94, 1.02, .17], [2.96, 1.02, .17], .069, COLORS.hot, radiator); radiatorTop.material = radiatorTop.material.clone();
+  const radiatorBottom = kit.rod([1.94, -.77, .17], [2.96, -.77, .17], .069, COLORS.cool, radiator); radiatorBottom.material = radiatorBottom.material.clone();
+  const radiatorTubes = Array.from({length: 5}, (_, i) => Array.from({length: 8}, (_, j) => {
+    const x = 2 + i * .225, top = 1.02 - 1.79 * j / 8, bottom = 1.02 - 1.79 * (j + 1) / 8;
+    const object = kit.rod([x, top, .19], [x, bottom, .19], .036, COLORS.cool, radiator); object.material = object.material.clone(); return object;
+  }));
+  const radiatorMarks = Array.from({length: 5}, (_, i) => sphere(.052, [2 + i * .225, 0, .25], COLORS.flow, radiator));
+  const rejectionArrow = solidArrow(kit, COLORS.heat, radiator, .012); rejectionArrow.position.set(3.12, .16, .2);
+  const radiatorWord = label(radiator, '', [2.45, 1.83, .25], 1.9, .16);
+  const airWord = label(radiator, '', [2.45, 2.1, .25], 1.8, .14);
+  const heatWord = label(radiator, '', [2.45, -1.1, .25], 1.8, .14);
+
+  const bypass = part('bypass', 'Always-open bypass', 'This branch returns hot coolant to the pump without crossing the radiator. With the main valve seated, all pumped coolant takes this path. It stays open in this single-valve model; some real thermostats have a second valve that progressively closes the bypass.', [0, 0, 0], system);
+  const bypassRoute = route([[-1.52, -.78, .14], [-1.52, -1.38, .14], [-1.52, -1.98, .14]], bypass, 3);
+  label(bypass, 'Bypass', [-1.55, -1.18, .34], .8, .14);
+
+  const circuit = part('circuit', 'Connected coolant paths', 'From the pump, coolant passes through the engine and divides between the thermostat and bypass. Radiator coolant rejoins bypass coolant before returning to the pump. Markers show direction and relative flow, not individual parcels or a calibrated transit time.', [0, 0, 0], system);
+  const pumpOutlet = route([[-2.45, -1.59, .14], [-2.45, -1.15, .14], [-2.45, -.67, .14]], circuit, 3);
+  const engineOutlet = route([[-1.86, .56, .14], [-1.52, .56, .14], [-1.52, -.78, .14], [-1.2, -.78, .08]], circuit, 3);
+  const radiatorInlet = route([[1.2, .98, .08], [1.6, .98, .08], [1.94, 1.02, .17]], circuit, 3);
+  const radiatorReturn = route([[2.96, -.77, .17], [3.2, -.77, .14], [3.2, -1.98, .14], [-1.52, -1.98, .14]], circuit, 4);
+  const mixedReturn = route([[-1.52, -1.98, .14], [-2.03, -1.98, .14], [-2.03, -1.85, .14], [-2.19, -1.85, .14]], circuit, 3);
+  const mainFlowLine = lineObject(12, COLORS.flow, frame);
+  const mainFlowMarks = Array.from({length: 5}, () => sphere(.02, [0, 0, 0], COLORS.flow, frame));
+  const returnWord = label(circuit, '', [.45, -2.21, .22], 2.2, .14);
+
+  const chart = part('chart', 'Elapsed engine and wax temperatures', 'Both traces use degrees Celsius and include only elapsed time. Red is engine coolant; amber is wax. Their separation shows sensor lag. The heating and cooling phase rules also differ by 4 °C. The final point is the end of a twenty-minute trial, not proof of a steady temperature.', [0, 0, 0], system);
+  const chartFrame = lineObject(5, COLORS.edge, chart);
+  fillLine(chartFrame, [[CHART.x, CHART.y, 0], [CHART.x + CHART.w, CHART.y, 0], [CHART.x + CHART.w, CHART.y + CHART.h, 0], [CHART.x, CHART.y + CHART.h, 0], [CHART.x, CHART.y, 0]]);
+  chartText(chart, (share, temperature) => [CHART.x + share * CHART.w, chartY(temperature), 0], {size: .095,
+    x: {min: 0, max: 1, title: 'Elapsed minutes', ticks: [[0, '0'], [.5, '10'], [1, '20']]},
+    y: {min: -10, max: 120, ticks: [[-10, '-10 °C'], [60, '60 °C'], [120, '120 °C']]}}).forEach(object => { object.material.side = THREE.FrontSide; });
+  const engineCurve = lineObject(S.samples + 1, COLORS.hot, chart), waxCurve = lineObject(S.samples + 1, COLORS.wax, chart);
+  label(chart, 'Engine °C / wax °C · elapsed only', [0, CHART.y + CHART.h + .18, .02], 3.2, .14);
 
   const d = WAX_DEFAULTS, D = WAX_DOMAINS;
-  control('growth', 'How much the wax grows', ...D.growth, d.growth, '%', `How much more room the wax takes up once it has melted. Its own page gives waxes ${fixed(100 * WAX.growth[0], 0)} to ${fixed(100 * WAX.growth[1], 0)} percent, and the more it grows the further the piston travels for the same melting.`);
-  control('load', 'How hard the engine is working', ...D.load, d.load, 'kW', 'How much heat the engine is putting into its coolant. A harder working engine needs the valve further open to hold the same temperature.');
-  control('ambient', 'Outside air', ...D.ambient, d.ambient, '°C', 'How cold the air through the radiator is. Colder air carries more heat away for the same valve opening.');
-  control('start', 'Starting temperature', ...D.start, d.start, '°C', 'How cold the engine is when it is started.');
+  control('growth', 'Full-melt wax growth', ...D.growth, d.growth, '%', 'Extra volume when all the wax has melted. More growth gives more valve travel at the same melted fraction. Changing any control resets the trial.');
+  control('load', 'Engine heat to coolant', ...D.load, d.load, 'kW', 'Heat entering the engine and coolant. Zero removes that heat while the independent pump keeps circulating.');
+  control('ambient', 'Outside air', ...D.ambient, d.ambient, '°C', 'Air temperature around the radiator and block. Heat flows toward the cooler side.');
+  control('start', 'Starting temperature', ...D.start, d.start, '°C', 'Initial engine and wax temperature. The wax is prepared on its warming curve; a hot start can begin with the valve open.');
 
-  const result = finish(v => {
-    const plan = waxPlan(v), now = waxAt(plan, clock), values = plan.values;
-
-    // The capsule, and the wax in it: solid below the melt, liquid above.
-    millimeters(shell, capX0, capX1, capY0, capY1, -0.004);
-    millimeters(waxBody, capX0 + ELEMENT.wall, capX1 - ELEMENT.wall, capY0 + ELEMENT.wall, capY1 - ELEMENT.wall, -0.003);
-    waxBody.material.color.lerpColors(new THREE.Color(COLORS.solid), new THREE.Color(COLORS.liquid), now.melted);
-    grains.forEach((grain, i) => {
-      const across = capX0 + ELEMENT.wall + 1.5 + (i % 6) * 2.4, up = capY0 + ELEMENT.wall + 1.6 + Math.floor(i / 6) * 2.6;
-      millimeters(grain, across - 0.7, across + 0.7, up - 0.7, up + 0.7, -0.002);
-      grain.visible = i / ELEMENT.grains < now.melted;
-    });
-
-    // The piston, pushed out by exactly the stroke the physics gives.
-    const stroke = 1000 * now.stroke, [rodX0, rodX1] = ELEMENT.piston;
-    millimeters(rod, rodX0, rodX1, ELEMENT.pistonFrom, ELEMENT.pistonFrom + 10 + stroke, -0.002);
-    millimeters(seal, ...ELEMENT.seal, -0.001);
-    travel.position.set((rodX1 + 4) * MM, (ELEMENT.pistonFrom + 10) * MM, 0.001);
-    travel.userData.setDirection(new THREE.Vector3(0, 1, 0));
-    travel.userData.setLength(stroke * MM);
-
-    // The valve, lifted off its seat by the piston, and the spring that returns it.
-    const [valveX0, valveX1, valveThick] = ELEMENT.valve;
-    millimeters(disc, valveX0, valveX1, ELEMENT.valveFrom + stroke, ELEMENT.valveFrom + stroke + valveThick, -0.002);
-    const [springX, springR0, springTop, springTurns] = ELEMENT.spring;
-    fillLine(springCoil, Array.from({length: 33}, (_, i) => {
-      const s = i / 32, a = s * springTurns * 2 * Math.PI;
-      const y = ELEMENT.valveFrom + stroke + valveThick + s * (springTop - stroke);
-      return [(springX + springR0 * 0.4 * Math.sin(a)) * MM, y * MM, -0.003];
-    }));
-
-    // Where the coolant goes.
-    millimeters(engineBlock, ...ELEMENT.engine, -0.004);
-    millimeters(radiator, ...ELEMENT.radiator, -0.004);
-    engineBlock.material.color.copy(coolantColor(now.celsius));
-    radiator.material.color.copy(coolantColor(values.ambient + (now.celsius - values.ambient) * now.open));
-    const [radX0, radX1, radLow, radHigh] = ELEMENT.radiator;
-    fillLine(radiatorTubes, Array.from({length: ELEMENT.tubes}, (_, i) => {
-      const x = radX0 + (radX1 - radX0) * (i + 0.5) / ELEMENT.tubes;
-      return [[x * MM, radLow * MM, -0.003], [x * MM, radHigh * MM, -0.003]];
-    }).flat());
-    toRadiator.position.set((radX0 - 4) * MM, (radHigh - 6) * MM, -0.002);
-    toRadiator.userData.setDirection(new THREE.Vector3(1, 0, 0));
-    toRadiator.userData.setLength(now.open * 0.3);
-
-    // The engine through the run.
-    rect(meltBand, CHART.x, CHART.x + CHART.w, chartY(DECLARED.meltFrom), chartY(DECLARED.meltTo), -0.001);
-    fillLine(boilLine, [[CHART.x, chartY(100), 0], [CHART.x + CHART.w, chartY(100), 0]]);
-    const tickCount = Math.max(0, Math.ceil(plan.duration / CHART.tickEvery) - 1);
-    endWord.userData.setText(`${fixed(plan.duration / 60, 0)}`);
-    fillLine(ticks, Array.from({length: tickCount}, (_, i) => {
-      const x = chartX(plan, (i + 1) * CHART.tickEvery);
-      return [[x, CHART.y, 0], [x, CHART.y - CHART.tick, 0]];
-    }).flat());
-    fillLine(guide, plan.chart.map(sample => [chartX(plan, sample.t), chartY(sample.celsius), 0]));
-    fillLine(openGuide, plan.chart.map(sample => [chartX(plan, sample.t), CHART.y + sample.open * CHART.h, 0]));
-    const shown = clock > 0 ? plan.chart.filter(sample => sample.t < now.t) : [];
-    fillLine(curve, clock > 0 ? [...shown.map(sample => [chartX(plan, sample.t), chartY(sample.celsius), 0]), [chartX(plan, now.t), chartY(now.celsius), 0]] : []);
-    const cx = Math.min(Math.max(chartX(plan, now.t), CHART.x + CHART.cursor), CHART.x + CHART.w - CHART.cursor);
-    fillLine(cursor, clock > 0 ? [[cx - CHART.cursor, chartY(now.celsius), 0], [cx + CHART.cursor, chartY(now.celsius), 0]] : []);
-    fillLine(leader, [[ELEMENT.origin[0], ELEMENT.origin[1] - 0.2, 0], [CHART.x + CHART.w / 2, CHART.y + CHART.h, 0]]);
-
-    const minutes = seconds => `${fixed(seconds / 60, 1)} min`;
-    const status = clock <= 0 ? `Ready · the wax is solid, the valve shut, and every drop of coolant is going round the engine; press Play to start it cold`
-      : plan.opened !== null && now.t < plan.opened ? `Warming · ${minutes(now.t)} in, the engine is at ${fixed(now.celsius, 1)} °C and the valve is still shut, which is how it warms up so quickly`
-      : now.done ? (plan.climbing
-        ? `Still climbing · after ${minutes(plan.duration)} the engine is at ${fixed(now.celsius, 1)} °C and still rising, with the valve ${fixed(100 * now.open, 0)}% open and ${fixed(100 * now.melted, 0)}% of the wax melted; this wax cannot open it far enough to hold the engine at all`
-        : `Settled · the engine holds ${fixed(now.celsius, 1)} °C with the valve ${fixed(100 * now.open, 0)}% open and ${fixed(100 * now.melted, 0)}% of the wax melted`)
-      : `Opening · ${minutes(now.t)} in, the engine reads ${fixed(now.celsius, 1)} °C and the valve is ${fixed(100 * now.open, 0)}% open`;
-    return {
-      state: {...plan, now, clock},
-      readings: [
-        r('Your result', status),
-        r('Engine temperature', `${fixed(now.celsius, 1)} °C`, `The engine puts ${fixed(values.load, 0)} kW into its coolant and loses it through the radiator in proportion to how far the valve is open. It settles inside the wax's melting range, between ${fixed(DECLARED.meltFrom, 0)} and ${fixed(DECLARED.meltTo, 0)} °C, which the Wax thermostatic element page says is where these are made to work: automotive elements are built to open between ${fixed(WAX.automotive[0], 0)} and ${fixed(WAX.automotive[1], 0)} °C, and modern engines run over ${fixed(WAX.modernEngine, 0)} °C.`),
-        r('Wax melted', `${fixed(100 * now.melted, 0)}%`, `Wax does not expand smoothly with temperature the way a metal does; it jumps when it melts, because a solid packs more tightly than a liquid. Across its melting range this pellet grows ${fixed(values.growth, 0)} percent, inside the ${fixed(100 * WAX.growth[0], 0)} to ${fixed(100 * WAX.growth[1], 0)} percent its page gives, and it is that jump, not ordinary expansion, that does the work.`),
-        r('Piston', `${fixed(1000 * now.stroke, 2)} mm out`, `The extra volume divided by the piston's area. A ${fixed(1e9 * DECLARED.pelletVolume, 0)} mm³ pellet growing ${fixed(values.growth, 0)} percent makes ${fixed(1e9 * DECLARED.pelletVolume * values.growth / 100, 0)} mm³, and pushed through a ${fixed(1000 * DECLARED.pistonBore, 0)} mm rod that is ${fixed(1000 * pistonAt(DECLARED.meltTo, values.growth / 100), 2)} mm of travel at full melt. Its page gives these elements strokes of ${fixed(WAX.strokes[0], 1)} to ${fixed(WAX.strokes[1], 0)} mm, so this one is a real size.`),
-        r('Valve', `${fixed(100 * now.open, 0)}% open`, `Not a switch, and not on or off. The valve opens gradually as more of the wax melts, so the engine is held inside the melting range instead of swinging past it. Its page says such a thermostat normally sits at about half its stroke, with room to open further or close back as the load changes.`),
-        r('Return spring', `${fixed(now.spring, 0)} N`, `The spring is what makes the element reversible. Melting wax can push hard, but frozen wax cannot pull, so the spring has to do all the closing. Its page puts the biasing force at ${fixed(100 * WAX.bias[0], 0)} to ${fixed(100 * WAX.bias[1], 0)} percent of the operating force, enough to overcome the seal's friction and put the piston home as the wax freezes.`),
-        r('Coolant to the radiator', `${fixed(1e6 * now.toRadiator, 0)} cm³/s`, `Shut, none of it goes to the radiator: the book and the Radiator page both say the coolant is sent back through the engine instead, which is why a cold engine warms so fast. Open, the pump sends up to ${fixed(1e6 * DECLARED.pumpFlow, 0)} cm³ a second through it, and water carries ${fixed(COOLANT.heat, 0)} J for each kilogram and degree.`),
-        r('Sped up', `${fixed(DECLARED.slower, 0)} times faster`, `The run covers ${minutes(plan.duration)} of engine time and plays in ${fixed(plan.duration / DECLARED.slower, 0)} s. Everything in the element is drawn at true size, because unlike a bimetal strip or a rod and tube, a wax motor moves far enough to see.`),
-      ],
-    };
+  const result = finish(values => {
+    const plan = waxPlan(values), now = waxAt(plan, clock), stroke = now.stroke * 1000;
+    capsule.position.y = -stroke * MM;
+    waxUpper.scale.z = 18 - stroke;
+    waxLower.scale.z = 2 + stroke; waxLower.position.y = (ELEMENT.rodTip + stroke) * MM;
+    for (const object of [waxUpper, waxLower]) object.material.color.setHex(COLORS.solid).lerp(new THREE.Color(COLORS.liquid), now.melted);
+    spring.userData.setLength((42 - stroke - 2 * ELEMENT.springWire) * MM);
+    springEnds[1].position.y = (-2 - stroke - ELEMENT.springWire) * MM;
+    liftArrow.userData.setLength(stroke * MM);
+    valveWord.userData.setText(stroke > 1e-7 ? `Valve down ${fixed(stroke, 2)} mm` : 'Valve seated');
+    waxWord.userData.setText(`Wax ${fixed(now.waxCelsius, 1)} °C · ${fixed(now.melted * 100, 0)}% liquid`);
+    const mainPoints = [[-30, -32, 2], [-25, -28, 3], [-25, -stroke / 2, 0], [-18, -stroke / 2, 0], [-15, 10, 8], [15, 12, 8], [30, 12, 2]].map(p => mm(...p));
+    fillLine(mainFlowLine, now.toRadiator > 0 ? mainPoints : []);
+    const mainPath = new THREE.CurvePath();
+    for (let i = 1; i < mainPoints.length; i++) mainPath.add(new THREE.LineCurve3(new THREE.Vector3(...mainPoints[i - 1]), new THREE.Vector3(...mainPoints[i])));
+    mainFlowMarks.forEach((mark, i) => { mark.visible = now.toRadiator > 0; mark.scale.setScalar(Math.min(1, stroke * MM / .06)); mainPath.getPoint((now.radiatorVolume / .05 + i / mainFlowMarks.length) % 1, mark.position); });
+    for (const object of cylinders) object.material.color.copy(coolantColor(now.celsius));
+    for (const arrow of inputArrows) arrow.userData.setLength(now.power > 0 ? .1 + .26 * now.power / 24000 : 0);
+    rotor.rotation.z = -now.t * Math.PI / 30;
+    pumpLiquid.material.color.copy(coolantColor(now.returnCelsius));
+    engineWord.userData.setText(`Engine ${fixed(now.celsius, 1)} °C`);
+    loadWord.userData.setText(`${fixed(now.power / 1000, 0)} kW heat input`);
+    pumpWord.userData.setText(now.mainOn ? 'Pump 0.8 L/s' : 'Pump ready');
+    radiatorWord.userData.setText(now.toRadiator > 0 ? `Outlet ${fixed(now.radiatorOutlet, 1)} °C` : 'Radiator · no flow');
+    airWord.userData.setText(`Air ${values.ambient} °C`);
+    heatWord.userData.setText(`${fixed(Math.abs(now.radiatorHeat) / 1000, 1)} kW ${now.radiatorHeat < 0 ? 'from air' : 'to air'}`);
+    returnWord.userData.setText(now.mainOn ? `Mixed return ${fixed(now.returnCelsius, 1)} °C` : 'Return to pump');
+    const outletTemperature = now.toRadiator > 0 ? now.radiatorOutlet : values.ambient;
+    radiatorTop.material.color.copy(coolantColor(now.toRadiator > 0 ? now.celsius : values.ambient)); radiatorBottom.material.color.copy(coolantColor(outletTemperature));
+    const capacityRate = now.toRadiator * COOLANT.density * COOLANT.heat;
+    radiatorTubes.forEach(row => row.forEach((object, j) => object.material.color.copy(coolantColor(capacityRate > 0 ? values.ambient + (now.celsius - values.ambient) * Math.exp(-S.radiatorUA * (j + .5) / 8 / capacityRate) : values.ambient))));
+    radiatorMarks.forEach((mark, i) => { mark.visible = now.toRadiator > 0; mark.position.y = 1.02 - 1.79 * ((now.radiatorVolume / .05 + i / 5) % 1); });
+    rejectionArrow.userData.setDirection(new THREE.Vector3(now.radiatorHeat < 0 ? -1 : 1, 0, 0)); rejectionArrow.userData.setLength(Math.abs(now.radiatorHeat) > 1 ? .12 + .2 * clamp(Math.abs(now.radiatorHeat) / 30000) : 0);
+    showFlow(jacket, now.celsius, now.pumpFlow, now.pumpVolume);
+    showFlow(pumpOutlet, now.returnCelsius, now.pumpFlow, now.pumpVolume);
+    showFlow(engineOutlet, now.celsius, now.pumpFlow, now.pumpVolume);
+    showFlow(bypassRoute, now.celsius, now.toBypass, now.bypassVolume);
+    showFlow(radiatorInlet, now.celsius, now.toRadiator, now.radiatorVolume);
+    showFlow(radiatorReturn, outletTemperature, now.toRadiator, now.radiatorVolume);
+    showFlow(mixedReturn, now.returnCelsius, now.pumpFlow, now.pumpVolume);
+    const shown = now.t > 0 ? [...plan.chart.filter(sample => sample.t < now.t), now] : [];
+    fillLine(engineCurve, shown.map(sample => [chartX(plan, sample.t), chartY(sample.celsius), .01]));
+    fillLine(waxCurve, shown.map(sample => [chartX(plan, sample.t), chartY(sample.waxCelsius), .012]));
+    const balance = Math.abs(now.rate) < .001 ? 'Heat input nearly balances heat transfer' : now.rate > 0 ? 'Engine still warming' : 'Engine cooling';
+    const routing = now.toRadiator > 0 ? `${fixed(now.toRadiator * 1e6, 0)} mL/s through radiator` : 'Valve seated; all flow uses bypass';
+    const status = !now.mainOn ? `Ready · engine and wax ${fixed(now.celsius, 1)} °C; pump stopped. Play starts this prepared trial.`
+      : `${now.done ? '20 min complete' : `${fixed(now.t / 60, 1)} min elapsed`} · ${fixed(now.celsius, 1)} °C. ${balance}; ${routing}.`;
+    return {state: {...plan, now, clock, geometry: {stroke, rodTip: ELEMENT.rodTip, cupFloor: ELEMENT.cupFloor - stroke, discTop: -stroke, springBottom: ELEMENT.springBase, springTop: -2 - stroke}}, readings: [
+      r('Your result', status),
+      r('Engine / wax temperature', `${fixed(now.celsius, 2)} / ${fixed(now.waxCelsius, 2)} °C`, 'The two temperatures can differ because heat takes time to enter or leave the capsule. The graph shows only elapsed temperatures.'),
+      r('Wax phase and volume', `${fixed(now.melted * 100, 1)}% liquid · ${fixed(now.waxVolume * 1e9, 1)} mm³`, 'The declared pellet begins at 900 mm³. Melting follows 82–95 °C; freezing follows 78–91 °C. At a reversal, the liquid fraction holds until the opposite boundary is reached. This illustrative phase-history rule is distinct from temperature lag.'),
+      r('Valve travel', `${fixed(stroke, 2)} mm down`, `The rod stays fixed. The cup and attached disc move by extra wax volume divided by the 4 mm piston area. Full melt at this growth gives ${fixed(plan.fullStroke * 1000, 2)} mm of travel; current port opening is ${fixed(now.area * 1e6, 1)} mm².`),
+      r('Return spring', `${fixed(now.spring, 1)} N upward`, `A 30 N preload keeps the cold disc seated. Opening adds 9 N per millimeter. The spring stores ${fixed(now.springEnergy, 3)} J relative to the seated state and returns that work during closure. Seal friction and valve pressure forces are omitted.`),
+      r('Radiator / bypass flow', `${fixed(now.toRadiator * 1e6, 1)} / ${fixed(now.toBypass * 1e6, 1)} mL/s`, 'The pump supplies 800 mL/s once started. Two equivalent parallel restrictions divide this flow. The bypass stays open in this model; real pump curves and secondary bypass valves are omitted.'),
+      r('Radiator outlet / mixed return', now.toRadiator > 0 ? `${fixed(now.radiatorOutlet, 2)} / ${fixed(now.returnCelsius, 2)} °C` : `No radiator flow / ${fixed(now.returnCelsius, 2)} °C`, 'Radiator heat transfer and outlet temperature share one coolant enthalpy balance. Cooled coolant mixes with bypass coolant before the pump. With zero radiator flow there is no flowing outlet temperature.'),
+      r('Heat input / heat to air', `${fixed(now.power / 1000, 2)} / ${fixed(now.radiatorHeat / 1000, 2)} kW`, `Radiator transfer is positive toward air. Block transfer is ${fixed(now.blockHeat / 1000, 2)} kW; heat into the wax is ${fixed(now.waxHeat, 2)} W. Negative transfer means heat flows in the opposite direction.`),
+      r('Elapsed energy balance', `${fixed(now.inputEnergy / 1000, 1)} kJ supplied`, `${fixed(now.storedEnergy / 1000, 1)} kJ changed engine storage; ${fixed(now.actuatorEnergy / 1000, 3)} kJ changed wax, capsule and spring energy; ${fixed((now.radiatorEnergy + now.blockEnergy) / 1000, 1)} kJ transferred to surroundings.`),
+      r('Coolant and scale', '50% glycol by volume · playback ×60', 'Constant properties represent a 50% ethylene-glycol mixture at 90 °C. Minimum absolute pressure is 200 kPa; this liquid model is limited to −10 through 120 °C. Thermostat dimensions and thermal constants are teaching choices. It is enlarged relative to the loop; marker speed is schematic.'),
+    ]};
   });
-
   const render = result.update;
-  const duration = () => result.getState().duration;
-  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) clock = Math.min(duration(), clock + dt * DECLARED.slower); return render(); };
-  result.animate = t => { const dt = Number.isFinite(t) ? Math.max(0, t - lastClock) : 0; if (Number.isFinite(t)) lastClock = t; return result.advance(dt); };
+  result.update = next => { const before = result.getState().values, readings = render(next); if (Object.keys(before).some(key => result.getState().values[key] !== before[key])) { clock = 0; lastClock = 0; return render(); } return readings; };
+  result.advance = dt => { if (Number.isFinite(dt) && dt > 0) { const next = clock + dt * S.slower; clock = next >= S.duration - 1e-8 ? S.duration : next; } return render(); };
+  result.animate = time => { const dt = Number.isFinite(time) ? Math.max(0, time - lastClock) : 0; if (Number.isFinite(time)) lastClock = time; return result.advance(dt); };
   result.reset = () => { clock = 0; lastClock = 0; return render(result.defaults); };
-  const inspect = time => { clock = Math.min(duration(), time); return render(); };
   result.actions = [
-    {label: 'Inspect: the wax capsule', part: 'capsule', view: 'front', replay: false, run() { return inspect(duration()); }},
-    {label: 'Inspect: the piston', part: 'piston', view: 'front', replay: false, run() { return inspect(duration()); }},
-    {label: 'Inspect: the valve', part: 'valve', view: 'front', replay: false, run() { return inspect(duration()); }},
-    {label: 'Inspect: the engine', part: 'chart', view: 'front', replay: false, run() { return render(); }},
+    {label: 'Inspect: wax capsule', part: 'capsule', view: 'front', replay: false, run: () => render()},
+    {label: 'Inspect: fixed piston', part: 'piston', view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect: valve and spring', part: 'frame', view: 'iso', replay: false, run: () => render()},
+    {label: 'Inspect: cooling loop', part: 'system', view: 'front', replay: false, run: () => render()},
   ];
-  result.playback = {
-    label: 'Start the engine cold',
-    description: `The engine is started cold with the valve shut, and the thermostat is left to bring it up and hold it. The run covers ${fixed(DECLARED.engineRun / 60, 0)} minutes and plays ${fixed(DECLARED.slower, 0)} times faster than the real thing.`,
-    stepLabel: `Advance ${fixed(CHART.tickEvery / 60, 0)} min`,
-    advance: result.advance,
-    step: () => result.advance(CHART.tickEvery / DECLARED.slower),
-    complete: () => clock >= duration(),
-    blocked: () => false,
-  };
-  result.resultPart = {id: 'chart', label: 'Inspect the engine', view: 'front', focusOnComplete: false, available: () => clock >= duration()};
-
-  kit.root.rotation.set(0.04, -0.06, 0);
-  result.initialPart = 'system';
-  result.initialView = 'front';
-  result.frameVisibleOnly = true;
-  result.framePadding = 0.6;
-  result.selectionOutline = false;
-  result.transparentBackground = true;
-  result.topology = {system, capsule, shell, waxBody, grains, piston, rod, seal, travel, valve, disc, spring, springCoil, flow, engineBlock, radiator, radiatorTubes, toRadiator, chartPart, chartFrame, meltBand, boilLine, ticks, guide, openGuide, curve, cursor, leader};
-  const dispose = result.dispose;
-  result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
+  result.playback = {label: 'Start the cooling trial', description: 'Start the independent pump and selected engine heat. Run twenty minutes in twenty seconds. Pause freezes time; changing a control resets the trial.', stepLabel: 'Advance 2 min', advance: result.advance, step: () => result.advance(120 / S.slower), complete: () => clock >= S.duration, blocked: () => false};
+  result.resultPart = {id: 'system', label: 'Inspect the cooling loop', view: 'front', focusOnComplete: false, available: () => clock >= S.duration};
+  result.viewDirections = {front: [0, .25, 4], side: [3, .6, 3], top: [0, 3, 3], bottom: [0, -1.5, 3.5]};
+  result.initialPart = 'system'; result.initialView = 'front'; result.frameVisibleOnly = true; result.framePadding = .5; result.overviewZoom = 1.4; result.selectionOutline = false; result.transparentBackground = true;
+  result.catalogParts = result.parts.filter(item => item.id !== 'system');
+  for (const id of ['piston', 'capsule', 'wax', 'valve', 'spring', 'engine', 'radiator', 'bypass', 'circuit']) result.parts.find(part => part.id === id).framePadding = .75;
+  result.topology = {system, frame, housing, housingInside, cutEdges, ports, seat, lowerSeat, supports, bridge, piston, rod, capsule, shell, floor, seal, waxPart, waxUpper, waxLower, valve, disc, liftArrow, springPart, spring, springEnds, engine, engineBack, engineSides, cylinders, jacket, inputArrows, pump, pumpBody, pumpLiquid, rotor, pumpHub, blades, radiator, radiatorFrame, fins, radiatorTop, radiatorBottom, radiatorTubes, radiatorMarks, rejectionArrow, bypass, bypassRoute, circuit, pumpOutlet, engineOutlet, radiatorInlet, radiatorReturn, mixedReturn, mainFlowLine, mainFlowMarks, chart, chartFrame, engineCurve, waxCurve};
+  const dispose = result.dispose; result.dispose = () => { if (!disposed) { disposed = true; dispose(); } };
   return result;
 }

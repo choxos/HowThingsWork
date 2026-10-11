@@ -505,3 +505,11 @@ assert.deepEqual(tags(rodThermostat.entry.id), ['exploiting-heat', 'sensors-and-
 assert.equal(catalog.groups.find(group => group.id === rodThermostat.entry.group).place, 'home');
 assert.equal(catalog.groups.find(group => group.id === rodThermostat.entry.group).room, 'Heating and cooling');
 for (const id of ['body', 'tube', 'rod', 'valve', 'dial', 'bypass', 'oven', 'burner', 'circuit', 'chart']) assert(hasCatalogPart(rodThermostat.entry.id, id), `${id} remains bookmarkable in the rod thermostat lesson`);
+
+const waxThermostat = families.find(family => family.entry.id === 'wax-thermostat');
+assert(waxThermostat && !componentParentIds[waxThermostat.entry.id], 'Wax thermostat is an independent engine-cooling mechanism');
+assert.deepEqual(waxThermostat.components, []);
+assert.deepEqual(tags(waxThermostat.entry.id), ['exploiting-heat', 'sensors-and-detectors', 'springs', 'pressure-power']);
+assert.equal(catalog.groups.find(group => group.id === waxThermostat.entry.group).place, 'home');
+assert.equal(catalog.groups.find(group => group.id === waxThermostat.entry.group).room, 'Heating and cooling');
+for (const id of ['frame', 'piston', 'capsule', 'wax', 'valve', 'spring', 'engine', 'pump', 'radiator', 'bypass', 'circuit', 'chart']) assert(hasCatalogPart(waxThermostat.entry.id, id), `${id} remains bookmarkable in the wax thermostat lesson`);
