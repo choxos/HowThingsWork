@@ -237,7 +237,7 @@ assert.throws(() => P.glareThrough(1.5, 45, NaN), RangeError);
 
 const PRESETS = {
   'Polarizing filter': {machine: 'Polarized light', part: 'train', values: {insert: 1, middle: 45, first: 0, analyzer: 90}},
-  'Liquid crystals': {machine: 'Liquid crystal display', part: 'molecules', values: {mode: 0, drive: 0, battery: 1}},
+  'Liquid crystals': {machine: 'Liquid crystal display', part: 'system', values: {mode: 0, drive: 0, battery: 1}},
   'Polarizing sunglasses': {machine: 'Polarized light', part: 'glasses', values: {mode: 1, brewster: 1, material: 0, glasses: 1, analyzer: 0}},
   'Binocular prisms': {machine: 'Binoculars', part: 'probe', values: {mode: 1, index: 1.5, angle: 0}},
 };
@@ -394,6 +394,12 @@ checkTrialNumbers(L.liquidCrystalsLesson, {
   'Turn the rear filter parallel': s => ({0: 100 * s.output}),
   'Take the rear filter away': s => ({50: 100 * s.output}),
   'Write a digit': s => ({50: 100 * s.background.output}),
+  'Make the parallel cell bright': s => ({50: 100 * s.output}),
+  'Light the cell from behind': s => ({50: 100 * s.output}),
+  'Block the backlight': s => ({0: 100 * s.output}),
+  'Remove the illumination': s => ({0: 100 * s.output}),
+  'Raise both electrodes together': s => ({50: 100 * s.output}),
+  'Inspect an unaddressed segment': s => ({50: 100 * s.output}),
 }, runLcd, t);
 
 checkTrialNumbers(L.polarizingSunglassesLesson, {
@@ -454,26 +460,13 @@ covered(L.polarizingFilterLesson.deeper[5].body, {'180 degrees': '180 degrees'},
 covered(L.polarizingFilterLesson.limits, {}, 'filter limits');
 covered(L.polarizingFilterLesson.quiz.explanation, {'middle axis at 45 degrees': 'middle axis at 45 degrees', 'passes 12.5%': `passes ${f1(100 * samplePolarizedLight({insert: 1}).output)}%`}, 'filter quiz');
 
-// The liquid crystals.
+// The liquid-crystal lesson separates uniform-retarder phase from TN rotation.
 expectNone(L.liquidCrystalsLesson, 'Liquid crystals');
-covered(L.liquidCrystalsLesson.deeper[0].body, {}, 'crystals deeper 1');
-covered(L.liquidCrystalsLesson.deeper[1].body, {
-  [`at RCA in ${P.PAGES.williamsYear} was nematic only above ${P.PAGES.azoxyanisole} °C, and he applied his field at ${P.PAGES.williams} °C`]: 'at RCA in 1962 was nematic only above 116 °C, and he applied his field at 125 °C',
-  [`in ${P.PAGES.firstMixture} first reached a nematic range of ${P.PAGES.nematicRange[0]} to ${P.PAGES.nematicRange[1]} °C, MBBA followed in ${P.PAGES.mbba}`]: 'in 1966 first reached a nematic range of 22 to 105 °C, MBBA followed in 1969',
-  [`cyanobiphenyls of ${P.PAGES.cyanobiphenyls}`]: 'cyanobiphenyls of 1973',
-}, 'crystals deeper 2');
-covered(L.liquidCrystalsLesson.deeper[2].body, {
-  'as 2π·Δn·L/λ': 'as 2π·Δn·L/λ',
-  [`mixture M-1, whose patent gives Δn as ${P.M1.deltaN}, a layer ${f0(P.LIGHT.layer)} μm thick puts ${f2(P.retardance() / (2 * Math.PI))} of a wave between them at ${f0(P.LIGHT.wavelength * 1e9)} nm, which is ${f0(deg(P.retardance()))} degrees`]: 'mixture M-1, whose patent gives Δn as 0.1147, a layer 4 μm thick puts 0.83 of a wave between them at 550 nm, which is 300 degrees',
-}, 'crystals deeper 3');
-covered(L.liquidCrystalsLesson.deeper[3].body, {
-  'λ/(4Δn)': 'λ/(4Δn)',
-  [`is ${f1(P.waveThickness(0.25))} μm for M-1 at ${f0(P.LIGHT.wavelength * 1e9)} nm, and half a wave needs ${f1(P.waveThickness(0.5))} μm`]: 'is 1.2 μm for M-1 at 550 nm, and half a wave needs 2.4 μm',
-}, 'crystals deeper 4');
-covered(L.liquidCrystalsLesson.deeper[4].body, {[`with ${P.CALCITE.no} for one direction and ${P.CALCITE.ne} for the other`]: 'with 1.658 for one direction and 1.486 for the other'}, 'crystals deeper 5');
-covered(L.liquidCrystalsLesson.deeper[5].body, {[`a threshold of ${f2(P.M1.v0)} V`]: 'a threshold of 1.42 V'}, 'crystals deeper 6');
-covered(L.liquidCrystalsLesson.limits, {...sheetSnippets, [`patent at ${f0(P.LIGHT.wavelength * 1e9)} nm`]: 'patent at 550 nm'}, 'crystals limits');
-covered(L.liquidCrystalsLesson.quiz.explanation, {[`falls to ${f0(0)}%`]: 'falls to 0%'}, 'crystals quiz');
+for (const [i, section] of L.liquidCrystalsLesson.deeper.entries()) {
+  covered(section.body, i === 2 ? {'δ = 2πΔn·d/λ': 'δ = 2πΔn·d/λ', 'λ/(4Δn)': 'λ/(4Δn)'} : {}, `crystals deeper ${i + 1}`);
+}
+covered(L.liquidCrystalsLesson.limits, {}, 'crystals limits');
+covered(L.liquidCrystalsLesson.quiz.explanation, {}, 'crystals quiz');
 
 // The sunglasses.
 expectNone(L.polarizingSunglassesLesson, 'Polarizing sunglasses');
@@ -535,12 +528,12 @@ covered(L.binocularPrismsLesson.quiz.explanation, {
 const LESSONS = [['Polarizing filter', L.polarizingFilterLesson], ['Liquid crystals', L.liquidCrystalsLesson], ['Polarizing sunglasses', L.polarizingSunglassesLesson], ['Binocular prisms', L.binocularPrismsLesson]];
 for (const [name, lesson] of LESSONS) {
   const preset = PRESETS[name], model = models[preset.machine];
-  t.ok(lesson.steps.length === 5, `${name}: five steps`);
+  t.ok(lesson.steps.length === (name === 'Liquid crystals' ? 7 : 5), `${name}: complete mechanism sequence`);
   t.ok(lesson.parts.length >= 4, `${name}: a row for every part it names`);
-  t.ok(name === 'Polarizing filter' ? lesson.tryIt.length === 9 : lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: complete trial inventory`);
+  t.ok(name === 'Liquid crystals' ? lesson.tryIt.length === 13 : name === 'Polarizing filter' ? lesson.tryIt.length === 9 : lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: complete trial inventory`);
   t.ok(lesson.deeper.length >= 5 && lesson.deeper.length <= 6, `${name}: five or six deeper sections`);
   t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${name}: a quiz of three with its answer first`);
-  t.ok(lesson.sources.length >= (name === 'Polarizing filter' ? 3 : 5) && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, `${name}: reviewed source inventory, each a link, none twice`);
+  t.ok(lesson.sources.length >= (name === 'Liquid crystals' ? 4 : name === 'Polarizing filter' ? 3 : 5) && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, `${name}: reviewed source inventory, each a link, none twice`);
   const all = [lesson.simple, lesson.overview, lesson.misconception, lesson.limits, lesson.quiz.question, lesson.quiz.explanation, ...lesson.quiz.options, ...lesson.steps.flatMap(step => [step.title, step.body]), ...lesson.parts.flatMap(item => [item.name, item.role]), ...lesson.deeper.flatMap(item => [item.title, item.body]), ...lesson.tryIt.flatMap(item => [item.title, item.instruction, item.observe]), ...lesson.sources.map(source => source.title)];
   for (const text of all) t.ok(!/[—–]| - |--/.test(text), `${name}: no dashes as punctuation in “${text.slice(0, 50)}”`);
   for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|polariser|polarised)\b/i.test(text), `${name}: American spelling in “${text.slice(0, 50)}”`);

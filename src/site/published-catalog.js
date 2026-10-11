@@ -2,6 +2,7 @@ import {neighborhoodCatalog as drafts} from './catalog-data.js';
 
 // Add routes only after the item's source, controls, browser, and review gates pass.
 export const publishedEntryIds = [
+  "liquid-crystals",
   "polarizing-filter",
   "wax-thermostat",
   "rod-thermostat",

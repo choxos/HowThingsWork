@@ -2139,6 +2139,58 @@
       "parentId": "train"
     }
   ],
+  "liquid-crystals": [
+    {
+      "id": "front",
+      "name": "Front polarizer",
+      "parentId": "cell"
+    },
+    {
+      "id": "rear",
+      "name": "Rear polarizer",
+      "parentId": "cell"
+    },
+    {
+      "id": "segment-electrode",
+      "name": "Transparent segment electrode",
+      "parentId": "cell"
+    },
+    {
+      "id": "common-electrode",
+      "name": "Transparent common electrode",
+      "parentId": "cell"
+    },
+    {
+      "id": "molecules",
+      "name": "Liquid-crystal directors",
+      "parentId": "cell"
+    },
+    {
+      "id": "mirror",
+      "name": "Rear reflector",
+      "parentId": "cell"
+    },
+    {
+      "id": "driver",
+      "name": "Alternating segment driver",
+      "parentId": "cell"
+    },
+    {
+      "id": "connections",
+      "name": "Electrode connections",
+      "parentId": "cell"
+    },
+    {
+      "id": "result",
+      "name": "Display seen by the observer",
+      "parentId": "system"
+    },
+    {
+      "id": "meter",
+      "name": "Selected-cell optical power",
+      "parentId": "system"
+    }
+  ],
   "liquid-crystal-display": [
     {
       "id": "front",

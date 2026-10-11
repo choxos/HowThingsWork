@@ -521,3 +521,11 @@ assert(families.find(family => family.entry.id === 'polarized-light').components
 assert.equal(catalog.groups.find(group => group.id === polarizingFilter.group).place, 'studio');
 assert.deepEqual(tags(polarizingFilter.id), ['light-and-images']);
 for (const id of ['first', 'middle', 'analyzer', 'source', 'result', 'meter']) assert(hasCatalogPart(polarizingFilter.id, id), `${id} remains bookmarkable in the polarizing filter lesson`);
+
+const liquidCrystals = entries.find(entry => entry.id === 'liquid-crystals');
+assert(liquidCrystals, 'The reviewed liquid crystals lesson is published');
+assert.equal(componentParentIds[liquidCrystals.id], 'liquid-crystal-display');
+assert(families.find(family => family.entry.id === 'liquid-crystal-display').components.includes(liquidCrystals));
+assert.equal(catalog.groups.find(group => group.id === liquidCrystals.group).place, 'studio');
+assert.deepEqual(tags(liquidCrystals.id), ['light-and-images']);
+for (const id of ['front', 'rear', 'segment-electrode', 'common-electrode', 'molecules', 'mirror', 'driver', 'connections', 'result', 'meter']) assert(hasCatalogPart(liquidCrystals.id, id), `${id} remains bookmarkable in the liquid crystals lesson`);
