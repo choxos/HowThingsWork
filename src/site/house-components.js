@@ -7,6 +7,7 @@ import {createCapillaryModel} from './capillary-model.js';
 import {createOpticalReadoutModel} from './optical-readout-model.js';
 import {createSiphonModel} from './siphon-model.js';
 import {createPolarizingFilterModel} from './polarizing-filter-model.js';
+import {createPolarizingSunglassesModel} from './polarizing-sunglasses-model.js';
 import {createLCDModel} from './lcd-model.js';
 import {rotatingSprayArmLesson} from './dishwasher-lessons.js';
 import {createDishwasherModel} from './dishwasher-model.js';
@@ -170,7 +171,7 @@ export const houseComponents={
  'Head tracking':{machine:'Virtual reality headset',createModel:createHeadTrackingModel,part:'system',isolate:true,view:'front',lesson:headTrackingLesson,intro:headTrackingLesson.simple},
  'Polarizing filter':{machine:'Polarized light',createModel:createPolarizingFilterModel,part:'train',isolate:false,view:'front',values:{insert:1,middle:45,first:0,analyzer:90},lesson:polarizingFilterLesson,intro:polarizingFilterLesson.simple},
  'Liquid crystals':{machine:'Liquid crystal display',createModel:createLCDModel,part:'system',isolate:false,view:'front',values:{mode:0,drive:0,battery:1},lesson:liquidCrystalsLesson,intro:liquidCrystalsLesson.simple},
- 'Polarizing sunglasses':{machine:'Polarized light',part:'glasses',isolate:false,view:'front',values:{mode:1,brewster:1,material:0,glasses:1,analyzer:0},lesson:polarizingSunglassesLesson,intro:polarizingSunglassesLesson.simple},
+ 'Polarizing sunglasses':{machine:'Polarized light',createModel:createPolarizingSunglassesModel,part:'glare',isolate:false,view:'front',values:{brewster:1,material:0,glasses:1,analyzer:0},lesson:polarizingSunglassesLesson,intro:polarizingSunglassesLesson.simple},
  'Binocular prisms':{machine:'Binoculars',part:'probe',isolate:false,view:'front',values:{mode:1,index:1.5,angle:0},lesson:binocularPrismsLesson,intro:binocularPrismsLesson.simple},
  'AC generator':{machine:'Electric generator',part:'system',isolate:false,view:'front',values:{output:0},lesson:acGeneratorLesson,intro:acGeneratorLesson.simple},
  'DC generator':{machine:'Electric generator',createModel:()=>createGeneratorModel({commutatorLesson:true}),part:'system',isolate:false,view:'front',values:{output:1},lesson:dcGeneratorLesson,intro:dcGeneratorLesson.simple},

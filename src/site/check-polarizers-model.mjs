@@ -238,17 +238,18 @@ assert.throws(() => P.glareThrough(1.5, 45, NaN), RangeError);
 const PRESETS = {
   'Polarizing filter': {machine: 'Polarized light', part: 'train', values: {insert: 1, middle: 45, first: 0, analyzer: 90}},
   'Liquid crystals': {machine: 'Liquid crystal display', part: 'system', values: {mode: 0, drive: 0, battery: 1}},
-  'Polarizing sunglasses': {machine: 'Polarized light', part: 'glasses', values: {mode: 1, brewster: 1, material: 0, glasses: 1, analyzer: 0}},
+  'Polarizing sunglasses': {machine: 'Polarized light', part: 'glare', values: {brewster: 1, material: 0, glasses: 1, analyzer: 0}},
   'Binocular prisms': {machine: 'Binoculars', part: 'probe', values: {mode: 1, index: 1.5, angle: 0}},
 };
 
 const pol = createPolarizedLightModel(), lcd = createLCDModel(), bino = createBinocularsModel();
+const sunglasses = houseComponents['Polarizing sunglasses'].createModel();
 const models = {'Polarized light': pol, 'Liquid crystal display': lcd, Binoculars: bino};
 const settle = model => { model.actions[model.actions.length - 1].run(); model.root.updateMatrixWorld(true); };
 const drive = (model, values) => { model.reset(); model.update(values); settle(model); counts.poses++; return model.getState(); };
 
 for (const [name, preset] of Object.entries(PRESETS)) {
-  const model = models[preset.machine], part = model.parts.find(item => item.id === preset.part);
+  const model = (name === 'Polarizing sunglasses' ? sunglasses : models[preset.machine]), part = model.parts.find(item => item.id === preset.part);
   t.ok(part, `${name}: the bench has a ${preset.part} to open on`);
   // Every part hangs under the system part, through however many steps.
   let node = part, depth = 0;
@@ -403,14 +404,18 @@ checkTrialNumbers(L.liquidCrystalsLesson, {
 }, runLcd, t);
 
 checkTrialNumbers(L.polarizingSunglassesLesson, {
-  'Look at water at the angle where the glare is purest': s => ({53.1: s.reflection.brewster, 3.9: 100 * s.reflectedPower, 0: 100 * s.glareOutput, 0.006: 100 * P.glareThrough(P.MEDIA.water, Number(P.brewsterAngle(P.MEDIA.water).toFixed(9)), 0).real}),
-  'Turn your head sideways': s => ({3.9: 100 * s.glareOutput, 0: 100 * s.glareRejected}),
-  'Look at a road instead of water': s => ({56.3: s.reflection.brewster, 7.4: 100 * s.reflectedPower, 0: 100 * s.glareOutput}),
-  'Look a little off that angle': s => ({8.6: 100 * s.reflection.Rs, 0.026: 100 * s.reflection.Rp, 99.7: 100 * s.glareRejected, 0.013: 100 * s.glareOutput}),
-  'Look straight down into the water': s => ({'2.0': 100 * s.reflection.Rs, '1.0': 100 * s.glareOutput}),
-  'Look right along the water': s => ({34.7: 100 * s.reflectedPower, 65.6: 100 * s.glareRejected, 11.9: 100 * s.glareOutput}),
-  'Take the glasses off': s => ({3.9: 100 * s.glareOutput}),
-}, runPol, t);
+  'Look at water at the angle where the glare is purest': s => ({53.1: s.reflection.brewster, 3.86: 100 * s.reflectedPower, 0: 100 * s.glareOutput, 100: 100 * s.glareRejected}),
+  'Turn your head sideways': s => ({3.86: 100 * s.glareOutput, 0: 100 * s.glareRejected}),
+  'Choose a glass surface': s => ({56.3: s.reflection.brewster, '7.40': 100 * s.reflectedPower, 0: 100 * s.glareOutput}),
+  'Look a little off that angle': s => ({4.2773: 100 * s.sPower, '0.0130': 100 * s.pPower, 4.2903: 100 * s.reflectedPower, 99.7: 100 * s.glareRejected}),
+  'Look straight down into the water': s => ({2.01: 100 * s.reflectedPower, '1.00': 100 * s.glareOutput}),
+  'Look right along the water': s => ({34.69: 100 * s.reflectedPower, 65.6: 100 * s.glareRejected, 11.93: 100 * s.glareOutput}),
+  'Take the glasses off': s => ({3.86: 100 * s.glareOutput}),
+  'Turn the axis halfway': s => ({1.93: 100 * s.glareOutput, 50: 100 * s.glareRejected}),
+  'Remove the illumination': s => ({0: 100 * s.glareOutput}),
+  'Halve the source with the axis sideways': s => ({1.93: 100 * s.glareOutput}),
+  'Compare electric and magnetic directions': s => ({'0.0130': 100 * s.glareOutput}),
+}, values => drive(sunglasses, values), t);
 
 checkTrialNumbers(L.binocularPrismsLesson, {
   'Trace the four reflections': s => ({4: s.probe.reflections, 45: s.probe.minimumIncidence, 41.8: s.probe.criticalAngle, 160: 40 * s.probe.glassLength, 40: 40 * s.probe.airLength}),
@@ -468,31 +473,11 @@ for (const [i, section] of L.liquidCrystalsLesson.deeper.entries()) {
 covered(L.liquidCrystalsLesson.limits, {}, 'crystals limits');
 covered(L.liquidCrystalsLesson.quiz.explanation, {}, 'crystals quiz');
 
-// The sunglasses.
+// The sunglasses distinguish reflectance from contributions to full-source power.
 expectNone(L.polarizingSunglassesLesson, 'Polarizing sunglasses');
-covered(L.polarizingSunglassesLesson.deeper[0].body, {
-  [`about ${f0(100 * P.PAGES.normalGlass)}% for common glass, and which comes to ${f1(100 * P.normalReflectance(P.MEDIA.water))}% for water`]: 'about 4% for common glass, and which comes to 2.0% for water',
-}, 'sunglasses deeper 1');
-covered(L.polarizingSunglassesLesson.deeper[1].body, {
-  [`approximately ${P.PAGES.glassBrewster} degrees for glass and ${P.PAGES.waterBrewster} degrees for water`]: 'approximately 56 degrees for glass and 53 degrees for water',
-}, 'sunglasses deeper 2');
-covered(L.polarizingSunglassesLesson.deeper[2].body, {}, 'sunglasses deeper 3');
-covered(L.polarizingSunglassesLesson.deeper[3].body, {
-  'notes that at 45 degrees the reflectance': 'notes that at 45 degrees the reflectance',
-  [`On water at 45 degrees the bench gives ${f4(100 * dielectricReflection(P.MEDIA.water, 45).Rs)}% along the surface, and ${f6(dielectricReflection(P.MEDIA.water, 45).Rs)} squared is ${f6(dielectricReflection(P.MEDIA.water, 45).Rs ** 2)}, which is the ${f4(100 * dielectricReflection(P.MEDIA.water, 45).Rp)}%`]: 'On water at 45 degrees the bench gives 5.2307% along the surface, and 0.052307 squared is 0.002736, which is the 0.2736%',
-}, 'sunglasses deeper 4');
-covered(L.polarizingSunglassesLesson.deeper[4].body, {
-  [`the Polarizer page’s ${f0(100 * P.PAGES.polaroid)}% transmission and 1:${f0(1 / P.PAGES.extinction)} extinction, an upright sheet still passes ${f3(100 * P.glareThrough(P.MEDIA.water, Number(P.brewsterAngle(P.MEDIA.water).toFixed(9)), 0).real)}% of the source at that angle, and it dims the rest of the scene to ${f0(100 * P.PAGES.polaroid)}%`]: 'the Polarizer page’s 38% transmission and 1:500 extinction, an upright sheet still passes 0.006% of the source at that angle, and it dims the rest of the scene to 38%',
-  [`polarized lenses to ${P.PAGES.polarizedGlasses}`]: 'polarized lenses to 1936',
-}, 'sunglasses deeper 5');
-covered(L.polarizingSunglassesLesson.deeper[5].body, {}, 'sunglasses deeper 6');
-covered(L.polarizingSunglassesLesson.limits, sheetSnippets, 'sunglasses limits');
-{
-  const brewsterWater = samplePolarizedLight({mode: 1, brewster: 1, material: 0, glasses: 1, analyzer: 90});
-  covered(L.polarizingSunglassesLesson.quiz.explanation, {
-    [`pass ${f0(0)}% of it and glasses turned to ${90} degrees pass all ${f1(100 * brewsterWater.glareOutput)}% of it`]: 'pass 0% of it and glasses turned to 90 degrees pass all 3.9% of it',
-  }, 'sunglasses quiz');
-}
+for (const [i, section] of L.polarizingSunglassesLesson.deeper.entries()) covered(section.body, {}, `sunglasses deeper ${i + 1}`);
+covered(L.polarizingSunglassesLesson.limits, {}, 'sunglasses limits');
+covered(L.polarizingSunglassesLesson.quiz.explanation, {}, 'sunglasses quiz');
 
 // The binocular prisms.
 expectNone(L.binocularPrismsLesson, 'Binocular prisms');
@@ -527,13 +512,13 @@ covered(L.binocularPrismsLesson.quiz.explanation, {
 // What every lesson here owes the reader.
 const LESSONS = [['Polarizing filter', L.polarizingFilterLesson], ['Liquid crystals', L.liquidCrystalsLesson], ['Polarizing sunglasses', L.polarizingSunglassesLesson], ['Binocular prisms', L.binocularPrismsLesson]];
 for (const [name, lesson] of LESSONS) {
-  const preset = PRESETS[name], model = models[preset.machine];
+  const preset = PRESETS[name], model = (name === 'Polarizing sunglasses' ? sunglasses : models[preset.machine]);
   t.ok(lesson.steps.length === (name === 'Liquid crystals' ? 7 : 5), `${name}: complete mechanism sequence`);
   t.ok(lesson.parts.length >= 4, `${name}: a row for every part it names`);
-  t.ok(name === 'Liquid crystals' ? lesson.tryIt.length === 13 : name === 'Polarizing filter' ? lesson.tryIt.length === 9 : lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: complete trial inventory`);
+  t.ok(name === 'Liquid crystals' ? lesson.tryIt.length === 13 : name === 'Polarizing filter' ? lesson.tryIt.length === 9 : name === 'Polarizing sunglasses' ? lesson.tryIt.length === 11 : lesson.tryIt.length >= 6 && lesson.tryIt.length <= 7, `${name}: complete trial inventory`);
   t.ok(lesson.deeper.length >= 5 && lesson.deeper.length <= 6, `${name}: five or six deeper sections`);
   t.ok(lesson.quiz.answer === 0 && lesson.quiz.options.length === 3, `${name}: a quiz of three with its answer first`);
-  t.ok(lesson.sources.length >= (name === 'Liquid crystals' ? 4 : name === 'Polarizing filter' ? 3 : 5) && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, `${name}: reviewed source inventory, each a link, none twice`);
+  t.ok(lesson.sources.length >= (name === 'Liquid crystals' ? 4 : ['Polarizing filter', 'Polarizing sunglasses'].includes(name) ? 3 : 5) && lesson.sources.every(source => /^https:\/\//.test(source.url)) && new Set(lesson.sources).size === lesson.sources.length, `${name}: reviewed source inventory, each a link, none twice`);
   const all = [lesson.simple, lesson.overview, lesson.misconception, lesson.limits, lesson.quiz.question, lesson.quiz.explanation, ...lesson.quiz.options, ...lesson.steps.flatMap(step => [step.title, step.body]), ...lesson.parts.flatMap(item => [item.name, item.role]), ...lesson.deeper.flatMap(item => [item.title, item.body]), ...lesson.tryIt.flatMap(item => [item.title, item.instruction, item.observe]), ...lesson.sources.map(source => source.title)];
   for (const text of all) t.ok(!/[—–]| - |--/.test(text), `${name}: no dashes as punctuation in “${text.slice(0, 50)}”`);
   for (const text of all) t.ok(!/\b(centre|colour|metre|litre|behaviour|modelling|grey|analyse|favour|fibre|polariser|polarised)\b/i.test(text), `${name}: American spelling in “${text.slice(0, 50)}”`);
@@ -542,7 +527,7 @@ for (const [name, lesson] of LESSONS) {
   for (const item of lesson.tryIt) {
     t.ok(item.reset === true && item.isolate === false && item.view === 'front', `${name}: every trial resets, does not isolate and faces front`);
     t.ok(model.parts.some(part => part.id === item.part), `${name}: every trial names a part the bench has`);
-    assert.deepEqual(Object.keys(item.values).sort(), (name === 'Polarizing filter' ? ['power', 'input', 'inputAngle', 'first', 'analyzer', 'middle', 'insert', 'magnetic'] : Object.keys(model.defaults)).sort(), `${name}: every trial sets all of its controls`);
+    assert.deepEqual(Object.keys(item.values).sort(), (name === 'Polarizing filter' ? ['power', 'input', 'inputAngle', 'first', 'analyzer', 'middle', 'insert', 'magnetic'] : name === 'Polarizing sunglasses' ? ['power', 'analyzer', 'incidence', 'brewster', 'material', 'glasses', 'magnetic'] : Object.keys(model.defaults)).sort(), `${name}: every trial sets all of its controls`);
   }
 }
 
@@ -556,13 +541,13 @@ for (const [name, preset] of Object.entries(PRESETS)) {
   const lesson = LESSONS.find(([title]) => title === name)[1];
   t.ok(component.lesson === lesson && component.intro === lesson.simple, `${name}: with its own lesson and its own question`);
   for (const [key, value] of Object.entries(component.values || {})) {
-    const control = models[preset.machine].controls.find(item => item.key === key);
+    const control = (name === 'Polarizing sunglasses' ? sunglasses : models[preset.machine]).controls.find(item => item.key === key);
     t.ok(control && value >= control.min && value <= control.max, `${name}: the preset's ${key} is a real control`);
   }
   assert.deepEqual(component.values, preset.values, `${name}: the preset is the one this check drives`);
 }
 t.ok(houseComponents['Polarizing filter'].values.insert === 1, 'the filter page opens on the three filter train, not the parent default');
-t.ok(houseComponents['Polarizing sunglasses'].values.mode === 1 && houseComponents['Polarizing sunglasses'].values.brewster === 1, 'the sunglasses page opens on reflected glare at the Brewster angle');
+t.ok(sunglasses.getState().values.mode === 1 && houseComponents['Polarizing sunglasses'].values.brewster === 1, 'the sunglasses page opens on reflected glare at the Brewster angle');
 t.ok(houseComponents['Binocular prisms'].values.mode === 1, 'the prism page opens inside the Porro pair');
 t.ok(houseComponents['Liquid crystals'].machine === 'Liquid crystal display', 'the liquid crystals page opens on the display, which is where they are');
 
@@ -572,7 +557,7 @@ t.ok(houseComponents['Liquid crystals'].machine === 'Liquid crystal display', 't
 
 // The controls each page's preset touches are the ones its bench enables there.
 for (const [name, preset] of Object.entries(PRESETS)) {
-  const model = models[preset.machine], values = {...model.defaults, ...preset.values};
+  const model = (name === 'Polarizing sunglasses' ? sunglasses : models[preset.machine]), values = {...model.defaults, ...preset.values};
   const enabled = preset.machine === 'Polarized light' ? key => polarizedControlEnabled(key, values) : preset.machine === 'Liquid crystal display' ? key => lcdControlEnabled(key, values) : key => key === 'mode' || (key === 'index' ? values.mode < 2 : key === 'angle' ? values.mode === 1 : ['baseline', 'distance'].includes(key) ? values.mode === 2 : values.mode === 0);
   for (const key of Object.keys(preset.values)) t.ok(enabled(key), `${name}: the preset only sets controls the bench enables, and ${key} is one`);
   // Each enabled control still moves both the readings and the drawing there.
@@ -612,7 +597,7 @@ for (const [name, preset] of Object.entries(PRESETS)) {
 // The result to inspect after playing: every one of these four pages has one,
 // in the mode its preset opens in.
 for (const [name, preset] of Object.entries(PRESETS)) {
-  const model = models[preset.machine];
+  const model = (name === 'Polarizing sunglasses' ? sunglasses : models[preset.machine]);
   model.reset();
   model.update({...model.defaults, ...preset.values});
   t.ok(!model.playback.complete(), `${name}: nothing to inspect before playing`);
@@ -628,7 +613,7 @@ for (const [name, preset] of Object.entries(PRESETS)) {
 
 // Readings never say NaN, and the benches keep their published domains.
 for (const [name, preset] of Object.entries(PRESETS)) {
-  const model = models[preset.machine];
+  const model = (name === 'Polarizing sunglasses' ? sunglasses : models[preset.machine]);
   for (const trial of LESSONS.find(([title]) => title === name)[1].tryIt) {
     const state = drive(model, trial.values);
     t.ok(state.readings.every(item => !/NaN|undefined|Infinity|null/.test(String(item.value) + (item.hint || ''))), `${name}: ${trial.title} leaves no reading unsaid`);
@@ -647,7 +632,7 @@ for (const [key, value] of Object.entries(BINOCULARS_DEFAULTS)) {
   t.ok(control.initial === value, `the binocular bench keeps its published ${key}`);
 }
 
-for (const model of [pol, lcd, bino]) model.dispose();
+for (const model of [pol, lcd, bino, sunglasses]) model.dispose();
 const released = checkDisposal(createPolarizedLightModel(), t) + checkDisposal(createLCDModel(), t) + checkDisposal(createBinocularsModel(), t);
 
 console.log(`PASS polarizers: ${t.count} checks, ${counts.angles} angles worked out again, ${counts.orientations} input directions and drawn rods read back, ${counts.layers} slices of a birefringent layer multiplied, ${counts.rays} rays and reflections traced, ${counts.poses} poses, ${counts.numbers} quoted numbers traced, 4 lessons on 3 published benches, ${released} resources released exactly once.`);

@@ -529,3 +529,11 @@ assert(families.find(family => family.entry.id === 'liquid-crystal-display').com
 assert.equal(catalog.groups.find(group => group.id === liquidCrystals.group).place, 'studio');
 assert.deepEqual(tags(liquidCrystals.id), ['light-and-images']);
 for (const id of ['front', 'rear', 'segment-electrode', 'common-electrode', 'molecules', 'mirror', 'driver', 'connections', 'result', 'meter']) assert(hasCatalogPart(liquidCrystals.id, id), `${id} remains bookmarkable in the liquid crystals lesson`);
+
+const polarizingSunglasses = families.find(family => family.entry.id === 'polarizing-sunglasses');
+assert(polarizingSunglasses && !componentParentIds[polarizingSunglasses.entry.id], 'Polarizing sunglasses are an independent wearable optical filter');
+assert.deepEqual(polarizingSunglasses.components, []);
+assert.equal(catalog.groups.find(group => group.id === polarizingSunglasses.entry.group).place, 'studio');
+assert.deepEqual(tags(polarizingSunglasses.entry.id), ['light-and-images']);
+for (const id of ['surface', 'glare-source', 'glasses', 'eye', 'glare-result']) assert(hasCatalogPart(polarizingSunglasses.entry.id, id), `${id} remains bookmarkable in the polarizing sunglasses lesson`);
+for (const id of ['first', 'middle', 'analyzer', 'source', 'result', 'meter']) assert(!hasCatalogPart(polarizingSunglasses.entry.id, id), `${id} belongs to the separate polarizer train`);

@@ -2243,6 +2243,33 @@
       "parentId": "system"
     }
   ],
+  "polarizing-sunglasses": [
+    {
+      "id": "surface",
+      "name": "Reflecting dielectric surface",
+      "parentId": "glare"
+    },
+    {
+      "id": "glare-source",
+      "name": "Glare light source",
+      "parentId": "glare"
+    },
+    {
+      "id": "glasses",
+      "name": "Polarizing sunglasses",
+      "parentId": "glare"
+    },
+    {
+      "id": "eye",
+      "name": "Observer and meter",
+      "parentId": "glare"
+    },
+    {
+      "id": "glare-result",
+      "name": "Glare meter",
+      "parentId": "glare"
+    }
+  ],
   "blu-ray-player": [
     {
       "id": "chassis",
